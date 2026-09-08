@@ -4,4 +4,6 @@ module.exports = Object.freeze({
   clock: require('./market_clock.js'),
   contracts: require('../data/contracts.js'),
   quality: require('../data/quality_gate.js'),
+  normalizer: require('../data/normalizer.js'),
+  providers: require('../providers/index.js'),
 });
