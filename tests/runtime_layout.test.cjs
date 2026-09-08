@@ -1,0 +1,13 @@
+const {test}=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs'),vm=require('node:vm');
+function view(){
+ const nodes=new Map(['#tradeSubContent','#journalSubContent','[data-runtime-candidates]'].map(k=>[k,{innerHTML:''}]));
+ const p={books:{'5x':{balance:1000,equity:1002,positions:{p:{position_id:'p',symbol:'BTCUSDT',side:'LONG',family:'A',qty:1,entry_fill:100,mark:102,last_ms:Date.now(),stop:98,planned_risk_usdt:2}}}},pending:[{intent_id:'i',symbol:'ETHUSDT',side:'SHORT',family:'B',overdue:true}],candidates:Array.from({length:40},(_,i)=>({symbol:'COIN'+i+'USDT',rank:i+1,side:'LONG',status:'WATCH'})),events:[],trades:[],diagnostics:{overdue_pending:1},latest_scan:{regime:'RANGE'},reserved_risk_fraction:0.01};
+ const c={console,Date,document:{readyState:'loading',addEventListener(){},querySelector:s=>nodes.get(s)||null,querySelectorAll:()=>[]},go(){},tradeSub(){},journalSub(){},renderMarket(){},FOXY_RUNTIME_BRIDGE:{getPortfolio:()=>p,getStatus:()=>null},FOXY_V11:{computeStrategyLab:()=>({overall:{trades:0,expectancy:null}})}};
+ c.window=c;vm.runInNewContext(fs.readFileSync('runtime_ui.js','utf8'),c);return {c,nodes,p};
+}
+test('positions do not include pending orders or account tables',()=>{const {c,nodes}=view();c.tradeSub('positions');const html=nodes.get('#tradeSubContent').innerHTML;assert.match(html,/BTCUSDT/);assert.doesNotMatch(html,/ETHUSDT/);assert.match(html,/<details/);});
+test('pending route displays overdue intent without mixing candidate rankings',()=>{const {c,nodes}=view();c.tradeSub('pending');const html=nodes.get('#tradeSubContent').innerHTML;assert.match(html,/ETHUSDT/);assert.match(html,/已逾期/);assert.doesNotMatch(html,/data-runtime-search/);});
+test('candidate list is bounded and does not duplicate pending orders',()=>{const {c,nodes}=view();c.tradeSub('candidates');assert.doesNotMatch(nodes.get('#tradeSubContent').innerHTML,/ETHUSDT/);const list=nodes.get('[data-runtime-candidates]').innerHTML;assert.equal((list.match(/data-runtime-symbol=/g)||[]).length,12);assert.match(list,/data-runtime-more/);});
+test('home keeps overdue warnings visible and performance does not report zero expectancy for no closed samples',()=>{const {c,nodes}=view();assert.equal(typeof c.FOXY_RUNTIME_UI?.homeHTML,'function');const html=c.FOXY_RUNTIME_UI.homeHTML();assert.match(html,/已逾期/);assert.match(html,/data-view="trade"/);assert.doesNotMatch(html,/<table/);c.journalSub('performance');assert.match(nodes.get('#journalSubContent').innerHTML,/樣本不足/);assert.doesNotMatch(nodes.get('#journalSubContent').innerHTML,/v11StrategyLab/);});
