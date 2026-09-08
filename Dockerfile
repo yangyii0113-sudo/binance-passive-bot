@@ -6,6 +6,7 @@ RUN cat /tmp/backend_parts2/part00 /tmp/backend_parts2/part01 /tmp/backend_parts
     && rm -rf /tmp/backend_parts2 /tmp/runtime_backend.b64 \
     && mkdir -p /data
 COPY live_ui.html /app/foxyya_runtime_backend/FOXYYA_完整平台_v11.2_live_runtime.html
+COPY service.py runtime_view.py runtime_ui.js /app/foxyya_runtime_backend/
 WORKDIR /app/foxyya_runtime_backend
 ENV PYTHONUNBUFFERED=1 \
     PYTHONPATH=/app/foxyya_runtime_backend/src \
