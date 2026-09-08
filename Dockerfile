@@ -1,8 +1,9 @@
 FROM python:3.12-slim
 WORKDIR /app
-COPY runtime_backend.b64 /tmp/runtime_backend.b64
-RUN python -c "import base64,zipfile,io; data=base64.b64decode(open('/tmp/runtime_backend.b64','rb').read()); zipfile.ZipFile(io.BytesIO(data)).extractall('/app')" \
-    && rm -f /tmp/runtime_backend.b64 \
+COPY backend_parts2 /tmp/backend_parts2
+RUN cat /tmp/backend_parts2/part00 /tmp/backend_parts2/part01 /tmp/backend_parts2/part02 /tmp/backend_parts2/part03 /tmp/backend_parts2/part04 > /tmp/runtime_backend.b64 \
+    && python -c "import base64,zipfile,io; raw=open('/tmp/runtime_backend.b64','rb').read(); assert len(raw)==44280, len(raw); data=base64.b64decode(raw, validate=True); z=zipfile.ZipFile(io.BytesIO(data)); z.testzip() is None or (_ for _ in ()).throw(RuntimeError('bad zip member')); z.extractall('/app')" \
+    && rm -rf /tmp/backend_parts2 /tmp/runtime_backend.b64 \
     && mkdir -p /data
 WORKDIR /app/foxyya_runtime_backend
 ENV PYTHONUNBUFFERED=1 \
