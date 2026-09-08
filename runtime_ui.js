@@ -34,6 +34,8 @@
  function renderCurrent(){if($('#trade')?.classList.contains('active')){if($('#runtimeSearch')===document.activeElement)return;tradeSub($('#tradeTabs button.active')?.dataset.sub||'candidates')}if($('#journal')?.classList.contains('active')){const sub=$('#journalTabs button.active')?.dataset.sub||'trades';if(sub!=='review'&&sub!=='audit')journalSub(sub)}if($('#settings')?.classList.contains('active'))settings()}
  function bindTabs(root,fn){$(root).addEventListener('click',e=>{const b=e.target.closest('button[data-sub]');if(!b)return;e.preventDefault();e.stopImmediatePropagation();all(root+' button').forEach(x=>x.classList.toggle('active',x===b));fn(b.dataset.sub)},true)}
  function boot(){
+  // The production service has no legacy Worker/D1 login or book-switch API.
+  $('#runtimeSettings')?.remove();
   bindTabs('#tradeTabs',s=>tradeSub(s));bindTabs('#journalTabs',s=>journalSub(s));
   all('.dock button').forEach(b=>b.onclick=()=>go(b.dataset.go));
   document.addEventListener('input',e=>{if(e.target.id==='runtimeSearch')renderCandidates()});
