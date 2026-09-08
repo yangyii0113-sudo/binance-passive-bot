@@ -6,4 +6,6 @@ module.exports = Object.freeze({
   quality: require('../data/quality_gate.js'),
   normalizer: require('../data/normalizer.js'),
   providers: require('../providers/index.js'),
+  intelligence: require('../intelligence/index.js'),
+  earlyTrend: require('../early_trend/index.js'),
 });
