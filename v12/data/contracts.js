@@ -7,6 +7,7 @@
 
   const MARKET_IDS = Object.freeze(['ALL','CRYPTO','US','TW']);
   const CONFIDENCE_STATES = Object.freeze(['LIVE','DELAYED','SNAPSHOT','STALE','UNAVAILABLE']);
+  const DATA_STATUSES = CONFIDENCE_STATES;
   const STOCK_MARKETS = new Set(['US','TW']);
   const STOCK_FORBIDDEN_EXECUTION = new Set(['PENDING','PENDING_INTENT','OPEN','FILLED','EXECUTABLE']);
 
@@ -63,6 +64,25 @@
     return errors.length ? fail(...errors) : ok();
   }
 
+  function validateObservation(value){
+    const errors=[];
+    if(!object(value)) return fail('OBJECT_REQUIRED');
+    if(value.schemaVersion!=='foxyya-observation/1') errors.push('SCHEMA_VERSION_INVALID');
+    if(!text(value.instrumentId)) errors.push('INSTRUMENT_ID_REQUIRED');
+    if(!MARKET_IDS.includes(value.market)||value.market==='ALL') errors.push('MARKET_INVALID');
+    if(!text(value.field)) errors.push('FIELD_REQUIRED');
+    if(!text(value.unit)) errors.push('UNIT_REQUIRED');
+    if(!text(value.currency)) errors.push('CURRENCY_REQUIRED');
+    if(!finite(value.observedAt)||value.observedAt<0) errors.push('OBSERVED_AT_INVALID');
+    if(!finite(value.receivedAt)||value.receivedAt<0) errors.push('RECEIVED_AT_INVALID');
+    else if(finite(value.observedAt)&&value.receivedAt<value.observedAt) errors.push('TIME_ORDER_INVALID');
+    if(!text(value.source)) errors.push('SOURCE_REQUIRED');
+    if(!DATA_STATUSES.includes(value.status)) errors.push('STATUS_INVALID');
+    if(!finite(value.confidence)||value.confidence<0||value.confidence>1) errors.push('CONFIDENCE_INVALID');
+    if(value.status!=='UNAVAILABLE'&&(value.value===null||value.value===undefined)) errors.push('VALUE_REQUIRED');
+    return errors.length?fail(...errors):ok();
+  }
+
   function validateExecutionSnapshot(value){
     const errors = [];
     if (!object(value)) return fail('OBJECT_REQUIRED');
@@ -78,9 +98,11 @@
   return Object.freeze({
     MARKET_IDS,
     CONFIDENCE_STATES,
+    DATA_STATUSES,
     validateMarketPulse,
     validateAssetSnapshot,
     validateResearchRead,
+    validateObservation,
     validateExecutionSnapshot,
   });
 });
