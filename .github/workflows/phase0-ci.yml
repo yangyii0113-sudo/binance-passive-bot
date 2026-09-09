@@ -26,6 +26,15 @@ jobs:
       - name: Install test runner
         run: python -m pip install --disable-pip-version-check pytest
 
+      - name: Print production archive inventory
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from tools.verify_runtime_archive import archive_manifest, assemble_runtime_archive
+          for path, digest in sorted(archive_manifest(assemble_runtime_archive(Path('backend_parts2'))).items()):
+              print(f'{digest}  {path}')
+          PY
+
       - name: Archive parity tests
         run: python -m pytest tests/test_source_parity.py -v
 
