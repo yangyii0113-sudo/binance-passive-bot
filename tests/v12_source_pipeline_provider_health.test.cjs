@@ -72,7 +72,7 @@ test('provider rate limit is isolated and does not mark an unrelated successful 
   assert.equal(result.providerHealth['twse-openapi'].health,'HEALTHY');
   assert.equal(result.providerHealth['sec-edgar'].health,'RATE_LIMITED');
   assert.equal(result.providerHealth['sec-edgar'].rateLimit.state,'LIMITED');
-  assert.equal(result.orchestration.diagnostics.us[0].status,'UNAVAILABLE');
+  assert.equal(result.orchestration.diagnostics.US[0].status,'UNAVAILABLE');
   assert.equal(result.sources.TWSE[0].status,'AVAILABLE');
 });
 
