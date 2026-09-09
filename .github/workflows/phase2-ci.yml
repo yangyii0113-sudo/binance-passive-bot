@@ -22,7 +22,7 @@ jobs:
           python-version: '3.12'
       - name: Install test runner
         run: python -m pip install --disable-pip-version-check pytest
-      - name: Replay timeline contract
+      - name: Replay timeline and lifecycle contracts
         env:
           PYTHONPATH: src:.
-        run: python -m pytest tests/test_replay_timeline.py -v
+        run: python -m pytest tests/test_replay_timeline.py tests/test_replay_lifecycle.py -v
