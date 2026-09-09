@@ -1,0 +1,2 @@
+const test=require('node:test');const assert=require('node:assert/strict');const P=require('../v12/providers/index.js');
+test('provider foundation exposes FINRA only as delayed read-only confirmation adapter',()=>{assert.equal(P.adapters.finra.descriptor.id,'finra-research-official');assert.equal(P.adapters.finra.descriptor.serverOnly,true);assert.equal(P.adapters.finra.descriptor.executionWrite,false);assert.equal(P.adapters.finra.LATENCY_CLASS,'DELAYED');assert.equal(P.adapters.finra.EVIDENCE_ROLE,'CONFIRMATION');});
