@@ -22,11 +22,11 @@ function fixtures(){
 function createPipeline(overrides={}){
   const calls=[];
   const table=fixtures();
-  const fetchImpl=overrides.fetchImpl||async(url,init)=>{
+  const fetchImpl=overrides.fetchImpl||(async(url,init)=>{
     calls.push({url,init});
     if(!table.has(url))throw Error('unexpected url '+url);
     return table.get(url);
-  };
+  });
   const service=createStagingHomeService();
   const pipeline=createStagingSourcePipeline({fetchImpl,clock:()=>nowMs,publishHome:service.publishHome});
   return {pipeline,service,calls,table};
