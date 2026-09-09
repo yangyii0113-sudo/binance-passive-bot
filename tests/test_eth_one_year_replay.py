@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import backtest.cli as cli
 from backtest.binance_history import DAY_MS, HOUR_MS
 from backtest.cli import run_eth_365_study
 
@@ -35,7 +36,11 @@ def _payload(end_ms: int, execution_days: int, warmup_days: int):
     return {
         "schema": "foxyya-binance-study-input/1",
         "source_family": "Binance USD-M Public Data",
+        "retrieval_mode": "TEST_FIXTURE",
+        "exchange_info_source": "TEST_FIXTURE",
         "retrieved_at_ms": 123456789,
+        "requested_end_ms": end_ms,
+        "data_lag_ms": 0,
         "execution_start_ms": execution_start,
         "warmup_start_ms": warmup_start,
         "end_ms": end_ms,
@@ -94,3 +99,31 @@ def test_study_runner_writes_complete_artifacts_and_excludes_warmup_from_event_w
     report = json.loads((run_dir / "report.json").read_text(encoding="utf-8"))
     assert report["label"] == "歷史模擬・非 Forward Performance"
     assert report["execution_fidelity"]["intrabar_path"] == "UNAVAILABLE"
+
+
+def test_study_runner_accepts_explicit_archive_safe_end_and_records_requested_boundary(monkeypatch, tmp_path: Path):
+    archive_end = 1000 * DAY_MS
+    requested_end = archive_end + 10 * HOUR_MS
+    execution_days = 1
+    warmup_days = 60
+    payload = _payload(archive_end, execution_days, warmup_days)
+    payload["retrieval_mode"] = "BINANCE_OFFICIAL_PUBLIC_ARCHIVE"
+    payload["exchange_info_source"] = "VERIFIED_ETHUSDT_EXCHANGE_INFO_SNAPSHOT_2026-09-09"
+    payload["requested_end_ms"] = requested_end
+    payload["data_lag_ms"] = requested_end - archive_end
+
+    monkeypatch.setattr(cli, "fetch_study_inputs", lambda **kwargs: payload)
+    result = cli.run_eth_365_study(
+        output_root=tmp_path,
+        now_ms=requested_end + 12345,
+        input_payload=None,
+        execution_days=execution_days,
+        warmup_days=warmup_days,
+        git_sha="archive-fixture-git-sha",
+    )
+    config = json.loads((Path(result["run_dir"]) / "run_config.json").read_text(encoding="utf-8"))
+    assert config["end_ms"] == archive_end
+    assert config["requested_end_ms"] == requested_end
+    assert config["data_lag_ms"] == requested_end - archive_end
+    assert config["retrieval_mode"] == "BINANCE_OFFICIAL_PUBLIC_ARCHIVE"
+    assert config["exchange_info_source"] == "VERIFIED_ETHUSDT_EXCHANGE_INFO_SNAPSHOT_2026-09-09"
