@@ -3,10 +3,10 @@
 const {createHomeSnapshotStore,createReadOnlyHandler}=require('./read_api.js');
 const {createHomeSnapshotPublisher}=require('./home_publisher.js');
 
-function createStagingHomeService(){
+function createStagingHomeService({lineageStore}={}){
   const homeStore=createHomeSnapshotStore();
   const publisher=createHomeSnapshotPublisher({homeStore});
-  const handler=createReadOnlyHandler({homeStore});
+  const handler=createReadOnlyHandler({homeStore,lineageStore});
 
   function publishHome(input={}){
     return publisher.publish(input);
