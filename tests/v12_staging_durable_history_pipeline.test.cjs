@@ -21,6 +21,10 @@ function historyFile(){
   return path.join(dir,'tw.research.jsonl');
 }
 
+function historyAt(file,nowMs){
+  return createDurableResearchHistoryStore({filePath:file,now:()=>nowMs});
+}
+
 function response(body,{status=200}={}){
   return {ok:status>=200&&status<300,status,headers:{get(){return 'application/json; charset=utf-8'}},async json(){return body}};
 }
@@ -73,8 +77,8 @@ function journalLines(file){
 
 test('first successful run uses empty history honestly then persists current revenue and institutional session',async()=>{
   const file=historyFile();
-  const history=createDurableResearchHistoryStore({filePath:file});
   const config=runConfig({nowMs:Date.parse('2026-09-09T06:30:00Z'),rocDate:'1150909',tradeDate:'20260909',rocMonth:'11508'});
+  const history=historyAt(file,config.nowMs);
   const {pipeline}=createPipeline({history,config});
   const result=await pipeline.run(config.input);
   const tw=result.orchestration.published.home.opportunities.TW[0];
@@ -87,12 +91,12 @@ test('first successful run uses empty history honestly then persists current rev
 
 test('restart automatically supplies durable prior revenue and institutional sessions to the next research run',async()=>{
   const file=historyFile();
-  const firstHistory=createDurableResearchHistoryStore({filePath:file});
   const first=runConfig({nowMs:Date.parse('2026-09-09T06:30:00Z'),rocDate:'1150909',tradeDate:'20260909',rocMonth:'11508',yoy:'24.07'});
+  const firstHistory=historyAt(file,first.nowMs);
   await createPipeline({history:firstHistory,config:first}).pipeline.run(first.input);
 
-  const restarted=createDurableResearchHistoryStore({filePath:file});
   const second=runConfig({nowMs:Date.parse('2026-10-12T06:30:00Z'),rocDate:'1151012',tradeDate:'20261012',rocMonth:'11509',yoy:'31.00'});
+  const restarted=historyAt(file,second.nowMs);
   const result=await createPipeline({history:restarted,config:second}).pipeline.run(second.input);
   const tw=result.orchestration.published.home.opportunities.TW[0];
   assert.equal(tw.research.evidence.some(x=>x.dimension==='REVENUE'),true);
@@ -104,8 +108,8 @@ test('restart automatically supplies durable prior revenue and institutional ses
 
 test('rerunning an identical successful source cycle is durable-idempotent',async()=>{
   const file=historyFile();
-  const history=createDurableResearchHistoryStore({filePath:file});
   const config=runConfig({nowMs:Date.parse('2026-09-09T06:30:00Z'),rocDate:'1150909',tradeDate:'20260909',rocMonth:'11508'});
+  const history=historyAt(file,config.nowMs);
   await createPipeline({history,config}).pipeline.run(config.input);
   assert.equal(journalLines(file).length,2);
   await createPipeline({history,config}).pipeline.run(config.input);
@@ -114,8 +118,8 @@ test('rerunning an identical successful source cycle is durable-idempotent',asyn
 
 test('failed Home publish does not advance durable research history',async()=>{
   const file=historyFile();
-  const history=createDurableResearchHistoryStore({filePath:file});
   const config=runConfig({nowMs:Date.parse('2026-09-09T06:30:00Z'),rocDate:'1150909',tradeDate:'20260909',rocMonth:'11508'});
+  const history=historyAt(file,config.nowMs);
   const {pipeline}=createPipeline({history,config,publishHome(){throw Error('PUBLISH_FAIL')}});
   await assert.rejects(()=>pipeline.run(config.input),/PUBLISH_FAIL/);
   assert.equal(history.previousRevenue('TWSE:2330','2026-09'),null);
@@ -125,8 +129,8 @@ test('failed Home publish does not advance durable research history',async()=>{
 
 test('durable history mode forbids caller supplied previousRevenue or institutionalSessions before network access',async()=>{
   const file=historyFile();
-  const history=createDurableResearchHistoryStore({filePath:file});
   const config=runConfig({nowMs:Date.parse('2026-09-09T06:30:00Z'),rocDate:'1150909',tradeDate:'20260909',rocMonth:'11508'});
+  const history=historyAt(file,config.nowMs);
   config.input.twAssets[0].previousRevenue={fake:true};
   let calls=0;
   const service=createStagingHomeService();
