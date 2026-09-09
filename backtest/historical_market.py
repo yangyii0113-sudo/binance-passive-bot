@@ -7,6 +7,7 @@ from copy import deepcopy
 from backtest.historical_clock import HOUR_MS, HistoricalClock
 
 SUPPORTED_INTERVALS = ("1h", "4h", "1d")
+INTERVAL_MS = {"1h": HOUR_MS, "4h": 4 * HOUR_MS, "1d": 24 * HOUR_MS}
 DEFAULT_SOURCE_FAMILY = "Binance USD-M Public Data"
 
 
@@ -34,6 +35,29 @@ def _bar(row) -> dict:
         "volume": float(row[5]),
         "close_ms": int(row[6]),
         "closed": True,
+    }
+
+
+def _gap_summary(closes: list[int], expected_delta_ms: int) -> dict:
+    gaps = []
+    missing_bar_count = 0
+    for previous, current in zip(closes, closes[1:]):
+        actual_delta = int(current) - int(previous)
+        if actual_delta == expected_delta_ms:
+            continue
+        missing_bars = max(0, (actual_delta - 1) // expected_delta_ms)
+        missing_bar_count += missing_bars
+        gaps.append({
+            "previous_close_ms": int(previous),
+            "next_close_ms": int(current),
+            "expected_delta_ms": int(expected_delta_ms),
+            "actual_delta_ms": int(actual_delta),
+            "missing_bars": int(missing_bars),
+        })
+    return {
+        "gap_count": len(gaps),
+        "missing_bar_count": int(missing_bar_count),
+        "gaps": gaps,
     }
 
 
@@ -142,6 +166,7 @@ class HistoricalDataset:
                     "last_close_ms": closes[-1] if closes else None,
                     "row_count": len(rows),
                     "sha256": _sha256(rows),
+                    **_gap_summary(closes, INTERVAL_MS[interval]),
                 }
             funding = list(self.funding_rows(symbol))
             funding_times = [int(row["fundingTime"]) for row in funding]
