@@ -3,6 +3,7 @@
 const Facts=require('./product_facts.js');
 const Home=require('../ui/home_model.js');
 const Regional=require('../intelligence/regional_engine.js');
+const CryptoResults=require('../results/crypto_results.js');
 
 const finite=x=>typeof x==='number'&&Number.isFinite(x);
 const object=x=>x&&typeof x==='object'&&!Array.isArray(x);
@@ -20,7 +21,10 @@ function assertCryptoReadOnly(view){
   if(!object(view)||view.schema!=='foxyya-v12-crypto-execution-read/1'||view.readOnly!==true||view.paperOnly!==true||view.realOrderLock!==true){
     throw Error('CRYPTO_READ_ONLY_REQUIRED');
   }
-  if(!Array.isArray(view.candidates))throw Error('CRYPTO_CANDIDATES_REQUIRED');
+  for(const key of ['candidates','pending','openPositions','closedTrades']){
+    if(!Array.isArray(view[key]))throw Error('CRYPTO_'+key.toUpperCase()+'_REQUIRED');
+  }
+  if(!finite(view.asOf)||view.asOf<0)throw Error('CRYPTO_ASOF_INVALID');
   return view;
 }
 
@@ -118,6 +122,8 @@ function buildHomeReadModel(input={}){
     schemaVersion:'foxyya-home-read-model/1',
     asOf:input.asOf,
     home,
+    cryptoExecution:crypto,
+    cryptoResults:crypto?CryptoResults.projectCryptoResults(crypto):null,
     providerDiagnostics:input.providerDiagnostics||null,
     researchOnly:true,
     executionWrite:false
