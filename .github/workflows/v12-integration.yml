@@ -58,7 +58,20 @@ jobs:
         run: node --test tests/v12_execution_source_pipeline_wiring.test.cjs
 
       - name: Run v12 Node contract and integration tests
-        run: node --test tests/v12_*.test.cjs
+        shell: bash
+        run: |
+          set +e
+          node --test tests/v12_*.test.cjs > /tmp/v12-node.log 2>&1
+          status=$?
+          set -e
+          if [ "$status" -ne 0 ]; then
+            echo '--- concise v12 failures ---'
+            grep -E '^(not ok|# Subtest:)|failureType:|location:|error:|actual:|expected:' /tmp/v12-node.log | tail -n 120 || true
+            echo '--- summary ---'
+            tail -n 12 /tmp/v12-node.log
+            exit "$status"
+          fi
+          tail -n 12 /tmp/v12-node.log
 
       - name: Run existing runtime JavaScript regressions
         run: node --test tests/runtime_bridge.test.cjs tests/runtime_layout.test.cjs tests/runtime_metrics.test.cjs tests/runtime_backtest.test.cjs
