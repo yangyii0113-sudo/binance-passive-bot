@@ -32,6 +32,23 @@ jobs:
           node --version
           python --version
 
+      - name: Enforce v12 branch scope
+        shell: bash
+        run: |
+          git fetch --no-tags --depth=1 origin main:refs/remotes/origin/main
+          git diff --name-only origin/main HEAD > /tmp/v12-changed-files.txt
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const {auditChangedPaths}=require('./v12/staging/branch_scope_gate.js');
+          const paths=fs.readFileSync('/tmp/v12-changed-files.txt','utf8').split(/\r?\n/).filter(Boolean);
+          const audit=auditChangedPaths(paths);
+          if(!audit.safe){
+            console.error('Forbidden v12 branch paths:',audit.forbidden.join(', '));
+            process.exit(1);
+          }
+          console.log('v12 branch scope OK:',paths.length,'changed files; Production release authorized:',audit.productionReleaseAuthorized);
+          NODE
+
       - name: Run v12 Node contract and integration tests
         run: node --test tests/v12_*.test.cjs
 
