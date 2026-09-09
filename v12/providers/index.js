@@ -4,6 +4,7 @@ const registry=require('./registry.js');
 const catalog=require('./source_catalog.js');
 const activation=require('./activation_gate.js');
 const runtimeGovernance=require('./runtime_governance.js');
+const credentialEntitlement=require('./credential_entitlement_runtime.js');
 const adapters=Object.freeze({
   twse:require('./twse_adapter.js'),
   tpex:require('./tpex_adapter.js'),
@@ -16,4 +17,4 @@ const adapters=Object.freeze({
   krx:require('./krx_adapter.js'),
   jpx:require('./jpx_adapter.js'),
 });
-module.exports=Object.freeze({...contract,...registry,...catalog,...activation,...runtimeGovernance,adapters});
+module.exports=Object.freeze({...contract,...registry,...catalog,...activation,...runtimeGovernance,...credentialEntitlement,adapters});
