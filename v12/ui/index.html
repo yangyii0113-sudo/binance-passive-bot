@@ -81,7 +81,7 @@
           <div class="stage-strip" aria-label="Early Trend 狀態流">
             <span>DETECT</span><i>→</i><span>EARLY WATCH</span><i>→</i><span>ACCUMULATION</span><i>→</i><span>CONFIRMING</span><i>→</i><span>READY</span>
           </div>
-          <div class="empty-state"><b>UNAVAILABLE</b><span>Smart Money / Expectation / Breadth / Rotation / Lead-Lag 尚未接入即時證據。</span></div>
+          <div data-home-content="early-trend"><div class="empty-state"><b>UNAVAILABLE</b><span>Smart Money / Expectation / Breadth / Rotation / Lead-Lag 尚未接入即時證據。</span></div></div>
         </section>
 
         <section class="home-section" id="market-pulse">
@@ -105,7 +105,7 @@
         <section class="home-section" id="risk-events">
           <div class="section-head"><div><span class="eyebrow">GLOBAL RISK & EVENTS</span><h2>國際情勢與重要事件</h2></div><button class="text-btn" data-route="INTELLIGENCE" data-primary-action>查看全部 →</button></div>
           <div class="filter-row"><button class="filter active">熱點</button><button class="filter">經濟</button><button class="filter">地緣政治</button><button class="filter">政策</button><button class="filter">財報</button></div>
-          <div class="empty-state"><b>UNAVAILABLE</b><span>等待 News / Macro / Calendar verified sources。</span></div>
+          <div data-home-content="events"><div class="empty-state"><b>UNAVAILABLE</b><span>等待 News / Macro / Calendar verified sources。</span></div></div>
         </section>
       </section>
 
@@ -139,6 +139,9 @@
 </div>
 <script src="routes.js"></script>
 <script src="home_model.js"></script>
+<script src="home_view_model.js"></script>
+<script src="home_renderer.js"></script>
+<script src="home_dom.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
