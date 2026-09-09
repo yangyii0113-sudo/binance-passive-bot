@@ -20,6 +20,8 @@ from foxyya.portfolio import replay_books
 from foxyya.runner import ForwardRunner
 from intel_feeds import aggregate_news, fetch_bls_calendar
 from runtime_view import project_runtime
+from backtest.artifacts import validate_run_artifacts
+import sqlite3
 
 BACKTEST_MODE = "HISTORICAL BACKTEST"
 BACKTEST_LABEL = "歷史模擬・非 Forward Performance"
@@ -100,16 +102,9 @@ def _load_backtest_payload(root: Path, run_id: str) -> dict | None:
     if not run_dir.is_dir():
         return None
 
-    required = {
-        "run_config": run_dir / "run_config.json",
-        "metrics": run_dir / "metrics.json",
-        "report": run_dir / "report.json",
-    }
-    if not all(path.is_file() for path in required.values()):
-        return None
     try:
-        payload = {name: json.loads(path.read_text(encoding="utf-8")) for name, path in required.items()}
-    except (OSError, json.JSONDecodeError, UnicodeError):
+        payload = validate_run_artifacts(run_dir)
+    except (OSError, ValueError, KeyError, TypeError, AttributeError, sqlite3.Error):
         return None
     return {
         "status": "OK",

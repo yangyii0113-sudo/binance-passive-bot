@@ -50,7 +50,11 @@ def _payload(end_ms: int, execution_days: int, warmup_days: int):
         "context_symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT"],
         "exchange_info": exchange_info,
         "rows_by_symbol": rows_by_symbol,
-        "funding_rows_by_symbol": {"BTCUSDT": [], "ETHUSDT": [], "SOLUSDT": []},
+        "funding_rows_by_symbol": {
+            symbol: [{"symbol": symbol, "fundingTime": t, "fundingRate": "0.0001"}
+                     for t in range(warmup_start, end_ms, 8 * HOUR_MS)]
+            for symbol in ("BTCUSDT", "ETHUSDT", "SOLUSDT")
+        },
     }
 
 

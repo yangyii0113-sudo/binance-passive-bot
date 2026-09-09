@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import io
 import json
+import math
 import time
 import zipfile
 from datetime import datetime, timedelta, timezone
@@ -19,6 +20,12 @@ SOURCE_FAMILY = "Binance USD-M Public Data"
 ARCHIVE_BASE_URL = "https://data.binance.vision/data/futures/um"
 ARCHIVE_EXCHANGE_INFO_SOURCE = "VERIFIED_ETHUSDT_EXCHANGE_INFO_SNAPSHOT_2026-09-09"
 ARCHIVE_EXCHANGE_INFO_SNAPSHOT_MS = 1_788_912_000_000
+ARCHIVE_END_BOUNDARY_POLICY = "LAST_COMPLETED_UTC_MONTH_WITH_REQUIRED_INPUT_COVERAGE"
+# BTC/ETH/SOL USD-M standard settlements are at 00:00, 08:00 and 16:00 UTC.
+# Keep original exchange timestamps: archived settlements can be a few ms late.
+# This is a bounded completeness policy, not permission to synthesize missing costs.
+FUNDING_MAX_INTERVAL_MS = 8 * HOUR_MS
+FUNDING_TIMESTAMP_TOLERANCE_MS = 1000
 
 # Minimal ETHUSDT metadata required by FOXYYA scanner/sizing. Values were verified from
 # Binance USD-M public exchange information on 2026-09-09. Archive data itself does not
@@ -202,6 +209,7 @@ class BinancePublicDataArchiveClient:
 
     retrieval_mode = "BINANCE_OFFICIAL_PUBLIC_ARCHIVE"
     exchange_info_source = ARCHIVE_EXCHANGE_INFO_SOURCE
+    end_boundary_policy = ARCHIVE_END_BOUNDARY_POLICY
 
     def __init__(self, *, base_url: str = ARCHIVE_BASE_URL, download=None, timeout: float = 45.0):
         self.base_url = base_url.rstrip("/")
@@ -210,9 +218,10 @@ class BinancePublicDataArchiveClient:
 
     def resolve_end_ms(self, requested_end_ms: int) -> int:
         requested_end_ms = int(requested_end_ms)
-        # Daily archive files are published after a UTC day completes. When REST is
-        # unavailable, end on the latest completely archived UTC day boundary.
-        return (requested_end_ms // DAY_MS) * DAY_MS
+        # Funding is published monthly; daily candle availability cannot establish
+        # a common complete replay boundary. This conservative candidate is accepted
+        # only after all required native bars and funding pass the coverage gate.
+        return _ms(_month_start(requested_end_ms))
 
     def exchange_info(self) -> dict:
         return json.loads(json.dumps(ETHUSDT_EXCHANGE_INFO_SNAPSHOT))
@@ -282,6 +291,15 @@ class BinancePublicDataArchiveClient:
             month_start_ms = _ms(month)
             next_month_ms = _ms(next_month)
             stamp = month.strftime("%Y-%m")
+            if dataset == "fundingRate":
+                # Read the containing monthly file even for a partial historical
+                # month. Missing monthly publication must never become zero cost.
+                blob = self._download(self._monthly_url(dataset, symbol, stamp))
+                if blob is None:
+                    raise ValueError(f"missing required funding archive: {symbol} {stamp}")
+                yield blob
+                month = next_month
+                continue
             if next_month_ms <= end_ms:
                 url = self._monthly_url(dataset, symbol, stamp, interval)
                 blob = self._download(url)
@@ -319,7 +337,8 @@ class BinancePublicDataArchiveClient:
                 row[6] = _normalize_timestamp_ms(row[6])
                 if int(start_ms) <= int(row[0]) < int(end_ms):
                     rows.append(row)
-        rows.sort(key=lambda row: int(row[0]))
+        # Periods are already chronological. Preserve source order so malformed
+        # archives fail validation instead of being silently repaired by sorting.
         return _validate_klines(rows)
 
     @staticmethod
@@ -359,12 +378,10 @@ class BinancePublicDataArchiveClient:
 
     def funding(self, symbol: str, *, start_ms: int, end_ms: int) -> list[dict]:
         rows = []
-        # Funding archives are normally monthly. `_period_blobs` also supports daily
-        # files when present, while missing daily files simply leave the tail unavailable.
+        # Funding is monthly; unavailable publication is an explicit blocker.
         for blob in self._period_blobs("fundingRate", str(symbol), start_ms=start_ms, end_ms=end_ms):
             rows.extend(self._funding_from_csv(str(symbol), self._csv_rows(blob)))
         rows = [row for row in rows if int(start_ms) <= int(row["fundingTime"]) < int(end_ms)]
-        rows.sort(key=lambda row: int(row["fundingTime"]))
         return _validate_funding(rows)
 
 
@@ -403,6 +420,63 @@ def _assert_execution_eth_hours(rows: list[list], execution_start_ms: int, end_m
             raise ValueError(f"missing required execution 1h open: {required}")
 
 
+def validate_study_input_completeness(payload: dict) -> None:
+    """Fail closed on missing native context or realized funding, including fixtures.
+
+    Required keys: warmup_start_ms, execution_start_ms, end_ms, rows_by_symbol,
+    funding_rows_by_symbol. Only native bars wholly inside the requested input
+    window are required; an unfinished trailing 4h/1d bar is not a missing bar.
+    Funding coverage uses the three symbols' standard maximum eight-hour cadence
+    and a one-second publication timestamp tolerance, without rewriting rows.
+    """
+    start_ms = int(payload["warmup_start_ms"])
+    execution_start_ms = int(payload["execution_start_ms"])
+    end_ms = int(payload["end_ms"])
+    if not start_ms <= execution_start_ms < end_ms or start_ms % HOUR_MS or end_ms % HOUR_MS:
+        raise ValueError("invalid study input completeness window")
+    datasets = payload.get("rows_by_symbol") or {}
+    funding_datasets = payload.get("funding_rows_by_symbol") or {}
+    for symbol in CONTEXT_SYMBOLS:
+        for interval, step in INTERVAL_MS.items():
+            rows = datasets.get(symbol, {}).get(interval, [])
+            for row in rows:
+                if not isinstance(row, (list, tuple)) or len(row) < 8:
+                    raise ValueError(f"invalid native kline row: {symbol} {interval}")
+                if int(row[0]) % step or int(row[6]) != int(row[0]) + step - 1:
+                    raise ValueError(f"invalid native kline alignment or close: {symbol} {interval}")
+            _validate_klines(rows)
+            if symbol == "ETHUSDT" and interval == "1h":
+                _assert_execution_eth_hours(rows, execution_start_ms, end_ms)
+            available = {int(row[0]) for row in rows if start_ms <= int(row[0]) and int(row[6]) < end_ms}
+            first_open = ((start_ms + step - 1) // step) * step
+            for required in range(first_open, end_ms - step + 1, step):
+                if required not in available:
+                    raise ValueError(f"missing required native kline: {symbol} {interval} open {required}")
+
+        funding = funding_datasets.get(symbol, [])
+        for row in funding:
+            try:
+                valid = (isinstance(row, dict) and "fundingTime" in row
+                         and math.isfinite(float(row["fundingRate"]))
+                         and row.get("symbol", symbol) == symbol)
+            except (KeyError, TypeError, ValueError):
+                valid = False
+            if not valid:
+                raise ValueError(f"invalid required funding row: {symbol}")
+        _validate_funding(funding)
+        times = [int(row["fundingTime"]) for row in funding
+                 if start_ms <= int(row["fundingTime"]) < end_ms]
+        first_due = ((start_ms + FUNDING_MAX_INTERVAL_MS - 1) // FUNDING_MAX_INTERVAL_MS) * FUNDING_MAX_INTERVAL_MS
+        last_due = ((end_ms - 1) // FUNDING_MAX_INTERVAL_MS) * FUNDING_MAX_INTERVAL_MS
+        tolerance = FUNDING_TIMESTAMP_TOLERANCE_MS
+        if (not times or times[0] > first_due + tolerance
+                or times[-1] < last_due - tolerance):
+            raise ValueError(f"missing required funding boundary coverage: {symbol}")
+        if any(right - left > FUNDING_MAX_INTERVAL_MS + tolerance
+               for left, right in zip(times, times[1:])):
+            raise ValueError(f"missing required funding interval coverage: {symbol}")
+
+
 def fetch_study_inputs(
     *,
     end_ms: int,
@@ -433,10 +507,12 @@ def fetch_study_inputs(
         active = fallback
         if not hasattr(active, "resolve_end_ms"):
             raise ValueError("archive fallback must expose resolve_end_ms") from exc
+        exchange_info = active.exchange_info()
+
+    if hasattr(active, "resolve_end_ms"):
         end_ms = int(active.resolve_end_ms(requested_end_ms))
         if end_ms <= 0 or end_ms > requested_end_ms or end_ms % HOUR_MS:
             raise ValueError("invalid archive-safe execution boundary")
-        exchange_info = active.exchange_info()
 
     execution_start_ms = end_ms - execution_days * DAY_MS
     warmup_start_ms = execution_start_ms - warmup_days * DAY_MS
@@ -459,9 +535,7 @@ def fetch_study_inputs(
             )
         funding_by_symbol[symbol] = active.funding(symbol, start_ms=warmup_start_ms, end_ms=end_ms)
 
-    _assert_execution_eth_hours(rows_by_symbol["ETHUSDT"]["1h"], execution_start_ms, end_ms)
-
-    return {
+    payload = {
         "schema": "foxyya-binance-study-input/1",
         "source_family": SOURCE_FAMILY,
         "retrieval_mode": str(getattr(active, "retrieval_mode", "UNAVAILABLE")),
@@ -469,6 +543,11 @@ def fetch_study_inputs(
         "retrieved_at_ms": retrieved_at_ms,
         "requested_end_ms": requested_end_ms,
         "data_lag_ms": requested_end_ms - end_ms,
+        "end_boundary_policy": str(getattr(active, "end_boundary_policy", "REQUESTED_CLOSED_UTC_HOUR")),
+        "funding_coverage_policy": {
+            "max_interval_ms": FUNDING_MAX_INTERVAL_MS,
+            "timestamp_tolerance_ms": FUNDING_TIMESTAMP_TOLERANCE_MS,
+        },
         "execution_start_ms": execution_start_ms,
         "warmup_start_ms": warmup_start_ms,
         "end_ms": end_ms,
@@ -480,3 +559,5 @@ def fetch_study_inputs(
         "rows_by_symbol": rows_by_symbol,
         "funding_rows_by_symbol": funding_by_symbol,
     }
+    validate_study_input_completeness(payload)
+    return payload

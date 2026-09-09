@@ -8,6 +8,8 @@ from urllib.request import urlopen
 from http.server import ThreadingHTTPServer
 
 import service
+from test_artifact_integrity import make_run
+from backtest.binance_history import DAY_MS
 
 
 def _get(server, path):
@@ -40,21 +42,8 @@ def test_backtest_api_is_unavailable_without_artifacts(tmp_path: Path):
 
 def test_backtest_api_reads_latest_report_without_runtime_ledger(tmp_path: Path):
     root = tmp_path / "backtests"
-    old = root / "bt-old"; new = root / "bt-new"
-    old.mkdir(parents=True); new.mkdir(parents=True)
-    for run_dir, end_ms in ((old, 100), (new, 200)):
-        (run_dir / "run_config.json").write_text(json.dumps({
-            "run_id": run_dir.name, "end_ms": end_ms, "symbol": "ETHUSDT", "paper_only": True, "real_orders": False,
-        }), encoding="utf-8")
-        (run_dir / "metrics.json").write_text(json.dumps({
-            "mode": "HISTORICAL BACKTEST", "label": "歷史模擬・非 Forward Performance",
-            "performance": {"closed_trades": end_ms},
-        }), encoding="utf-8")
-        (run_dir / "report.json").write_text(json.dumps({
-            "mode": "HISTORICAL BACKTEST", "label": "歷史模擬・非 Forward Performance",
-            "provenance": {"run_id": run_dir.name},
-        }), encoding="utf-8")
-
+    old, _ = make_run(root)
+    new, _ = make_run(root, end_ms=1001 * DAY_MS)
     before = {p: p.stat().st_mtime_ns for p in new.iterdir()}
     server = _server(root)
     try:
@@ -63,9 +52,9 @@ def test_backtest_api_reads_latest_report_without_runtime_ledger(tmp_path: Path)
         assert payload["status"] == "OK"
         assert payload["mode"] == "HISTORICAL BACKTEST"
         assert payload["label"] == "歷史模擬・非 Forward Performance"
-        assert payload["run_config"]["run_id"] == "bt-new"
-        assert payload["metrics"]["performance"]["closed_trades"] == 200
-        assert payload["report"]["provenance"]["run_id"] == "bt-new"
+        assert payload["run_config"]["run_id"] == new.name
+        assert payload["metrics"]["mode"] == "HISTORICAL BACKTEST"
+        assert payload["report"]["provenance"]["run_id"] == new.name
         assert {p: p.stat().st_mtime_ns for p in new.iterdir()} == before
     finally:
         server.shutdown(); server.server_close()
@@ -73,19 +62,13 @@ def test_backtest_api_reads_latest_report_without_runtime_ledger(tmp_path: Path)
 
 def test_backtest_report_lookup_rejects_traversal_and_reads_specific_run(tmp_path: Path):
     root = tmp_path / "backtests"
-    run = root / "bt-specific"; run.mkdir(parents=True)
-    (run / "run_config.json").write_text(json.dumps({"run_id": "bt-specific", "end_ms": 1}), encoding="utf-8")
-    (run / "metrics.json").write_text(json.dumps({"mode": "HISTORICAL BACKTEST"}), encoding="utf-8")
-    (run / "report.json").write_text(json.dumps({
-        "mode": "HISTORICAL BACKTEST", "label": "歷史模擬・非 Forward Performance",
-        "provenance": {"run_id": "bt-specific"},
-    }), encoding="utf-8")
+    run, _ = make_run(root)
 
     server = _server(root)
     try:
-        status, payload = _get(server, "/api/backtest/report?run_id=bt-specific")
+        status, payload = _get(server, "/api/backtest/report?run_id=" + run.name)
         assert status == 200
-        assert payload["run_config"]["run_id"] == "bt-specific"
+        assert payload["run_config"]["run_id"] == run.name
 
         status, payload = _get(server, "/api/backtest/report?run_id=../paper")
         assert status == 400

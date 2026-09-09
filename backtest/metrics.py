@@ -205,7 +205,9 @@ def _primary_equity_curve(events: list[dict], initial_nav: float) -> tuple[list[
             "open_positions": len(positions),
         })
 
-    for event in sorted(events, key=lambda e: (_event_time(e), str(e.get("event_id", "")))):
+    # Stable timestamp sorting preserves ledger order within a cycle: funding
+    # must be applied before the exit that removes its position.
+    for event in sorted(events, key=_event_time):
         kind = event.get("kind")
         pid = event.get("position_id")
         changed = False
@@ -353,7 +355,8 @@ def _funnel(events: list[dict]) -> dict:
 def _max_reserved_risk_fraction(events: list[dict]) -> float:
     active: dict[str, float] = {}
     maximum = 0.0
-    for event in sorted(events, key=lambda e: (_event_time(e), str(e.get("event_id", "")))):
+    # Preserve a same-cycle release before the subsequent replacement intent.
+    for event in sorted(events, key=_event_time):
         kind = event.get("kind")
         intent_id = event.get("intent_id")
         if kind == "INTENT_CREATED" and intent_id:

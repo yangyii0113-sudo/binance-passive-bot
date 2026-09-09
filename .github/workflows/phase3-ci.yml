@@ -3,6 +3,7 @@ name: FOXYYA Phase 3 Backtest Completion
 on:
   push:
     branches:
+      - main
       - feat/foxyya-backtest-phase3-complete
   pull_request:
     branches:
@@ -28,28 +29,7 @@ jobs:
       - name: Complete Python regression suite
         env:
           PYTHONPATH: src:.
-        run: >-
-          python -m pytest
-          tests/test_source_parity.py
-          tests/test_packaging_runtime_parity.py
-          tests/test_normalized_imports.py
-          tests/test_runtime_safety.py
-          tests/test_runtime_view.py
-          tests/test_no_lookahead.py
-          tests/test_historical_market.py
-          tests/test_research_ledger.py
-          tests/test_historical_core_integrity.py
-          tests/test_replay_timeline.py
-          tests/test_replay_lifecycle.py
-          tests/test_future_legal_open_replay.py
-          tests/test_replay_reproducibility.py
-          tests/test_backtest_metrics.py
-          tests/test_backtest_report.py
-          tests/test_binance_history.py
-          tests/test_eth_one_year_replay.py
-          tests/test_backtest_api.py
-          tests/test_historical_snapshot_limits.py
-          -v
+        run: python -m pytest tests -v
       - name: Complete Node UI/runtime regression suite
         run: >-
           node --test

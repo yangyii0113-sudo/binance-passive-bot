@@ -8,6 +8,7 @@ on:
       - 'backtest/**'
       - 'src/foxyya/**'
       - 'FOXYYA_V2_CONFIG.json'
+      - 'tools/validate_eth365_artifacts.py'
       - '.github/workflows/eth365-study.yml'
   workflow_dispatch:
 
@@ -17,114 +18,35 @@ permissions:
 jobs:
   eth365:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 90
+    env:
+      PYTHONPATH: src:.
+      PYTHONUNBUFFERED: '1'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
       - name: Run formal ETHUSDT trailing-365-day study
-        env:
-          PYTHONPATH: src:.
         shell: bash
         run: |
           set -euo pipefail
-          python -m backtest.cli eth365 --output-root artifacts/backtests | tee /tmp/eth365-summary.json
-      - name: Validate research artifacts and print metrics
-        env:
-          PYTHONPATH: src:.
-        run: |
-          python - <<'PY'
-          import json
-          from pathlib import Path
-
-          roots = sorted(Path('artifacts/backtests').glob('bt-*'))
-          if not roots:
-              raise SystemExit('no deterministic backtest run directory found')
-          candidates=[]
-          for run_dir in roots:
-              cfg_path=run_dir/'run_config.json'
-              if not cfg_path.is_file():
-                  continue
-              cfg=json.loads(cfg_path.read_text(encoding='utf-8'))
-              candidates.append((int(cfg.get('end_ms',0)),run_dir,cfg))
-          if not candidates:
-              raise SystemExit('no complete deterministic backtest config found')
-          _,run_dir,cfg=max(candidates,key=lambda x:(x[0],x[1].name))
-          required = [
-              'events.sqlite','input_data.json','data_manifest.json','run_config.json',
-              'metrics.json','report.json','report.md'
-          ]
-          missing = [name for name in required if not (run_dir / name).is_file()]
-          if missing:
-              raise SystemExit(f'missing run artifacts: {missing}')
-
-          metrics = json.loads((run_dir/'metrics.json').read_text(encoding='utf-8'))
-          report = json.loads((run_dir/'report.json').read_text(encoding='utf-8'))
-          manifest = json.loads((run_dir/'data_manifest.json').read_text(encoding='utf-8'))
-          input_data = json.loads((run_dir/'input_data.json').read_text(encoding='utf-8'))
-          integrity = cfg.get('integrity') or {}
-
-          assert cfg.get('paper_only') is True
-          assert cfg.get('real_orders') is False
-          assert cfg.get('symbol') == 'ETHUSDT'
-          assert cfg.get('tradable_symbols') == ['ETHUSDT']
-          assert len(str(cfg.get('manifest_sha256',''))) == 64
-          assert int(cfg.get('data_lag_ms',-1)) >= 0
-          assert cfg.get('retrieval_mode') in {'BINANCE_REST','BINANCE_OFFICIAL_PUBLIC_ARCHIVE'}
-          assert integrity.get('ledger_integrity') is True
-          assert integrity.get('duplicate_fills') == 0
-          assert integrity.get('backfill_count') == 0
-          assert integrity.get('out_of_window_fills') == 0
-          assert integrity.get('real_order_events') == 0
-          assert integrity.get('execution_required_open_gaps') == 0
-          assert metrics.get('mode') == 'HISTORICAL BACKTEST'
-          assert metrics.get('label') == '歷史模擬・非 Forward Performance'
-          assert report.get('mode') == 'HISTORICAL BACKTEST'
-          assert report.get('label') == '歷史模擬・非 Forward Performance'
-          assert manifest.get('source_family') == 'Binance USD-M Public Data'
-          assert input_data.get('source_family') == 'Binance USD-M Public Data'
-          assert int(input_data.get('end_ms')) == int(cfg.get('end_ms'))
-          perf = metrics.get('performance') or {}
-          costs = metrics.get('cost_attribution') or {}
-          funnel = metrics.get('funnel') or {}
-          summary = {
-              'run_id': cfg.get('run_id'),
-              'git_sha': cfg.get('git_sha'),
-              'strategy_version': cfg.get('strategy_version'),
-              'retrieval_mode': cfg.get('retrieval_mode'),
-              'exchange_info_source': cfg.get('exchange_info_source'),
-              'requested_end_taipei': cfg.get('requested_end_taipei'),
-              'execution_start_taipei': cfg.get('execution_start_taipei'),
-              'execution_end_taipei': cfg.get('execution_end_taipei'),
-              'data_lag_ms': cfg.get('data_lag_ms'),
-              'manifest_sha256': cfg.get('manifest_sha256'),
-              'integrity': integrity,
-              'performance': {
-                  'closed_trades': perf.get('closed_trades'),
-                  'win_rate': perf.get('win_rate'),
-                  'win_rate_n': perf.get('win_rate_n'),
-                  'net_return': perf.get('net_return'),
-                  'net_pnl_usdt': perf.get('net_pnl_usdt'),
-                  'avg_r': perf.get('avg_r'),
-                  'expectancy_r': perf.get('expectancy_r'),
-                  'profit_factor': perf.get('profit_factor'),
-                  'max_drawdown': perf.get('max_drawdown'),
-              },
-              'cost_attribution': costs,
-              'funnel': {
-                  'qualified': funnel.get('qualified'),
-                  'filled': funnel.get('filled'),
-                  'qualified_to_filled': funnel.get('qualified_to_filled'),
-                  'cancellation_reasons': funnel.get('cancellation_reasons'),
-              },
-          }
-          print('FOXYYA_ETH365_VALIDATED_SUMMARY=' + json.dumps(summary, ensure_ascii=False, sort_keys=True))
-          PY
+          python -m backtest.cli eth365 --output-root artifacts/backtests --defer-performance-audit | tee "$RUNNER_TEMP/eth365-summary.json"
+      - name: Validate complete research evidence on exact commit
+        run: python tools/validate_eth365_artifacts.py artifacts/backtests --expected-git-sha "$GITHUB_SHA"
       - name: Upload deterministic ETH365 research artifact
+        id: upload
         uses: actions/upload-artifact@v4
         with:
           name: foxyya-eth365-${{ github.sha }}
           path: artifacts/backtests/**
           if-no-files-found: error
           retention-days: 30
+      - name: Download uploaded artifact for round-trip verification
+        uses: actions/download-artifact@v4
+        with:
+          artifact-ids: ${{ steps.upload.outputs.artifact-id }}
+          path: ${{ runner.temp }}/eth365-downloaded
+          merge-multiple: true
+      - name: Verify downloaded artifact hashes and provenance
+        run: python tools/validate_eth365_artifacts.py "$RUNNER_TEMP/eth365-downloaded" --expected-git-sha "$GITHUB_SHA"

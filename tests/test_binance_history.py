@@ -6,6 +6,8 @@ import zipfile
 from datetime import datetime, timezone
 from urllib.error import HTTPError
 
+import pytest
+
 from backtest.binance_history import (
     BinancePublicDataArchiveClient,
     BinancePublicHistoryClient,
@@ -31,6 +33,13 @@ def _zip_csv(name: str, rows: list[list | tuple]) -> bytes:
 
 def _utc_ms(year, month, day, hour=0):
     return int(datetime(year, month, day, hour, tzinfo=timezone.utc).timestamp() * 1000)
+
+
+def _funding_rows(symbol, start_ms, end_ms):
+    step = 8 * HOUR_MS
+    first = ((start_ms + step - 1) // step) * step
+    return [{"symbol": symbol, "fundingTime": t + 1, "fundingRate": "0.0001"}
+            for t in range(first, end_ms, step)]
 
 
 def test_client_rejects_any_path_outside_explicit_public_allowlist():
@@ -114,7 +123,36 @@ def test_official_archive_parses_monthly_klines_and_funding_schema():
     assert any("ETHUSDT-fundingRate-2026-08.zip" in url for url in downloads)
 
 
-def test_official_archive_uses_daily_files_for_incomplete_last_month_and_safe_end_boundary():
+@pytest.mark.parametrize("dataset", ["klines", "fundingRate"])
+def test_archive_rejects_nonmonotonic_source_csv_instead_of_silently_sorting(dataset):
+    aug = _utc_ms(2026, 8, 1)
+    sep = _utc_ms(2026, 9, 1)
+    downloads = []
+    if dataset == "klines":
+        source_rows = [_kline(aug + HOUR_MS), _kline(aug)]
+        suffix = "monthly/klines/ETHUSDT/1h/ETHUSDT-1h-2026-08.zip"
+    else:
+        source_rows = [["calc_time", "last_funding_rate"],
+                       [aug + 16 * HOUR_MS + 1, "0.0001"],
+                       [aug + 8 * HOUR_MS + 2, "0.0002"]]
+        suffix = "monthly/fundingRate/ETHUSDT/ETHUSDT-fundingRate-2026-08.zip"
+    blob = _zip_csv("reordered.csv", source_rows)
+
+    def download(url):
+        downloads.append(url)
+        assert url.endswith(suffix)
+        return blob
+
+    client = BinancePublicDataArchiveClient(download=download)
+    with pytest.raises(ValueError, match="non-monotonic"):
+        if dataset == "klines":
+            client.klines("ETHUSDT", "1h", start_ms=aug, end_ms=sep)
+        else:
+            client.funding("ETHUSDT", start_ms=aug, end_ms=sep)
+    assert len(downloads) == 1
+
+
+def test_archive_klines_can_use_daily_files_but_common_study_boundary_is_monthly():
     sep1 = _utc_ms(2026, 9, 1)
     sep2 = _utc_ms(2026, 9, 2)
     sep9_10h = _utc_ms(2026, 9, 9, 10)
@@ -127,7 +165,7 @@ def test_official_archive_uses_daily_files_for_incomplete_last_month_and_safe_en
         return None
 
     client = BinancePublicDataArchiveClient(download=download)
-    assert client.resolve_end_ms(sep9_10h) == _utc_ms(2026, 9, 9)
+    assert client.resolve_end_ms(sep9_10h) == _utc_ms(2026, 9, 1)
     rows = client.klines("ETHUSDT", "1h", start_ms=sep1, end_ms=sep2)
     assert [int(row[0]) for row in rows] == [sep1]
     assert any("/daily/klines/ETHUSDT/1h/ETHUSDT-1h-2026-09-01.zip" in url for url in downloads)
@@ -135,7 +173,7 @@ def test_official_archive_uses_daily_files_for_incomplete_last_month_and_safe_en
 
 def test_geo_blocked_rest_fails_over_to_official_archive_and_records_lag():
     requested_end = _utc_ms(2026, 9, 9, 10)
-    archive_end = _utc_ms(2026, 9, 9)
+    archive_end = _utc_ms(2026, 9, 1)
 
     class GeoBlockedRest:
         retrieval_mode = "BINANCE_REST"
@@ -153,7 +191,7 @@ def test_geo_blocked_rest_fails_over_to_official_archive_and_records_lag():
             step={"1h":HOUR_MS,"4h":4*HOUR_MS,"1d":DAY_MS}[interval]
             return [[t,"100","101","99","100","10",t+step-1,"10000000",1,"5","5000000","0"] for t in range(start_ms,end_ms,step)]
         def funding(self, symbol, *, start_ms, end_ms):
-            return []
+            return _funding_rows(symbol, start_ms, end_ms)
 
     payload = fetch_study_inputs(
         client=GeoBlockedRest(), fallback_client=ArchiveFixture(), end_ms=requested_end,
@@ -190,7 +228,7 @@ def test_fetch_study_inputs_trades_only_eth_but_keeps_btc_eth_sol_context():
             ]
 
         def funding(self, symbol, *, start_ms, end_ms):
-            return []
+            return _funding_rows(symbol, start_ms, end_ms)
 
     payload = fetch_study_inputs(
         client=FakeClient(), end_ms=end_ms, execution_days=1, warmup_days=0, retrieved_at_ms=1234
@@ -219,7 +257,7 @@ def test_fetch_study_inputs_fails_if_execution_eth_hour_is_missing():
             return rows
 
         def funding(self, symbol, *, start_ms, end_ms):
-            return []
+            return _funding_rows(symbol, start_ms, end_ms)
 
     try:
         fetch_study_inputs(client=MissingHourClient(), end_ms=end_ms, execution_days=1, warmup_days=0, retrieved_at_ms=1)

@@ -1,9 +1,14 @@
 from __future__ import annotations
 
 import math
+from types import SimpleNamespace
 
 from backtest.metrics import build_metrics, project_closed_trades
-from foxyya.risk import FEE
+from foxyya.execution import ExecutionEngine, HOUR
+from foxyya.ledger import EventLedger
+from foxyya.model import deterministic_id
+from foxyya.portfolio import PortfolioService, replay_books
+from foxyya.risk import FEE, RiskBook
 
 
 def _entry(position_id, intent_id, side, family, raw_open, entry_fill, stop, qty, planned_risk, fill_ms, regime):
@@ -120,3 +125,70 @@ def test_metrics_include_performance_cost_funnel_risk_and_sample_aware_segments(
     assert metrics["segments"]["side"]["LONG"]["n"] == 1
     assert metrics["segments"]["regime"]["RISK_OFF"]["n"] == 1
     assert metrics["segments"]["book"]["5x"]["n"] == 2
+
+
+def test_equity_preserves_shared_ledger_funding_before_same_cycle_exit(tmp_path):
+    ledger = EventLedger(tmp_path / "events.sqlite")
+    try:
+        risk = RiskBook(1000)
+        execution = ExecutionEngine(ledger, risk, nav=1000)
+        decision = SimpleNamespace(
+            qualified=True, signal_id="signal-causal-order", symbol="ETHUSDT",
+            side="LONG", family="A", decision_close_ms=HOUR - 1, stop=98,
+        )
+        intent = execution.create_intent(
+            decision, decision_persist_ms=HOUR + 1,
+            reference_price=100, step=.001, bucket="ETH_BETA",
+        )
+        execution.revalidate_intent(
+            intent["intent_id"], observed_ms=2 * HOUR - 1,
+            mark=100, atr_extension=1, data_latest_ms=2 * HOUR - 1,
+        )
+        entry = execution.fill_due_intent(
+            intent["intent_id"], 2 * HOUR, 100, observed_ms=2 * HOUR + 1,
+        )
+        portfolio = PortfolioService(ledger, risk, initial_nav=1000)
+        pid = entry["position_id"]
+        portfolio.mark(pid, 3 * HOUR + 1, 104)
+        portfolio.partial_exit("tp1", pid, 3 * HOUR + 1, 104, .5, "TP1")
+        funding = portfolio.funding("funding-at-close", pid, 4 * HOUR + 1, .001, 101)
+        # Real hash IDs deliberately sort opposite to the authoritative ledger sequence.
+        exit_key = next(
+            f"close-{i}" for i in range(1000)
+            if deterministic_id("PAPER_EXIT", f"close-{i}", pid) < funding["event_id"]
+        )
+        portfolio.exit(exit_key, pid, 4 * HOUR + 1, 101, "TRAIL")
+        expected = replay_books(ledger, 1000)["books"]["5x"]
+        metrics = build_metrics(
+            ledger.events(), initial_nav=1000, start_ms=HOUR,
+            end_ms=5 * HOUR, symbol="ETHUSDT",
+        )
+
+        assert expected["positions"] == {}
+        assert math.isclose(
+            metrics["performance"]["ending_equity_usdt"], expected["equity"],
+            rel_tol=0, abs_tol=1e-9,
+        )
+        assert math.isclose(
+            metrics["equity_curve"][-1]["balance"], expected["balance"],
+            rel_tol=0, abs_tol=1e-9,
+        )
+    finally:
+        ledger.close()
+
+
+def test_reserved_risk_rollover_preserves_release_before_same_cycle_new_intent():
+    # The runner releases the old reservation before scanning a replacement.
+    # Lexical ID order deliberately opposes that real ledger sequence.
+    events = [
+        {"event_id": "old", "kind": "INTENT_CREATED", "intent_id": "old",
+         "decision_persist_ms": 1000, "reserved_risk_fraction": .005},
+        {"event_id": "z-exit", "kind": "PAPER_EXIT", "intent_id": "old",
+         "position_id": "old-position", "observed_ms": 2000},
+        {"event_id": "a-new", "kind": "INTENT_CREATED", "intent_id": "new",
+         "decision_persist_ms": 2000, "reserved_risk_fraction": .005},
+    ]
+    metrics = build_metrics(
+        events, initial_nav=1000, start_ms=0, end_ms=3000, symbol="ETHUSDT",
+    )
+    assert metrics["risk"]["max_reserved_risk_fraction"] == .005

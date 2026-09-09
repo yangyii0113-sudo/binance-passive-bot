@@ -3,6 +3,7 @@ name: FOXYYA Phase 2 Replay Engine
 on:
   push:
     branches:
+      - main
       - feat/foxyya-backtest-phase2-replay-engine
   pull_request:
     branches:

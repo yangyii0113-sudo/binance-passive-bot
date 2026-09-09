@@ -5,12 +5,14 @@ import hashlib
 import json
 import os
 import subprocess
+import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from backtest.binance_history import DAY_MS, HOUR_MS, fetch_study_inputs
+from backtest.binance_history import DAY_MS, HOUR_MS, fetch_study_inputs, validate_study_input_completeness
+from backtest.artifacts import seal_run_artifacts, validate_run_artifacts
 from backtest.historical_clock import HistoricalClock
 from backtest.historical_market import HistoricalDataset, HistoricalMarketAdapter
 from backtest.metrics import build_metrics
@@ -122,6 +124,7 @@ def run_eth_365_study(
         raise ValueError("invalid execution/warmup days")
 
     if input_payload is None:
+        print("ETH365_INPUT_DOWNLOAD_STARTED", file=sys.stderr, flush=True)
         input_payload = fetch_study_inputs(
             end_ms=requested_end_ms,
             execution_days=execution_days,
@@ -151,6 +154,9 @@ def run_eth_365_study(
         execution_days=execution_days,
         warmup_days=warmup_days,
     )
+
+    validate_study_input_completeness(input_payload)
+    print("ETH365_INPUT_VALIDATED", end_ms, file=sys.stderr, flush=True)
 
     cfg = json.loads(Path(config_path).read_text(encoding="utf-8"))
     if cfg.get("real_order_lock") is not True:
@@ -192,34 +198,26 @@ def run_eth_365_study(
 
     output_root = Path(output_root)
     factory = ResearchLedgerFactory(output_root)
+    run_dir = factory.root / run_id
+    if run_dir.exists():
+        previous = validate_run_artifacts(run_dir, expected_git_sha=resolved_git_sha,
+                                          expected_manifest_sha256=manifest_sha256)['run_config']
+        return {
+            'status': 'SUCCESS', 'mode': 'HISTORICAL BACKTEST',
+            'label': '歷史模擬・非 Forward Performance', 'run_id': run_id,
+            'run_dir': str(run_dir), 'symbol': 'ETHUSDT',
+            'manifest_sha256': manifest_sha256, 'integrity': previous['integrity'],
+            'retrieval_mode': previous['retrieval_mode'], 'data_lag_ms': previous['data_lag_ms'],
+            'reused_existing_artifacts': True,
+        }
     ledger, ledger_path = factory.open(run_id)
-    run_dir = ledger_path.parent
     try:
-        # A completed report for the same deterministic run ID is immutable evidence; never append a second replay.
-        existing_report = run_dir / "report.json"
-        existing_metrics = run_dir / "metrics.json"
-        existing_config = run_dir / "run_config.json"
-        if existing_report.exists() and existing_metrics.exists() and existing_config.exists():
-            previous = json.loads(existing_config.read_text(encoding="utf-8"))
-            if previous.get("manifest_sha256") != manifest_sha256:
-                raise RuntimeError("existing deterministic run ID has different manifest hash")
-            return {
-                "status": "SUCCESS",
-                "mode": "HISTORICAL BACKTEST",
-                "label": "歷史模擬・非 Forward Performance",
-                "run_id": run_id,
-                "run_dir": str(run_dir),
-                "symbol": "ETHUSDT",
-                "manifest_sha256": manifest_sha256,
-                "integrity": previous.get("integrity", {}),
-                "retrieval_mode": previous.get("retrieval_mode"),
-                "data_lag_ms": previous.get("data_lag_ms"),
-                "reused_existing_artifacts": True,
-            }
-
         clock = HistoricalClock(start_ms, end_ms)
         market = HistoricalMarketAdapter(dataset, clock, primary_symbol="ETHUSDT")
-        replay = HistoricalReplayEngine(clock, market, ledger, initial_nav=initial_nav)
+        replay = HistoricalReplayEngine(
+            clock, market, ledger, initial_nav=initial_nav,
+            progress=lambda done, total: print(f"ETH365_REPLAY_PROGRESS {done}/{total}", file=sys.stderr, flush=True),
+        )
         replay_summary = replay.run(
             start_ms=start_ms,
             end_ms=end_ms,
@@ -263,6 +261,8 @@ def run_eth_365_study(
             "data_lag_ms": data_lag_ms,
             "retrieval_mode": str(input_payload.get("retrieval_mode") or "UNAVAILABLE"),
             "exchange_info_source": str(input_payload.get("exchange_info_source") or "UNAVAILABLE"),
+            "end_boundary_policy": input_payload.get("end_boundary_policy", "INJECTED_INPUT"),
+            "funding_coverage_policy": input_payload.get("funding_coverage_policy", {}),
             "input_retrieved_at_ms": int(input_payload.get("retrieved_at_ms", 0)),
             "start_ms": start_ms,
             "end_ms": end_ms,
@@ -301,7 +301,7 @@ def run_eth_365_study(
             metrics=metrics,
             report=report,
         )
-        return {
+        result = {
             "status": "SUCCESS",
             "mode": "HISTORICAL BACKTEST",
             "label": "歷史模擬・非 Forward Performance",
@@ -318,6 +318,9 @@ def run_eth_365_study(
         }
     finally:
         ledger.close()
+    seal_run_artifacts(run_dir)
+    validate_run_artifacts(run_dir, expected_git_sha=resolved_git_sha)
+    return result
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -327,6 +330,7 @@ def main(argv: list[str] | None = None) -> int:
     eth.add_argument("--output-root", default="artifacts/backtests")
     eth.add_argument("--execution-days", type=int, default=365)
     eth.add_argument("--warmup-days", type=int, default=200)
+    eth.add_argument("--defer-performance-audit", action="store_true")
     args = parser.parse_args(argv)
 
     if args.command == "eth365":
@@ -335,6 +339,9 @@ def main(argv: list[str] | None = None) -> int:
             execution_days=args.execution_days,
             warmup_days=args.warmup_days,
         )
+        if args.defer_performance_audit:
+            result = {key: value for key, value in result.items() if key not in {"performance", "funnel"}}
+            result["performance_value_audit"] = "DEFERRED"
         print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True, allow_nan=False))
         return 0
     raise ValueError("unknown command")

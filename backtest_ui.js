@@ -4,11 +4,13 @@
  const MODE='HISTORICAL BACKTEST';
  const LABEL='歷史模擬・非 Forward Performance';
  const API='/api/backtest/latest';
+ const UNAVAILABLE='UNAVAILABLE';
  const state={status:'idle',payload:null,error:null,loadedAt:null};
  const H=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
- const N=(x,d=2)=>Number.isFinite(Number(x))?Number(x).toLocaleString('en-US',{maximumFractionDigits:d}):'—';
- const pct=x=>Number.isFinite(Number(x))?N(Number(x)*100,2)+'%':'—';
- const T=x=>Number.isFinite(Number(x))?new Date(Number(x)).toLocaleString('zh-TW',{timeZone:'Asia/Taipei',hour12:false}):'—';
+ const finite=x=>x!=null&&Number.isFinite(Number(x));
+ const N=(x,d=2)=>finite(x)?Number(x).toLocaleString('en-US',{maximumFractionDigits:d}):UNAVAILABLE;
+ const pct=x=>finite(x)?N(Number(x)*100,2)+'%':UNAVAILABLE;
+ const T=x=>finite(x)?new Date(Number(x)).toLocaleString('zh-TW',{timeZone:'Asia/Taipei',hour12:false}):UNAVAILABLE;
  const kpi=(name,value,meta='')=>`<article class="bt-kpi"><span>${H(name)}</span><b>${H(value)}</b>${meta?`<small>${H(meta)}</small>`:''}</article>`;
  const panel=(title,body)=>`<section class="bt-panel"><div class="bt-panel-head"><h3>${H(title)}</h3></div>${body}</section>`;
  const segment=(name,value)=>`<article class="bt-segment"><div><b>${H(name)}</b><span>n=${N(value?.n,0)}</span></div><strong>${H(value?.sample_status||((value?.n||0)<20?'Sample Insufficient':'Sample Adequate'))}</strong><small>勝率 ${pct(value?.win_rate)} · Expectancy ${N(value?.expectancy_r,3)} R · PF ${N(value?.profit_factor,2)}</small></article>`;
@@ -72,7 +74,7 @@
   if(state.status==='loading'){root.innerHTML='<div class="empty">正在讀取獨立歷史研究報告…</div>';return}
   if(state.status!=='ready'||!state.payload){root.innerHTML=unavailable(state.error||undefined);return}
   const payload=state.payload,rc=payload.run_config||{},m=payload.metrics||{},r=payload.report||{},p=m.performance||{},c=m.cost_attribution||{},f=m.funnel||{},risk=m.risk||{};
-  const win=Number.isFinite(Number(p.win_rate))?`${pct(p.win_rate)} · n=${N(p.win_rate_n,0)}`:'—';
+  const win=finite(p.win_rate)?`${pct(p.win_rate)} · n=${N(p.win_rate_n,0)}`:UNAVAILABLE;
   const runId=rc.run_id||r.provenance?.run_id||'—';
   root.innerHTML=`
    <div class="bt-grid">
@@ -80,7 +82,7 @@
     ${kpi('勝率',win,(Number(p.win_rate_n)||0)<20?'Sample Insufficient':'Sample Adequate')}
     ${kpi('淨報酬',pct(p.net_return),'5x 主帳 Equity')}
     ${kpi('Profit Factor',N(p.profit_factor,2),'完整出場樣本')}
-    ${kpi('Expectancy',Number.isFinite(Number(p.expectancy_r))?N(p.expectancy_r,3)+' R':'—','Net R')}
+    ${kpi('Expectancy',finite(p.expectancy_r)?N(p.expectancy_r,3)+' R':UNAVAILABLE,'Net R')}
     ${kpi('最大回撤',pct(p.max_drawdown),'5x equity curve')}
    </div>
    ${panel('研究來源與版本',`<div class="bt-table">
