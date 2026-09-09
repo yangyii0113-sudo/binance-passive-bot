@@ -22,7 +22,7 @@ jobs:
           python-version: '3.12'
       - name: Install test runner
         run: python -m pip install --disable-pip-version-check pytest
-      - name: Historical clock / visibility / market adapter
+      - name: Historical clock / visibility / market adapter / research ledger
         env:
           PYTHONPATH: src:.
-        run: python -m pytest tests/test_no_lookahead.py tests/test_historical_market.py -v
+        run: python -m pytest tests/test_no_lookahead.py tests/test_historical_market.py tests/test_research_ledger.py -v
