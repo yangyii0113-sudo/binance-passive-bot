@@ -5,6 +5,8 @@ const {createOfficialSourceBindings}=require('../v12/staging/official_source_bin
 const {createProviderRuntimeGovernance}=require('../v12/providers/runtime_governance.js');
 
 const twseQuote='https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL';
+const bindingFetchStartedAt=Date.parse('2026-09-09T06:20:00Z');
+const bindingReceivedAt=Date.parse('2026-09-09T06:30:00Z');
 
 function response(status,body,{headers={}}={}){
   const map=new Map(Object.entries({'content-type':'application/json',...headers}).map(([k,v])=>[k.toLowerCase(),String(v)]));
@@ -15,7 +17,7 @@ function tpexQuoteRow(){return {Date:'1150909',SecuritiesCompanyCode:'6488',Comp
 function tpexFlowRow(){return {Date:'1150909',SecuritiesCompanyCode:'6488',CompanyName:'環球晶','Foreign Investors include Mainland Area Investors (Foreign Dealers excluded)-Difference':'1000000','SecuritiesInvestmentTrustCompanies-Difference':'250000','Dealers-Difference':'100000','TotalDifference':'1350000'};}
 function revenueRow(code='2330'){return {'出表日期':'1150909','資料年月':'11508','公司代號':code,'公司名稱':code==='2330'?'台積電':'環球晶','產業別':'半導體業','營業收入-當月營收':'8,000,000','營業收入-上月營收':'7,500,000','營業收入-去年當月營收':'6,500,000','營業收入-上月比較增減(%)':'6.67','營業收入-去年同月增減(%)':'23.08','累計營業收入-當月累計營收':'55,000,000','累計營業收入-去年累計營收':'46,000,000','累計營業收入-前期比較增減(%)':'19.57','備註':''};}
 function tpexRevenueRow(){return revenueRow('6488');}
-function loaderEnvelope(sourceId,data,{fetchStartedAt=100,receivedAt=200,status='AVAILABLE',reason=null}={}){
+function loaderEnvelope(sourceId,data,{fetchStartedAt=bindingFetchStartedAt,receivedAt=bindingReceivedAt,status='AVAILABLE',reason=null}={}){
   return Object.freeze({status,sourceId,reason:status==='AVAILABLE'?undefined:reason,fetchStartedAt,receivedAt,data:status==='AVAILABLE'?data:null,researchOnly:true,executionWrite:false});
 }
 function staticLoader(envelope){return Object.freeze({load:async()=>envelope});}
@@ -75,7 +77,7 @@ test('Taiwan binding lineage metadata is explicit and dataset-specific for TWSE 
   const b=createOfficialSourceBindings();
   const tq=await b.twseDailyQuote({loader:staticLoader(loaderEnvelope('twse-openapi',[quoteRow()])),symbol:'2330'}).load();
   assertMeta(tq.lineageMeta,{sourceId:'twse-openapi',datasetId:'TWSE:STOCK_DAY_ALL',bindingId:'twse-daily-quote',bindingVersion:'foxyya-binding/twse-daily-quote/1',adapterId:'twse-official',adapterVersion:'foxyya-adapter/twse/1',canonicalSchemaVersion:'foxyya-observation/1'});
-  assert.equal(tq.fetchStartedAt,100);
+  assert.equal(tq.fetchStartedAt,bindingFetchStartedAt);
 
   const tf=await b.twseInstitutional({loader:staticLoader(loaderEnvelope('twse-t86',{fields:['證券代號','證券名稱','外陸資買賣超股數(不含外資自營商)','投信買賣超股數','自營商買賣超股數','三大法人買賣超股數'],data:[['2330','台積電','1','2','3','6']]})),symbol:'2330',tradeDate:'20260909'}).load();
   assertMeta(tf.lineageMeta,{sourceId:'twse-t86',datasetId:'TWSE:T86',bindingId:'twse-institutional',bindingVersion:'foxyya-binding/twse-institutional/1',adapterId:'twse-official',adapterVersion:'foxyya-adapter/twse/1',canonicalSchemaVersion:'foxyya-observation/1'});
