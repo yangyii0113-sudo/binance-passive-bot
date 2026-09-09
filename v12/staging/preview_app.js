@@ -17,6 +17,12 @@ const STATIC_ROUTES=Object.freeze({
   '/v12-preview/app.js':Object.freeze({file:path.join(UI_DIR,'app.js'),type:'application/javascript; charset=utf-8'}),
   '/staging/read_client.js':Object.freeze({file:path.join(__dirname,'read_client.js'),type:'application/javascript; charset=utf-8'})
 });
+const HEALTH=Object.freeze({
+  schemaVersion:'foxyya-staging-health/1',
+  status:'OK',
+  researchOnly:true,
+  executionWrite:false
+});
 
 function sendText(res,status,body){
   const data=Buffer.from(body,'utf8');
@@ -26,6 +32,25 @@ function sendText(res,status,body){
   res.setHeader('Cache-Control','no-store');
   res.setHeader('X-Content-Type-Options','nosniff');
   res.end(data);
+}
+
+function sendJson(res,status,body,{head=false}={}){
+  const data=Buffer.from(JSON.stringify(body),'utf8');
+  res.statusCode=status;
+  res.setHeader('Content-Type','application/json; charset=utf-8');
+  res.setHeader('Content-Length',String(data.length));
+  res.setHeader('Cache-Control','no-store');
+  res.setHeader('X-Content-Type-Options','nosniff');
+  if(head)return res.end();
+  res.end(data);
+}
+
+function readMethod(req,res){
+  const method=String(req.method||'GET').toUpperCase();
+  if(method==='GET'||method==='HEAD')return method;
+  res.setHeader('Allow','GET, HEAD');
+  sendText(res,405,'METHOD_NOT_ALLOWED');
+  return null;
 }
 
 function createStagingPreviewApp({lineageStore}={}){
@@ -39,15 +64,19 @@ function createStagingPreviewApp({lineageStore}={}){
     const url=new URL(req.url||'/','http://staging.local');
     const pathname=url.pathname;
 
+    if(pathname==='/health'){
+      const method=readMethod(req,res);
+      if(!method)return;
+      return sendJson(res,200,HEALTH,{head:method==='HEAD'});
+    }
+
     if(pathname.startsWith('/v12/api/'))return homeService.handler(req,res);
 
     const asset=STATIC_ROUTES[pathname];
     if(!asset)return sendText(res,404,'NOT_FOUND');
 
-    if(req.method!=='GET'&&req.method!=='HEAD'){
-      res.setHeader('Allow','GET, HEAD');
-      return sendText(res,405,'METHOD_NOT_ALLOWED');
-    }
+    const method=readMethod(req,res);
+    if(!method)return;
 
     let body;
     try{body=fs.readFileSync(asset.file)}catch(_error){return sendText(res,404,'NOT_FOUND')}
@@ -57,7 +86,7 @@ function createStagingPreviewApp({lineageStore}={}){
     res.setHeader('Content-Length',String(body.length));
     res.setHeader('Cache-Control','no-store');
     res.setHeader('X-Content-Type-Options','nosniff');
-    if(req.method==='HEAD')return res.end();
+    if(method==='HEAD')return res.end();
     res.end(body);
   }
 
