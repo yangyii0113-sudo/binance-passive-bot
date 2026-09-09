@@ -113,8 +113,8 @@ def run_eth_365_study(
     config_path: Path = Path("FOXYYA_V2_CONFIG.json"),
 ) -> dict:
     run_start_ms = int(time.time() * 1000) if now_ms is None else int(now_ms)
-    end_ms = (run_start_ms // HOUR_MS) * HOUR_MS
-    if end_ms <= 0:
+    requested_end_ms = (run_start_ms // HOUR_MS) * HOUR_MS
+    if requested_end_ms <= 0:
         raise ValueError("resolved execution end must be positive")
     execution_days = int(execution_days)
     warmup_days = int(warmup_days)
@@ -123,13 +123,27 @@ def run_eth_365_study(
 
     if input_payload is None:
         input_payload = fetch_study_inputs(
-            end_ms=end_ms,
+            end_ms=requested_end_ms,
             execution_days=execution_days,
             warmup_days=warmup_days,
         )
+        # A geo-blocked REST path may resolve to the latest completely archived
+        # Binance UTC-day boundary. That verified data boundary becomes the actual
+        # replay end; the originally requested boundary remains explicit provenance.
+        end_ms = int(input_payload.get("end_ms", -1))
     else:
         # Deep-copy through canonical JSON so callers cannot mutate accepted inputs mid-run.
         input_payload = json.loads(_canonical_bytes(input_payload).decode("utf-8"))
+        end_ms = int(input_payload.get("end_ms", requested_end_ms))
+
+    if end_ms <= 0 or end_ms > requested_end_ms or end_ms % HOUR_MS:
+        raise ValueError("historical input resolved an invalid execution end")
+    payload_requested_end_ms = int(input_payload.get("requested_end_ms", requested_end_ms))
+    if payload_requested_end_ms != requested_end_ms:
+        raise ValueError("historical input requested_end_ms does not match run request")
+    data_lag_ms = int(input_payload.get("data_lag_ms", requested_end_ms - end_ms))
+    if data_lag_ms != requested_end_ms - end_ms or data_lag_ms < 0:
+        raise ValueError("historical input data_lag_ms mismatch")
 
     start_ms, warmup_start_ms = _validate_input_window(
         input_payload,
@@ -198,6 +212,8 @@ def run_eth_365_study(
                 "symbol": "ETHUSDT",
                 "manifest_sha256": manifest_sha256,
                 "integrity": previous.get("integrity", {}),
+                "retrieval_mode": previous.get("retrieval_mode"),
+                "data_lag_ms": previous.get("data_lag_ms"),
                 "reused_existing_artifacts": True,
             }
 
@@ -243,6 +259,11 @@ def run_eth_365_study(
             "strategy_version": strategy_version,
             "git_sha": resolved_git_sha,
             "run_started_ms": run_start_ms,
+            "requested_end_ms": requested_end_ms,
+            "data_lag_ms": data_lag_ms,
+            "retrieval_mode": str(input_payload.get("retrieval_mode") or "UNAVAILABLE"),
+            "exchange_info_source": str(input_payload.get("exchange_info_source") or "UNAVAILABLE"),
+            "input_retrieved_at_ms": int(input_payload.get("retrieved_at_ms", 0)),
             "start_ms": start_ms,
             "end_ms": end_ms,
             "warmup_start_ms": warmup_start_ms,
@@ -250,9 +271,11 @@ def run_eth_365_study(
             "warmup_days": warmup_days,
             "execution_start_utc": _iso(start_ms, timezone.utc),
             "execution_end_utc": _iso(end_ms, timezone.utc),
+            "requested_end_utc": _iso(requested_end_ms, timezone.utc),
             "warmup_start_utc": _iso(warmup_start_ms, timezone.utc),
             "execution_start_taipei": _iso(start_ms, TAIPEI),
             "execution_end_taipei": _iso(end_ms, TAIPEI),
+            "requested_end_taipei": _iso(requested_end_ms, TAIPEI),
             "warmup_start_taipei": _iso(warmup_start_ms, TAIPEI),
             "execution_fidelity": EXECUTION_FIDELITY,
             "intrabar_path": "UNAVAILABLE",
@@ -286,6 +309,8 @@ def run_eth_365_study(
             "run_dir": str(run_dir),
             "symbol": "ETHUSDT",
             "manifest_sha256": manifest_sha256,
+            "retrieval_mode": run_config["retrieval_mode"],
+            "data_lag_ms": data_lag_ms,
             "integrity": integrity,
             "performance": metrics.get("performance", {}),
             "funnel": metrics.get("funnel", {}),
