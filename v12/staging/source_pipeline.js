@@ -66,11 +66,17 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome}={}){
       const policy=assertTWPolicy(item.policy);
       const quoteLoader=makeLoader('twse-openapi',item.quoteEndpoint,fetchImpl,clock);
       const flowLoader=makeLoader('twse-t86',item.flowEndpoint,fetchImpl,clock);
+      let revenueBinding=null;
+      if(item.revenueEndpoint!==undefined){
+        const revenueLoader=makeLoader('twse-openapi',item.revenueEndpoint,fetchImpl,clock);
+        revenueBinding=bindings.twseMonthlyRevenue({loader:revenueLoader,symbol:item.symbol});
+      }
       return Object.freeze({
         config:item,
         policy,
         quoteBinding:bindings.twseDailyQuote({loader:quoteLoader,symbol:item.symbol}),
-        flowBinding:bindings.twseInstitutional({loader:flowLoader,symbol:item.symbol,tradeDate:item.tradeDate})
+        flowBinding:bindings.twseInstitutional({loader:flowLoader,symbol:item.symbol,tradeDate:item.tradeDate}),
+        revenueBinding
       });
     });
 
@@ -123,12 +129,18 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome}={}){
       if(flow.status==='UNAVAILABLE')return readonlyEnvelope('UNAVAILABLE',null,'FLOW_'+flow.reason);
 
       const cfg=item.config;
+      let currentRevenue=cfg.currentRevenue||null;
+      if(item.revenueBinding){
+        const revenue=await item.revenueBinding.load();
+        currentRevenue=revenue.status==='AVAILABLE'?revenue.data:null;
+      }
+
       return readonlyEnvelope('AVAILABLE',Object.freeze({
         policy:item.policy,
         currentQuote:quote.data,
         currentFlow:flow.data,
         institutionalSessions:Object.freeze(Array.isArray(cfg.institutionalSessions)?[...cfg.institutionalSessions]:[]),
-        currentRevenue:cfg.currentRevenue||null,
+        currentRevenue,
         previousRevenue:cfg.previousRevenue||null,
         researchEvidence:Object.freeze(Array.isArray(cfg.researchEvidence)?[...cfg.researchEvidence]:[])
       }));
