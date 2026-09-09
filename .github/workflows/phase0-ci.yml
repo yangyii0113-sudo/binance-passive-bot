@@ -53,3 +53,10 @@ jobs:
 
       - name: Existing Node regressions
         run: node --test tests/runtime_bridge.test.cjs tests/runtime_layout.test.cjs tests/runtime_metrics.test.cjs
+
+      - name: Build normalized Docker image
+        run: docker build -t foxyya-source-normalized .
+
+      - name: Smoke-test image imports and safety lock
+        run: |
+          docker run --rm --entrypoint python foxyya-source-normalized -c "import foxyya,service; assert foxyya.REAL_ORDER_LOCK is True; s=service.RuntimeState('image-smoke').snapshot(); assert s['paper_only'] is True and s['real_order_lock'] is True; print(foxyya.VERSION)"
