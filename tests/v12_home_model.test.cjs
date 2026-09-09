@@ -20,13 +20,20 @@ test('missing home data is unavailable rather than fabricated',()=>{
 });
 
 test('provided regional snapshot is preserved with source timing context',()=>{
-  const h=H.buildHomeModel({asOf:1200,regions:{US:{region:'US',bias:'BULLISH',confidence:.8,asOf:1000,evidence:[],contradictions:[],researchOnly:true}}});
+  const h=H.buildHomeModel({asOf:1200,regions:{US:{region:'US',status:'AVAILABLE',bias:'BULLISH',confidence:.8,asOf:1000,evidence:[],contradictions:[],researchOnly:true}}});
+  assert.equal(h.regions[0].status,'AVAILABLE');
   assert.equal(h.regions[0].bias,'BULLISH');
   assert.equal(h.regions[0].asOf,1000);
 });
 
-test('provided regional snapshot with unavailable directional bias stays unavailable',()=>{
-  const h=H.buildHomeModel({asOf:1200,regions:{US:{region:'US',bias:'UNAVAILABLE',score:null,confidence:0,asOf:1000,evidence:[],contradictions:[],researchOnly:true}}});
+test('explicit unavailable regional context stays unavailable',()=>{
+  const h=H.buildHomeModel({asOf:1200,regions:{US:{region:'US',status:'UNAVAILABLE',bias:'UNAVAILABLE',score:null,confidence:0,asOf:1000,evidence:[],contradictions:[],researchOnly:true}}});
   assert.equal(h.regions[0].status,'UNAVAILABLE');
+  assert.equal(h.regions[0].bias,'UNAVAILABLE');
+});
+
+test('available regional context may still have unavailable directional bias',()=>{
+  const h=H.buildHomeModel({asOf:1200,regions:{US:{region:'US',status:'AVAILABLE',bias:'UNAVAILABLE',score:null,confidence:0,asOf:1000,evidence:[],contradictions:[],researchOnly:true}}});
+  assert.equal(h.regions[0].status,'AVAILABLE');
   assert.equal(h.regions[0].bias,'UNAVAILABLE');
 });
