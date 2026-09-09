@@ -64,6 +64,12 @@ test('TWSE OpenAPI and T86 institutional flow are separate canonical sources',()
   assert.equal(t86.liveEligible,false);
 });
 
+test('Taiwan monthly revenue discovery includes both listed and OTC official sources',()=>{
+  const ids=findSources({market:'TW',capability:'MONTHLY_REVENUE'}).map(x=>x.id);
+  assert.ok(ids.includes('twse-openapi'));
+  assert.ok(ids.includes('tpex-openapi'));
+});
+
 test('source status vocabulary is explicit and stable',()=>{
   assert.deepEqual(Object.keys(SOURCE_STATUS).sort(),[
     'ADOPTED','DECISION_REQUIRED','EXISTING_CORE','KEY_REQUIRED','REVIEW_REQUIRED'
