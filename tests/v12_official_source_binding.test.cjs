@@ -71,6 +71,34 @@ test('TWSE T86 binding is explicitly unavailable when requested symbol is absent
   assert.equal(result.data,null);
 });
 
+test('TWSE monthly revenue binding selects exact company and preserves release-time knowledge semantics',async()=>{
+  const payload=[
+    {'出表日期':'1150909','資料年月':'11508','公司代號':'2330','公司名稱':'台積電','產業別':'半導體業','營業收入-當月營收':'335,000,000','營業收入-上月營收':'320,000,000','營業收入-去年當月營收':'270,000,000','營業收入-上月比較增減(%)':'4.69','營業收入-去年同月增減(%)':'24.07','累計營業收入-當月累計營收':'2,400,000,000','累計營業收入-去年累計營收':'1,950,000,000','累計營業收入-前期比較增減(%)':'23.08','備註':''},
+    {'出表日期':'1150909','資料年月':'11508','公司代號':'2317','公司名稱':'鴻海','產業別':'其他電子業','營業收入-當月營收':'100','營業收入-上月營收':'90','營業收入-去年當月營收':'80','營業收入-上月比較增減(%)':'11.11','營業收入-去年同月增減(%)':'25','累計營業收入-當月累計營收':'800','累計營業收入-去年累計營收':'700','累計營業收入-前期比較增減(%)':'14.29','備註':''}
+  ];
+  const result=await bindings().twseMonthlyRevenue({loader:loader(available('twse-openapi',payload)),symbol:'2330'}).load();
+  assert.equal(result.status,'AVAILABLE');
+  assert.equal(result.sourceId,'twse-openapi');
+  assert.equal(result.receivedAt,receivedAt);
+  assert.equal(result.data.instrument.instrumentId,'TWSE:2330');
+  assert.equal(result.data.reportPeriod,'2026-08');
+  assert.equal(result.data.knowledgeTime,'RECEIVED_AT');
+  const yoy=result.data.observations.find(x=>x.field==='fundamental.revenue.yoy_pct');
+  assert.equal(yoy.value,24.07);
+  assert.equal(yoy.receivedAt,receivedAt);
+  assert.equal(yoy.source,'TWSE:t187ap05_L');
+  assert.equal(result.researchOnly,true);
+  assert.equal(result.executionWrite,false);
+});
+
+test('TWSE monthly revenue binding is unavailable when requested company is absent',async()=>{
+  const payload=[{'出表日期':'1150909','資料年月':'11508','公司代號':'2317','公司名稱':'鴻海'}];
+  const result=await bindings().twseMonthlyRevenue({loader:loader(available('twse-openapi',payload)),symbol:'2330'}).load();
+  assert.equal(result.status,'UNAVAILABLE');
+  assert.equal(result.reason,'ENTITY_NOT_FOUND');
+  assert.equal(result.data,null);
+});
+
 test('SEC company fact binding keeps actual filing data research-only and preserves adapter semantics',async()=>{
   const payload={cik:'1045810',facts:{'us-gaap':{RevenueFromContractWithCustomerExcludingAssessedTax:{label:'Revenue',description:'Revenue',units:{USD:[{val:30000000000,accn:'0001',form:'10-Q',filed:'2026-08-20',start:'2026-05-01',end:'2026-07-31',fy:2026,fp:'Q2'}]}}}}};
   const result=await bindings().secCompanyFact({
@@ -110,6 +138,6 @@ test('source-id mismatch and writable transport are validation failures, not dow
 
 test('binding factory surface is fixed and contains no execution methods',()=>{
   const api=bindings();
-  assert.deepEqual(Object.keys(api).sort(),['blsSeries','ecbSeries','secCompanyFact','twseDailyQuote','twseInstitutional']);
+  assert.deepEqual(Object.keys(api).sort(),['blsSeries','ecbSeries','secCompanyFact','twseDailyQuote','twseInstitutional','twseMonthlyRevenue']);
   assert.doesNotMatch(JSON.stringify(Object.keys(api)).toLowerCase(),/order|trade|execute|fill/);
 });
