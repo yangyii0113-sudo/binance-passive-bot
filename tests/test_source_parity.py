@@ -7,8 +7,15 @@ ROOT = Path(__file__).resolve().parents[1]
 PARTS_DIR = ROOT / "backend_parts2"
 EXTRACTOR = ROOT / "tools" / "extract_production_backend.py"
 NORMALIZED_SRC = ROOT / "src" / "foxyya"
+RUNTIME_BACKEND = ROOT / "runtime_backend"
 MANIFEST_PATH = ROOT / "artifacts" / "source-parity" / "production_manifest.json"
+DOCKERFILE = ROOT / "Dockerfile"
 ARCHIVE_PREFIX = "foxyya_runtime_backend/src/foxyya/"
+RUNTIME_ASSETS = {
+    "FOXYYA_V2_CONFIG.json": "foxyya_runtime_backend/FOXYYA_V2_CONFIG.json",
+    "intel_feeds.py": "foxyya_runtime_backend/intel_feeds.py",
+    "run_forward_paper.py": "foxyya_runtime_backend/run_forward_paper.py",
+}
 
 
 def _sha256(path: Path) -> str:
@@ -59,6 +66,16 @@ def test_normalized_source_hashes_match_production_archive():
         assert _sha256(local) == digest, f"normalized source drifted from production archive: {relative}"
 
 
+def test_runtime_support_assets_match_production_archive():
+    from tools.extract_production_backend import production_manifest
+
+    expected = production_manifest(PARTS_DIR)
+    for local_name, archive_name in RUNTIME_ASSETS.items():
+        local = RUNTIME_BACKEND / local_name
+        assert local.is_file(), f"normalized runtime support asset missing: {local_name}"
+        assert _sha256(local) == expected["member_sha256"][archive_name], f"runtime asset drifted: {local_name}"
+
+
 def test_committed_manifest_matches_reconstructed_archive():
     from tools.extract_production_backend import production_manifest
 
@@ -66,3 +83,17 @@ def test_committed_manifest_matches_reconstructed_archive():
     committed = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
     expected = production_manifest(PARTS_DIR)
     assert committed == expected
+
+
+def test_dockerfile_uses_canonical_source_without_archive_reconstruction():
+    text = DOCKERFILE.read_text(encoding="utf-8")
+    forbidden = ["backend_parts2", "runtime_backend.b64", "base64", "zipfile", "part00", "part01", "part02", "part03", "part04"]
+    for token in forbidden:
+        assert token not in text, f"Dockerfile still depends on transitional archive packaging: {token}"
+
+    assert "COPY src/foxyya /app/foxyya_runtime_backend/src/foxyya" in text
+    assert "COPY runtime_backend/FOXYYA_V2_CONFIG.json runtime_backend/intel_feeds.py runtime_backend/run_forward_paper.py /app/foxyya_runtime_backend/" in text
+    assert 'PAPER_ONLY=true' in text
+    assert 'REAL_ORDER_LOCK=true' in text
+    assert 'FOXYYA_DB=/data/foxyya_v2_paper.sqlite' in text
+    assert 'CMD ["python","service.py"]' in text
