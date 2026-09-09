@@ -24,8 +24,15 @@ function arrayConfig(value,label){
   return value;
 }
 
-function makeLoader(sourceId,endpoint,fetchImpl,clock){
-  return createPublicSourceLoader({sourceId,endpoint,fetchImpl,clock});
+function validateProviderGovernance(value){
+  if(value===undefined||value===null)return null;
+  if(!object(value)||typeof value.run!=='function'||typeof value.snapshot!=='function')throw Error('PROVIDER_GOVERNANCE_INVALID');
+  return value;
+}
+
+function makeLoader(sourceId,endpoint,fetchImpl,clock,governance,usedProviderIds){
+  if(usedProviderIds)usedProviderIds.add(sourceId);
+  return createPublicSourceLoader({sourceId,endpoint,fetchImpl,clock,governance});
 }
 
 function collectObservations(data){
@@ -59,19 +66,23 @@ function historyMeta(item){
   });
 }
 
-function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,researchHistory}={}){
+function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,researchHistory,providerGovernance}={}){
   if(typeof fetchImpl!=='function')throw Error('FETCH_REQUIRED');
   if(typeof clock!=='function')throw Error('CLOCK_REQUIRED');
   if(typeof publishHome!=='function')throw Error('PUBLISH_HOME_REQUIRED');
   const history=validateResearchHistory(researchHistory);
+  const providerRuntime=validateProviderGovernance(providerGovernance);
 
   const bindings=createOfficialSourceBindings();
   const orchestrator=createStagingDataOrchestrator({publishHome});
 
   function preflight(input){
+    const usedProviderIds=new Set();
+    const loaderFor=(sourceId,endpoint)=>makeLoader(sourceId,endpoint,fetchImpl,clock,providerRuntime,usedProviderIds);
+
     const twQuotes=arrayConfig(input.twQuotes,'TW_QUOTES').map(item=>{
       if(!object(item))throw Error('TW_QUOTE_CONFIG_INVALID');
-      const loader=makeLoader('twse-openapi',item.endpoint,fetchImpl,clock);
+      const loader=loaderFor('twse-openapi',item.endpoint);
       return Object.freeze({
         symbol:String(item.symbol||''),
         binding:bindings.twseDailyQuote({loader,symbol:item.symbol})
@@ -84,11 +95,11 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,resea
         throw Error('RESEARCH_HISTORY_OVERRIDE_FORBIDDEN');
       }
       const policy=assertTWPolicy(item.policy);
-      const quoteLoader=makeLoader('twse-openapi',item.quoteEndpoint,fetchImpl,clock);
-      const flowLoader=makeLoader('twse-t86',item.flowEndpoint,fetchImpl,clock);
+      const quoteLoader=loaderFor('twse-openapi',item.quoteEndpoint);
+      const flowLoader=loaderFor('twse-t86',item.flowEndpoint);
       let revenueBinding=null;
       if(item.revenueEndpoint!==undefined){
-        const revenueLoader=makeLoader('twse-openapi',item.revenueEndpoint,fetchImpl,clock);
+        const revenueLoader=loaderFor('twse-openapi',item.revenueEndpoint);
         revenueBinding=bindings.twseMonthlyRevenue({loader:revenueLoader,symbol:item.symbol});
       }
       return Object.freeze({
@@ -102,7 +113,7 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,resea
 
     const usAssets=arrayConfig(input.usAssets,'US_ASSETS').map(item=>{
       if(!object(item)||!object(item.sec))throw Error('US_ASSET_CONFIG_INVALID');
-      const loader=makeLoader('sec-edgar',item.sec.endpoint,fetchImpl,clock);
+      const loader=loaderFor('sec-edgar',item.sec.endpoint);
       const binding=bindings.secCompanyFact({
         loader,
         instrument:item.instrument,
@@ -121,12 +132,12 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,resea
       const sources=[];
       for(const item of arrayConfig(value.bls,'REGION_BLS')){
         if(!object(item))throw Error('REGION_BLS_CONFIG_INVALID');
-        const loader=makeLoader('bls-public',item.endpoint,fetchImpl,clock);
+        const loader=loaderFor('bls-public',item.endpoint);
         sources.push(bindings.blsSeries({loader,definitions:item.definitions}));
       }
       for(const item of arrayConfig(value.ecb,'REGION_ECB')){
         if(!object(item))throw Error('REGION_ECB_CONFIG_INVALID');
-        const loader=makeLoader('ecb-data',item.endpoint,fetchImpl,clock);
+        const loader=loaderFor('ecb-data',item.endpoint);
         sources.push(bindings.ecbSeries({loader,definition:item.definition}));
       }
       regions[region]=Object.freeze(sources);
@@ -136,7 +147,8 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,resea
       twQuotes:Object.freeze(twQuotes),
       twAssets:Object.freeze(twAssets),
       usAssets:Object.freeze(usAssets),
-      regions:Object.freeze(regions)
+      regions:Object.freeze(regions),
+      providerIds:Object.freeze([...usedProviderIds].sort())
     });
   }
 
@@ -230,6 +242,13 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,resea
     };
   }
 
+  function providerHealth(providerIds){
+    if(!providerRuntime)return Object.freeze({});
+    const snapshots={};
+    for(const id of providerIds)snapshots[id]=providerRuntime.snapshot(id);
+    return Object.freeze(snapshots);
+  }
+
   async function run(input={}){
     if(!finite(input.nowMs)||input.nowMs<0)throw Error('NOW_INVALID');
 
@@ -289,6 +308,7 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,resea
       schemaVersion:'foxyya-staging-source-pipeline-result/1',
       asOf:input.nowMs,
       sources:Object.freeze({TWSE:Object.freeze(twse)}),
+      providerHealth:providerHealth(plan.providerIds),
       orchestration,
       researchOnly:true,
       executionWrite:false
