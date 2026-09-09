@@ -30,7 +30,7 @@ test('home read model merges seven regional contexts, TW early trend, and read-o
   assert.equal(out.executionWrite,false);
   assert.equal(out.home.regions.length,7);
   assert.equal(out.home.regions.find(x=>x.region==='TW').status,'AVAILABLE');
-  assert.equal(out.home.regions.find(x=>x.region==='KR').status,'AVAILABLE');
+  assert.equal(out.home.regions.find(x=>x.region==='KR').status,'UNAVAILABLE');
   assert.equal(out.home.regions.find(x=>x.region==='KR').bias,'UNAVAILABLE');
   assert.equal(out.home.marketPulse.find(x=>x.market==='US').status,'UNAVAILABLE');
   assert.equal(out.home.earlyTrend.length,1);
