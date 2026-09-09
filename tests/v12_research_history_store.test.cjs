@@ -40,7 +40,7 @@ test('research history starts empty and never fabricates prior evidence',()=>{
 test('monthly revenue accumulates forward and returns the latest earlier released period',()=>{
   const store=createResearchHistoryStore();
   const jul=revenue('11507',Date.parse('2026-08-10T06:00:00Z'));
-  const aug=revenue('11508',Date.parse('2026-09-09T06:00:00Z'), '2330','24.07');
+  const aug=revenue('11508',Date.parse('2026-09-09T06:00:00Z'),'2330','24.07');
   assert.equal(store.recordRevenue(jul).status,'RECORDED');
   assert.equal(store.previousRevenue('TWSE:2330','2026-08'),jul);
   assert.equal(store.recordRevenue(aug).status,'RECORDED');
@@ -64,13 +64,13 @@ test('same monthly report period cannot be rewritten with different canonical co
 
 test('older monthly report period arriving after newer history is rejected as backfill',()=>{
   const store=createResearchHistoryStore();
-  store.recordRevenue(revenue('11508',Date.parse('2026-09-09T06:00:00Z'));
+  store.recordRevenue(revenue('11508',Date.parse('2026-09-09T06:00:00Z')));
   assert.throws(()=>store.recordRevenue(revenue('11507',Date.parse('2026-09-10T06:00:00Z'))),/BACKFILL_FORBIDDEN/);
 });
 
 test('newer monthly report period cannot regress knowledge time',()=>{
   const store=createResearchHistoryStore();
-  store.recordRevenue(revenue('11507',Date.parse('2026-08-10T06:00:00Z'));
+  store.recordRevenue(revenue('11507',Date.parse('2026-08-10T06:00:00Z')));
   assert.throws(()=>store.recordRevenue(revenue('11508',Date.parse('2026-08-09T06:00:00Z'))),/TIME_REGRESSION/);
 });
 
