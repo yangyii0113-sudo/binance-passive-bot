@@ -434,7 +434,7 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,resea
 
     return Object.freeze({
       schemaVersion:'foxyya-staging-source-pipeline-result/1',
-      asOf:input.nowMs,
+      asOf:orchestration.asOf,
       sources:Object.freeze({
         TWSE:Object.freeze(marketSources.TWSE),
         TPEX:Object.freeze(marketSources.TPEX)
