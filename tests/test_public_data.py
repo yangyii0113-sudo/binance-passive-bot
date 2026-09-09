@@ -124,19 +124,26 @@ def test_funding_loader_paginates_from_last_seen_timestamp_without_duplicates():
     assert client.funding_calls[2][2] == 3 * 8 * HOUR + 1
 
 
+def _seed_research_rows(client, warmup_start, end_ms):
+    for interval, step in (("1h", HOUR), ("4h", 4 * HOUR), ("1d", DAY)):
+        aligned_start = (warmup_start // step) * step
+        aligned_end = (end_ms // step) * step
+        count = max(0, (aligned_end - aligned_start) // step)
+        client.rows[("ETHUSDT", interval)] = [bar(aligned_start + i * step, step, 100 + i) for i in range(count)]
+    aligned_1h_start = (warmup_start // HOUR) * HOUR
+    aligned_1h_end = (end_ms // HOUR) * HOUR
+    for symbol in ("BTCUSDT", "SOLUSDT"):
+        count = max(0, (aligned_1h_end - aligned_1h_start) // HOUR)
+        client.rows[(symbol, "1h")] = [bar(aligned_1h_start + i * HOUR, HOUR, 100 + i) for i in range(count)]
+
+
 def test_research_dataset_fetches_native_eth_timeframes_context_and_warmup():
     client = FakePublicClient()
     start_ms = 100 * DAY
     end_ms = start_ms + 3 * DAY
     warmup_days = 2
     warmup_start = start_ms - warmup_days * DAY
-
-    for interval, step in (("1h", HOUR), ("4h", 4 * HOUR), ("1d", DAY)):
-        count = (end_ms - warmup_start) // step
-        client.rows[("ETHUSDT", interval)] = [bar(warmup_start + i * step, step, 100 + i) for i in range(count)]
-    for symbol in ("BTCUSDT", "SOLUSDT"):
-        count = (end_ms - warmup_start) // HOUR
-        client.rows[(symbol, "1h")] = [bar(warmup_start + i * HOUR, HOUR, 100 + i) for i in range(count)]
+    _seed_research_rows(client, warmup_start, end_ms)
     client.funding["ETHUSDT"] = [
         {"symbol": "ETHUSDT", "fundingTime": start_ms + 8 * HOUR, "fundingRate": "0.0001", "markPrice": "100"}
     ]
@@ -155,3 +162,29 @@ def test_research_dataset_fetches_native_eth_timeframes_context_and_warmup():
     assert result["funding_rows"]["ETHUSDT"][0]["fundingTime"] == start_ms + 8 * HOUR
     assert result["exchange_info"]["symbols"]
     assert result["source"] == "BINANCE_USD_M_PUBLIC"
+
+
+def test_research_dataset_aligns_each_native_interval_without_exposing_partial_context_bar():
+    client = FakePublicClient()
+    # A realistic trailing-365D execution window may end at 10:00 UTC, which
+    # is a legal 1H boundary but not a native 4H or Daily boundary.
+    start_ms = 100 * DAY + 10 * HOUR
+    end_ms = start_ms + 3 * DAY
+    warmup_days = 2
+    warmup_start = start_ms - warmup_days * DAY
+    _seed_research_rows(client, warmup_start, end_ms)
+
+    result = fetch_research_dataset(
+        client,
+        symbol="ETHUSDT",
+        start_ms=start_ms,
+        end_ms=end_ms,
+        warmup_days=warmup_days,
+    )
+
+    eth = result["klines"]["ETHUSDT"]
+    assert int(eth["1h"][-1][6]) == end_ms - 1
+    assert int(eth["4h"][-1][6]) == (end_ms // (4 * HOUR)) * (4 * HOUR) - 1
+    assert int(eth["1d"][-1][6]) == (end_ms // DAY) * DAY - 1
+    assert int(eth["4h"][-1][6]) < end_ms
+    assert int(eth["1d"][-1][6]) < end_ms
