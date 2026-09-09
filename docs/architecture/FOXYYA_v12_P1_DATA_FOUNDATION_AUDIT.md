@@ -107,6 +107,30 @@ Present and verified:
 
 **Responsibility boundary:** Activation determines whether a source is permitted to run. Runtime governance determines whether an already-permitted source should currently execute, retry, wait, or fail unavailable. Adapters and bindings remain responsible only for data semantics. Research and UI do not implement their own retries or health inference.
 
+## Credential / Entitlement Runtime Policy — P1.5 CLOSED
+
+Present and verified:
+
+- source catalog decision remains the canonical access-metadata authority
+- source activation, credential presence, entitlement state and provider runtime health remain separate concerns
+- credential lookup is server-side only and evaluates presence without retaining secret material in the access result
+- public adopted sources do not invoke credential or entitlement resolvers
+- KRX and J-Quants require credential presence and entitlement independently
+- FINRA requires credential presence without inventing a plan-entitlement requirement
+- missing credential is explicit `BLOCKED`
+- unknown entitlement is explicit `UNAVAILABLE`, not silently treated as entitled or denied
+- explicit non-entitlement is `BLOCKED`
+- review-required and decision-required sources fail closed before any credential or entitlement lookup
+- unknown source fails `UNAVAILABLE` without consulting runtime secrets
+- credential-check and entitlement-check exceptions are sanitized and do not echo provider error text or secret-bearing values
+- access results are deeply immutable, access-control-only and expose no provider-health state
+- no secret, API key, token, authorization header or credential material appears in the sanitized result contract
+- Provider Foundation exports a single authoritative credential / entitlement runtime constructor
+- the duplicate parallel credential-policy authority and its duplicate tests were removed rather than maintained as a second source of truth
+- no credential / entitlement runtime surface exposes market direction, trading, order or execution authority
+
+**Responsibility boundary:** Source Catalog declares whether credentials or entitlement are required. Credential / Entitlement Runtime evaluates server-side access readiness. Activation remains a separate catalog-decision gate. Provider Runtime Governance remains responsible for health, retry, rate limiting and circuit state after access is permitted.
+
 ## Canonical Data / Context Contracts
 
 Present:
@@ -289,16 +313,19 @@ Verified completion:
 - domain-local failure isolation
 - no execution authority
 
-## P1-E — Credential / Entitlement runtime policy — ACTIVE
+## P1-E — Credential / Entitlement runtime policy — COMPLETE
 
-Required for credentialed sources such as KRX / J-Quants / FINRA where applicable:
+Verified completion:
 
 - server-only credential presence check
 - entitlement / plan check distinct from API-key presence
-- zero secret material in read models or frontend
-- explicit `BLOCKED` / `UNAVAILABLE` state when not entitled
-- runtime access contract must not echo secret values
-- source activation, credential presence, entitlement and provider health remain distinct concerns
+- zero secret material in read models, access diagnostics or frontend-facing contracts
+- explicit `BLOCKED` / `UNAVAILABLE` states for missing credential, unknown entitlement and denied entitlement
+- runtime access contract never echoes secret values or provider error details
+- review / decision source decisions remain fail-closed before secret access
+- credential / entitlement runtime remains independent from Provider Health / Runtime Governance
+- one authoritative runtime contract is exported; duplicate authority removed
+- no execution or directional authority
 
 ## P1-F — US market-price source decision
 
@@ -367,9 +394,9 @@ P1.3 Corporate Action / Adjustment Contract      COMPLETE
      ↓
 P1.4 Provider Health / Retry / Rate Governance   COMPLETE
      ↓
-P1.5 Credential / Entitlement Policy             ACTIVE
+P1.5 Credential / Entitlement Policy             COMPLETE
      ↓
-P1.6 TPEx Pipeline Parity
+P1.6 TPEx Pipeline Parity                        ACTIVE
      ↓
 P1.7 Source Lineage Persistence
      ↓
@@ -392,12 +419,12 @@ P1 is GO only when all required foundation items satisfy:
 - [x] supported market sessions / DST / calendar exceptions are explicit;
 - [x] raw vs adjusted equity prices are distinguishable;
 - [x] provider failures / rate limits are observable and isolated;
-- [ ] credentialed sources remain server-only;
-- [ ] entitlement state is distinct from credential presence;
+- [x] credentialed sources remain server-only;
+- [x] entitlement state is distinct from credential presence;
 - [ ] TPEx has end-to-end pipeline parity;
 - [ ] source lineage can trace research output to canonical observations;
 - [x] unresolved US quote data remains honestly unavailable;
-- [x] no provider / research history / corporate-action / provider-governance surface exposes execution write;
+- [x] no provider / research history / corporate-action / provider-governance / credential-entitlement surface exposes execution write;
 - [x] Branch Scope Gate is green;
 - [x] existing Crypto Runtime regression is green;
 - [x] `PAPER_ONLY` and `REAL_ORDER_LOCK` remain present;
@@ -421,16 +448,25 @@ Verified closure baseline: v12 `409 / 409`, Runtime JS `10 / 10`, Python `1 / 1`
 **P1.4 status: CLOSED / GREEN**  
 Verified final closure baseline: v12 `442 / 442`, Runtime JS `10 / 10`, Python `1 / 1`.
 
-At all four closure gates:
+**P1.5 status: CLOSED / GREEN**  
+Verified final closure baseline: v12 `456 / 456`, Runtime JS `10 / 10`, Python `1 / 1`.
+
+At all five closure gates:
 
 - Branch Scope Gate: green
 - `PAPER_ONLY` / `REAL_ORDER_LOCK`: green
 - Production release authorized: `false`
 
+P1.5 cleanup note:
+
+- a parallel duplicate `credential_entitlement_policy.js` authority and its duplicate test suite were removed after root-cause analysis;
+- the canonical `credential_entitlement_runtime.js` contract and its RED/GREEN test suite remain authoritative;
+- Source Catalog remains the sole access-metadata authority.
+
 Immediate next implementation unit:
 
-**P1.5 — Credential / Entitlement Runtime Policy**
+**P1.6 — TPEx End-to-End Source Pipeline Parity**
 
-P1.5 must keep credential presence, entitlement state, source activation and runtime health separate; all credential checks remain server-side; no secret material may appear in read models, loader results, logs or frontend-facing contracts.
+P1.6 must prove TPEx Quote, institutional flow and monthly revenue can traverse the same safe Provider -> Binding -> Research -> Home path as TWSE while preserving `TPEX` instrument identity and without introducing execution authority or cross-exchange substitution.
 
 No Production migration is authorized by this audit.
