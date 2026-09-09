@@ -4,7 +4,7 @@
   else root.FOXY_V12_PRODUCT_RENDERER=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(){
   'use strict';
-  const esc=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  const esc=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[ch]));
   const list=value=>Array.isArray(value)?value:[];
   const finite=value=>typeof value==='number'&&Number.isFinite(value);
   const time=value=>finite(value)?new Date(value).toISOString():'UNAVAILABLE';
@@ -29,7 +29,7 @@
   function researchHtml(row){
     const research=row.research||{},early=row.earlyTrend||{};
     const missing=[...list(research.missingDimensions),...Object.entries(row.dataGaps||{}).filter(([,value])=>value==='UNAVAILABLE').map(([key])=>labels[key]||key)];
-    return `<article class="research-card" data-research-card="${esc(row.instrumentId)}"><div class="research-title"><b>${esc(row.instrumentId)}</b><span class="status-chip">RESEARCH</span></div><p>${esc(row.direction)} · Confidence ${number(finite(research.confidence)?research.confidence*100:null)}% · ${esc(row.earlyStage)}</p><small class="muted">研究更新 ${esc(time(row.asOf))}</small>${factsHtml(row.facts,{compact:true})}<details><summary>研究依據與資料缺口</summary><p>研究維度 ${esc(Object.keys(research.dimensions||{}).join(' · ')||'UNAVAILABLE')}</p><p>尚缺 ${esc(missing.join(' · ')||'無')} · UNAVAILABLE</p><p>下一步確認：${esc(list(early.nextConfirmation).join('；')||'等待可驗證的研究證據')}</p><p>失效條件：${esc(list(early.invalidations).join('；')||'UNAVAILABLE')}</p><p>相反證據：${esc(list(research.contradictions).map(x=>x.label||x.source).join('；')||'目前未提供')}</p></details>${lineageLink(row.lineageRef)}</article>`;
+    return `<article class="research-card" data-research-card="${esc(row.instrumentId)}" data-favorite-card="${esc(row.instrumentId)}"><div class="research-title"><b>${esc(row.instrumentId)}</b><div><span class="status-chip">RESEARCH</span><button class="text-btn favorite-btn" data-favorite-id="${esc(row.instrumentId)}" aria-pressed="false" title="本機收藏，不同步帳號">☆ 收藏</button></div></div><p>${esc(row.direction)} · Confidence ${number(finite(research.confidence)?research.confidence*100:null)}% · ${esc(row.earlyStage)}</p><small class="muted">研究更新 ${esc(time(row.asOf))}</small>${factsHtml(row.facts,{compact:true})}<details><summary>研究依據與資料缺口</summary><p>研究維度 ${esc(Object.keys(research.dimensions||{}).join(' · ')||'UNAVAILABLE')}</p><p>尚缺 ${esc(missing.join(' · ')||'無')} · UNAVAILABLE</p><p>下一步確認：${esc(list(early.nextConfirmation).join('；')||'等待可驗證的研究證據')}</p><p>失效條件：${esc(list(early.invalidations).join('；')||'UNAVAILABLE')}</p><p>相反證據：${esc(list(research.contradictions).map(x=>x.label||x.source).join('；')||'目前未提供')}</p></details>${lineageLink(row.lineageRef)}</article>`;
   }
   function diagnosticsHtml(value){
     if(!value)return '<p class="muted">Provider Diagnostics UNAVAILABLE</p>';
