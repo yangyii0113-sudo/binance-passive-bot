@@ -131,6 +131,25 @@ Present and verified:
 
 **Responsibility boundary:** Source Catalog declares whether credentials or entitlement are required. Credential / Entitlement Runtime evaluates server-side access readiness. Activation remains a separate catalog-decision gate. Provider Runtime Governance remains responsible for health, retry, rate limiting and circuit state after access is permitted.
 
+## TPEx Source Pipeline Parity — P1.6 CLOSED
+
+Present and verified:
+
+- TPEx Quote, institutional flow and monthly revenue have explicit Official Source Bindings
+- one Taiwan Source Pipeline accepts `exchange: 'TWSE' | 'TPEX'` rather than maintaining separate research engines
+- omitted Taiwan exchange remains backward-compatible with `TWSE`
+- unsupported Taiwan exchange fails closed with `TW_EXCHANGE_INVALID` before network access
+- TPEx Quote / institutional flow / monthly revenue preserve exact `TPEX:<symbol>` canonical identity
+- TPEx research travels through the same TW Research / Early Trend semantics without conversion to TWSE identity
+- TPEx market probes are reported under `sources.TPEX`, separate from `sources.TWSE`
+- TPEx provider health is provider-local under `tpex-openapi`
+- missing TPEx target is explicit unavailable and never falls back to another OTC or TWSE symbol
+- TPEx source failure removes only the affected TPEx research asset while preserving independent TWSE market probes
+- durable history remains keyed by canonical instrument ID, preserving TWSE / TPEX identity separation
+- no TPEx binding, pipeline or health surface exposes execution authority
+
+**Identity rule:** `TPEX:<symbol>` is immutable across Provider -> Binding -> Canonical Data -> Research -> Home. TPEx data must never impersonate `TWSE:<symbol>`.
+
 ## Canonical Data / Context Contracts
 
 Present:
@@ -193,7 +212,10 @@ Present:
 - named source-to-adapter bindings
 - TWSE Quote exact-symbol selection
 - TWSE T86 exact-symbol selection
-- Taiwan monthly-revenue exact-company selection
+- TWSE monthly-revenue exact-company selection
+- TPEx Quote exact-symbol selection
+- TPEx institutional-flow exact-symbol selection
+- TPEx monthly-revenue exact-company selection
 - SEC Company Fact binding
 - BLS / ECB semantic definition binding
 - transport source ID validation
@@ -220,7 +242,7 @@ Present and verified:
 - complete journal corruption fails closed
 - disk-write failure does not advance in-memory state
 - Source Pipeline reads only prior durable history for the current research cycle
-- current revenue / Quote+T86 are appended only after Home publication succeeds
+- current revenue / Quote+institutional flow are appended only after Home publication succeeds
 - failed Home publication does not advance research history
 - manual `previousRevenue` / `institutionalSessions` override is forbidden when durable history is active
 - no correction / execution / trade surface
@@ -233,8 +255,9 @@ Present:
 
 - Provider loader -> Official Binding -> Domain Input -> Orchestrator -> Home Publisher
 - TWSE Quote + T86 -> Taiwan Research Asset
-- optional current monthly revenue
-- durable prior research-history lookup
+- TPEx Quote + institutional flow -> Taiwan Research Asset
+- optional current monthly revenue for TWSE / TPEx
+- durable prior research-history lookup keyed by canonical instrument ID
 - SEC -> US factual read model
 - BLS / ECB -> regional factual context
 - shared optional Provider Runtime Governance
@@ -342,15 +365,20 @@ Until adopted:
 - no provider may fabricate `LIVE` eligibility;
 - SEC facts must not be presented as market-price data.
 
-## P1-G — TPEx end-to-end Source Pipeline parity
+## P1-G — TPEx end-to-end Source Pipeline parity — COMPLETE
 
-Adapters exist; end-to-end staging Source Pipeline parity must be verified for OTC Taiwan equities:
+Verified completion:
 
-- TPEx Quote
-- TPEx institutional flow
-- TPEx monthly revenue
-- TPEX instrument identity
-- same Research / Early Trend semantics without converting identity to TWSE
+- TPEx Quote binding and staging transport
+- TPEx institutional-flow binding and staging transport
+- TPEx monthly-revenue binding and staging transport
+- exact `TPEX:<symbol>` identity across the full research path
+- same TW Research / Early Trend semantics as TWSE without identity conversion
+- `sources.TPEX` market-probe separation
+- TPEx provider-health isolation
+- target-missing no-substitution behavior
+- TPEx failure isolation from independent TWSE probes
+- unsupported exchange preflight rejection
 
 ## P1-H — Source lineage persistence
 
@@ -396,9 +424,9 @@ P1.4 Provider Health / Retry / Rate Governance   COMPLETE
      ↓
 P1.5 Credential / Entitlement Policy             COMPLETE
      ↓
-P1.6 TPEx Pipeline Parity                        ACTIVE
+P1.6 TPEx Pipeline Parity                        COMPLETE
      ↓
-P1.7 Source Lineage Persistence
+P1.7 Source Lineage Persistence                  ACTIVE
      ↓
 P1.8 US Quote Provider Decision / Activation Gate
      ↓
@@ -421,7 +449,7 @@ P1 is GO only when all required foundation items satisfy:
 - [x] provider failures / rate limits are observable and isolated;
 - [x] credentialed sources remain server-only;
 - [x] entitlement state is distinct from credential presence;
-- [ ] TPEx has end-to-end pipeline parity;
+- [x] TPEx has end-to-end pipeline parity;
 - [ ] source lineage can trace research output to canonical observations;
 - [x] unresolved US quote data remains honestly unavailable;
 - [x] no provider / research history / corporate-action / provider-governance / credential-entitlement surface exposes execution write;
@@ -451,7 +479,10 @@ Verified final closure baseline: v12 `442 / 442`, Runtime JS `10 / 10`, Python `
 **P1.5 status: CLOSED / GREEN**  
 Verified final closure baseline: v12 `456 / 456`, Runtime JS `10 / 10`, Python `1 / 1`.
 
-At all five closure gates:
+**P1.6 status: CLOSED / GREEN**  
+Verified final closure baseline: v12 `463 / 463`, Runtime JS `10 / 10`, Python `1 / 1`.
+
+At all six closure gates:
 
 - Branch Scope Gate: green
 - `PAPER_ONLY` / `REAL_ORDER_LOCK`: green
@@ -463,10 +494,19 @@ P1.5 cleanup note:
 - the canonical `credential_entitlement_runtime.js` contract and its RED/GREEN test suite remain authoritative;
 - Source Catalog remains the sole access-metadata authority.
 
+P1.6 identity note:
+
+- TPEx uses the existing Taiwan research semantics rather than a second engine;
+- `TPEX:<symbol>` remains the canonical identity through bindings, Source Pipeline, Research, Home Opportunity and provider diagnostics;
+- TPEx failures and provider-health state remain isolated from TWSE;
+- no Production migration or execution capability was introduced.
+
 Immediate next implementation unit:
 
-**P1.6 — TPEx End-to-End Source Pipeline Parity**
+**P1.7 — Source Lineage Persistence**
 
-P1.6 must prove TPEx Quote, institutional flow and monthly revenue can traverse the same safe Provider -> Binding -> Research -> Home path as TWSE while preserving `TPEX` instrument identity and without introducing execution authority or cross-exchange substitution.
+P1.7 must make research outputs traceable to the exact canonical source observations that produced them, including stable source / dataset identity, receive time, adapter / binding version, canonical schema version and persisted research-output lineage references. Lineage remains read-only and cannot become execution authority.
+
+**Known reliability boundary remains:** Home publication and durable research-history append are separate resources. P1.7 must not falsely claim cross-resource atomicity.
 
 No Production migration is authorized by this audit.
