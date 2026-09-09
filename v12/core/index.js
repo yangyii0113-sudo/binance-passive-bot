@@ -9,4 +9,6 @@ module.exports = Object.freeze({
   intelligence: require('../intelligence/index.js'),
   earlyTrend: require('../early_trend/index.js'),
   research: require('../research/index.js'),
+  workspace: require('../workspace/index.js'),
+  crypto: require('../crypto/index.js'),
 });
