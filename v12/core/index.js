@@ -11,4 +11,6 @@ module.exports = Object.freeze({
   research: require('../research/index.js'),
   workspace: require('../workspace/index.js'),
   crypto: require('../crypto/index.js'),
+  results: require('../results/index.js'),
+  lab: require('../lab/index.js'),
 });
