@@ -1,0 +1,39 @@
+{
+  "strategy_version": "FOXYYA-EXEC-V2-20260908",
+  "initial_nav_usdt": 997.9020135922431,
+  "legacy_nav_anchor_time_utc": "2026-09-08T02:07:40Z",
+  "legacy_open_positions_at_anchor": 0,
+  "real_order_lock": true,
+  "paper_books": {
+    "5x": "primary",
+    "8x": "aggressive_comparison",
+    "10x": "stress_comparison"
+  },
+  "risk": {
+    "A": 0.005,
+    "B": 0.0035,
+    "C_starter": 0.002,
+    "C_starter_high": 0.0025,
+    "D_normal": 0.0035,
+    "D_high": 0.005,
+    "symbol_cap": 0.005,
+    "bucket_cap": 0.01,
+    "portfolio_cap": 0.015
+  },
+  "cost_model": {
+    "taker_fee_each_side": 0.0005,
+    "adverse_slippage_each_side": 0.0003,
+    "funding_reserve": 0.0001
+  },
+  "official_exit_model": {
+    "partial_at_r": 1.5,
+    "partial_fraction": 0.5,
+    "runner_atr_multiple": 1.5,
+    "max_hold_hours": 120
+  },
+  "notes": [
+    "This starts V2 from the latest verified legacy paper NAV without rewriting legacy history.",
+    "Missed legacy signals are never backfilled.",
+    "No private exchange credentials or real-order functions are accepted by V2."
+  ]
+}
