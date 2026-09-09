@@ -204,15 +204,27 @@ def make_handler(
         def _backtest_unavailable(self):
             self._json({"status": "UNAVAILABLE", "mode": BACKTEST_MODE, "label": BACKTEST_LABEL}, 503)
 
+        def _script(self, filename: str):
+            file_path = Path(__file__).with_name(filename)
+            if not file_path.is_file():
+                self.send_response(404); self.end_headers(); return
+            body = file_path.read_bytes()
+            self.send_response(200); self.send_header("Content-Type", "text/javascript; charset=utf-8")
+            self.send_header("Cache-Control", "no-store"); self.send_header("Content-Length", str(len(body)))
+            self.end_headers(); self.wfile.write(body)
+
         def do_GET(self):
             u = urlparse(self.path); path = u.path
             if path == "/runtime_ui.js":
-                body = Path(__file__).with_name("runtime_ui.js").read_bytes()
-                self.send_response(200); self.send_header("Content-Type", "text/javascript; charset=utf-8")
-                self.send_header("Cache-Control", "no-store"); self.send_header("Content-Length", str(len(body)))
-                self.end_headers(); self.wfile.write(body); return
+                self._script("runtime_ui.js"); return
+            if path == "/backtest_ui.js":
+                self._script("backtest_ui.js"); return
             if path == "/" and platform_path is not None and platform_path.exists():
                 body = platform_path.read_bytes()
+                marker = b"</body>"
+                injection = b'<script src="/backtest_ui.js"></script></body>'
+                if b'/backtest_ui.js' not in body and marker in body:
+                    body = body.replace(marker, injection, 1)
                 self.send_response(200); self.send_header("Content-Type", "text/html; charset=utf-8")
                 self.send_header("Cache-Control", "no-store"); self.send_header("Content-Length", str(len(body)))
                 self.end_headers(); self.wfile.write(body); return
