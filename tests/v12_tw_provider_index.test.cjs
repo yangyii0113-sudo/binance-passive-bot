@@ -1,0 +1,2 @@
+const test=require('node:test');const assert=require('node:assert/strict');const P=require('../v12/providers/index.js');
+test('provider foundation exposes Taiwan official adapters under explicit adapters namespace',()=>{assert.equal(P.adapters.twse.descriptor.id,'twse-official');assert.equal(P.adapters.tpex.descriptor.id,'tpex-official');assert.equal(P.adapters.twse.descriptor.executionWrite,false);assert.equal(P.adapters.tpex.descriptor.executionWrite,false);});
