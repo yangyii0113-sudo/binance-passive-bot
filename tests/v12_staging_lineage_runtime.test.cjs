@@ -62,5 +62,13 @@ test('staging server without a lineage journal keeps lineage API explicitly unav
 });
 
 test('staging lineage runtime rejects invalid journal paths before listening',async()=>{
-  await assert.rejects(()=>startStagingPreviewServer({host:'127.0.0.1',port:0,lineageFilePath:'/tmp/foxyya-lineage.txt'}),/LINEAGE_JOURNAL_PATH_INVALID/);
+  let leakedRuntime=null;
+  try{
+    await assert.rejects(async()=>{
+      leakedRuntime=await startStagingPreviewServer({host:'127.0.0.1',port:0,lineageFilePath:'/tmp/foxyya-lineage.txt'});
+      throw Error('INVALID_LINEAGE_PATH_ACCEPTED');
+    },/LINEAGE_JOURNAL_PATH_INVALID/);
+  }finally{
+    if(leakedRuntime)await leakedRuntime.close();
+  }
 });
