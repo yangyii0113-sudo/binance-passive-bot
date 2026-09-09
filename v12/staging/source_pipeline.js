@@ -3,6 +3,7 @@
 const {createPublicSourceLoader}=require('./public_source_loader.js');
 const {createOfficialSourceBindings}=require('./official_source_binding.js');
 const {createStagingDataOrchestrator}=require('./data_orchestrator.js');
+const EvidencePolicy=require('../early_trend/evidence_policy.js');
 
 const finite=value=>typeof value==='number'&&Number.isFinite(value);
 const object=value=>value&&typeof value==='object'&&!Array.isArray(value);
@@ -36,6 +37,12 @@ function collectObservations(data){
   return observations;
 }
 
+function assertTWPolicy(policy){
+  const check=EvidencePolicy.validateEvidencePolicy(policy);
+  if(!check.ok||policy?.market!=='TW')throw Error('EVIDENCE_POLICY_INVALID:'+check.errors.join('|'));
+  return policy;
+}
+
 function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome}={}){
   if(typeof fetchImpl!=='function')throw Error('FETCH_REQUIRED');
   if(typeof clock!=='function')throw Error('CLOCK_REQUIRED');
@@ -51,6 +58,19 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome}={}){
       return Object.freeze({
         symbol:String(item.symbol||''),
         binding:bindings.twseDailyQuote({loader,symbol:item.symbol})
+      });
+    });
+
+    const twAssets=arrayConfig(input.twAssets,'TW_ASSETS').map(item=>{
+      if(!object(item))throw Error('TW_ASSET_CONFIG_INVALID');
+      const policy=assertTWPolicy(item.policy);
+      const quoteLoader=makeLoader('twse-openapi',item.quoteEndpoint,fetchImpl,clock);
+      const flowLoader=makeLoader('twse-t86',item.flowEndpoint,fetchImpl,clock);
+      return Object.freeze({
+        config:item,
+        policy,
+        quoteBinding:bindings.twseDailyQuote({loader:quoteLoader,symbol:item.symbol}),
+        flowBinding:bindings.twseInstitutional({loader:flowLoader,symbol:item.symbol,tradeDate:item.tradeDate})
       });
     });
 
@@ -86,7 +106,33 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome}={}){
       regions[region]=Object.freeze(sources);
     }
 
-    return Object.freeze({twQuotes:Object.freeze(twQuotes),usAssets:Object.freeze(usAssets),regions:Object.freeze(regions)});
+    return Object.freeze({
+      twQuotes:Object.freeze(twQuotes),
+      twAssets:Object.freeze(twAssets),
+      usAssets:Object.freeze(usAssets),
+      regions:Object.freeze(regions)
+    });
+  }
+
+  function twLoader(item){
+    return async()=>{
+      const quote=await item.quoteBinding.load();
+      if(quote.status==='UNAVAILABLE')return readonlyEnvelope('UNAVAILABLE',null,'QUOTE_'+quote.reason);
+
+      const flow=await item.flowBinding.load();
+      if(flow.status==='UNAVAILABLE')return readonlyEnvelope('UNAVAILABLE',null,'FLOW_'+flow.reason);
+
+      const cfg=item.config;
+      return readonlyEnvelope('AVAILABLE',Object.freeze({
+        policy:item.policy,
+        currentQuote:quote.data,
+        currentFlow:flow.data,
+        institutionalSessions:Object.freeze(Array.isArray(cfg.institutionalSessions)?[...cfg.institutionalSessions]:[]),
+        currentRevenue:cfg.currentRevenue||null,
+        previousRevenue:cfg.previousRevenue||null,
+        researchEvidence:Object.freeze(Array.isArray(cfg.researchEvidence)?[...cfg.researchEvidence]:[])
+      }));
+    };
   }
 
   function usLoader(item){
@@ -134,8 +180,8 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome}={}){
   async function run(input={}){
     if(!finite(input.nowMs)||input.nowMs<0)throw Error('NOW_INVALID');
 
-    // Build every loader/binding before the first network request so forbidden
-    // endpoints fail closed without publishing or partially fetching a run.
+    // Build every loader/binding and validate policies before the first network
+    // request so forbidden endpoints and invalid governance fail closed.
     const plan=preflight(input);
 
     const twse=[];
@@ -167,6 +213,7 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome}={}){
 
     const orchestration=await orchestrator.run({
       nowMs:input.nowMs,
+      twAssets:plan.twAssets.map(twLoader),
       usAssets:plan.usAssets.map(usLoader),
       regions:regionLoaders,
       pulses:object(input.pulses)?input.pulses:{},
