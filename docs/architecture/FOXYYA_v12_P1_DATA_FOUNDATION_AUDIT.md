@@ -36,7 +36,7 @@ Present:
 - holiday override behavior
 - unknown exchange fails unavailable rather than guessed
 
-Further exchange-calendar depth remains a P1 gap.
+Further exchange-calendar depth remains the active P1.2 gap.
 
 ## Canonical Data / Context Contracts
 
@@ -104,19 +104,33 @@ Present:
 - transport source ID validation
 - writable transport rejection
 
-## Research History foundation
+## Research History foundation — P1.1 CLOSED
 
-Present:
+Present and verified:
 
-- forward-only in-memory history store
+- forward-only in-memory contract store
+- dedicated durable research journal separate from Crypto SQLite ledger
 - Taiwan monthly revenue history
 - Taiwan Quote + institutional session history
+- append-only durable JSONL journal
+- event schema / monotonic sequence / SHA-256 checksum
+- restart reconstruction by validated replay
 - idempotent identical duplicate behavior
 - conflicting rewrite rejection
 - backfill rejection
-- time-regression rejection
+- knowledge-time regression rejection
 - instrument isolation
-- no execution / trade surface
+- model / policy version references on durable events
+- incomplete trailing fragment recovery
+- complete journal corruption fails closed
+- disk-write failure does not advance in-memory state
+- Source Pipeline reads only prior durable history for the current research cycle
+- current revenue / Quote+T86 are appended only after Home publication succeeds
+- failed Home publication does not advance research history
+- manual `previousRevenue` / `institutionalSessions` override is forbidden when durable history is active
+- no correction / execution / trade surface
+
+**Known reliability boundary:** Home snapshot publication and research-journal append are two separate durability resources, not one cross-resource transaction. Current ordering guarantees that a failed Home publication cannot advance history. A journal write failure after a successful Home publication can still leave Home newer than durable history. This must be addressed by later reliability / outbox design before claiming cross-resource atomicity.
 
 ## Staging Source Pipeline
 
@@ -125,7 +139,7 @@ Present:
 - Provider loader -> Official Binding -> Domain Input -> Orchestrator -> Home Publisher
 - TWSE Quote + T86 -> Taiwan Research Asset
 - optional current monthly revenue
-- explicit prior canonical revenue support
+- durable prior research-history lookup
 - SEC -> US factual read model
 - BLS / ECB -> regional factual context
 - provider degradation isolation
@@ -137,33 +151,34 @@ Present:
 
 The following are P1 work items. They are ordered by foundation risk, not visual priority.
 
-## P1-A — Durable Research History
+## P1-A — Durable Research History — COMPLETE
 
-Current history store is in-memory only.
-
-Required before authoritative staging accumulation:
+Verified completion:
 
 - persistent research-only storage separate from Crypto ledger
-- atomic append / conflict detection
+- append / conflict detection
 - restart reconstruction
 - schema version
-- model / policy version references where research output is stored
+- model / policy version references
 - no historical backfill by default
-- explicit correction protocol design before corrections are allowed
+- no correction protocol exposed
+- Source Pipeline integration preserves point-in-time ordering
 
-**Rule:** do not reuse the Crypto execution ledger for research history.
+**Rule remains:** do not reuse the Crypto execution ledger for research history.
 
-## P1-B — Market Clock completeness
+## P1-B — Market Clock completeness — ACTIVE
 
 Required:
 
 - US regular / pre-market / after-hours
 - US DST transitions
-- Taiwan holiday calendar source
+- Taiwan holiday calendar contract / source metadata
 - Japan session calendar
 - Korea session calendar
 - Europe representative session model
 - half-day / exceptional close representation where supported
+- next open / next close boundaries
+- explicit distinction between market-data availability and trading-session phase
 
 Market Clock must remain authoritative; UI may not calculate sessions independently.
 
@@ -263,9 +278,9 @@ The following do not block P1 Data Foundation unless later promoted by architect
 # 5. P1 implementation order
 
 ```text
-P1.1 Durable Research History Contract
+P1.1 Durable Research History Contract       COMPLETE
      ↓
-P1.2 Market Clock completeness
+P1.2 Market Clock completeness              ACTIVE
      ↓
 P1.3 Corporate Action / Adjustment Contract
      ↓
@@ -291,8 +306,8 @@ The order intentionally puts data correctness and restart safety before adding m
 P1 is GO only when all required foundation items satisfy:
 
 - [ ] canonical instrument identity survives restart / storage use;
-- [ ] research history persists independently of Crypto ledger;
-- [ ] research history remains forward-only by default;
+- [x] research history persists independently of Crypto ledger;
+- [x] research history remains forward-only by default;
 - [ ] supported market sessions / DST / holidays are explicit;
 - [ ] raw vs adjusted equity prices are distinguishable;
 - [ ] provider failures / rate limits are observable and isolated;
@@ -300,12 +315,12 @@ P1 is GO only when all required foundation items satisfy:
 - [ ] entitlement state is distinct from credential presence;
 - [ ] TPEx has end-to-end pipeline parity;
 - [ ] source lineage can trace research output to canonical observations;
-- [ ] unresolved US quote data remains honestly unavailable;
-- [ ] no provider / research history surface exposes execution write;
-- [ ] Branch Scope Gate is green;
-- [ ] existing Crypto Runtime regression is green;
-- [ ] `PAPER_ONLY` and `REAL_ORDER_LOCK` remain present;
-- [ ] Production release remains unauthorized.
+- [x] unresolved US quote data remains honestly unavailable;
+- [x] no provider / research history surface exposes execution write;
+- [x] Branch Scope Gate is green;
+- [x] existing Crypto Runtime regression is green;
+- [x] `PAPER_ONLY` and `REAL_ORDER_LOCK` remain present;
+- [x] Production release remains unauthorized.
 
 ---
 
@@ -313,10 +328,21 @@ P1 is GO only when all required foundation items satisfy:
 
 **P1 status: ACTIVE / NOT YET COMPLETE**
 
+**P1.1 status: CLOSED / GREEN**
+
+Verified P1.1 CI baseline at closure:
+
+- v12 contract / integration: `387 / 387`
+- existing Runtime JS regression: `10 / 10`
+- Python runtime regression: `1 / 1`
+- Branch Scope Gate: green
+- `PAPER_ONLY` / `REAL_ORDER_LOCK`: green
+- Production release authorized: `false`
+
 Immediate next implementation unit:
 
-**P1.1 — Durable Research History Contract**
+**P1.2 — Market Clock completeness**
 
-The current in-memory store is suitable for contract verification but not sufficient for restart-safe staging accumulation.
+P1.2 must complete session-phase, DST, calendar-override and exceptional-close contracts before any UI or provider independently derives “market open” state.
 
 No Production migration is authorized by this audit.
