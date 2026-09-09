@@ -101,7 +101,7 @@ test('staging runtime shares one durable lineage store across bootstrap, Home, a
   }finally{fs.rmSync(dir,{recursive:true,force:true})}
 });
 
-test('bootstrap failure does not take down staging health or fabricate Home data',async()=>{
+test('provider network failures stay unavailable without taking down staging health',async()=>{
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),'foxyya-runtime-research-failure-'));
   const lineageFilePath=path.join(dir,'runtime.lineage.jsonl');
   const errors=[];
@@ -113,9 +113,15 @@ test('bootstrap failure does not take down staging health or fabricate Home data
   });
   try{
     const initial=await runtime.researchReady;
-    assert.equal(initial,null);
-    assert.ok(errors.length>=1);
+    assert.ok(initial,'provider failures are represented in result, not promoted to runtime exception');
+    assert.equal(errors.length,0);
     assert.equal((await request(runtime.address,'/health')).status,200);
-    assert.equal((await request(runtime.address,'/v12/api/home')).status,200,'provider UNAVAILABLE states should still publish an honest Home snapshot');
+    const homeRes=await request(runtime.address,'/v12/api/home');
+    assert.equal(homeRes.status,200,'provider UNAVAILABLE states should still publish an honest Home snapshot');
+    const home=JSON.parse(homeRes.body);
+    assert.equal(home.home.opportunities.TW.length,0);
+    assert.equal(home.home.opportunities.US.length,0);
+    assert.equal(home.home.regions.find(x=>x.region==='US').status,'UNAVAILABLE');
+    assert.equal(home.home.regions.find(x=>x.region==='EU').status,'UNAVAILABLE');
   }finally{await runtime.close();fs.rmSync(dir,{recursive:true,force:true})}
 });
