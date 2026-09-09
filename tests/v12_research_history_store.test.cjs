@@ -111,8 +111,8 @@ test('older institutional trade date and knowledge-time regression are both reje
   assert.throws(()=>store.recordInstitutionalSession(session('1150908','20260908',Date.parse('2026-09-10T06:00:00Z'),Date.parse('2026-09-10T06:01:00Z'))),/BACKFILL_FORBIDDEN/);
 
   const secondStore=createResearchHistoryStore();
-  secondStore.recordInstitutionalSession(session('1150908','20260908',Date.parse('2026-09-08T06:00:00Z'),Date.parse('2026-09-08T06:01:00Z')));
-  assert.throws(()=>secondStore.recordInstitutionalSession(session('1150909','20260909',Date.parse('2026-09-08T05:00:00Z'),Date.parse('2026-09-08T05:01:00Z'))),/TIME_REGRESSION/);
+  secondStore.recordInstitutionalSession(session('1150908','20260908',Date.parse('2026-09-10T06:00:00Z'),Date.parse('2026-09-10T06:01:00Z')));
+  assert.throws(()=>secondStore.recordInstitutionalSession(session('1150909','20260909',Date.parse('2026-09-09T06:00:00Z'),Date.parse('2026-09-09T06:01:00Z'))),/TIME_REGRESSION/);
 });
 
 test('institutional sessions require same instrument and trade date and remain isolated by instrument',()=>{
