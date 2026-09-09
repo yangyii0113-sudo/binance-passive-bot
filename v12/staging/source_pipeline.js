@@ -43,10 +43,27 @@ function assertTWPolicy(policy){
   return policy;
 }
 
-function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome}={}){
+function validateResearchHistory(value){
+  if(value===undefined)return null;
+  if(!object(value))throw Error('RESEARCH_HISTORY_INVALID');
+  for(const method of ['recordRevenue','previousRevenue','recordInstitutionalSession','institutionalSessions']){
+    if(typeof value[method]!=='function')throw Error('RESEARCH_HISTORY_INVALID');
+  }
+  return value;
+}
+
+function historyMeta(item){
+  return Object.freeze({
+    modelVersion:typeof item.config?.modelVersion==='string'&&item.config.modelVersion?item.config.modelVersion:null,
+    policyVersion:typeof item.policy?.id==='string'&&item.policy.id?item.policy.id:null
+  });
+}
+
+function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,researchHistory}={}){
   if(typeof fetchImpl!=='function')throw Error('FETCH_REQUIRED');
   if(typeof clock!=='function')throw Error('CLOCK_REQUIRED');
   if(typeof publishHome!=='function')throw Error('PUBLISH_HOME_REQUIRED');
+  const history=validateResearchHistory(researchHistory);
 
   const bindings=createOfficialSourceBindings();
   const orchestrator=createStagingDataOrchestrator({publishHome});
@@ -63,6 +80,9 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome}={}){
 
     const twAssets=arrayConfig(input.twAssets,'TW_ASSETS').map(item=>{
       if(!object(item))throw Error('TW_ASSET_CONFIG_INVALID');
+      if(history&&(item.previousRevenue!==undefined||item.institutionalSessions!==undefined)){
+        throw Error('RESEARCH_HISTORY_OVERRIDE_FORBIDDEN');
+      }
       const policy=assertTWPolicy(item.policy);
       const quoteLoader=makeLoader('twse-openapi',item.quoteEndpoint,fetchImpl,clock);
       const flowLoader=makeLoader('twse-t86',item.flowEndpoint,fetchImpl,clock);
@@ -120,7 +140,7 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome}={}){
     });
   }
 
-  function twLoader(item){
+  function twLoader(item,historyWrites){
     return async()=>{
       const quote=await item.quoteBinding.load();
       if(quote.status==='UNAVAILABLE')return readonlyEnvelope('UNAVAILABLE',null,'QUOTE_'+quote.reason);
@@ -135,13 +155,34 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome}={}){
         currentRevenue=revenue.status==='AVAILABLE'?revenue.data:null;
       }
 
+      const instrumentId=quote.data?.instrument?.instrumentId;
+      if(typeof instrumentId!=='string'||!instrumentId)throw Error('TW_INSTRUMENT_ID_INVALID');
+
+      let institutionalSessions;
+      let previousRevenue;
+      if(history){
+        institutionalSessions=history.institutionalSessions(instrumentId);
+        previousRevenue=currentRevenue?history.previousRevenue(instrumentId,currentRevenue.reportPeriod):null;
+      }else{
+        institutionalSessions=Array.isArray(cfg.institutionalSessions)?[...cfg.institutionalSessions]:[];
+        previousRevenue=cfg.previousRevenue||null;
+      }
+
+      if(history){
+        historyWrites.push(Object.freeze({
+          session:Object.freeze({quote:quote.data,flow:flow.data}),
+          revenue:currentRevenue,
+          meta:historyMeta(item)
+        }));
+      }
+
       return readonlyEnvelope('AVAILABLE',Object.freeze({
         policy:item.policy,
         currentQuote:quote.data,
         currentFlow:flow.data,
-        institutionalSessions:Object.freeze(Array.isArray(cfg.institutionalSessions)?[...cfg.institutionalSessions]:[]),
+        institutionalSessions:Object.freeze([...institutionalSessions]),
         currentRevenue,
-        previousRevenue:cfg.previousRevenue||null,
+        previousRevenue,
         researchEvidence:Object.freeze(Array.isArray(cfg.researchEvidence)?[...cfg.researchEvidence]:[])
       }));
     };
@@ -192,9 +233,10 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome}={}){
   async function run(input={}){
     if(!finite(input.nowMs)||input.nowMs<0)throw Error('NOW_INVALID');
 
-    // Build every loader/binding and validate policies before the first network
-    // request so forbidden endpoints and invalid governance fail closed.
+    // Build every loader/binding, validate governance, and reject manual history
+    // overrides before the first network request.
     const plan=preflight(input);
+    const historyWrites=[];
 
     const twse=[];
     for(const item of plan.twQuotes){
@@ -225,13 +267,23 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome}={}){
 
     const orchestration=await orchestrator.run({
       nowMs:input.nowMs,
-      twAssets:plan.twAssets.map(twLoader),
+      twAssets:plan.twAssets.map(item=>twLoader(item,historyWrites)),
       usAssets:plan.usAssets.map(usLoader),
       regions:regionLoaders,
       pulses:object(input.pulses)?input.pulses:{},
       todayFocus:Array.isArray(input.todayFocus)?input.todayFocus:[],
       events:Array.isArray(input.events)?input.events:[]
     });
+
+    // Durable research history advances only after the current Home snapshot was
+    // accepted. Current observations are therefore never visible as their own
+    // prior evidence during this run.
+    if(history){
+      for(const write of historyWrites){
+        history.recordInstitutionalSession(write.session,write.meta);
+        if(write.revenue)history.recordRevenue(write.revenue,write.meta);
+      }
+    }
 
     return Object.freeze({
       schemaVersion:'foxyya-staging-source-pipeline-result/1',
