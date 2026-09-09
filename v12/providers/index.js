@@ -12,5 +12,6 @@ const adapters=Object.freeze({
   finra:require('./finra_adapter.js'),
   ecb:require('./ecb_adapter.js'),
   krx:require('./krx_adapter.js'),
+  jpx:require('./jpx_adapter.js'),
 });
 module.exports=Object.freeze({...contract,...registry,...catalog,adapters});
