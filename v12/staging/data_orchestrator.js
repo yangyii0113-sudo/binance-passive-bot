@@ -116,13 +116,29 @@ function createStagingDataOrchestrator({publishHome}={}){
       ...Object.values(regions.models).map(modelAsOf)
     );
 
+    const pulses=object(input.pulses)?{...input.pulses}:{};
+    if(cryptoExecution&&!Object.hasOwn(pulses,'CRYPTO')){
+      pulses.CRYPTO=Object.freeze({
+        state:'PAPER ONLY',
+        asOf:cryptoExecution.asOf,
+        data:Object.freeze({
+          health:cryptoExecution.health,
+          cycleCount:cryptoExecution.cycleCount,
+          candidateCount:cryptoExecution.candidates.length,
+          pendingCount:cryptoExecution.pending.length,
+          openPositionCount:cryptoExecution.openPositions.length,
+          ledgerIntegrity:cryptoExecution.ledgerIntegrity
+        })
+      });
+    }
+
     const published=publishHome({
       asOf:publishAsOf,
       cryptoExecution,
       twAssets:tw.models,
       usAssets:us.models,
       regionalContexts:regions.models,
-      pulses:object(input.pulses)?input.pulses:{},
+      pulses,
       todayFocus:Array.isArray(input.todayFocus)?input.todayFocus:[],
       events:Array.isArray(input.events)?input.events:[]
     });
