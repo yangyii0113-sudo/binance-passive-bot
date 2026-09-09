@@ -28,8 +28,8 @@ function sendText(res,status,body){
   res.end(data);
 }
 
-function createStagingPreviewApp(){
-  const homeService=createStagingHomeService();
+function createStagingPreviewApp({lineageStore}={}){
+  const homeService=createStagingHomeService({lineageStore});
 
   function publishHome(input={}){
     return homeService.publishHome(input);
