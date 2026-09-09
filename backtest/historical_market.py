@@ -90,7 +90,10 @@ class HistoricalDataset:
             self._rows_by_symbol[str(symbol)] = normalized
 
         for symbol, rows in sorted((funding_rows_by_symbol or {}).items()):
-            self._funding_rows_by_symbol[str(symbol)] = self._validate_funding(rows)
+            symbol = str(symbol)
+            if symbol not in self._rows_by_symbol:
+                raise ValueError("funding symbol missing from historical rows")
+            self._funding_rows_by_symbol[symbol] = self._validate_funding(rows)
 
         for symbol in self._rows_by_symbol:
             self._funding_rows_by_symbol.setdefault(symbol, tuple())
