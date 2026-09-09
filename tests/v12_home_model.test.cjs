@@ -24,3 +24,9 @@ test('provided regional snapshot is preserved with source timing context',()=>{
   assert.equal(h.regions[0].bias,'BULLISH');
   assert.equal(h.regions[0].asOf,1000);
 });
+
+test('provided regional snapshot with unavailable directional bias stays unavailable',()=>{
+  const h=H.buildHomeModel({asOf:1200,regions:{US:{region:'US',bias:'UNAVAILABLE',score:null,confidence:0,asOf:1000,evidence:[],contradictions:[],researchOnly:true}}});
+  assert.equal(h.regions[0].status,'UNAVAILABLE');
+  assert.equal(h.regions[0].bias,'UNAVAILABLE');
+});
