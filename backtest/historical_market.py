@@ -49,7 +49,7 @@ class HistoricalDataset:
         retrieved_at_ms: int,
         source_family: str = DEFAULT_SOURCE_FAMILY,
     ):
-        self.exchange_info = deepcopy(exchange_info)
+        self._exchange_info = deepcopy(exchange_info)
         self.retrieved_at_ms = int(retrieved_at_ms)
         self.source_family = str(source_family)
         self._rows_by_symbol: dict[str, dict[str, tuple[tuple, ...]]] = {}
@@ -70,6 +70,10 @@ class HistoricalDataset:
 
         for symbol in self._rows_by_symbol:
             self._funding_rows_by_symbol.setdefault(symbol, tuple())
+
+    @property
+    def exchange_info(self) -> dict:
+        return deepcopy(self._exchange_info)
 
     @staticmethod
     def _validate_rows(symbol: str, interval: str, rows) -> tuple[tuple, ...]:
@@ -122,7 +126,7 @@ class HistoricalDataset:
         return self._rows_by_symbol.get(symbol, {}).get(interval, tuple())
 
     def funding_rows(self, symbol: str) -> tuple[dict, ...]:
-        return self._funding_rows_by_symbol.get(symbol, tuple())
+        return tuple(deepcopy(row) for row in self._funding_rows_by_symbol.get(symbol, tuple()))
 
     def manifest(self) -> dict:
         datasets: dict[str, dict] = {}
@@ -153,7 +157,7 @@ class HistoricalDataset:
         return {
             "source_family": self.source_family,
             "retrieved_at_ms": self.retrieved_at_ms,
-            "exchange_info_sha256": _sha256(self.exchange_info),
+            "exchange_info_sha256": _sha256(self._exchange_info),
             "datasets": datasets,
         }
 
@@ -267,7 +271,7 @@ class HistoricalMarketAdapter:
             else 0.5
         )
         return {
-            "exchange_info": deepcopy(self.dataset.exchange_info),
+            "exchange_info": self.dataset.exchange_info,
             "tickers": tickers,
             "klines": klines,
             "steps": steps,
