@@ -41,7 +41,12 @@
       ['[data-research-content]','opportunitiesHtml'],
       ['[data-global-content]','regionsHtml'],
       ['[data-market-content]','opportunitiesHtml'],
-      ['[data-research-early]','earlyTrendHtml']
+      ['[data-research-early]','earlyTrendHtml'],
+      ['[data-positions-content]','positionsHtml'],
+      ['[data-trading-results]','tradingResultsHtml'],
+      ['[data-calendar-content]','calendarHtml'],
+      ['[data-news-content]','newsHtml'],
+      ['[data-home-content="today-focus"]','todayFocusHtml']
     ];
     for(const [selector,field] of optional){
       const node=doc.querySelector(selector);
