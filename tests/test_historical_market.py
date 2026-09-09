@@ -128,3 +128,55 @@ def test_funding_visibility_is_bounded_by_historical_clock():
 
     assert len(snapshot["realized_funding"]["ETHUSDT"]) == 1
     assert snapshot["realized_funding"]["ETHUSDT"][0]["fundingTime"] == HOUR_MS
+
+
+def test_dataset_views_cannot_mutate_manifest_or_internal_funding():
+    info = exchange_info("ETHUSDT")
+    funding = {"ETHUSDT": [{"fundingTime": HOUR_MS, "fundingRate": "0.0001", "markPrice": "100"}]}
+    data = HistoricalDataset(
+        exchange_info=info,
+        rows_by_symbol={"ETHUSDT": {"1h": [row(0, HOUR_MS)], "4h": [], "1d": []}},
+        funding_rows_by_symbol=funding,
+        retrieved_at_ms=123,
+    )
+    before = data.manifest()
+
+    info["symbols"][0]["status"] = "MUTATED_CALLER_INPUT"
+    funding["ETHUSDT"][0]["fundingRate"] = "9"
+    info_view = data.exchange_info
+    info_view["symbols"][0]["status"] = "MUTATED_VIEW"
+    funding_view = data.funding_rows("ETHUSDT")
+    funding_view[0]["fundingRate"] = "8"
+
+    assert data.manifest() == before
+    assert data.exchange_info["symbols"][0]["status"] == "TRADING"
+    assert data.funding_rows("ETHUSDT")[0]["fundingRate"] == "0.0001"
+
+
+def test_manifest_explicitly_surfaces_native_interval_gaps():
+    data = dataset({
+        "ETHUSDT": {
+            "1h": [row(0, HOUR_MS), row(2 * HOUR_MS, 3 * HOUR_MS)],
+            "4h": [row(0, 4 * HOUR_MS), row(8 * HOUR_MS, 12 * HOUR_MS)],
+            "1d": [],
+        }
+    })
+    manifest = data.manifest()["datasets"]["ETHUSDT"]
+
+    assert manifest["1h"]["gap_count"] == 1
+    assert manifest["1h"]["missing_bar_count"] == 1
+    assert manifest["1h"]["gaps"][0]["expected_delta_ms"] == HOUR_MS
+    assert manifest["1h"]["gaps"][0]["actual_delta_ms"] == 2 * HOUR_MS
+    assert manifest["4h"]["gap_count"] == 1
+    assert manifest["4h"]["missing_bar_count"] == 1
+    assert manifest["1d"]["gap_count"] == 0
+
+
+def test_funding_for_unknown_symbol_is_rejected():
+    with pytest.raises(ValueError, match="funding symbol missing from historical rows"):
+        HistoricalDataset(
+            exchange_info=exchange_info("ETHUSDT"),
+            rows_by_symbol={"ETHUSDT": {"1h": [], "4h": [], "1d": []}},
+            funding_rows_by_symbol={"BTCUSDT": [{"fundingTime": HOUR_MS, "fundingRate": "0.0001"}]},
+            retrieved_at_ms=123,
+        )
