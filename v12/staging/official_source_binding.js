@@ -63,6 +63,27 @@ function twseDailyQuote({loader,symbol}={}){
   });
 }
 
+function twseInstitutional({loader,symbol,tradeDate}={}){
+  if(typeof symbol!=='string'||!symbol.trim())throw Error('SYMBOL_REQUIRED');
+  if(typeof tradeDate!=='string'||!/^\d{8}$/.test(tradeDate))throw Error('TRADE_DATE_REQUIRED');
+  const requested=symbol.trim();
+  return Object.freeze({
+    async load(){
+      const envelope=await loadExpected(loader,'twse-t86');
+      if(envelope.status==='UNAVAILABLE')return envelope;
+      const payload=envelope.data;
+      if(!payload||!Array.isArray(payload.fields)||!Array.isArray(payload.data))throw Error('TWSE_T86_PAYLOAD_REQUIRED');
+      const codeIndex=payload.fields.indexOf('證券代號');
+      if(codeIndex<0)throw Error('SCHEMA_MISMATCH:證券代號');
+      const rawRow=payload.data.find(row=>Array.isArray(row)&&String(row[codeIndex]??'').trim()===requested);
+      if(!rawRow)return unavailable('twse-t86','ENTITY_NOT_FOUND');
+      const normalized=TWSE.normalizeInstitutional({fields:payload.fields,data:[rawRow]},{tradeDate,receivedAt:envelope.receivedAt});
+      if(normalized.length!==1)throw Error('TWSE_T86_ENTITY_INVALID');
+      return available('twse-t86',envelope.receivedAt,normalized[0]);
+    }
+  });
+}
+
 function secCompanyFact({loader,instrument,taxonomy,concept,unit}={}){
   return Object.freeze({
     async load(){
@@ -97,7 +118,7 @@ function ecbSeries({loader,definition}={}){
 }
 
 function createOfficialSourceBindings(){
-  return Object.freeze({twseDailyQuote,secCompanyFact,blsSeries,ecbSeries});
+  return Object.freeze({twseDailyQuote,twseInstitutional,secCompanyFact,blsSeries,ecbSeries});
 }
 
 module.exports=Object.freeze({createOfficialSourceBindings});
