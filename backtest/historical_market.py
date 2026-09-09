@@ -212,6 +212,12 @@ class HistoricalMarketAdapter:
             if ticker is not None:
                 tickers[symbol] = ticker
                 marks[symbol] = float(ticker["lastPrice"])
+            # At and after a native 1H boundary, the current candle's open is
+            # already observable even though its close/high/low are not. Use
+            # that open only for execution/position marks; signal/ticker
+            # context above remains based exclusively on fully closed bars.
+            if symbol in hour_open_prices:
+                marks[symbol] = float(hour_open_prices[symbol])
             steps[symbol] = _step(symbol_info.get(symbol, {}))
 
             funding_visible = [row for row in self.funding_rows.get(symbol, []) if int(row["fundingTime"]) <= now_ms]
