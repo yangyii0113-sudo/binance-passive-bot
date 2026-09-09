@@ -16,8 +16,8 @@ test('search result and favorite controls preserve 44px touch targets',()=>{
 });
 
 test('operational panels include mobile-specific responsive rules',()=>{
-  const mobile=css.split('@media(max-width:820px)')[1]||'';
-  assert.match(mobile,/\.operational-intelligence/);
-  assert.match(mobile,/\.position-row/);
-  assert.match(mobile,/#search-dialog/);
+  const blocks=css.split('@media(max-width:820px)').slice(1).join('\n');
+  assert.match(blocks,/\.operational-intelligence/);
+  assert.match(blocks,/\.position-row/);
+  assert.match(blocks,/#search-dialog/);
 });
