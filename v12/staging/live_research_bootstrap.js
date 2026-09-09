@@ -20,6 +20,7 @@ const TW_POLICY=EvidencePolicy.freezeEvidencePolicy({
 });
 
 function finite(value){return typeof value==='number'&&Number.isFinite(value)}
+function object(value){return value&&typeof value==='object'&&!Array.isArray(value)}
 
 function taipeiTradeDate(nowMs){
   if(!finite(nowMs)||nowMs<0)throw Error('NOW_INVALID');
@@ -124,11 +125,79 @@ function buildBootstrapInput(nowMs){
   });
 }
 
-function createLiveResearchBootstrap({fetchImpl=globalThis.fetch,clock=Date.now,lineageStore,publishHome}={}){
+function validateExecutionBridge(value){
+  if(value===undefined||value===null)return null;
+  if(!object(value))throw Error('EXECUTION_READ_BRIDGE_INVALID');
+  for(const method of ['loadRuntime','loadCalendar','loadNews']){
+    if(typeof value[method]!=='function')throw Error('EXECUTION_READ_BRIDGE_INVALID');
+  }
+  return value;
+}
+
+function unavailable(reason){
+  return Object.freeze({status:'UNAVAILABLE',data:null,reason,researchOnly:true,executionWrite:false});
+}
+
+async function safeExternalRead(fn,label){
+  try{
+    const result=await fn();
+    if(!object(result)||result.researchOnly!==true||result.executionWrite!==false)return unavailable(label+'_READ_INVALID');
+    return result;
+  }catch(_error){return unavailable(label+'_READ_FAILED')}
+}
+
+function parseTime(value){
+  if(finite(value)&&value>=0)return value;
+  if(typeof value!=='string'||!value)return null;
+  const parsed=Date.parse(value);
+  return finite(parsed)&&parsed>=0?parsed:null;
+}
+
+function normalizeCalendar(result){
+  if(result?.status!=='AVAILABLE'||!object(result.data)||!Array.isArray(result.data.events))return [];
+  return result.data.events.map((row,index)=>{
+    if(!object(row)||typeof row.title!=='string'||!row.title)return null;
+    const asOf=parseTime(row.time);
+    if(asOf===null)return null;
+    return Object.freeze({
+      kind:'CALENDAR',
+      id:`calendar:${asOf}:${index}`,
+      title:row.title,
+      source:typeof row.source==='string'&&row.source?row.source:(result.data.source||'CALENDAR'),
+      asOf,
+      impact:typeof row.impact==='string'?row.impact:'UNAVAILABLE',
+      status:typeof row.status==='string'?row.status:result.data.status,
+      description:typeof row.description==='string'?row.description:''
+    });
+  }).filter(Boolean);
+}
+
+function normalizeNews(result){
+  if(result?.status!=='AVAILABLE'||!object(result.data)||!Array.isArray(result.data.items))return [];
+  return result.data.items.map((row,index)=>{
+    if(!object(row)||typeof row.title!=='string'||!row.title)return null;
+    const asOf=parseTime(row.published_at)??parseTime(result.data.fetched_at);
+    if(asOf===null)return null;
+    return Object.freeze({
+      kind:'NEWS',
+      id:`news:${asOf}:${index}`,
+      title:row.title,
+      source:typeof row.source==='string'&&row.source?row.source:'NEWS',
+      asOf,
+      impact:typeof row.impact==='string'?row.impact:'UNAVAILABLE',
+      summary:typeof row.summary==='string'?row.summary:'',
+      tags:Object.freeze(Array.isArray(row.tags)?row.tags.filter(x=>typeof x==='string'):[]),
+      assets:Object.freeze(Array.isArray(row.assets)?row.assets.filter(x=>typeof x==='string'):[])
+    });
+  }).filter(Boolean);
+}
+
+function createLiveResearchBootstrap({fetchImpl=globalThis.fetch,clock=Date.now,lineageStore,publishHome,executionBridge}={}){
   if(typeof fetchImpl!=='function')throw Error('FETCH_REQUIRED');
   if(typeof clock!=='function')throw Error('CLOCK_REQUIRED');
   if(!lineageStore||typeof lineageStore!=='object')throw Error('LINEAGE_STORE_REQUIRED');
   if(typeof publishHome!=='function')throw Error('PUBLISH_HOME_REQUIRED');
+  const external=validateExecutionBridge(executionBridge);
 
   const pipeline=createStagingSourcePipeline({
     fetchImpl,
@@ -141,7 +210,16 @@ function createLiveResearchBootstrap({fetchImpl=globalThis.fetch,clock=Date.now,
   async function runOnce(){
     const nowMs=Number(clock());
     if(!finite(nowMs)||nowMs<0)throw Error('NOW_INVALID');
-    return pipeline.run(buildBootstrapInput(nowMs));
+    const base=buildBootstrapInput(nowMs);
+    if(!external)return pipeline.run(base);
+
+    const [runtimeRead,calendarRead,newsRead]=await Promise.all([
+      safeExternalRead(()=>external.loadRuntime(),'RUNTIME'),
+      safeExternalRead(()=>external.loadCalendar(),'CALENDAR'),
+      safeExternalRead(()=>external.loadNews(),'NEWS')
+    ]);
+    const events=Object.freeze([...normalizeCalendar(calendarRead),...normalizeNews(newsRead)]);
+    return pipeline.run({...base,crypto:async()=>runtimeRead,events});
   }
 
   return Object.freeze({runOnce});
