@@ -6,6 +6,7 @@
   'use strict';
 
   const MARKET_IDS = Object.freeze(['ALL','CRYPTO','US','TW']);
+  const DATA_MARKET_IDS = Object.freeze(['CRYPTO','US','TW','KR','JP','CN_HK','EU']);
   const CONFIDENCE_STATES = Object.freeze(['LIVE','DELAYED','SNAPSHOT','STALE','UNAVAILABLE']);
   const DATA_STATUSES = CONFIDENCE_STATES;
   const CONTEXT_SCOPES = Object.freeze(['GLOBAL','US','TW','CN_HK','JP','KR','EU','CRYPTO']);
@@ -70,7 +71,7 @@
     if(!object(value)) return fail('OBJECT_REQUIRED');
     if(value.schemaVersion!=='foxyya-observation/1') errors.push('SCHEMA_VERSION_INVALID');
     if(!text(value.instrumentId)) errors.push('INSTRUMENT_ID_REQUIRED');
-    if(!MARKET_IDS.includes(value.market)||value.market==='ALL') errors.push('MARKET_INVALID');
+    if(!DATA_MARKET_IDS.includes(value.market)) errors.push('MARKET_INVALID');
     if(!text(value.field)) errors.push('FIELD_REQUIRED');
     if(!text(value.unit)) errors.push('UNIT_REQUIRED');
     if(!text(value.currency)) errors.push('CURRENCY_REQUIRED');
@@ -116,6 +117,7 @@
 
   return Object.freeze({
     MARKET_IDS,
+    DATA_MARKET_IDS,
     CONFIDENCE_STATES,
     DATA_STATUSES,
     CONTEXT_SCOPES,
