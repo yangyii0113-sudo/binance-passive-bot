@@ -1,0 +1,2 @@
+const test=require('node:test');const assert=require('node:assert/strict');const P=require('../v12/providers/index.js');
+test('provider foundation exposes CFTC as weekly read-only confirmation adapter',()=>{assert.equal(P.adapters.cftc.descriptor.id,'cftc-cot-official');assert.equal(P.adapters.cftc.descriptor.serverOnly,true);assert.equal(P.adapters.cftc.descriptor.executionWrite,false);assert.equal(P.adapters.cftc.LATENCY_CLASS,'WEEKLY');assert.equal(P.adapters.cftc.EVIDENCE_ROLE,'CONFIRMATION');});
