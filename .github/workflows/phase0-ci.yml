@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - design/foxyya-backtest-source-normalization
+      - main
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
