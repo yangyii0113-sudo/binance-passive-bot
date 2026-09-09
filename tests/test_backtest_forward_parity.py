@@ -106,3 +106,53 @@ def test_identical_history_produces_identical_event_sequence(tmp_path: Path):
     finally:
         first.close()
         second.close()
+
+
+def test_idle_hour_cycle_skips_pending_position_work_and_full_chain_verify(tmp_path: Path):
+    from backtest.replay_engine import HistoricalReplayEngine
+
+    end_ms = 100 * 24 * HOUR
+    engine = HistoricalReplayEngine(_adapter(end_ms), tmp_path / "idle.sqlite", initial_nav=1000)
+    try:
+        def forbidden(*_args, **_kwargs):
+            raise AssertionError("idle replay cycle invoked unnecessary state work")
+
+        engine.ledger.verify = forbidden
+        engine.runner.execute_open = forbidden
+        engine.runner.apply_funding = forbidden
+        engine.runner.manage_positions = forbidden
+        engine.runner.revalidate = forbidden
+        engine.runner.scan_if_new_close = lambda _snapshot, now_ms: None
+
+        result = engine.cycle_at(end_ms)
+        assert result["fills"] == []
+        assert result["funding"] == []
+        assert result["managed"] == []
+        assert result["revalidated"] == 0
+    finally:
+        engine.close()
+
+
+def test_midpoint_revalidation_only_runs_when_pending_and_does_not_scan(tmp_path: Path):
+    from backtest.replay_engine import HistoricalReplayEngine
+
+    end_ms = 100 * 24 * HOUR
+    engine = HistoricalReplayEngine(_adapter(end_ms), tmp_path / "midpoint.sqlite", initial_nav=1000)
+    try:
+        engine.ledger.append({
+            "event_id": "pending-index-only",
+            "kind": "INTENT_CREATED",
+            "intent_id": "i1",
+            "time_ms": end_ms,
+        })
+
+        calls = []
+        engine.runner.revalidate = lambda snapshot, now_ms: calls.append((snapshot["built_at_ms"], now_ms)) or [{"kind": "INTENT_REVALIDATED"}]
+        engine.runner.scan_if_new_close = lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("midpoint must not scan"))
+        engine.runner.manage_positions = lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("midpoint must not manage positions"))
+
+        result = engine.revalidate_at(end_ms + 30 * 60_000)
+        assert result["revalidated"] == 1
+        assert calls == [(end_ms + 30 * 60_000, end_ms + 30 * 60_000)]
+    finally:
+        engine.close()
