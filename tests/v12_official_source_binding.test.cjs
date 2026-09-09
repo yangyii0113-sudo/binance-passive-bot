@@ -36,6 +36,41 @@ test('TWSE quote binding returns explicit unavailable when symbol is absent rath
   assert.equal(result.data,null);
 });
 
+test('TWSE T86 binding selects requested symbol and preserves separate institutional flow observations',async()=>{
+  const payload={
+    fields:['證券代號','證券名稱','外陸資買賣超股數(不含外資自營商)','投信買賣超股數','自營商買賣超股數','三大法人買賣超股數'],
+    data:[
+      ['2330','台積電','12,000,000','2,000,000','-500,000','13,500,000'],
+      ['2317','鴻海','1,000,000','-250,000','100,000','850,000']
+    ]
+  };
+  const result=await bindings().twseInstitutional({loader:loader(available('twse-t86',payload)),symbol:'2330',tradeDate:'20260909'}).load();
+  assert.equal(result.status,'AVAILABLE');
+  assert.equal(result.sourceId,'twse-t86');
+  assert.equal(result.receivedAt,receivedAt);
+  assert.equal(result.data.instrument.instrumentId,'TWSE:2330');
+  assert.equal(result.data.tradeDate,'2026-09-09');
+  const values=Object.fromEntries(result.data.observations.map(x=>[x.field,x.value]));
+  assert.equal(values['flow.foreign_net'],12000000);
+  assert.equal(values['flow.investment_trust_net'],2000000);
+  assert.equal(values['flow.dealer_net'],-500000);
+  assert.equal(values['flow.total_net'],13500000);
+  assert.ok(result.data.observations.every(x=>x.source==='TWSE:T86'));
+  assert.equal(result.researchOnly,true);
+  assert.equal(result.executionWrite,false);
+});
+
+test('TWSE T86 binding is explicitly unavailable when requested symbol is absent',async()=>{
+  const payload={
+    fields:['證券代號','證券名稱','外陸資買賣超股數(不含外資自營商)','投信買賣超股數','自營商買賣超股數'],
+    data:[['2317','鴻海','1','2','3']]
+  };
+  const result=await bindings().twseInstitutional({loader:loader(available('twse-t86',payload)),symbol:'2330',tradeDate:'20260909'}).load();
+  assert.equal(result.status,'UNAVAILABLE');
+  assert.equal(result.reason,'ENTITY_NOT_FOUND');
+  assert.equal(result.data,null);
+});
+
 test('SEC company fact binding keeps actual filing data research-only and preserves adapter semantics',async()=>{
   const payload={cik:'1045810',facts:{'us-gaap':{RevenueFromContractWithCustomerExcludingAssessedTax:{label:'Revenue',description:'Revenue',units:{USD:[{val:30000000000,accn:'0001',form:'10-Q',filed:'2026-08-20',start:'2026-05-01',end:'2026-07-31',fy:2026,fp:'Q2'}]}}}}};
   const result=await bindings().secCompanyFact({
@@ -75,6 +110,6 @@ test('source-id mismatch and writable transport are validation failures, not dow
 
 test('binding factory surface is fixed and contains no execution methods',()=>{
   const api=bindings();
-  assert.deepEqual(Object.keys(api).sort(),['blsSeries','ecbSeries','secCompanyFact','twseDailyQuote']);
+  assert.deepEqual(Object.keys(api).sort(),['blsSeries','ecbSeries','secCompanyFact','twseDailyQuote','twseInstitutional']);
   assert.doesNotMatch(JSON.stringify(Object.keys(api)).toLowerCase(),/order|trade|execute|fill/);
 });
