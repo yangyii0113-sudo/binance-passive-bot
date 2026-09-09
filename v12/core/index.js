@@ -2,6 +2,7 @@
 module.exports = Object.freeze({
   market: require('./market_core.js'),
   clock: require('./market_clock.js'),
+  CorporateActions: require('./corporate_actions.js'),
   contracts: require('../data/contracts.js'),
   quality: require('../data/quality_gate.js'),
   normalizer: require('../data/normalizer.js'),
