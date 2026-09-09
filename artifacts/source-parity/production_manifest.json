@@ -1,0 +1,99 @@
+{
+  "archive_sha256": "7bb528aa57add170cc4909f0d4fe6671c27248469bb484a6b79e1c59ff13a3f3",
+  "member_sha256": {
+    "foxyya_runtime_backend/FOXYYA_V2_CONFIG.json": "a0fb664ebbdc744491bf005d98ab4f33fb17c3c26a9274954c053b801e931e98",
+    "foxyya_runtime_backend/intel_feeds.py": "420a887fba711357fc30f27dc5147013c838d6ceb9ad162345ec6debcac9836a",
+    "foxyya_runtime_backend/run_forward_paper.py": "e29e1df84232605bdd39f70c5007b9e7415c922c5d8d8d881960a394e16e88d9",
+    "foxyya_runtime_backend/service.py": "04192a08b14e3847eed747ad7316066cc3761a90eb8c3f1cce22d10070799caf",
+    "foxyya_runtime_backend/src/foxyya/__init__.py": "23116257e30bddaa75de1a383b1dbc35fcc44ae314b3896e9f23206b92d12998",
+    "foxyya_runtime_backend/src/foxyya/acceptance.py": "7dfa4761b7713c4e925b4839f523b279b442bdef40f1bd7b66ba134c7c5950b6",
+    "foxyya_runtime_backend/src/foxyya/config.py": "4405ef211ae8f300ab3c28f247e5670a1e5b964135717d2eae74c951b28e1792",
+    "foxyya_runtime_backend/src/foxyya/execution.py": "8226265e282618281e568936ab2a336c66c0b9e6f1c6e5ff374b260810790b69",
+    "foxyya_runtime_backend/src/foxyya/features.py": "6b2332ddc02c91adb77ae89ee09ba028622db498ef61e02fb13f4d313f192657",
+    "foxyya_runtime_backend/src/foxyya/ledger.py": "665d9ff5f12bd16ee7be802d93a2f5872d79431dc0b25ace1186b6e1cfcd5eaa",
+    "foxyya_runtime_backend/src/foxyya/live.py": "cb16c04d2e156c3069d043148292d6d05c79f6575aa005038086d14af7f520c2",
+    "foxyya_runtime_backend/src/foxyya/market.py": "49825c17d868ec1b9c880fb541c7e443b44f40a1c79d35d59ead173bab9ce99c",
+    "foxyya_runtime_backend/src/foxyya/model.py": "1836bbe0b7384767e750a34ec4ba711933f6370060548d794de31304beb37625",
+    "foxyya_runtime_backend/src/foxyya/portfolio.py": "af4a91af3c12cee58db1b69bb6d23b5d308d0851ac8fbb1e215807e460435ef5",
+    "foxyya_runtime_backend/src/foxyya/risk.py": "beb5955e94afa7358b35630ecec9b945ae0debe7c6a777ce3e5fbd3e9df346dd",
+    "foxyya_runtime_backend/src/foxyya/router.py": "c2f536c0c217895bb2ce554b77d8911a28c41902b82873061a5d8ee8997dfe3a",
+    "foxyya_runtime_backend/src/foxyya/runner.py": "849aabad297de4a952e860680309e325ba20668daabd5ec2f51f8069f6718abc",
+    "foxyya_runtime_backend/src/foxyya/scanner.py": "da5848d0903c372c8777a50577736468f9191704d56a292f338cd31754796821",
+    "foxyya_runtime_backend/src/foxyya/security.py": "6b414a356e308d27654b85c0d5170c5b7b4e62333d6c2df3e84caa65a26839da",
+    "foxyya_runtime_backend/src/foxyya/setups.py": "631efb605a8c7171f6d2b2d4df2d1ce55473fbf65f0888d75f947a5f06d34652",
+    "foxyya_runtime_backend/src/foxyya/universe.py": "0d4a7565d29302e47a3929d5db2bc6012243ee127c47e87eb8634438e2bc8a10"
+  },
+  "member_size": {
+    "foxyya_runtime_backend/FOXYYA_V2_CONFIG.json": 1075,
+    "foxyya_runtime_backend/intel_feeds.py": 7110,
+    "foxyya_runtime_backend/run_forward_paper.py": 3214,
+    "foxyya_runtime_backend/service.py": 8614,
+    "foxyya_runtime_backend/src/foxyya/__init__.py": 108,
+    "foxyya_runtime_backend/src/foxyya/acceptance.py": 4020,
+    "foxyya_runtime_backend/src/foxyya/config.py": 571,
+    "foxyya_runtime_backend/src/foxyya/execution.py": 8784,
+    "foxyya_runtime_backend/src/foxyya/features.py": 3410,
+    "foxyya_runtime_backend/src/foxyya/ledger.py": 2678,
+    "foxyya_runtime_backend/src/foxyya/live.py": 4660,
+    "foxyya_runtime_backend/src/foxyya/market.py": 2061,
+    "foxyya_runtime_backend/src/foxyya/model.py": 1455,
+    "foxyya_runtime_backend/src/foxyya/portfolio.py": 7613,
+    "foxyya_runtime_backend/src/foxyya/risk.py": 5159,
+    "foxyya_runtime_backend/src/foxyya/router.py": 694,
+    "foxyya_runtime_backend/src/foxyya/runner.py": 7668,
+    "foxyya_runtime_backend/src/foxyya/scanner.py": 5129,
+    "foxyya_runtime_backend/src/foxyya/security.py": 861,
+    "foxyya_runtime_backend/src/foxyya/setups.py": 6972,
+    "foxyya_runtime_backend/src/foxyya/universe.py": 2212
+  },
+  "members": [
+    "foxyya_runtime_backend/FOXYYA_V2_CONFIG.json",
+    "foxyya_runtime_backend/src/foxyya/universe.py",
+    "foxyya_runtime_backend/src/foxyya/security.py",
+    "foxyya_runtime_backend/src/foxyya/setups.py",
+    "foxyya_runtime_backend/src/foxyya/ledger.py",
+    "foxyya_runtime_backend/src/foxyya/runner.py",
+    "foxyya_runtime_backend/src/foxyya/scanner.py",
+    "foxyya_runtime_backend/src/foxyya/__init__.py",
+    "foxyya_runtime_backend/src/foxyya/acceptance.py",
+    "foxyya_runtime_backend/src/foxyya/risk.py",
+    "foxyya_runtime_backend/src/foxyya/router.py",
+    "foxyya_runtime_backend/src/foxyya/live.py",
+    "foxyya_runtime_backend/src/foxyya/market.py",
+    "foxyya_runtime_backend/src/foxyya/model.py",
+    "foxyya_runtime_backend/src/foxyya/execution.py",
+    "foxyya_runtime_backend/src/foxyya/features.py",
+    "foxyya_runtime_backend/src/foxyya/portfolio.py",
+    "foxyya_runtime_backend/src/foxyya/config.py",
+    "foxyya_runtime_backend/intel_feeds.py",
+    "foxyya_runtime_backend/service.py",
+    "foxyya_runtime_backend/run_forward_paper.py"
+  ],
+  "parts": [
+    {
+      "name": "part00",
+      "sha256": "5f1dea8e1dec3e4c94edae469e877fb17e304618edea1a37ac1930ccba1f8d77",
+      "size": 10000
+    },
+    {
+      "name": "part01",
+      "sha256": "ae04a49fabdc043e5eab5cf4c9ac673a30bc526d769b08e97335da1ef58e10c7",
+      "size": 10000
+    },
+    {
+      "name": "part02",
+      "sha256": "1b1e3a3383d72cddaef70dadc4f6e4de391778c150956458c78bb862e1a05364",
+      "size": 10000
+    },
+    {
+      "name": "part03",
+      "sha256": "ae6368dc61dbe8b5dbd9f8f7cb53639ed7390737743fd4256c5c28ebb3ec3934",
+      "size": 10000
+    },
+    {
+      "name": "part04",
+      "sha256": "be6f56cce5ab7359643a3fba72cb3cedcfbfed79b768b31e272e31c81c3d3ef1",
+      "size": 4280
+    }
+  ]
+}
