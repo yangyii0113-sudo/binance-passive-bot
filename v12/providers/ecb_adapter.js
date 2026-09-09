@@ -29,9 +29,61 @@ function validateDefinition(definition){
   return definition;
 }
 
-function rowsFrom(payload){
+function sdmxCode(dimension,index,label){
+  if(!Number.isInteger(index)||index<0)throw Error(label+'_INDEX_INVALID');
+  const value=dimension?.values?.[index];
+  if(!value||typeof value.id!=='string'||!value.id)throw Error(label+'_INDEX_INVALID');
+  return value.id;
+}
+
+function rowsFromSdmx(payload,definition){
+  const seriesDimensions=payload?.structure?.dimensions?.series;
+  const observationDimensions=payload?.structure?.dimensions?.observation;
+  const datasets=payload?.dataSets;
+  if(!Array.isArray(seriesDimensions)||!seriesDimensions.length||!Array.isArray(observationDimensions)||!Array.isArray(datasets))throw Error('ECB_SDMX_STRUCTURE_INVALID');
+  const timePosition=observationDimensions.findIndex(item=>item?.id==='TIME_PERIOD');
+  if(timePosition<0)throw Error('ECB_SDMX_TIME_PERIOD_REQUIRED');
+
+  const requested=definition.seriesKey.split('.');
+  const expected=requested.length===seriesDimensions.length+1?requested.slice(1):requested;
+  if(expected.length!==seriesDimensions.length)throw Error('ECB_SERIES_IDENTITY_MISMATCH');
+
+  const allSeries=[];
+  for(const dataset of datasets){
+    if(!dataset||typeof dataset!=='object'||Array.isArray(dataset)||!dataset.series||typeof dataset.series!=='object'||Array.isArray(dataset.series))continue;
+    for(const [key,series] of Object.entries(dataset.series)){
+      const indices=key.split(':').map(Number);
+      if(indices.length!==seriesDimensions.length)throw Error('ECB_SDMX_SERIES_KEY_INVALID');
+      const identity=indices.map((index,i)=>sdmxCode(seriesDimensions[i],index,'ECB_SDMX_SERIES'));
+      allSeries.push({identity,series});
+    }
+  }
+  if(!allSeries.length)return [];
+  const matches=allSeries.filter(item=>item.identity.every((code,i)=>code===expected[i]));
+  if(matches.length!==1)throw Error('ECB_SERIES_IDENTITY_MISMATCH');
+
+  const statusAttribute=(payload?.structure?.attributes?.observation||[]).findIndex(item=>item?.id==='OBS_STATUS');
+  const statusDefinition=statusAttribute>=0?payload.structure.attributes.observation[statusAttribute]:null;
+  const rawObservations=matches[0].series?.observations;
+  if(!rawObservations||typeof rawObservations!=='object'||Array.isArray(rawObservations))return [];
+  const decoded=[];
+  for(const [key,raw] of Object.entries(rawObservations)){
+    if(!Array.isArray(raw))throw Error('ECB_SDMX_OBSERVATION_INVALID');
+    const indices=key.split(':').map(Number);
+    if(indices.length!==observationDimensions.length)throw Error('ECB_SDMX_OBSERVATION_KEY_INVALID');
+    const referencePeriod=sdmxCode(observationDimensions[timePosition],indices[timePosition],'ECB_SDMX_TIME_PERIOD');
+    const statusIndex=statusAttribute>=0?raw[statusAttribute+1]:null;
+    const observationStatus=statusIndex===null||statusIndex===undefined?'':sdmxCode(statusDefinition,statusIndex,'ECB_SDMX_OBS_STATUS');
+    decoded.push({timeIndex:indices[timePosition],row:{TIME_PERIOD:referencePeriod,OBS_VALUE:raw[0],OBS_STATUS:observationStatus}});
+  }
+  decoded.sort((a,b)=>a.timeIndex-b.timeIndex);
+  return decoded.map(item=>item.row);
+}
+
+function rowsFrom(payload,definition){
   if(Array.isArray(payload))return payload;
   if(payload&&Array.isArray(payload.data))return payload.data;
+  if(payload&&Array.isArray(payload.dataSets)&&payload.structure)return rowsFromSdmx(payload,definition);
   throw Error('ECB_PAYLOAD_REQUIRED');
 }
 
@@ -39,7 +91,7 @@ function normalizeSeries(payload,{definition,receivedAt}={}){
   const def=validateDefinition(definition);
   if(typeof receivedAt!=='number'||!Number.isFinite(receivedAt)||receivedAt<0)throw Error('RECEIVED_AT_INVALID');
   const source=`ECB:${def.seriesKey}`;
-  const input=rowsFrom(payload);
+  const input=rowsFrom(payload,def);
   const rows=[];
   const observations=[];
   for(const raw of input){

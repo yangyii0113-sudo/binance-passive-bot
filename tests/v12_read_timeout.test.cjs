@@ -1,0 +1,3 @@
+'use strict';const test=require('node:test');const assert=require('node:assert/strict');
+const Home=require('../v12/staging/read_client.js');const Lineage=require('../v12/ui/lineage_evidence.js');
+for(const [name,make,argument] of [['Home',Home.createHomeReadClient,undefined],['Lineage',Lineage.createLineageReadClient,'out_'+'a'.repeat(64)]])test(name+' read times out even when transport never settles',{timeout:200},async()=>{let signal;const client=make({timeoutMs:10,fetchImpl:async(_url,options)=>{signal=options.signal;return new Promise(()=>{})}});await assert.rejects(client.load(argument),/READ_TIMEOUT/);assert.equal(signal.aborted,true)});

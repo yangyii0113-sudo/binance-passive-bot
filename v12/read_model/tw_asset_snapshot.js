@@ -122,6 +122,7 @@ function buildTWAssetResearchSnapshot(input={}){
     instrumentId,
     asOf:Math.max(earlyTrend.asOf,research.asOf),
     quote:input.currentQuote,
+    facts:Object.freeze([input.currentQuote,input.currentFlow,input.currentRevenue].flatMap(summary=>(summary?.observations||[]).map(obs=>Object.freeze({...obs,...(summary.reportPeriod?{reportPeriod:summary.reportPeriod}:{})})))) ,
     earlyTrend,
     research,
     sourceLineage:collectSources(summaries),

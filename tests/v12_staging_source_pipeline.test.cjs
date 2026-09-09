@@ -90,6 +90,49 @@ test('all unavailable regional sources stay unavailable instead of becoming neut
   assert.equal(usRegion.status,'UNAVAILABLE');
 });
 
+test('canonical-empty and all-unavailable HTTP 200 payloads fail closed with finite diagnostics',async()=>{
+  const table=fixtures();
+  table.set('https://data.sec.gov/api/xbrl/companyfacts/CIK0001045810.json',response({cik:'1045810',facts:{}}));
+  table.set('https://api.bls.gov/publicAPI/v2/timeseries/data/CUUR0000SA0',response({status:'REQUEST_SUCCEEDED',message:[],Results:{series:[{seriesID:'CUUR0000SA0',data:[{year:'2026',period:'M08',periodName:'August',latest:'true',value:'NA'}]}]}}));
+  table.set('https://data-api.ecb.europa.eu/service/data/ICP/M.U2.N.000000.4.ANR',response([]));
+  const {pipeline}=createPipeline({fetchImpl:async url=>table.get(url)});
+  const result=await pipeline.run(config());
+
+  assert.equal(result.orchestration.diagnostics.US[0].status,'UNAVAILABLE');
+  assert.equal(result.orchestration.diagnostics.US[0].reason,'CANONICAL_OBSERVATIONS_EMPTY');
+  assert.equal(result.orchestration.diagnostics.REGIONS.US.status,'UNAVAILABLE');
+  assert.equal(result.orchestration.diagnostics.REGIONS.EU.status,'UNAVAILABLE');
+  assert.equal(result.sources.TWSE[0].status,'AVAILABLE');
+
+  const reads=new Map(result.orchestration.published.providerDiagnostics.datasets.map(row=>[row.sourceId,row]));
+  assert.equal(reads.get('sec-edgar').status,'UNAVAILABLE');
+  assert.equal(reads.get('sec-edgar').reason,'CANONICAL_OBSERVATIONS_EMPTY');
+  assert.equal(reads.get('bls-public').status,'UNAVAILABLE');
+  assert.equal(reads.get('bls-public').reason,'CANONICAL_OBSERVATIONS_UNAVAILABLE');
+  assert.equal(reads.get('ecb-data').status,'UNAVAILABLE');
+  assert.equal(reads.get('ecb-data').reason,'CANONICAL_OBSERVATIONS_EMPTY');
+  for(const read of reads.values()){
+    assert.ok(Number.isFinite(read.receivedAt));
+    assert.ok(read.observedAt===null||Number.isFinite(read.observedAt));
+  }
+});
+
+test('one canonical-empty regional source does not discard a valid sibling',async()=>{
+  const table=fixtures();
+  table.set('https://api.bls.gov/publicAPI/v2/timeseries/data/CUUR0000SA0',response({status:'REQUEST_SUCCEEDED',message:[],Results:{series:[]}}));
+  const input=config();
+  input.usAssets=[];
+  input.regions={EU:{bls:input.regions.US.bls,ecb:input.regions.EU.ecb}};
+  const {pipeline}=createPipeline({fetchImpl:async url=>table.get(url)});
+  const result=await pipeline.run(input);
+
+  assert.equal(result.orchestration.diagnostics.REGIONS.EU.status,'AVAILABLE');
+  const reads=new Map(result.orchestration.published.providerDiagnostics.datasets.map(row=>[row.sourceId,row]));
+  assert.equal(reads.get('bls-public').status,'UNAVAILABLE');
+  assert.equal(reads.get('bls-public').reason,'CANONICAL_OBSERVATIONS_EMPTY');
+  assert.equal(reads.get('ecb-data').status,'AVAILABLE');
+});
+
 test('forbidden endpoint is rejected before fetch and does not publish a partial invalid run',async()=>{
   let calls=0;
   const {pipeline}=createPipeline({fetchImpl:async()=>{calls++;return response([])}});

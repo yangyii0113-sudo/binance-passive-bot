@@ -14,6 +14,8 @@ const STATIC_ROUTES=Object.freeze({
   '/v12-preview/home_view_model.js':Object.freeze({file:path.join(UI_DIR,'home_view_model.js'),type:'application/javascript; charset=utf-8'}),
   '/v12-preview/home_renderer.js':Object.freeze({file:path.join(UI_DIR,'home_renderer.js'),type:'application/javascript; charset=utf-8'}),
   '/v12-preview/home_dom.js':Object.freeze({file:path.join(UI_DIR,'home_dom.js'),type:'application/javascript; charset=utf-8'}),
+  '/v12-preview/product_renderer.js':Object.freeze({file:path.join(UI_DIR,'product_renderer.js'),type:'application/javascript; charset=utf-8'}),
+  '/v12-preview/lineage_evidence.js':Object.freeze({file:path.join(UI_DIR,'lineage_evidence.js'),type:'application/javascript; charset=utf-8'}),
   '/v12-preview/app.js':Object.freeze({file:path.join(UI_DIR,'app.js'),type:'application/javascript; charset=utf-8'}),
   '/staging/read_client.js':Object.freeze({file:path.join(__dirname,'read_client.js'),type:'application/javascript; charset=utf-8'})
 });

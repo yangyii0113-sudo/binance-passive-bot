@@ -100,6 +100,7 @@ function twseDailyQuote({loader,symbol}={}){
   if(typeof symbol!=='string'||!symbol.trim())throw Error('SYMBOL_REQUIRED');
   const requested=symbol.trim(),meta=META.twseDailyQuote;
   return Object.freeze({
+    lineageMeta:meta,
     async load(){
       const envelope=await loadExpected(loader,meta.sourceId);
       if(envelope.status==='UNAVAILABLE')return unavailable(meta.sourceId,envelope.reason,envelope,meta);
@@ -117,6 +118,7 @@ function twseInstitutional({loader,symbol,tradeDate}={}){
   if(typeof tradeDate!=='string'||!/^\d{8}$/.test(tradeDate))throw Error('TRADE_DATE_REQUIRED');
   const requested=symbol.trim(),meta=META.twseInstitutional;
   return Object.freeze({
+    lineageMeta:meta,
     async load(){
       const envelope=await loadExpected(loader,meta.sourceId);
       if(envelope.status==='UNAVAILABLE')return unavailable(meta.sourceId,envelope.reason,envelope,meta);
@@ -137,6 +139,7 @@ function twseMonthlyRevenue({loader,symbol}={}){
   if(typeof symbol!=='string'||!symbol.trim())throw Error('SYMBOL_REQUIRED');
   const requested=symbol.trim(),meta=META.twseMonthlyRevenue;
   return Object.freeze({
+    lineageMeta:meta,
     async load(){
       const envelope=await loadExpected(loader,meta.sourceId);
       if(envelope.status==='UNAVAILABLE')return unavailable(meta.sourceId,envelope.reason,envelope,meta);
@@ -153,6 +156,7 @@ function tpexDailyQuote({loader,symbol}={}){
   if(typeof symbol!=='string'||!symbol.trim())throw Error('SYMBOL_REQUIRED');
   const requested=symbol.trim(),meta=META.tpexDailyQuote;
   return Object.freeze({
+    lineageMeta:meta,
     async load(){
       const envelope=await loadExpected(loader,meta.sourceId);
       if(envelope.status==='UNAVAILABLE')return unavailable(meta.sourceId,envelope.reason,envelope,meta);
@@ -169,6 +173,7 @@ function tpexInstitutional({loader,symbol}={}){
   if(typeof symbol!=='string'||!symbol.trim())throw Error('SYMBOL_REQUIRED');
   const requested=symbol.trim(),meta=META.tpexInstitutional;
   return Object.freeze({
+    lineageMeta:meta,
     async load(){
       const envelope=await loadExpected(loader,meta.sourceId);
       if(envelope.status==='UNAVAILABLE')return unavailable(meta.sourceId,envelope.reason,envelope,meta);
@@ -185,6 +190,7 @@ function tpexMonthlyRevenue({loader,symbol}={}){
   if(typeof symbol!=='string'||!symbol.trim())throw Error('SYMBOL_REQUIRED');
   const requested=symbol.trim(),meta=META.tpexMonthlyRevenue;
   return Object.freeze({
+    lineageMeta:meta,
     async load(){
       const envelope=await loadExpected(loader,meta.sourceId);
       if(envelope.status==='UNAVAILABLE')return unavailable(meta.sourceId,envelope.reason,envelope,meta);
@@ -200,6 +206,7 @@ function tpexMonthlyRevenue({loader,symbol}={}){
 function secCompanyFact({loader,instrument,taxonomy,concept,unit}={}){
   const meta=META.secCompanyFact;
   return Object.freeze({
+    lineageMeta:meta,
     async load(){
       const envelope=await loadExpected(loader,meta.sourceId);
       if(envelope.status==='UNAVAILABLE')return unavailable(meta.sourceId,envelope.reason,envelope,meta);
@@ -212,6 +219,7 @@ function secCompanyFact({loader,instrument,taxonomy,concept,unit}={}){
 function blsSeries({loader,definitions}={}){
   const meta=META.blsSeries;
   return Object.freeze({
+    lineageMeta:meta,
     async load(){
       const envelope=await loadExpected(loader,meta.sourceId);
       if(envelope.status==='UNAVAILABLE')return unavailable(meta.sourceId,envelope.reason,envelope,meta);
@@ -224,6 +232,7 @@ function blsSeries({loader,definitions}={}){
 function ecbSeries({loader,definition}={}){
   const meta=ecbMeta(definition);
   return Object.freeze({
+    lineageMeta:meta,
     async load(){
       const envelope=await loadExpected(loader,meta.sourceId);
       if(envelope.status==='UNAVAILABLE')return unavailable(meta.sourceId,envelope.reason,envelope,meta);

@@ -1,5 +1,6 @@
 'use strict';
 
+const Facts=require('./product_facts.js');
 const Home=require('../ui/home_model.js');
 const Regional=require('../intelligence/regional_engine.js');
 
@@ -46,7 +47,7 @@ function regionSnapshots(regionEvidence,regionalContexts,asOf){
   for(const region of Home.REGIONS){
     if(Object.hasOwn(contextMap,region)){
       const context=assertRegionalReadOnly(region,contextMap[region]);
-      out[region]=withRegionStatus(context.regionalSnapshot,'AVAILABLE',context.lineageRef);
+      out[region]=Object.freeze({...withRegionStatus(context.regionalSnapshot,'AVAILABLE',context.lineageRef),facts:context.facts||Facts.latestFacts(context.observations)});
       continue;
     }
     const evidence=Array.isArray(evidenceMap[region])?evidenceMap[region]:[];
@@ -71,6 +72,9 @@ function equityOpportunity(asset){
   return Object.freeze({
     market:asset.market,
     instrumentId:asset.instrumentId,
+    asOf:asset.asOf,
+    facts:Facts.equityFacts(asset),
+    dataGaps:asset.dataGaps||{},
     earlyTrend:asset.earlyTrend||null,
     research:asset.research||null,
     sourceLineage:Object.freeze(Array.isArray(asset.sourceLineage)?[...asset.sourceLineage]:[]),
@@ -114,6 +118,7 @@ function buildHomeReadModel(input={}){
     schemaVersion:'foxyya-home-read-model/1',
     asOf:input.asOf,
     home,
+    providerDiagnostics:input.providerDiagnostics||null,
     researchOnly:true,
     executionWrite:false
   });

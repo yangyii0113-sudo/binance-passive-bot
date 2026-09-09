@@ -1,6 +1,7 @@
 'use strict';
 
 const EvidencePolicy=require('../early_trend/evidence_policy.js');
+const {createProviderRuntimeGovernance}=require('../providers/runtime_governance.js');
 const {createStagingSourcePipeline}=require('./source_pipeline.js');
 
 const TW_POLICY=EvidencePolicy.freezeEvidencePolicy({
@@ -133,6 +134,7 @@ function createLiveResearchBootstrap({fetchImpl=globalThis.fetch,clock=Date.now,
     fetchImpl,
     clock,
     lineageStore,
+    providerGovernance:createProviderRuntimeGovernance({clock,policy:{freshnessWarnMs:3600000}}),
     publishHome
   });
 

@@ -80,6 +80,7 @@ function buildRegionalContextSnapshot(input={}){
     asOf:input.nowMs,
     regionalSnapshot,
     observations:Object.freeze([...observations]),
+    facts:Array.isArray(input.facts)?Object.freeze([...input.facts]):undefined,
     events:Object.freeze([...events]),
     context,
     researchOnly:true,

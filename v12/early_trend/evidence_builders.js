@@ -23,6 +23,12 @@ function combinedSource(items,fallback='UNAVAILABLE'){
 const values=[...new Set(items.map(x=>x.source).filter(text))].sort();
 return values.length?values.join(' + '):fallback;
 }
+function sessionIdentity(items){
+const observed=items.map(item=>item?.observedAt);
+if(!observed.length||observed.some(value=>!finite(value)))return Object.freeze({status:'UNPROVABLE',observedAt:null});
+if(observed.some(value=>value!==observed[0]))return Object.freeze({status:'MISMATCH',observedAt:null});
+return Object.freeze({status:'MATCHED',observedAt:observed[0]});
+}
 function unavailable({family,kind,instrumentId,asOf=0,source='UNAVAILABLE',metrics={}}){
 return Object.freeze({
 family,kind,instrumentId,direction:0,confidence:0,status:'UNAVAILABLE',basisCount:0,asOf,source,
@@ -39,10 +45,11 @@ const total=flows.find(x=>x.field==='flow.total_net'&&usableObservation(x));
 const components=flows.filter(x=>['flow.foreign_net','flow.investment_trust_net','flow.dealer_net'].includes(x?.field)&&usableObservation(x));
 const usedFlows=total?[total]:components;
 const used=volumeOk?[...usedFlows,volumeObservation]:usedFlows;
+const session=sessionIdentity([...usedFlows,volumeObservation].filter(Boolean));
 const asOf=latestAsOf(used,finite(volumeObservation?.receivedAt)?volumeObservation.receivedAt:0);
 const source=combinedSource(used);
-if(!volumeOk||!usedFlows.length){
-return unavailable({family:'INSTITUTIONAL',kind:'INSTITUTIONAL_NET_VOLUME_RATIO',instrumentId,asOf,source,metrics:{netShares:null,volumeShares:volumeOk?volumeObservation.value:null,netToVolumeRatio:null,fullScaleRatio}});
+if(!volumeOk||!usedFlows.length||session.status!=='MATCHED'){
+return unavailable({family:'INSTITUTIONAL',kind:'INSTITUTIONAL_NET_VOLUME_RATIO',instrumentId,asOf,source,metrics:{netShares:null,volumeShares:volumeOk?volumeObservation.value:null,netToVolumeRatio:null,fullScaleRatio,sessionIdentity:session.status,sessionObservedAt:session.observedAt}});
 }
 const netShares=total?total.value:components.reduce((sum,x)=>sum+x.value,0);
 const volumeShares=volumeObservation.value;
@@ -54,7 +61,7 @@ confidence:round(minConfidence(used)),
 status:worstStatus(used),
 asOf,
 source,
-metrics:Object.freeze({netShares,volumeShares,netToVolumeRatio:round(ratio),fullScaleRatio,flowMethod:total?'TOTAL_NET':'COMPONENT_SUM'}),
+metrics:Object.freeze({netShares,volumeShares,netToVolumeRatio:round(ratio),fullScaleRatio,flowMethod:total?'TOTAL_NET':'COMPONENT_SUM',sessionIdentity:session.status,sessionObservedAt:session.observedAt}),
 invalidation:'Institutional net flow reverses materially or volume denominator becomes unavailable.',
 nextConfirmation:'Confirm persistence across subsequent sessions and price/relative-strength response.',
 });

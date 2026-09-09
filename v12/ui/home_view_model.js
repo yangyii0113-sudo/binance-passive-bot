@@ -21,9 +21,11 @@
 
   function regionRow(region,source){
     const row=source.find(x=>x&&x.region===region);
-    if(!row)return {region,bias:'UNAVAILABLE',confidence:0,status:'UNAVAILABLE',asOf:null};
+    if(!row)return {region,bias:'UNAVAILABLE',confidence:0,status:'UNAVAILABLE',asOf:null,facts:[],lineageRef:null};
     return {
       region,
+      facts:freezeList(Array.isArray(row.facts)?row.facts:[]),
+      lineageRef:/^out_[a-f0-9]{64}$/.test(row.lineageRef)?row.lineageRef:null,
       bias:text(row.bias)?row.bias:'UNAVAILABLE',
       confidence:finite(row.confidence)?row.confidence:0,
       status:text(row.status)?row.status:'UNAVAILABLE',
@@ -79,6 +81,12 @@
     return {
       market,
       instrumentId:text(row.instrumentId)?row.instrumentId:'UNAVAILABLE',
+      asOf:finite(row.asOf)?row.asOf:null,
+      lineageRef:/^out_[a-f0-9]{64}$/.test(row.lineageRef)?row.lineageRef:null,
+      facts:freezeList(Array.isArray(row.facts)?row.facts:[]),
+      dataGaps:Object.freeze(object(row.dataGaps)?{...row.dataGaps}:{}),
+      research:row.research||null,
+      earlyTrend:row.earlyTrend||null,
       direction:text(row?.research?.direction)?row.research.direction:'UNAVAILABLE',
       earlyStage:researchStageLabel(row?.earlyTrend?.stage),
       mode:'RESEARCH',
@@ -114,6 +122,7 @@
     return Object.freeze({
       schemaVersion:'foxyya-home-view-model/1',
       asOf:read.asOf,
+      providerDiagnostics:read.providerDiagnostics||null,
       regions,
       marketPulse,
       earlyTrend,

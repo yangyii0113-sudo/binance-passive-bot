@@ -6,8 +6,8 @@ const vm=require('node:vm');
 const appSource=fs.readFileSync('v12/ui/app.js','utf8');
 const indexSource=fs.readFileSync('v12/ui/index.html','utf8');
 
-function boot(loadResult){
-  let createCalls=0,loadCalls=0,renderCalls=0;
+function boot(loadResult,pathname=''){
+  let createCalls=0,loadCalls=0,renderCalls=0; const rendered=[];
   const more={hidden:false};
   const toast={textContent:'',classList:{add(){},remove(){}}};
   const health={textContent:'PREVIEW · DATA UNAVAILABLE'};
@@ -18,13 +18,13 @@ function boot(loadResult){
   const window={
     FOXY_V12_HOME_VIEW_MODEL:{buildHomeViewModel(data){return {data}}},
     FOXY_V12_HOME_RENDERER:{renderHomeSections(view){return {view}}},
-    FOXY_V12_HOME_DOM:{applyHomeRender(doc,plan){renderCalls++;assert.equal(doc,document);assert.ok(plan.view)}},
-    FOXY_V12_STAGING_READ_CLIENT:{createHomeReadClient(){createCalls++;return {async load(){loadCalls++;return loadResult}}}},
+    FOXY_V12_HOME_DOM:{applyHomeRender(doc,plan){renderCalls++;rendered.push(plan.view.data.asOf);assert.equal(doc,document);assert.ok(plan.view)}},
+    FOXY_V12_STAGING_READ_CLIENT:{createHomeReadClient(){createCalls++;return {async load(){loadCalls++;return typeof loadResult==='function'?loadResult():loadResult}}}},
     scrollTo(){}
   };
-  const context={window,document,history:{replaceState(){}},location:{hash:''},setTimeout(){return 1},clearTimeout(){}};
+  const context={window,document,history:{replaceState(){}},location:{hash:'',pathname},setTimeout(){return 1},clearTimeout(){}};
   vm.runInNewContext(appSource,context,{filename:'app.js'});
-  return {window,health,getCounts:()=>({createCalls,loadCalls,renderCalls})};
+  return {window,health,rendered,getCounts:()=>({createCalls,loadCalls,renderCalls})};
 }
 
 test('preview does not fetch staging automatically and exposes explicit loadStagingHome',async()=>{
@@ -52,4 +52,32 @@ test('preview loads fixed staging read client before app',()=>{
   assert.ok(client>=0,'staging read client script missing');
   assert.ok(client<app,'staging read client must load before app');
   assert.doesNotMatch(appSource,/\/api\/runtime|placeOrder|submitOrder/);
+});
+
+
+test('served v12 staging preview automatically loads Home on entry',async()=>{
+  const env=boot({status:'UNAVAILABLE',data:null},'/v12-preview/');
+  await Promise.resolve();await Promise.resolve();
+  assert.equal(env.getCounts().loadCalls,1);
+  assert.match(env.health.textContent,/UNAVAILABLE/);
+});
+
+const snapshot=asOf=>({status:'AVAILABLE',data:{schemaVersion:'foxyya-home-read-model/1',asOf,researchOnly:true,executionWrite:false}});
+test('failed Home refresh persistently marks retained data stale',async()=>{
+  let failed=false;
+  const env=boot(()=>{if(failed)throw Error('NETWORK_FAILED');return snapshot(100)});
+  await env.window.FOXY_V12_PREVIEW.loadStagingHome();failed=true;
+  await env.window.FOXY_V12_PREVIEW.loadStagingHome();
+  assert.match(env.health.textContent,/STALE/);
+  assert.deepEqual(env.rendered,[100]);
+});
+
+test('out of order Home responses cannot replace the newest snapshot',async()=>{
+  const resolves=[];
+  const env=boot(()=>new Promise(resolve=>resolves.push(resolve)));
+  const first=env.window.FOXY_V12_PREVIEW.loadStagingHome();
+  const second=env.window.FOXY_V12_PREVIEW.loadStagingHome();
+  resolves[1](snapshot(300));await second;
+  resolves[0](snapshot(200));await first;
+  assert.deepEqual(env.rendered,[300]);
 });

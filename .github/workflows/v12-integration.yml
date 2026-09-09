@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - v12-multimarket-architecture
+      - v12-research-usability-20260909
   workflow_dispatch:
 
 permissions:
@@ -56,7 +57,7 @@ jobs:
         run: node --test tests/v12_*.test.cjs
 
       - name: Run existing runtime JavaScript regressions
-        run: node --test tests/runtime_bridge.test.cjs tests/runtime_layout.test.cjs tests/runtime_metrics.test.cjs
+        run: node --test tests/runtime_bridge.test.cjs tests/runtime_layout.test.cjs tests/runtime_metrics.test.cjs tests/runtime_backtest.test.cjs
 
       - name: Run existing Python runtime regression
         run: python tests/test_runtime_view.py

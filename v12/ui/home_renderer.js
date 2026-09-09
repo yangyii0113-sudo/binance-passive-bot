@@ -1,8 +1,8 @@
 (function(root,factory){
-  const api=factory();
+  const api=factory(typeof module==='object'&&module.exports?require('./product_renderer.js'):root.FOXY_V12_PRODUCT_RENDERER);
   if(typeof module==='object'&&module.exports)module.exports=api;
   else root.FOXY_V12_HOME_RENDERER=api;
-})(typeof globalThis!=='undefined'?globalThis:this,function(){
+})(typeof globalThis!=='undefined'?globalThis:this,function(Product){
   'use strict';
 
   const REGION_LABELS=Object.freeze({
@@ -30,7 +30,7 @@
       const region=esc(row.region);
       const bias=esc(row.bias||'UNAVAILABLE');
       const confidence=row.bias==='UNAVAILABLE'?'Confidence —':`Confidence ${pct(row.confidence)}`;
-      return `<article class="region-card bias-${safeClass(row.bias)}" data-region="${region}"><span>${esc(REGION_LABELS[row.region]||row.region)}</span><b data-field="bias">${bias}</b><small data-field="confidence">${esc(confidence)}</small></article>`;
+      return `<article class="region-card bias-${safeClass(row.bias)}" data-region="${region}"><span>${esc(REGION_LABELS[row.region]||row.region)}</span><b data-field="bias">${bias}</b><small data-field="confidence">${esc(confidence)}</small><small>Context ${esc(row.status)}</small>${Product.factsHtml(row.facts)}<p class="muted">${row.facts?.length?'官方宏觀快照；單一指標不足以判定市場方向。':row.region==='TW'?'區域指數尚未接入；個股資料見台股研究。':'Unavailable：本區域資料來源尚未接入或本輪無有效觀測；詳見系統診斷。'}</p>${Product.lineageLink(row.lineageRef)}</article>`;
     }).join('');
   }
 
@@ -39,24 +39,26 @@
     return rows.map(row=>{
       const market=esc(row.market);
       const status=esc(row.stateLabel||row.status||'UNAVAILABLE');
-      const mode=row.market==='CRYPTO'?'Automation · PAPER ONLY':'Research';
-      return `<article class="pulse-card ${safeClass(row.market)}" data-market-pulse="${market}"><div class="pulse-title"><div><b>${esc(MARKET_LABELS[row.market]||row.market)}</b><small>${esc(mode)}</small></div></div><strong data-field="state">${status}</strong><small class="data-state">${esc(row.status||'UNAVAILABLE')}</small></article>`;
+      const mode=row.market==='CRYPTO'?'Research · 未連接 Execution':'Research';
+      const reason=row.market==='CRYPTO'?'Unavailable：此環境未連接 Crypto 行情與交易':'市場指數資料未接入；可查看個股官方研究快照';
+      const action=row.market==='CRYPTO'?'查看 Crypto':row.market==='US'?'查看美股':'查看台股';
+      return `<article class="pulse-card ${safeClass(row.market)}" data-market-pulse="${market}" data-filter-market="${market}"><div class="pulse-title"><div><b>${esc(MARKET_LABELS[row.market]||row.market)}</b><small>${esc(mode)}</small></div></div><strong data-field="state">${status}</strong><small class="data-state">${esc(row.status||'UNAVAILABLE')}</small><p class="muted">${esc(reason)}</p><button class="card-action" data-route="RESEARCH" data-market="${market}">${action}</button></article>`;
     }).join('');
   }
 
   function renderEarlyTrend(rows){
     if(!rows.length)return '<div class="empty-state"><b>UNAVAILABLE</b><span>尚無通過資料品質 Gate 的 Early Trend 證據。</span></div>';
-    return `<div class="signal-list">${rows.map(row=>`<article class="signal-row" data-research-instrument="${esc(row.instrumentId)}"><div><span>${esc(row.market)}</span><b>${esc(row.instrumentId)}</b></div><div><strong>${esc(row.stateLabel||'UNAVAILABLE')}</strong><small>${esc(row.direction||'UNAVAILABLE')} · Confidence ${esc(pct(row.confidence))}</small></div><em>RESEARCH</em></article>`).join('')}</div>`;
+    return `<div class="signal-list">${rows.map(row=>`<article class="signal-row" data-research-instrument="${esc(row.instrumentId)}" data-filter-market="${esc(row.market)}"><div><span>${esc(row.market)}</span><b>${esc(row.instrumentId)}</b></div><div><strong>${esc(row.stateLabel||'UNAVAILABLE')}</strong><small>${esc(row.direction||'UNAVAILABLE')} · Confidence ${esc(pct(row.confidence))}</small></div><em>RESEARCH</em></article>`).join('')}</div>`;
   }
 
   function renderCryptoOpportunities(rows){
-    if(!rows.length)return '<div class="empty-state compact"><b>UNAVAILABLE</b><span>沒有可顯示的 Crypto Paper 候選。</span></div>';
+    if(!rows.length)return '<div class="empty-state compact"><b>UNAVAILABLE</b><span>Unavailable：獨立研究環境未連接 Crypto 行情或 Execution。</span></div>';
     return rows.map(row=>`<div class="opportunity-row crypto"><div><b>${esc(row.symbol)}</b><small>${esc(row.family)} · ${esc(row.side)}</small></div><div><strong>${esc(row.status)}</strong><em>PAPER READ-ONLY</em></div></div>`).join('');
   }
 
   function renderEquityOpportunities(rows,market){
     if(!rows.length)return `<div class="empty-state compact"><b>UNAVAILABLE</b><span>尚無 ${esc(market)} Research opportunity。</span></div>`;
-    return rows.map(row=>`<div class="opportunity-row research"><div><b>${esc(row.instrumentId)}</b><small>${esc(row.earlyStage||'UNAVAILABLE')}</small></div><div><strong>${esc(row.direction||'UNAVAILABLE')}</strong><em>RESEARCH</em></div></div>`).join('');
+    return rows.map(row=>Product.researchHtml(row)).join('');
   }
 
   function renderOpportunities(groups){
@@ -64,14 +66,14 @@
     const us=Array.isArray(groups.US)?groups.US:[];
     const tw=Array.isArray(groups.TW)?groups.TW:[];
     return [
-      `<article class="opportunity-card" data-opportunity-market="CRYPTO"><span>Crypto Strategies</span><b>A / B / C / D</b>${renderCryptoOpportunities(crypto)}</article>`,
-      `<article class="opportunity-card" data-opportunity-market="US"><span>US Research</span><b>Trend · Earnings · Expectation</b>${renderEquityOpportunities(us,'US')}</article>`,
-      `<article class="opportunity-card" data-opportunity-market="TW"><span>TW Research</span><b>Trend · 法人 · 產業</b>${renderEquityOpportunities(tw,'TW')}</article>`
+      `<article class="opportunity-card" data-opportunity-market="CRYPTO" data-filter-market="CRYPTO"><span>Crypto Strategies</span><b>A / B / C / D</b>${renderCryptoOpportunities(crypto)}</article>`,
+      `<article class="opportunity-card" data-opportunity-market="US" data-filter-market="US"><span>US Research</span><b>Trend · Earnings · Expectation</b>${renderEquityOpportunities(us,'US')}</article>`,
+      `<article class="opportunity-card" data-opportunity-market="TW" data-filter-market="TW"><span>TW Research</span><b>Trend · 法人 · 產業</b>${renderEquityOpportunities(tw,'TW')}</article>`
     ].join('');
   }
 
   function renderEvents(rows){
-    if(!rows.length)return '<div class="empty-state"><b>UNAVAILABLE</b><span>等待 News / Macro / Calendar verified sources。</span></div>';
+    if(!rows.length)return '<div class="empty-state"><b>UNAVAILABLE</b><span>Unavailable：新聞、經濟日曆與財報事件來源尚未接入。</span></div>';
     return `<div class="event-list">${rows.map(row=>`<article class="event-row" data-event-id="${esc(row.id)}"><div><b>${esc(row.title)}</b><small>${esc(row.source)}</small></div><time>${finite(row.asOf)?esc(new Date(row.asOf).toISOString()):'UNAVAILABLE'}</time></article>`).join('')}</div>`;
   }
 
@@ -82,6 +84,7 @@
       schemaVersion:'foxyya-home-render/1',
       asOfLabel:new Date(value.asOf).toISOString(),
       dataHealthLabel:unavailable?`VERIFIED · ${unavailable} MARKET DATA UNAVAILABLE`:'VERIFIED DATA',
+      diagnosticsHtml:Product.diagnosticsHtml(value.providerDiagnostics),
       regionsHtml:renderRegions(value.regions),
       marketPulseHtml:renderPulse(value.marketPulse),
       earlyTrendHtml:renderEarlyTrend(value.earlyTrend),

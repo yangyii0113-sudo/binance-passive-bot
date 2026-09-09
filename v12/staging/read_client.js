@@ -21,9 +21,11 @@
     const fetchImpl=options.fetchImpl||(typeof fetch==='function'?fetch.bind(globalThis):null);
     if(typeof fetchImpl!=='function')throw new Error('FETCH_REQUIRED');
 
-    async function load(){
+    const timeoutMs=options.timeoutMs===undefined?15000:options.timeoutMs;
+    if(!Number.isInteger(timeoutMs)||timeoutMs<1||timeoutMs>60000)throw Error('READ_TIMEOUT_INVALID');
+    async function read(signal){
       const response=await fetchImpl(HOME_ENDPOINT,{
-        method:'GET',
+        method:'GET',signal,
         credentials:'same-origin',
         cache:'no-store',
         headers:{Accept:'application/json'}
@@ -41,6 +43,11 @@
       return Object.freeze({status:'AVAILABLE',data:validateHomeReadModel(body)});
     }
 
+    async function load(){
+      const controller=new AbortController();let timer;
+      try{return await Promise.race([read(controller.signal),new Promise((_,reject)=>{timer=setTimeout(()=>{controller.abort();reject(Error('READ_TIMEOUT'))},timeoutMs)})])}
+      finally{clearTimeout(timer)}
+    }
     return Object.freeze({load});
   }
 

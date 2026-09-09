@@ -5,6 +5,8 @@ const {createOfficialSourceBindings}=require('./official_source_binding.js');
 const {createStagingDataOrchestrator}=require('./data_orchestrator.js');
 const EvidencePolicy=require('../early_trend/evidence_policy.js');
 const Lineage=require('../data/source_lineage.js');
+const {regionalFacts}=require('../read_model/product_facts.js');
+const {buildProviderDiagnostics}=require('../read_model/provider_diagnostics.js');
 
 const finite=value=>typeof value==='number'&&Number.isFinite(value);
 const object=value=>value&&typeof value==='object'&&!Array.isArray(value);
@@ -168,7 +170,34 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,resea
 
   const bindings=createOfficialSourceBindings();
 
-  function preflight(input){
+  function preflight(input,datasetReads){
+    function bind(name,options){
+      const binding=bindings[name](options);
+      return Object.freeze({async load(){
+        let envelope;
+        const startedAt=Number(clock());
+        try{envelope=await binding.load()}catch(error){
+          envelope={status:'UNAVAILABLE',sourceId:binding.lineageMeta.sourceId,
+            lineageMeta:binding.lineageMeta,reason:error?.message||'CANONICAL_VALIDATION_FAILED',
+            fetchStartedAt:startedAt,receivedAt:Number(clock()),data:null,researchOnly:true,executionWrite:false};
+        }
+        let observations=envelope.status==='AVAILABLE'?collectObservations(envelope.data):[];
+        if(envelope.status==='AVAILABLE'&&!observations.some(item=>item?.status!=='UNAVAILABLE'&&finite(item?.observedAt))){
+          envelope={...envelope,status:'UNAVAILABLE',
+            reason:observations.length?'CANONICAL_OBSERVATIONS_UNAVAILABLE':'CANONICAL_OBSERVATIONS_EMPTY',data:null};
+          observations=[];
+        }
+        const observedTimes=observations.map(item=>item?.observedAt).filter(finite);
+        datasetReads.push(Object.freeze({
+          sourceId:envelope.sourceId,datasetId:envelope.lineageMeta.datasetId,
+          subjectId:options.instrument?.instrumentId||options.symbol||null,
+          status:envelope.status,reason:envelope.reason||null,
+          receivedAt:envelope.receivedAt,
+          observedAt:observedTimes.length?Math.max(...observedTimes):null
+        }));
+        return envelope;
+      }});
+    }
     const usedProviderIds=new Set();
     const loaderFor=(sourceId,endpoint)=>makeLoader(sourceId,endpoint,fetchImpl,clock,providerRuntime,usedProviderIds);
 
@@ -178,8 +207,8 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,resea
       const sourceId=exchange==='TWSE'?'twse-openapi':'tpex-openapi';
       const loader=loaderFor(sourceId,item.endpoint);
       const binding=exchange==='TWSE'
-        ?bindings.twseDailyQuote({loader,symbol:item.symbol})
-        :bindings.tpexDailyQuote({loader,symbol:item.symbol});
+        ?bind('twseDailyQuote',{loader,symbol:item.symbol})
+        :bind('tpexDailyQuote',{loader,symbol:item.symbol});
       return Object.freeze({
         exchange,
         symbol:String(item.symbol||''),
@@ -201,20 +230,20 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,resea
       if(exchange==='TWSE'){
         const quoteLoader=loaderFor('twse-openapi',item.quoteEndpoint);
         const flowLoader=loaderFor('twse-t86',item.flowEndpoint);
-        quoteBinding=bindings.twseDailyQuote({loader:quoteLoader,symbol:item.symbol});
-        flowBinding=bindings.twseInstitutional({loader:flowLoader,symbol:item.symbol,tradeDate:item.tradeDate});
+        quoteBinding=bind('twseDailyQuote',{loader:quoteLoader,symbol:item.symbol});
+        flowBinding=bind('twseInstitutional',{loader:flowLoader,symbol:item.symbol,tradeDate:item.tradeDate});
         if(item.revenueEndpoint!==undefined){
           const revenueLoader=loaderFor('twse-openapi',item.revenueEndpoint);
-          revenueBinding=bindings.twseMonthlyRevenue({loader:revenueLoader,symbol:item.symbol});
+          revenueBinding=bind('twseMonthlyRevenue',{loader:revenueLoader,symbol:item.symbol});
         }
       }else{
         const quoteLoader=loaderFor('tpex-openapi',item.quoteEndpoint);
         const flowLoader=loaderFor('tpex-openapi',item.flowEndpoint);
-        quoteBinding=bindings.tpexDailyQuote({loader:quoteLoader,symbol:item.symbol});
-        flowBinding=bindings.tpexInstitutional({loader:flowLoader,symbol:item.symbol});
+        quoteBinding=bind('tpexDailyQuote',{loader:quoteLoader,symbol:item.symbol});
+        flowBinding=bind('tpexInstitutional',{loader:flowLoader,symbol:item.symbol});
         if(item.revenueEndpoint!==undefined){
           const revenueLoader=loaderFor('tpex-openapi',item.revenueEndpoint);
-          revenueBinding=bindings.tpexMonthlyRevenue({loader:revenueLoader,symbol:item.symbol});
+          revenueBinding=bind('tpexMonthlyRevenue',{loader:revenueLoader,symbol:item.symbol});
         }
       }
 
@@ -231,7 +260,7 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,resea
     const usAssets=arrayConfig(input.usAssets,'US_ASSETS').map(item=>{
       if(!object(item)||!object(item.sec))throw Error('US_ASSET_CONFIG_INVALID');
       const loader=loaderFor('sec-edgar',item.sec.endpoint);
-      const binding=bindings.secCompanyFact({
+      const binding=bind('secCompanyFact',{
         loader,
         instrument:item.instrument,
         taxonomy:item.sec.taxonomy,
@@ -250,12 +279,12 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,resea
       for(const item of arrayConfig(value.bls,'REGION_BLS')){
         if(!object(item))throw Error('REGION_BLS_CONFIG_INVALID');
         const loader=loaderFor('bls-public',item.endpoint);
-        sources.push(bindings.blsSeries({loader,definitions:item.definitions}));
+        sources.push(bind('blsSeries',{loader,definitions:item.definitions}));
       }
       for(const item of arrayConfig(value.ecb,'REGION_ECB')){
         if(!object(item))throw Error('REGION_ECB_CONFIG_INVALID');
         const loader=loaderFor('ecb-data',item.endpoint);
-        sources.push(bindings.ecbSeries({loader,definition:item.definition}));
+        sources.push(bind('ecbSeries',{loader,definition:item.definition}));
       }
       regions[region]=Object.freeze(sources);
     }
@@ -357,6 +386,7 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,resea
       for(const data of available)observations.push(...collectObservations(data));
       return readonlyEnvelope('AVAILABLE',Object.freeze({
         observations:Object.freeze(observations),
+        facts:Object.freeze(available.flatMap(regionalFacts)),
         events:Object.freeze([]),
         evidence:Object.freeze([]),
         expectations:Object.freeze([]),
@@ -381,10 +411,14 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,resea
 
     // Build every loader/binding, validate governance, and reject manual history
     // overrides before the first network request.
-    const plan=preflight(input);
+    const datasetReads=[];
+    const plan=preflight(input,datasetReads);
+    const publishWithDiagnostics=value=>publishHome({...value,providerDiagnostics:buildProviderDiagnostics({
+      asOf:Math.max(value.asOf,Number(clock())),providerHealth:providerHealth(plan.providerIds),datasets:datasetReads
+    })});
     const historyWrites=[];
-    const lineageContext=lineage?createRunLineageContext({store:lineage,publishHome}):null;
-    const orchestrator=createStagingDataOrchestrator({publishHome:lineageContext?lineageContext.publish:publishHome});
+    const lineageContext=lineage?createRunLineageContext({store:lineage,publishHome:publishWithDiagnostics}):null;
+    const orchestrator=createStagingDataOrchestrator({publishHome:lineageContext?lineageContext.publish:publishWithDiagnostics});
 
     const marketSources={TWSE:[],TPEX:[]};
     for(const item of plan.twQuotes){

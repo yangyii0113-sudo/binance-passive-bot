@@ -36,6 +36,17 @@
       return {target,node};
     });
     for(const {target,node} of resolved)node[target.property]=plan[target.field];
+    const optional=[
+      ['[data-home-content="diagnostics"]','diagnosticsHtml'],
+      ['[data-research-content]','opportunitiesHtml'],
+      ['[data-global-content]','regionsHtml'],
+      ['[data-market-content]','opportunitiesHtml'],
+      ['[data-research-early]','earlyTrendHtml']
+    ];
+    for(const [selector,field] of optional){
+      const node=doc.querySelector(selector);
+      if(node&&typeof plan[field]==='string')node.innerHTML=plan[field];
+    }
     return Object.freeze({ok:true,updated:Object.freeze(TARGETS.map(x=>x.selector))});
   }
 
