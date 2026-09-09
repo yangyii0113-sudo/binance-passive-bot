@@ -1,39 +1,54 @@
 'use strict';
 
+const {startStagingPreviewServer}=require('./server.js');
 const {createDurableSourceLineageStore}=require('./durable_source_lineage_store.js');
-const {startStagingServer}=require('./server.js');
 const {createLiveResearchBootstrap}=require('./live_research_bootstrap.js');
 const {createExecutionReadBridge}=require('./execution_read_bridge.js');
 
-function integer(value,label,{min,max}){
-  const parsed=Number(value);
-  if(!Number.isInteger(parsed)||parsed<min||parsed>max)throw Error(label+'_INVALID');
-  return parsed;
-}
-
 function runtimeConfig(env=process.env){
-  const host=String(env.HOST||'0.0.0.0').trim();
-  if(!host)throw Error('HOST_INVALID');
-  const port=integer(env.PORT||'8080','PORT',{min:0,max:65535});
-  const lineageFilePath=String(env.FOXYYA_V12_LINEAGE_PATH||'/data/foxyya-v12.lineage.jsonl').trim();
-  if(!lineageFilePath)throw Error('LINEAGE_PATH_INVALID');
-  const refreshSeconds=integer(env.FOXYYA_V12_REFRESH_SECONDS||'1800','REFRESH_SECONDS',{min:300,max:86400});
-  return Object.freeze({host,port,lineageFilePath,refreshSeconds});
+  const host=typeof env.HOST==='string'&&env.HOST.trim()?env.HOST.trim():'0.0.0.0';
+  const rawPort=env.PORT===undefined||env.PORT===null||String(env.PORT).trim()===''?'8080':String(env.PORT).trim();
+  if(!/^\d+$/.test(rawPort))throw Error('PORT_INVALID');
+  const port=Number(rawPort);
+  if(!Number.isInteger(port)||port<0||port>65535)throw Error('PORT_INVALID');
+
+  const lineageFilePath=typeof env.FOXYYA_V12_LINEAGE_PATH==='string'&&env.FOXYYA_V12_LINEAGE_PATH.trim()
+    ?env.FOXYYA_V12_LINEAGE_PATH.trim()
+    :'/data/foxyya-v12.lineage.jsonl';
+  if(!lineageFilePath.endsWith('.lineage.jsonl'))throw Error('LINEAGE_JOURNAL_PATH_INVALID');
+
+  const rawRefresh=env.FOXYYA_V12_REFRESH_SECONDS===undefined||env.FOXYYA_V12_REFRESH_SECONDS===null||String(env.FOXYYA_V12_REFRESH_SECONDS).trim()===''
+    ?'1800'
+    :String(env.FOXYYA_V12_REFRESH_SECONDS).trim();
+  if(!/^\d+$/.test(rawRefresh))throw Error('REFRESH_SECONDS_INVALID');
+  const refreshSeconds=Number(rawRefresh);
+  if(!Number.isInteger(refreshSeconds)||refreshSeconds<300||refreshSeconds>86400)throw Error('REFRESH_SECONDS_INVALID');
+
+  return Object.freeze({
+    host,
+    port,
+    lineageFilePath,
+    refreshSeconds,
+    researchOnly:true,
+    executionWrite:false
+  });
 }
 
 async function startFromEnvironment(env=process.env,dependencies={}){
   const config=runtimeConfig(env);
-  const clock=dependencies.clock||Date.now;
   const fetchImpl=dependencies.fetchImpl||globalThis.fetch;
+  const clock=dependencies.clock||Date.now;
   const setIntervalImpl=dependencies.setIntervalImpl||setInterval;
   const clearIntervalImpl=dependencies.clearIntervalImpl||clearInterval;
-  const onResearchError=typeof dependencies.onResearchError==='function'?dependencies.onResearchError:()=>{};
-  if(typeof clock!=='function')throw Error('CLOCK_REQUIRED');
+  const onResearchError=dependencies.onResearchError||((error)=>console.error('FOXYYA v12 research refresh failed:',error?.message||error));
+
   if(typeof fetchImpl!=='function')throw Error('FETCH_REQUIRED');
+  if(typeof clock!=='function')throw Error('CLOCK_REQUIRED');
   if(typeof setIntervalImpl!=='function'||typeof clearIntervalImpl!=='function')throw Error('TIMER_REQUIRED');
+  if(typeof onResearchError!=='function')throw Error('RESEARCH_ERROR_HANDLER_REQUIRED');
 
   const lineageStore=createDurableSourceLineageStore({filePath:config.lineageFilePath,now:clock});
-  const staging=await startStagingServer({
+  const serverRuntime=await startStagingPreviewServer({
     host:config.host,
     port:config.port,
     lineageStore
@@ -44,41 +59,41 @@ async function startFromEnvironment(env=process.env,dependencies={}){
     ?dependencies.executionBridge
     :(dependencies.fetchImpl===undefined?createExecutionReadBridge({fetchImpl}):null);
 
-  const research=createLiveResearchBootstrap({
+  const bootstrap=createLiveResearchBootstrap({
     fetchImpl,
     clock,
     lineageStore,
-    publishHome:staging.publishHome,
+    publishHome:serverRuntime.app.publishHome,
     executionBridge
   });
 
-  let active=false;
+  let running=false;
   let closed=false;
-  async function refresh(){
-    if(closed||active)return null;
-    active=true;
-    try{return await research.runOnce();}
-    finally{active=false;}
+  async function refreshResearch(){
+    if(closed||running)return null;
+    running=true;
+    try{return await bootstrap.runOnce()}
+    catch(error){onResearchError(error);return null}
+    finally{running=false}
   }
 
-  const researchReady=refresh().catch(error=>{
-    onResearchError(error);
-    return null;
-  });
+  const researchReady=refreshResearch();
+  const refreshTimer=setIntervalImpl(()=>{void refreshResearch()},config.refreshSeconds*1000);
 
-  const timer=setIntervalImpl(()=>{
-    refresh().catch(onResearchError);
-  },config.refreshSeconds*1000);
+  async function close(){
+    if(closed)return;
+    closed=true;
+    clearIntervalImpl(refreshTimer);
+    await serverRuntime.close();
+  }
 
   return Object.freeze({
-    address:staging.address,
+    app:serverRuntime.app,
+    server:serverRuntime.server,
+    address:serverRuntime.address,
+    lineageStore,
     researchReady,
-    async close(){
-      if(closed)return;
-      closed=true;
-      clearIntervalImpl(timer);
-      await staging.close();
-    }
+    close
   });
 }
 
@@ -88,27 +103,34 @@ if(require.main===module){
     console.log(`FOXYYA v12 staging listening on ${address.address}:${address.port}`);
     console.log('FOXYYA v12 staging mode: RESEARCH_ONLY=true EXECUTION_WRITE=false');
     runtime.researchReady.then(result=>{
-      if(result){
-        const home=result.orchestration?.published?.home;
-        console.log('FOXYYA v12 initial research bootstrap published',JSON.stringify({
-          cryptoOpportunities:home?.opportunities?.CRYPTO?.length??0,
-          twOpportunities:home?.opportunities?.TW?.length??0,
-          usOpportunities:home?.opportunities?.US?.length??0,
-          eventCount:home?.events?.length??0,
-          researchOnly:result.researchOnly,
-          executionWrite:result.executionWrite
-        }));
-      }else{
-        console.error('FOXYYA v12 initial research bootstrap unavailable');
+      if(!result){
+        console.log('FOXYYA v12 initial research bootstrap unavailable');
+        return;
       }
+      const home=result.orchestration?.published?.home;
+      console.log('FOXYYA v12 initial research bootstrap published',JSON.stringify({
+        cryptoOpportunities:Array.isArray(home?.opportunities?.CRYPTO)?home.opportunities.CRYPTO.length:0,
+        twOpportunities:Array.isArray(home?.opportunities?.TW)?home.opportunities.TW.length:0,
+        usOpportunities:Array.isArray(home?.opportunities?.US)?home.opportunities.US.length:0,
+        eventCount:Array.isArray(home?.events)?home.events.length:0,
+        researchOnly:result.researchOnly===true,
+        executionWrite:result.executionWrite===true
+      }));
     });
-    const shutdown=async()=>{
-      try{await runtime.close();process.exit(0)}catch(error){console.error(error);process.exit(1)}
+
+    let closing=false;
+    const shutdown=()=>{
+      if(closing)return;
+      closing=true;
+      runtime.close().then(()=>process.exit(0)).catch(error=>{
+        console.error('FOXYYA v12 staging shutdown failed:',error?.message||error);
+        process.exit(1);
+      });
     };
-    process.on('SIGTERM',shutdown);
-    process.on('SIGINT',shutdown);
+    process.once('SIGTERM',shutdown);
+    process.once('SIGINT',shutdown);
   }).catch(error=>{
-    console.error(error);
+    console.error('FOXYYA v12 staging failed to start:',error?.message||error);
     process.exit(1);
   });
 }
