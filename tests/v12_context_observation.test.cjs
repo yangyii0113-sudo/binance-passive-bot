@@ -1,0 +1,7 @@
+const test=require('node:test');const assert=require('node:assert/strict');
+const C=require('../v12/data/contracts.js');const N=require('../v12/data/context_normalizer.js');
+
+test('context observation scopes cover global and seven intelligence regions',()=>{assert.deepEqual(C.CONTEXT_SCOPES,['GLOBAL','US','TW','CN_HK','JP','KR','EU','CRYPTO']);});
+test('context observation validates non-tradable macro entity without exchange identity',()=>{const v={schemaVersion:'foxyya-context-observation/1',entityId:'MACRO:US:CPI_U',scope:'US',field:'macro.cpi.index',value:321.5,unit:'INDEX',observedAt:1,receivedAt:1,source:'BLS:CUUR0000SA0',status:'SNAPSHOT',confidence:1};assert.equal(C.validateContextObservation(v).ok,true);});
+test('context normalizer preserves UNAVAILABLE instead of inventing zero',()=>{const x=N.makeContextObservation({entityId:'MACRO:US:CPI_U',scope:'US',field:'macro.cpi.index',value:null,unit:'INDEX',observedAt:2,receivedAt:2,source:'BLS:CUUR0000SA0',status:'UNAVAILABLE',confidence:0});assert.equal(x.value,null);assert.equal(x.status,'UNAVAILABLE');});
+test('context observation rejects unsupported scope and future receive ordering',()=>{const base={schemaVersion:'foxyya-context-observation/1',entityId:'X',scope:'MARS',field:'x',value:1,unit:'INDEX',observedAt:2,receivedAt:1,source:'s',status:'SNAPSHOT',confidence:1};const r=C.validateContextObservation(base);assert.equal(r.ok,false);assert.ok(r.errors.includes('SCOPE_INVALID'));assert.ok(r.errors.includes('TIME_ORDER_INVALID'));});
