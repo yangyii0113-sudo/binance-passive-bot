@@ -1,0 +1,28 @@
+name: FOXYYA Phase 1 Historical Core
+
+on:
+  push:
+    branches:
+      - feat/foxyya-backtest-phase1-historical-core
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  historical-core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install test runner
+        run: python -m pip install --disable-pip-version-check pytest
+      - name: Historical clock / visibility
+        env:
+          PYTHONPATH: src:.
+        run: python -m pytest tests/test_no_lookahead.py -v
