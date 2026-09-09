@@ -4,6 +4,7 @@ from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from math import isfinite
 
+from foxyya.portfolio import replay_books
 from foxyya.risk import FEE
 
 
@@ -56,7 +57,8 @@ def _monthly_returns(initial_nav: float, closed_records: list[dict]) -> dict:
     for record in closed_records:
         month = datetime.fromtimestamp(record["exit_ms"] / 1000, tz=timezone.utc).strftime("%Y-%m")
         grouped[month] += record["net_pnl_usdt"]
-    # This is intentionally a closed-trade return attribution, not a mark-to-market monthly series.
+    # Closed-trade attribution only; terminal open positions are reported
+    # separately rather than being manufactured into month-end exits.
     return {month: pnl / float(initial_nav) for month, pnl in sorted(grouped.items())}
 
 
@@ -198,7 +200,64 @@ def _max_reserved_risk(events: list[dict], start_ms: int, end_ms: int) -> float:
     return peak
 
 
-def compute_backtest_metrics(ledger, *, initial_nav: float, start_ms: int, end_ms: int) -> dict:
+def _terminal_equity(ledger, initial_nav: float, terminal_marks: dict | None) -> dict:
+    state = replay_books(ledger, float(initial_nav))["books"]["5x"]
+    positions = state["positions"]
+    details = []
+    unrealized = 0.0
+    missing_marks = []
+
+    for position_id, position in sorted(positions.items()):
+        symbol = str(position["symbol"])
+        if terminal_marks is not None and symbol in terminal_marks:
+            mark = float(terminal_marks[symbol])
+            mark_source = "EXPLICIT_TERMINAL_MARK"
+        elif terminal_marks is None:
+            mark = float(position["mark"])
+            mark_source = "LAST_LEDGER_MARK"
+        else:
+            # Explicit terminal valuation was requested, so silently falling
+            # back to a stale position mark would overstate fidelity.
+            missing_marks.append(symbol)
+            continue
+        if mark <= 0:
+            raise ValueError(f"invalid terminal mark for {symbol}")
+        sign = 1 if position["side"] == "LONG" else -1
+        pnl = sign * float(position["qty"]) * (mark - float(position["entry_fill"]))
+        unrealized += pnl
+        details.append({
+            "position_id": position_id,
+            "symbol": symbol,
+            "side": position["side"],
+            "qty": float(position["qty"]),
+            "entry_fill": float(position["entry_fill"]),
+            "mark": mark,
+            "mark_source": mark_source,
+            "unrealized_pnl_usdt": pnl,
+        })
+
+    if missing_marks:
+        raise ValueError("terminal marks missing for open positions: " + ", ".join(sorted(set(missing_marks))))
+
+    equity = float(state["balance"]) + unrealized
+    return {
+        "book": "5x",
+        "open_positions": len(positions),
+        "unrealized_pnl_usdt": unrealized,
+        "equity_usdt": equity,
+        "equity_return": (equity - float(initial_nav)) / float(initial_nav),
+        "positions": details,
+    }
+
+
+def compute_backtest_metrics(
+    ledger,
+    *,
+    initial_nav: float,
+    start_ms: int,
+    end_ms: int,
+    terminal_marks: dict | None = None,
+) -> dict:
     if float(initial_nav) <= 0 or int(end_ms) <= int(start_ms):
         raise ValueError("invalid metric inputs")
     events = ledger.events()
@@ -211,6 +270,7 @@ def compute_backtest_metrics(ledger, *, initial_nav: float, start_ms: int, end_m
     positive = sum(record["net_pnl_usdt"] for record in records if record["net_pnl_usdt"] > 0)
     negative = sum(record["net_pnl_usdt"] for record in records if record["net_pnl_usdt"] < 0)
     max_dd, equity_curve = _max_drawdown(float(initial_nav), records)
+    terminal = _terminal_equity(ledger, float(initial_nav), terminal_marks)
 
     scan_events = [event for event in events if event.get("kind") == "SCAN_SUMMARY" and _in_window(event, start_ms, end_ms)]
     funnel = {key: sum(int(event.get("funnel", {}).get(key, 0)) for event in scan_events) for key in ("eligible", "candidate", "qualified", "executable")}
@@ -262,6 +322,7 @@ def compute_backtest_metrics(ledger, *, initial_nav: float, start_ms: int, end_m
             "gross_pnl_usdt": raw_gross,
             "net_pnl_usdt": net,
             "net_return": net / float(initial_nav),
+            "net_return_basis": "CLOSED_TRADES_ONLY",
             "average_r": sum(r_values) / len(r_values) if r_values else None,
             "expectancy_r": sum(r_values) / len(r_values) if r_values else None,
             "profit_factor": positive / abs(negative) if negative < 0 else None,
@@ -269,6 +330,12 @@ def compute_backtest_metrics(ledger, *, initial_nav: float, start_ms: int, end_m
             "max_drawdown_basis": "CLOSED_TRADE_EQUITY",
             "equity_curve": equity_curve,
             "monthly_returns": _monthly_returns(float(initial_nav), records),
+            "terminal_equity_book": terminal["book"],
+            "terminal_open_positions": terminal["open_positions"],
+            "terminal_unrealized_pnl_usdt": terminal["unrealized_pnl_usdt"],
+            "terminal_equity_usdt": terminal["equity_usdt"],
+            "equity_return_including_unrealized": terminal["equity_return"],
+            "terminal_positions": terminal["positions"],
         },
         "costs": {
             "fees_usdt": fees,
