@@ -107,7 +107,9 @@ function createDurableSourceLineageStore({filePath,now=Date.now,fsImpl=fs}={}){
 
   function assertOutputReferences(record,{replay=false}={}){
     for(const sourceRef of record.sourceLineageRefs){
-      if(!sourcesByRef.has(sourceRef))throw Error(replay?'LINEAGE_JOURNAL_CORRUPT':'SOURCE_LINEAGE_REF_UNKNOWN');
+      const source=sourcesByRef.get(sourceRef);
+      if(!source)throw Error(replay?'LINEAGE_JOURNAL_CORRUPT':'SOURCE_LINEAGE_REF_UNKNOWN');
+      if(source.receivedAt>record.asOf)throw Error(replay?'LINEAGE_JOURNAL_CORRUPT':'LINEAGE_TIME_ORDER_INVALID');
     }
     for(const observationRef of record.observationRefs){
       const indexed=observationsByRef.get(observationRef);
