@@ -9,7 +9,7 @@
   const finite=x=>typeof x==='number'&&Number.isFinite(x);
   const unavailableRegion=(region,asOf)=>Object.freeze({region,status:'UNAVAILABLE',bias:'UNAVAILABLE',confidence:0,asOf,evidence:Object.freeze([]),contradictions:Object.freeze([]),researchOnly:true});
   const unavailablePulse=(market,asOf)=>Object.freeze({market,status:'UNAVAILABLE',asOf,data:null});
-  const regionStatus=snapshot=>snapshot?.status==='UNAVAILABLE'||snapshot?.bias==='UNAVAILABLE'?'UNAVAILABLE':'AVAILABLE';
+  const regionStatus=snapshot=>snapshot?.status==='AVAILABLE'?'AVAILABLE':snapshot?.status==='UNAVAILABLE'?'UNAVAILABLE':snapshot?.bias==='UNAVAILABLE'?'UNAVAILABLE':'AVAILABLE';
   function buildHomeModel(input={}){
     if(!finite(input.asOf)||input.asOf<0)throw Error('ASOF_INVALID');
     const regionMap=input.regions&&typeof input.regions==='object'?input.regions:{};
