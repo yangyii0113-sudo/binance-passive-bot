@@ -204,7 +204,12 @@ class HistoricalMarketAdapter:
                     visible_raw_1h[symbol] = visible
                     for row in reversed(intervals[interval]):
                         open_ms = int(row[0])
-                        if open_ms == current_open and open_ms <= now_ms:
+                        close_ms = int(row[6])
+                        if (
+                            open_ms == current_open
+                            and close_ms == open_ms + HOUR - 1
+                            and open_ms <= now_ms
+                        ):
                             hour_open_prices[symbol] = float(row[1])
                             break
 
@@ -212,10 +217,10 @@ class HistoricalMarketAdapter:
             if ticker is not None:
                 tickers[symbol] = ticker
                 marks[symbol] = float(ticker["lastPrice"])
-            # At and after a native 1H boundary, the current candle's open is
-            # already observable even though its close/high/low are not. Use
-            # that open only for execution/position marks; signal/ticker
-            # context above remains based exclusively on fully closed bars.
+            # A native 1H candle's open is observable at its boundary even
+            # though high/low/close remain future information. Use only this
+            # native open for execution/position marks; signal/ticker context
+            # remains on fully closed candles.
             if symbol in hour_open_prices:
                 marks[symbol] = float(hour_open_prices[symbol])
             steps[symbol] = _step(symbol_info.get(symbol, {}))
