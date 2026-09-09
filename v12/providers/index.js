@@ -8,5 +8,6 @@ const adapters=Object.freeze({
   sec:require('./sec_edgar_adapter.js'),
   bls:require('./bls_adapter.js'),
   fed:require('./fed_adapter.js'),
+  cftc:require('./cftc_cot_adapter.js'),
 });
 module.exports=Object.freeze({...contract,...registry,...catalog,adapters});
