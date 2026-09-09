@@ -1,0 +1,44 @@
+name: FOXYYA Phase 3 Backtest Completion
+
+on:
+  push:
+    branches:
+      - main
+      - feat/foxyya-backtest-phase3-complete
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backtest-completion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install test runner
+        run: python -m pip install --disable-pip-version-check pytest
+      - name: Complete Python regression suite
+        env:
+          PYTHONPATH: src:.
+        run: python -m pytest tests -v
+      - name: Complete Node UI/runtime regression suite
+        run: >-
+          node --test
+          tests/runtime_bridge.test.cjs
+          tests/runtime_layout.test.cjs
+          tests/runtime_metrics.test.cjs
+          tests/runtime_backtest.test.cjs
+      - name: Build production Docker image with historical subsystem
+        run: docker build -t foxyya-backtest-complete .
+      - name: Smoke-test Forward safety and Backtest imports inside image
+        run: |
+          docker run --rm --entrypoint python foxyya-backtest-complete -c "import foxyya,service,backtest.cli,backtest.metrics,backtest.report; assert foxyya.REAL_ORDER_LOCK is True; s=service.RuntimeState('phase3-smoke').snapshot(); assert s['paper_only'] is True and s['real_order_lock'] is True; print(foxyya.VERSION)"

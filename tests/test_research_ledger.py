@@ -84,3 +84,27 @@ def test_factory_never_resolves_outside_research_root(tmp_path):
         assert PRODUCTION_LEDGER.resolve() not in path.parents
     finally:
         ledger.close()
+
+
+def test_repeated_reads_and_appends_do_not_rescan_persisted_prefix(tmp_path):
+    """Catch the quadratic SQLite/JSON prefix work that times out annual replay."""
+    ledger, _ = ResearchLedgerFactory(tmp_path).open("bounded-work")
+    statements = []
+    ledger.db.set_trace_callback(statements.append)
+    try:
+        for number in range(40):
+            ledger.append({"event_id": f"e{number}", "kind": "TEST", "value": number})
+            assert len(ledger.events()) == number + 1
+            assert ledger.get(f"e{number}")["value"] == number
+        prefix_reads = [
+            sql for sql in statements
+            if sql.lstrip().upper().startswith("SELECT")
+            and "FROM EVENTS" in sql.upper()
+            and "WHERE" not in sql.upper()
+        ]
+        assert len(prefix_reads) <= 2, "unchanged ledger prefixes must not be reread per append/read"
+        statements.clear()
+        assert ledger.verify() is True
+        assert any("FROM EVENTS" in sql.upper() for sql in statements), "boundary verification must read SQLite"
+    finally:
+        ledger.close()

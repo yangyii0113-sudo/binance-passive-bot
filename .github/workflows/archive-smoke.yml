@@ -1,0 +1,40 @@
+name: FOXYYA Binance Archive Smoke
+
+on:
+  push:
+    branches:
+      - feat/foxyya-backtest-phase3-complete
+    paths:
+      - '.github/workflows/archive-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  archive-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Parse real official Binance archive files
+        env:
+          PYTHONPATH: src:.
+        run: |
+          python - <<'PY'
+          from datetime import datetime, timezone
+          from backtest.binance_history import BinancePublicDataArchiveClient
+          def ms(y,m,d): return int(datetime(y,m,d,tzinfo=timezone.utc).timestamp()*1000)
+          client=BinancePublicDataArchiveClient()
+          start,end=ms(2026,8,1),ms(2026,9,1)
+          for interval in ('1h','4h','1d'):
+              rows=client.klines('ETHUSDT',interval,start_ms=start,end_ms=end)
+              print('ARCHIVE_KLINES',interval,len(rows),rows[0][0] if rows else None,rows[-1][0] if rows else None)
+              assert rows
+          funding=client.funding('ETHUSDT',start_ms=start,end_ms=end)
+          print('ARCHIVE_FUNDING',len(funding),funding[:2],funding[-2:])
+          assert funding
+          assert all('fundingTime' in x and 'fundingRate' in x for x in funding)
+          PY
