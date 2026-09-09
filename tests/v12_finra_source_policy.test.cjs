@@ -1,0 +1,2 @@
+const test=require('node:test');const assert=require('node:assert/strict');const {SOURCE_STATUS,SOURCE_CATALOG}=require('../v12/providers/source_catalog.js');
+test('FINRA public data requires a server-side public API credential',()=>{const f=SOURCE_CATALOG.find(x=>x.id==='finra-research');assert.equal(f.status,SOURCE_STATUS.KEY_REQUIRED);assert.equal(f.accessClass,'PUBLIC_CREDENTIAL');assert.equal(f.secretRequired,true);assert.equal(f.serverOnly,true);assert.equal(f.liveEligible,false);assert.equal(f.evidenceRole,'CONFIRMATION');});
