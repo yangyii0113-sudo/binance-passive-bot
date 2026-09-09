@@ -2,6 +2,7 @@
 
 const http=require('node:http');
 const {createStagingPreviewApp}=require('./preview_app.js');
+const {createDurableSourceLineageStore}=require('./durable_source_lineage_store.js');
 
 function validateHost(host){
   if(typeof host!=='string'||!host.trim())throw Error('HOST_INVALID');
@@ -13,18 +14,28 @@ function validatePort(port){
   return port;
 }
 
-function startStagingPreviewServer({host='127.0.0.1',port=0}={}){
+function resolveLineageStore({lineageFilePath,lineageStore}={}){
+  if(lineageStore!==undefined&&lineageStore!==null){
+    if(typeof lineageStore!=='object'||typeof lineageStore.traceOutput!=='function')throw Error('LINEAGE_STORE_INVALID');
+    return lineageStore;
+  }
+  if(lineageFilePath===undefined||lineageFilePath===null)return null;
+  return createDurableSourceLineageStore({filePath:lineageFilePath});
+}
+
+function startStagingPreviewServer({host='127.0.0.1',port=0,lineageFilePath,lineageStore}={}){
   return new Promise((resolve,reject)=>{
-    let validHost,validPort;
+    let validHost,validPort,durableLineage;
     try{
       validHost=validateHost(host);
       validPort=validatePort(port);
+      durableLineage=resolveLineageStore({lineageFilePath,lineageStore});
     }catch(error){
       reject(error);
       return;
     }
 
-    const app=createStagingPreviewApp();
+    const app=createStagingPreviewApp({lineageStore:durableLineage});
     const server=http.createServer(app.handler);
 
     const onError=error=>{
