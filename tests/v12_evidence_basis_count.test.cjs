@@ -1,0 +1,10 @@
+const test=require('node:test');
+const assert=require('node:assert/strict');
+const B=require('../v12/early_trend/evidence_builders.js');
+const obs=(field,value,{receivedAt=1000,source='official'}={})=>({field,value,status:'SNAPSHOT',confidence:1,receivedAt,observedAt:receivedAt-10,source});
+const session=(net,volume,receivedAt)=>({flowObservations:[obs('flow.total_net',net,{receivedAt})],volumeObservation:obs('volume.shares',volume,{receivedAt})});
+const revenue=(period,yoy,receivedAt)=>({instrument:{instrumentId:'TWSE:2330'},reportPeriod:period,knowledgeTime:'RECEIVED_AT',observations:[obs('fundamental.revenue.yoy_pct',yoy,{receivedAt})]});
+test('single-session institutional flow declares basisCount 1',()=>{const e=B.buildInstitutionalFlowEvidence({instrumentId:'TWSE:2330',flowObservations:[obs('flow.total_net',300)],volumeObservation:obs('volume.shares',10000),fullScaleRatio:0.05});assert.equal(e.basisCount,1);});
+test('institutional persistence declares usable session depth',()=>{const e=B.buildInstitutionalPersistenceEvidence({instrumentId:'TWSE:2330',sessions:[session(100,10000,1000),session(200,10000,2000),session(300,10000,3000)],minSessions:3,fullScaleAverageRatio:0.05});assert.equal(e.basisCount,3);});
+test('management guidance revision basisCount equals usable comparable fields',()=>{const previous={instrument:{instrumentId:'TSE:72030'},disclosedAt:1000,pointInTimeSafe:true,observations:[obs('guidance.sales_fy',100,{receivedAt:1000}),obs('guidance.operating_profit_fy',20,{receivedAt:1000})]};const current={instrument:{instrumentId:'TSE:72030'},disclosedAt:2000,pointInTimeSafe:true,observations:[obs('guidance.sales_fy',110,{receivedAt:2000}),obs('guidance.operating_profit_fy',22,{receivedAt:2000})]};const e=B.buildGuidanceRevisionEvidence({current,previous,fullScalePct:20});assert.equal(e.basisCount,2);});
+test('monthly revenue acceleration uses two released periods as basis',()=>{const e=B.buildRevenueAccelerationEvidence({current:revenue('2026-08',20,3000),previous:revenue('2026-07',8,2000),fullScalePct:20});assert.equal(e.basisCount,2);});
