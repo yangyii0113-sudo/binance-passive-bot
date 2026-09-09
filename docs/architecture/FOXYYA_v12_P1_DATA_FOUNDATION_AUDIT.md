@@ -72,6 +72,35 @@ Present and verified:
 
 **Scope note:** P1.3 establishes the canonical contract and invariants. Individual provider adapters may later map their own corporate-action feeds or adjusted-series metadata into this contract, but no adapter may bypass these invariants.
 
+## Provider Health / Runtime Governance — P1.4 CLOSED
+
+Present and verified:
+
+- provider-local health state with honest `UNKNOWN` initial state
+- last success / last failure / latency / freshness / HTTP status-class tracking
+- deterministic retry eligibility and exponential backoff
+- bounded retry attempts
+- HTTP `429` rate-limit state with `Retry-After` handling
+- rate-limit remaining / limit metadata where supplied
+- non-retryable 4xx failures are not retried
+- HTTP-success parse/data failures are explicit `DATA_FAILURE` and are not retried
+- network failures are distinguished from HTTP and data failures
+- consecutive transient failures open a provider-local circuit
+- circuit cooldown and single half-open recovery probe
+- successful half-open probe closes the circuit
+- failed recovery reopens the circuit
+- one provider failure does not degrade another provider
+- freshness can age to `STALE` without inventing a new failure
+- provider runtime governance exported as read-only provider infrastructure
+- public source loader may opt into runtime governance without changing its external `load`-only surface
+- Activation Gate and endpoint allowlist remain before transport / retry logic
+- governed transport retries transient HTTP failures and still returns the same safe loader result contract
+- final rate-limit / open-circuit / network failures remain explicit `UNAVAILABLE`
+- legacy public-source loader behavior remains compatible when governance is not supplied
+- no provider health, runtime governance or public loader surface exposes execution write
+
+**Responsibility boundary:** Activation determines whether a source is permitted to run. Runtime governance determines whether an already-permitted source should currently execute, retry, wait, or fail unavailable. Adapters and bindings remain responsible only for data semantics. Research and UI do not implement their own retries or health inference.
+
 ## Canonical Data / Context Contracts
 
 Present:
@@ -124,6 +153,8 @@ Present:
 - no credential-in-URL
 - fail-closed source readiness
 - HTTP / parse failures become explicit unavailable
+- optional provider runtime governance for retry / rate-limit / circuit handling
+- external surface remains `load` only
 
 ## Official Source Binding
 
@@ -232,22 +263,23 @@ Verified completion:
 
 No adjusted value may silently replace raw market price.
 
-## P1-D — Provider Health / Rate Governance — ACTIVE
+## P1-D — Provider Health / Rate Governance — COMPLETE
 
-Required:
+Verified completion:
 
-- last success
-- last failure
-- latency
-- freshness
+- last success / last failure
+- latency / freshness
 - HTTP status class
-- rate-limit state
-- retry / backoff policy
-- circuit-breaker / temporary disable semantics
+- explicit provider-local health
+- rate-limit state and bounded `Retry-After`
+- deterministic retry / backoff
+- circuit-breaker / cooldown / half-open recovery
+- data, HTTP and network failure distinction
+- public-source loader integration
+- domain-local failure isolation
+- no execution authority
 
-Provider health is domain-local; one provider failure must not turn the whole platform red.
-
-## P1-E — Credential / Entitlement runtime policy
+## P1-E — Credential / Entitlement runtime policy — ACTIVE
 
 Required for credentialed sources such as KRX / J-Quants / FINRA where applicable:
 
@@ -255,6 +287,8 @@ Required for credentialed sources such as KRX / J-Quants / FINRA where applicabl
 - entitlement / plan check distinct from API-key presence
 - zero secret material in read models or frontend
 - explicit `BLOCKED` / `UNAVAILABLE` state when not entitled
+- runtime access contract must not echo secret values
+- source activation, credential presence, entitlement and provider health remain distinct concerns
 
 ## P1-F — US market-price source decision
 
@@ -315,15 +349,15 @@ The following do not block P1 Data Foundation unless later promoted by architect
 # 5. P1 implementation order
 
 ```text
-P1.1 Durable Research History Contract       COMPLETE
+P1.1 Durable Research History Contract            COMPLETE
      ↓
-P1.2 Market Clock completeness              COMPLETE
+P1.2 Market Clock completeness                   COMPLETE
      ↓
-P1.3 Corporate Action / Adjustment Contract COMPLETE
+P1.3 Corporate Action / Adjustment Contract      COMPLETE
      ↓
-P1.4 Provider Health / Retry / Rate Governance   ACTIVE
+P1.4 Provider Health / Retry / Rate Governance   COMPLETE
      ↓
-P1.5 Credential / Entitlement Policy
+P1.5 Credential / Entitlement Policy             ACTIVE
      ↓
 P1.6 TPEx Pipeline Parity
      ↓
@@ -347,13 +381,13 @@ P1 is GO only when all required foundation items satisfy:
 - [x] research history remains forward-only by default;
 - [x] supported market sessions / DST / calendar exceptions are explicit;
 - [x] raw vs adjusted equity prices are distinguishable;
-- [ ] provider failures / rate limits are observable and isolated;
+- [x] provider failures / rate limits are observable and isolated;
 - [ ] credentialed sources remain server-only;
 - [ ] entitlement state is distinct from credential presence;
 - [ ] TPEx has end-to-end pipeline parity;
 - [ ] source lineage can trace research output to canonical observations;
 - [x] unresolved US quote data remains honestly unavailable;
-- [x] no provider / research history / corporate-action surface exposes execution write;
+- [x] no provider / research history / corporate-action / provider-governance surface exposes execution write;
 - [x] Branch Scope Gate is green;
 - [x] existing Crypto Runtime regression is green;
 - [x] `PAPER_ONLY` and `REAL_ORDER_LOCK` remain present;
@@ -374,7 +408,10 @@ Verified closure baseline: v12 `398 / 398`, Runtime JS `10 / 10`, Python `1 / 1`
 **P1.3 status: CLOSED / GREEN**  
 Verified closure baseline: v12 `409 / 409`, Runtime JS `10 / 10`, Python `1 / 1`.
 
-At all three closure gates:
+**P1.4 status: CLOSED / GREEN**  
+Verified closure baseline: v12 `437 / 437`, Runtime JS `10 / 10`, Python `1 / 1`.
+
+At all four closure gates:
 
 - Branch Scope Gate: green
 - `PAPER_ONLY` / `REAL_ORDER_LOCK`: green
@@ -382,8 +419,8 @@ At all three closure gates:
 
 Immediate next implementation unit:
 
-**P1.4 — Provider Health / Retry / Rate Governance**
+**P1.5 — Credential / Entitlement Runtime Policy**
 
-P1.4 must make provider degradation observable and domain-local, define deterministic retry/backoff and rate-limit handling, and add circuit-breaker / temporary-disable semantics without converting provider health into execution authority.
+P1.5 must keep credential presence, entitlement state, source activation and runtime health separate; all credential checks remain server-side; no secret material may appear in read models, loader results, logs or frontend-facing contracts.
 
 No Production migration is authorized by this audit.
