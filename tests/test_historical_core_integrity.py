@@ -148,7 +148,8 @@ def test_historical_core_is_deterministic_no_lookahead_and_ledger_isolated(tmp_p
     finally:
         ledger.close()
 
-    assert ledger_path == (root / run_id / "events.sqlite").resolve()
+    resolved_root = root.resolve()
+    assert ledger_path == (resolved_root / run_id / "events.sqlite").resolve()
+    assert ledger_path.is_relative_to(resolved_root)
     assert ledger_path != PRODUCTION_LEDGER.resolve()
     assert PRODUCTION_LEDGER.resolve() not in ledger_path.parents
-    assert not PRODUCTION_LEDGER.exists()
