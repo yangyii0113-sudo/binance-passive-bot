@@ -34,4 +34,5 @@ jobs:
           tests/test_backtest_report.py
           tests/test_binance_history.py
           tests/test_eth_one_year_replay.py
+          tests/test_backtest_api.py
           -v
