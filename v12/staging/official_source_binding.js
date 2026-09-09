@@ -84,6 +84,22 @@ function twseInstitutional({loader,symbol,tradeDate}={}){
   });
 }
 
+function twseMonthlyRevenue({loader,symbol}={}){
+  if(typeof symbol!=='string'||!symbol.trim())throw Error('SYMBOL_REQUIRED');
+  const requested=symbol.trim();
+  return Object.freeze({
+    async load(){
+      const envelope=await loadExpected(loader,'twse-openapi');
+      if(envelope.status==='UNAVAILABLE')return envelope;
+      if(!Array.isArray(envelope.data))throw Error('TWSE_MONTHLY_REVENUE_PAYLOAD_REQUIRED');
+      const row=envelope.data.find(item=>String(item?.['公司代號']??'').trim()===requested);
+      if(!row)return unavailable('twse-openapi','ENTITY_NOT_FOUND');
+      const data=TWSE.normalizeMonthlyRevenue(row,{receivedAt:envelope.receivedAt});
+      return available('twse-openapi',envelope.receivedAt,data);
+    }
+  });
+}
+
 function secCompanyFact({loader,instrument,taxonomy,concept,unit}={}){
   return Object.freeze({
     async load(){
@@ -118,7 +134,7 @@ function ecbSeries({loader,definition}={}){
 }
 
 function createOfficialSourceBindings(){
-  return Object.freeze({twseDailyQuote,twseInstitutional,secCompanyFact,blsSeries,ecbSeries});
+  return Object.freeze({twseDailyQuote,twseInstitutional,twseMonthlyRevenue,secCompanyFact,blsSeries,ecbSeries});
 }
 
 module.exports=Object.freeze({createOfficialSourceBindings});
