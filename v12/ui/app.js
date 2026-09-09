@@ -4,14 +4,37 @@
   const routeToScreen={HOME:'home',MARKETS:'markets',RESEARCH:'research',POSITIONS:'positions',RESULTS:'results',LAB:'lab',INTELLIGENCE:'intelligence',SYSTEM:'system'};
   const markets=['ALL','CRYPTO','US','TW'];
   const VM=window.FOXY_V12_HOME_VIEW_MODEL,Renderer=window.FOXY_V12_HOME_RENDERER,DOM=window.FOXY_V12_HOME_DOM,Staging=window.FOXY_V12_STAGING_READ_CLIENT;
-  let route='HOME',context='ALL',homeRequest=0,lastHomeAsOf=null,homeLoading=false,lastReadError=null;
+  const FAVORITES_KEY='foxyya-v12-local-favorites-v1';
+  const localStorage=window.localStorage||null;
+  let route='HOME',context='ALL',homeRequest=0,lastHomeAsOf=null,homeLoading=false,lastReadError=null,lastViewModel=null,favoritesOnly=false;
   const toast=message=>{const el=$('#toast');if(!el)return;el.textContent=message;el.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>el.classList.remove('show'),3500)};
+  const esc=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   function closeMore(){const sheet=$('#more-sheet');if(sheet)sheet.hidden=true;$$('[data-route="MORE"]').forEach(x=>x.setAttribute('aria-expanded','false'))}
   function writeLocation(replace=false){const url='#'+routeToScreen[route]+(context==='ALL'?'':'?market='+context);if(location.hash===url)return;const method=!replace&&typeof history.pushState==='function'?'pushState':'replaceState';history[method](null,'',url)}
+  function readFavorites(){
+    if(!localStorage||typeof localStorage.getItem!=='function')return new Set();
+    try{const rows=JSON.parse(localStorage.getItem(FAVORITES_KEY)||'[]');return new Set(Array.isArray(rows)?rows.filter(x=>typeof x==='string'&&x.length&&x.length<=80):[])}catch(_error){return new Set()}
+  }
+  let favorites=readFavorites();
+  function saveFavorites(){if(!localStorage||typeof localStorage.setItem!=='function')return;try{localStorage.setItem(FAVORITES_KEY,JSON.stringify([...favorites].sort()))}catch(_error){}}
+  function getFavorites(){return Object.freeze([...favorites].sort())}
+  function syncFavoriteButtons(){
+    $$('[data-favorite-id]').forEach(button=>{const active=favorites.has(button.dataset.favoriteId);button.setAttribute('aria-pressed',String(active));button.textContent=active?'★ 已收藏':'☆ 收藏'});
+  }
+  function applyFavoritesFilter(){
+    $$('[data-favorite-card]').forEach(card=>{card.hidden=favoritesOnly&&!favorites.has(card.dataset.favoriteCard)});
+    $$('[data-action="FAVORITES"]').forEach(button=>{button.classList.toggle('active',favoritesOnly);button.setAttribute('aria-pressed',String(favoritesOnly))});
+  }
+  function toggleFavorite(id){
+    if(typeof id!=='string'||!id||id.length>80)return false;
+    if(favorites.has(id))favorites.delete(id);else favorites.add(id);
+    saveFavorites();syncFavoriteButtons();applyFavoritesFilter();return favorites.has(id);
+  }
   function applyMarketScope(){
     $$('[data-context]').forEach(x=>{const active=x.dataset.context===context;x.classList.toggle('active',active);x.setAttribute('aria-pressed',String(active))});
     $$('[data-filter-market]').forEach(x=>{x.hidden=context!=='ALL'&&x.dataset.filterMarket!==context});
-    const label=$('#market-scope-label');if(label)label.textContent='研究範圍：'+({ALL:'全部市場',CRYPTO:'Crypto',US:'美股',TW:'台股'}[context])+' · 全球總覽維持完整';
+    applyFavoritesFilter();
+    const label=$('#market-scope-label');if(label)label.textContent='研究範圍：'+({ALL:'全部市場',CRYPTO:'Crypto',US:'美股',TW:'台股'}[context])+' · 全球總覽維持完整'+(favoritesOnly?' · 本機收藏':'');
   }
   function checkSnapshotAge(){
     if(lastHomeAsOf!==null&&Date.now()-lastHomeAsOf>65*60*1000){
@@ -30,7 +53,36 @@
     if(focus)$('[data-screen="'+next+'"] h1')?.focus?.({preventScroll:true});
   }
   function readLocation(){const [hash,query='']=String(location.hash||'#home').slice(1).split('?');const next=Object.entries(routeToScreen).find(([,id])=>id===hash)?.[0]||'HOME';const match=/(?:^|&)market=(ALL|CRYPTO|US|TW)(?:&|$)/.exec(query);setContext(match?match[1]:'ALL',{historyUpdate:false});setRoute(next,{historyUpdate:false});if(!Object.values(routeToScreen).includes(hash))writeLocation(true)}
-  function renderHomeReadModel(readModel){if(!VM||!Renderer||!DOM)throw Error('HOME_RENDER_PIPELINE_REQUIRED');const viewModel=VM.buildHomeViewModel(readModel);DOM.applyHomeRender(document,Renderer.renderHomeSections(viewModel));applyMarketScope();return true}
+  function buildSearchIndex(viewModel=lastViewModel){
+    if(!viewModel||typeof viewModel!=='object')return Object.freeze([]);
+    const rows=[];
+    const add=(type,label,market,routeName,detail='')=>{if(typeof label!=='string'||!label)return;rows.push(Object.freeze({type,label,market:market||null,route:routeName,detail:String(detail||''),search:(label+' '+detail+' '+type+' '+(market||'')).toLowerCase()}))};
+    const opportunities=viewModel.opportunities||{};
+    for(const row of Array.isArray(opportunities.CRYPTO)?opportunities.CRYPTO:[])add('CRYPTO',row.symbol,'CRYPTO','POSITIONS',[row.family,row.side,row.status].join(' '));
+    for(const market of ['US','TW'])for(const row of Array.isArray(opportunities[market])?opportunities[market]:[])add('RESEARCH',row.instrumentId,market,'RESEARCH',[row.direction,row.earlyStage].join(' '));
+    for(const row of Array.isArray(viewModel.events)?viewModel.events:[])add(row.kind||'EVENT',row.title,null,'INTELLIGENCE',[row.source,row.impact].join(' '));
+    for(const row of Array.isArray(viewModel.regions)?viewModel.regions:[])if(row.status==='AVAILABLE')add('REGION',row.region,null,'INTELLIGENCE',[row.bias,row.status].join(' '));
+    const positions=viewModel.positions||{};
+    for(const row of [...(Array.isArray(positions.open)?positions.open:[]),...(Array.isArray(positions.pending)?positions.pending:[])])add('POSITION',row.symbol,'CRYPTO','POSITIONS',[row.family,row.side,row.status].join(' '));
+    const seen=new Set();return Object.freeze(rows.filter(row=>{const key=row.type+'|'+row.label+'|'+row.route;if(seen.has(key))return false;seen.add(key);return true}));
+  }
+  function searchSnapshot(query,limit=20){
+    const q=String(query||'').trim().toLowerCase();if(!q)return Object.freeze([]);
+    return Object.freeze(buildSearchIndex().filter(row=>row.search.includes(q)).slice(0,Math.max(1,Math.min(50,Number(limit)||20))));
+  }
+  function renderSearchResults(query){
+    const target=$('#search-results');if(!target)return;
+    const rows=searchSnapshot(query);
+    target.innerHTML=rows.length?rows.map(row=>`<button class="search-result" data-route="${esc(row.route)}"${row.market?` data-market="${esc(row.market)}"`:''} data-search-result="true"><span>${esc(row.type)}</span><b>${esc(row.label)}</b><small>${esc(row.detail)}</small></button>`).join(''):'<div class="empty-state compact"><b>NO MATCH</b><span>只搜尋目前已載入的 verified snapshot。</span></div>';
+  }
+  function openSearch(){
+    const dialog=$('#search-dialog');if(!dialog)return;
+    renderSearchResults($('#search-input')?.value||'');
+    if(typeof dialog.showModal==='function'&&!dialog.open)dialog.showModal();else dialog.hidden=false;
+    $('#search-input')?.focus?.();
+  }
+  function closeSearch(){const dialog=$('#search-dialog');if(!dialog)return;if(typeof dialog.close==='function'&&dialog.open)dialog.close();else dialog.hidden=true}
+  function renderHomeReadModel(readModel){if(!VM||!Renderer||!DOM)throw Error('HOME_RENDER_PIPELINE_REQUIRED');const viewModel=VM.buildHomeViewModel(readModel);lastViewModel=viewModel;DOM.applyHomeRender(document,Renderer.renderHomeSections(viewModel));syncFavoriteButtons();applyMarketScope();return true}
   function showReadStatus(text){const el=$('#read-status');if(el){el.textContent=text;el.hidden=!text}}
   function unlockButton(button){
     if(!button||typeof button.removeAttribute!=='function')return;
@@ -47,27 +99,24 @@
     }
 
     const positionsPanel=$('#positions .panel');
-    if(positionsPanel&&!$('[data-positions-content]')){
-      positionsPanel.innerHTML='<div data-positions-content><div class="empty-state"><b>LOADING</b><span>正在讀取 Production Paper Runtime…</span></div></div>';
-    }
+    if(positionsPanel&&!$('[data-positions-content]'))positionsPanel.innerHTML='<div data-positions-content><div class="empty-state"><b>LOADING</b><span>正在讀取 Production Paper Runtime…</span></div></div>';
     const positionsNotice=$('#positions .feature-notice');if(positionsNotice)positionsNotice.hidden=true;
     $$('[data-route="POSITIONS"]').forEach(unlockButton);
 
     const resultPanels=$$('#results .panel');
-    if(resultPanels[0]&&!$('[data-trading-results]')){
-      resultPanels[0].innerHTML='<span class="eyebrow">TRADING RESULTS</span><h2>Crypto Forward Paper</h2><div data-trading-results><div class="empty-state compact"><b>LOADING</b><span>正在讀取 canonical closed paper trades…</span></div></div>';
-    }
+    if(resultPanels[0]&&!$('[data-trading-results]'))resultPanels[0].innerHTML='<span class="eyebrow">TRADING RESULTS</span><h2>Crypto Forward Paper</h2><div data-trading-results><div class="empty-state compact"><b>LOADING</b><span>正在讀取 canonical closed paper trades…</span></div></div>';
     const resultsNotice=$('#results .feature-notice');if(resultsNotice)resultsNotice.hidden=true;
     $$('[data-route="RESULTS"]').forEach(unlockButton);
 
     const intelligence=$('#intelligence');
-    if(intelligence&&typeof intelligence.insertAdjacentHTML==='function'&&!$('#calendar-panel')){
-      intelligence.insertAdjacentHTML('beforeend','<div class="intelligence-grid operational-intelligence"><section class="panel" id="calendar-panel"><span class="eyebrow">OFFICIAL CALENDAR</span><h2>經濟日曆</h2><div data-calendar-content><p class="muted">Calendar 載入中…</p></div></section><section class="panel" id="news-panel"><span class="eyebrow">VERIFIED NEWS</span><h2>重要消息</h2><div data-news-content><p class="muted">News 載入中…</p></div></section></div>');
-    }
-    $$('[data-action="CALENDAR"]').forEach(button=>{
-      unlockButton(button);
-      if(button.dataset){button.dataset.route='INTELLIGENCE';button.dataset.section='calendar-panel'}
-    });
+    if(intelligence&&typeof intelligence.insertAdjacentHTML==='function'&&!$('#calendar-panel'))intelligence.insertAdjacentHTML('beforeend','<div class="intelligence-grid operational-intelligence"><section class="panel" id="calendar-panel"><span class="eyebrow">OFFICIAL CALENDAR</span><h2>經濟日曆</h2><div data-calendar-content><p class="muted">Calendar 載入中…</p></div></section><section class="panel" id="news-panel"><span class="eyebrow">VERIFIED NEWS</span><h2>重要消息</h2><div data-news-content><p class="muted">News 載入中…</p></div></section></div>');
+    $$('[data-action="CALENDAR"]').forEach(button=>{unlockButton(button);if(button.dataset){button.dataset.route='INTELLIGENCE';button.dataset.section='calendar-panel'}});
+  }
+  function upgradeLocalTools(){
+    $$('[data-action="SEARCH"]').forEach(unlockButton);
+    for(const button of $$('#markets .filter'))if(String(button.textContent||'').trim()==='收藏'){unlockButton(button);button.dataset.action='FAVORITES';button.setAttribute('aria-pressed','false')}
+    const shell=$('.app-shell');
+    if(shell&&typeof shell.insertAdjacentHTML==='function'&&!$('#search-dialog'))shell.insertAdjacentHTML('beforeend','<dialog id="search-dialog" aria-labelledby="search-title"><div class="dialog-head"><h2 id="search-title">搜尋 Verified Snapshot</h2><button class="icon-btn" data-action="SEARCH_CLOSE" aria-label="關閉搜尋">×</button></div><label class="search-box"><span>只搜尋目前載入資料</span><input id="search-input" type="search" autocomplete="off" placeholder="輸入 NVDA、2330、CPI、ETH…"></label><div id="search-results" class="search-results"><div class="empty-state compact"><b>READY</b><span>不會呼叫外部搜尋服務。</span></div></div></dialog>');
   }
 
   async function loadStagingHome(){
@@ -92,21 +141,27 @@
   }
   function handleClick(event){
     if(!event.target.closest?.('#more-sheet, [data-route="MORE"]'))closeMore();
-    const button=event.target.closest?.('[data-route], [data-context], [data-action], #refresh-research');if(!button||button.disabled)return;
+    const button=event.target.closest?.('[data-route], [data-context], [data-action], [data-favorite-id], #refresh-research');if(!button||button.disabled)return;
     if(button.id==='refresh-research'){void loadStagingHome();return}
+    if(button.dataset.favoriteId){toggleFavorite(button.dataset.favoriteId);return}
+    if(button.dataset.action==='SEARCH'){openSearch();return}
+    if(button.dataset.action==='SEARCH_CLOSE'){closeSearch();return}
+    if(button.dataset.action==='FAVORITES'){favoritesOnly=!favoritesOnly;applyMarketScope();return}
     if(button.dataset.market)setContext(button.dataset.market,{historyUpdate:false});
     if(button.dataset.context)setContext(button.dataset.context);
+    if(button.dataset.searchResult)closeSearch();
     if(button.dataset.route){setRoute(button.dataset.route,{focus:true});if(button.dataset.section)$('#'+button.dataset.section)?.scrollIntoView?.({block:'start'})}
   }
-  upgradeOperationalSurfaces();
+  upgradeOperationalSurfaces();upgradeLocalTools();
   if(typeof document.addEventListener==='function'){
     document.addEventListener('click',handleClick);
-    document.addEventListener('keydown',event=>{if(event.key==='Escape')closeMore()});
+    document.addEventListener('input',event=>{if(event.target?.id==='search-input')renderSearchResults(event.target.value)});
+    document.addEventListener('keydown',event=>{if(event.key==='Escape'){closeSearch();closeMore()}});
   }
   if(typeof setInterval==='function')setInterval(checkSnapshotAge,60000);
   window.addEventListener?.('hashchange',readLocation);window.addEventListener?.('popstate',readLocation);readLocation();
   if(window.FOXY_V12_PREVIEW_HOME_READ_MODEL){try{renderHomeReadModel(window.FOXY_V12_PREVIEW_HOME_READ_MODEL)}catch(error){toast('Preview data rejected · '+error.message)}}
   window.FOXY_V12_LINEAGE_EVIDENCE?.bindEvidence(document);
   if(/^\/v12-preview\/(?:index\.html)?$/.test(location.pathname||''))void loadStagingHome();
-  window.FOXY_V12_PREVIEW=Object.freeze({setRoute,setContext,renderHomeReadModel,loadStagingHome,getState:()=>Object.freeze({route,context})});
+  window.FOXY_V12_PREVIEW=Object.freeze({setRoute,setContext,renderHomeReadModel,loadStagingHome,buildSearchIndex,searchSnapshot,toggleFavorite,getFavorites,getState:()=>Object.freeze({route,context,favoritesOnly})});
 })();
