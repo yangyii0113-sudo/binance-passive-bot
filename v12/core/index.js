@@ -8,4 +8,5 @@ module.exports = Object.freeze({
   providers: require('../providers/index.js'),
   intelligence: require('../intelligence/index.js'),
   earlyTrend: require('../early_trend/index.js'),
+  research: require('../research/index.js'),
 });
