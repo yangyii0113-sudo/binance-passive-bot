@@ -124,25 +124,27 @@ function createRunLineageContext({store,publishHome}){
     });
     store.recordSource(source);
     const key=lineageKey(outputType,outputSubjectId);
-    if(!sourceRecordsByOutput.has(key))sourceRecordsByOutput.set(key,[]);
-    sourceRecordsByOutput.get(key).push(source);
+    const records=sourceRecordsByOutput.get(key)||[];
+    records.push(source);
+    sourceRecordsByOutput.set(key,records);
     return source;
   }
 
   function attachOutput(model,outputType,subjectId,asOf){
-    const sourceRecords=sourceRecordsByOutput.get(lineageKey(outputType,subjectId))||[];
-    if(!sourceRecords.length)throw Error('LINEAGE_SOURCE_REQUIRED:'+outputType+':'+subjectId);
+    const records=sourceRecordsByOutput.get(lineageKey(outputType,subjectId))||[];
+    if(!records.length)throw Error('LINEAGE_SOURCE_REQUIRED');
     const output=Lineage.createResearchOutputLineage({
       outputType,
       subjectId,
       asOf,
-      sourceRefs:sourceRecords.map(item=>item.sourceRef),
-      observationRefs:sourceRecords.flatMap(item=>item.observationRefs),
+      outputSchemaVersion:model.schemaVersion,
+      sourceLineageRefs:records.map(x=>x.lineageRef),
+      observationRefs:records.flatMap(x=>x.observationRefs),
       researchOnly:true,
       executionWrite:false
     });
     store.recordOutput(output);
-    return Object.freeze({...model,lineageRef:output.outputRef});
+    return Object.freeze({...model,lineageRef:output.lineageRef});
   }
 
   function publish(input={}){
@@ -256,9 +258,7 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,resea
     });
 
     const usAssets=arrayConfig(input.usAssets,'US_ASSETS').map(item=>{
-      if(!object(item))throw Error('US_ASSET_CONFIG_INVALID');
-      if(!object(item.instrument))throw Error('US_INSTRUMENT_REQUIRED');
-      if(!object(item.sec))throw Error('US_SEC_CONFIG_REQUIRED');
+      if(!object(item)||!object(item.sec))throw Error('US_ASSET_CONFIG_INVALID');
       const loader=loaderFor('sec-edgar',item.sec.endpoint);
       const binding=bind('secCompanyFact',{
         loader,
@@ -271,20 +271,22 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,resea
     });
 
     const regions={};
-    for(const [region,config] of Object.entries(object(input.regions)?input.regions:{})){
-      if(!object(config))throw Error('REGION_CONFIG_INVALID:'+region);
-      const sourceBindings=[];
-      for(const item of arrayConfig(config.bls,'REGION_BLS')){
+    const regionConfig=input.regions===undefined?{}:input.regions;
+    if(!object(regionConfig))throw Error('REGIONS_INVALID');
+    for(const [region,value] of Object.entries(regionConfig)){
+      if(!object(value))throw Error('REGION_CONFIG_INVALID:'+region);
+      const sources=[];
+      for(const item of arrayConfig(value.bls,'REGION_BLS')){
         if(!object(item))throw Error('REGION_BLS_CONFIG_INVALID');
-        const loader=loaderFor('bls',item.endpoint);
-        sourceBindings.push(bind('blsSeries',{loader,definitions:item.definitions}));
+        const loader=loaderFor('bls-public',item.endpoint);
+        sources.push(bind('blsSeries',{loader,definitions:item.definitions}));
       }
-      for(const item of arrayConfig(config.ecb,'REGION_ECB')){
+      for(const item of arrayConfig(value.ecb,'REGION_ECB')){
         if(!object(item))throw Error('REGION_ECB_CONFIG_INVALID');
-        const loader=loaderFor('ecb',item.endpoint);
-        sourceBindings.push(bind('ecbSeries',{loader,definition:item.definition}));
+        const loader=loaderFor('ecb-data',item.endpoint);
+        sources.push(bind('ecbSeries',{loader,definition:item.definition}));
       }
-      regions[region]=Object.freeze(sourceBindings);
+      regions[region]=Object.freeze(sources);
     }
 
     return Object.freeze({
@@ -292,54 +294,69 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,resea
       twAssets:Object.freeze(twAssets),
       usAssets:Object.freeze(usAssets),
       regions:Object.freeze(regions),
-      providerIds:Object.freeze([...usedProviderIds])
+      providerIds:Object.freeze([...usedProviderIds].sort())
     });
   }
 
   function twLoader(item,historyWrites,lineageContext){
     return async()=>{
-      const cfg=item.config;
       const quote=await item.quoteBinding.load();
+      if(quote.status==='UNAVAILABLE')return readonlyEnvelope('UNAVAILABLE',null,'QUOTE_'+quote.reason);
+
+      const instrumentId=quote.data?.instrument?.instrumentId;
+      if(typeof instrumentId!=='string'||!instrumentId)throw Error('TW_INSTRUMENT_ID_INVALID');
+      if(lineageContext)lineageContext.remember('TW_RESEARCH',instrumentId,quote,instrumentId);
+
       const flow=await item.flowBinding.load();
-      const revenue=item.revenueBinding?await item.revenueBinding.load():null;
-      if(quote.status!=='AVAILABLE'||flow.status!=='AVAILABLE'){
-        return readonlyEnvelope('UNAVAILABLE',null,quote.status!=='AVAILABLE'?quote.reason:flow.reason);
+      if(flow.status==='UNAVAILABLE')return readonlyEnvelope('UNAVAILABLE',null,'FLOW_'+flow.reason);
+      if(lineageContext)lineageContext.remember('TW_RESEARCH',instrumentId,flow,instrumentId);
+
+      const cfg=item.config;
+      let currentRevenue=cfg.currentRevenue||null;
+      if(item.revenueBinding){
+        const revenue=await item.revenueBinding.load();
+        currentRevenue=revenue.status==='AVAILABLE'?revenue.data:null;
+        if(lineageContext&&revenue.status==='AVAILABLE')lineageContext.remember('TW_RESEARCH',instrumentId,revenue,instrumentId);
       }
-      if(lineageContext){
-        lineageContext.remember('TW_RESEARCH',quote.data.instrument.instrumentId,quote,quote.data.instrument.instrumentId);
-        lineageContext.remember('TW_RESEARCH',flow.data.instrument.instrumentId,flow,flow.data.instrument.instrumentId);
-        if(revenue?.status==='AVAILABLE')lineageContext.remember('TW_RESEARCH',revenue.data.instrument.instrumentId,revenue,revenue.data.instrument.instrumentId);
+
+      let institutionalSessions;
+      let previousRevenue;
+      if(history){
+        institutionalSessions=history.institutionalSessions(instrumentId);
+        previousRevenue=currentRevenue?history.previousRevenue(instrumentId,currentRevenue.reportPeriod):null;
+      }else{
+        institutionalSessions=Array.isArray(cfg.institutionalSessions)?[...cfg.institutionalSessions]:[];
+        previousRevenue=cfg.previousRevenue||null;
       }
-      const instrumentId=quote.data.instrument.instrumentId;
-      const previousRevenue=history?history.previousRevenue(instrumentId):cfg.previousRevenue;
-      const institutionalSessions=history?history.institutionalSessions(instrumentId,{limit:10}):cfg.institutionalSessions;
-      const data={
-        instrument:quote.data.instrument,
-        quote:quote.data,
-        institutionalFlow:flow.data,
-        monthlyRevenue:revenue?.status==='AVAILABLE'?revenue.data:null,
-        previousRevenue:previousRevenue||null,
-        institutionalSessions:Array.isArray(institutionalSessions)?institutionalSessions:[],
-        researchEvidence:Array.isArray(cfg.researchEvidence)?cfg.researchEvidence:[],
-        policy:item.policy
-      };
+
       if(history){
         historyWrites.push(Object.freeze({
-          session:Object.freeze({quote:quote.data,institutionalFlow:flow.data}),
-          revenue:revenue?.status==='AVAILABLE'?revenue.data:null,
+          session:Object.freeze({quote:quote.data,flow:flow.data}),
+          revenue:currentRevenue,
           meta:historyMeta(item)
         }));
       }
-      return readonlyEnvelope('AVAILABLE',Object.freeze(data));
+
+      return readonlyEnvelope('AVAILABLE',Object.freeze({
+        policy:item.policy,
+        currentQuote:quote.data,
+        currentFlow:flow.data,
+        institutionalSessions:Object.freeze([...institutionalSessions]),
+        currentRevenue,
+        previousRevenue,
+        researchEvidence:Object.freeze(Array.isArray(cfg.researchEvidence)?[...cfg.researchEvidence]:[])
+      }));
     };
   }
 
   function usLoader(item,lineageContext){
     return async()=>{
-      const cfg=item.config;
       const source=await item.binding.load();
-      if(source.status!=='AVAILABLE')return readonlyEnvelope('UNAVAILABLE',null,source.reason);
-      if(lineageContext)lineageContext.remember('US_RESEARCH',cfg.instrument.instrumentId,source,cfg.instrument.instrumentId);
+      if(source.status==='UNAVAILABLE')return source;
+      const cfg=item.config;
+      const instrumentId=cfg.instrument?.instrumentId;
+      if(typeof instrumentId!=='string'||!instrumentId)throw Error('US_INSTRUMENT_ID_INVALID');
+      if(lineageContext)lineageContext.remember('US_RESEARCH',instrumentId,source,instrumentId);
       return readonlyEnvelope('AVAILABLE',Object.freeze({
         instrument:cfg.instrument,
         fundamentalFacts:Object.freeze([source.data]),
