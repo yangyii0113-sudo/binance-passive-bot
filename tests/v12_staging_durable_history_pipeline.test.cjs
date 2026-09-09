@@ -13,7 +13,7 @@ const revenueEndpoint='https://openapi.twse.com.tw/v1/opendata/t187ap05_L';
 const policy=P.freezeEvidencePolicy({
   schemaVersion:'foxyya-evidence-policy/1',id:'tw-durable-history-v1',market:'TW',mode:'RESEARCH_CONTROL',createdAt:1,
   researchOnly:true,executionWrite:false,
-  parameters:{institutionalFlow:{fullScaleRatio:0.05},institutionalPersistence:{minSessions:1,fullScaleAverageRatio:0.04},revenueAcceleration:{fullScalePct:20}}
+  parameters:{institutionalFlow:{fullScaleRatio:0.05},institutionalPersistence:{minSessions:2,fullScaleAverageRatio:0.04},revenueAcceleration:{fullScalePct:20}}
 });
 
 function historyFile(){
