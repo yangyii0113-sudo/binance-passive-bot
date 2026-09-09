@@ -32,6 +32,38 @@
   function readLocation(){const [hash,query='']=String(location.hash||'#home').slice(1).split('?');const next=Object.entries(routeToScreen).find(([,id])=>id===hash)?.[0]||'HOME';const match=/(?:^|&)market=(ALL|CRYPTO|US|TW)(?:&|$)/.exec(query);setContext(match?match[1]:'ALL',{historyUpdate:false});setRoute(next,{historyUpdate:false});if(!Object.values(routeToScreen).includes(hash))writeLocation(true)}
   function renderHomeReadModel(readModel){if(!VM||!Renderer||!DOM)throw Error('HOME_RENDER_PIPELINE_REQUIRED');const viewModel=VM.buildHomeViewModel(readModel);DOM.applyHomeRender(document,Renderer.renderHomeSections(viewModel));applyMarketScope();return true}
   function showReadStatus(text){const el=$('#read-status');if(el){el.textContent=text;el.hidden=!text}}
+
+  function upgradeOperationalSurfaces(){
+    const focus=$('#today-focus .empty-state');
+    if(focus&&!$('[data-home-content="today-focus"]')){
+      focus.className='';focus.setAttribute?.('data-home-content','today-focus');
+      focus.innerHTML='<p class="muted">Verified focus 載入中…</p>';
+    }
+
+    const positionsPanel=$('#positions .panel');
+    if(positionsPanel&&!$('[data-positions-content]')){
+      positionsPanel.innerHTML='<div data-positions-content><div class="empty-state"><b>LOADING</b><span>正在讀取 Production Paper Runtime…</span></div></div>';
+    }
+    const positionsNotice=$('#positions .feature-notice');if(positionsNotice)positionsNotice.hidden=true;
+    $$('[data-route="POSITIONS"]').forEach(button=>{button.removeAttribute?.('disabled');button.removeAttribute?.('aria-disabled');button.removeAttribute?.('title')});
+
+    const resultPanels=$$('#results .panel');
+    if(resultPanels[0]&&!$('[data-trading-results]')){
+      resultPanels[0].innerHTML='<span class="eyebrow">TRADING RESULTS</span><h2>Crypto Forward Paper</h2><div data-trading-results><div class="empty-state compact"><b>LOADING</b><span>正在讀取 canonical closed paper trades…</span></div></div>';
+    }
+    const resultsNotice=$('#results .feature-notice');if(resultsNotice)resultsNotice.hidden=true;
+    $$('[data-route="RESULTS"]').forEach(button=>{button.removeAttribute?.('disabled');button.removeAttribute?.('aria-disabled');button.removeAttribute?.('title')});
+
+    const intelligence=$('#intelligence');
+    if(intelligence&&typeof intelligence.insertAdjacentHTML==='function'&&!$('#calendar-panel')){
+      intelligence.insertAdjacentHTML('beforeend','<div class="intelligence-grid operational-intelligence"><section class="panel" id="calendar-panel"><span class="eyebrow">OFFICIAL CALENDAR</span><h2>經濟日曆</h2><div data-calendar-content><p class="muted">Calendar 載入中…</p></div></section><section class="panel" id="news-panel"><span class="eyebrow">VERIFIED NEWS</span><h2>重要消息</h2><div data-news-content><p class="muted">News 載入中…</p></div></section></div>');
+    }
+    $$('[data-action="CALENDAR"]').forEach(button=>{
+      button.removeAttribute?.('disabled');button.removeAttribute?.('aria-disabled');button.removeAttribute?.('title');
+      if(button.dataset){button.dataset.route='INTELLIGENCE';button.dataset.section='calendar-panel'}
+    });
+  }
+
   async function loadStagingHome(){
     homeLoading=true;
     const request=++homeRequest,health=$('#data-health'),refresh=$('#refresh-research');
@@ -60,6 +92,7 @@
     if(button.dataset.context)setContext(button.dataset.context);
     if(button.dataset.route){setRoute(button.dataset.route,{focus:true});if(button.dataset.section)$('#'+button.dataset.section)?.scrollIntoView?.({block:'start'})}
   }
+  upgradeOperationalSurfaces();
   if(typeof document.addEventListener==='function'){
     document.addEventListener('click',handleClick);
     document.addEventListener('keydown',event=>{if(event.key==='Escape')closeMore()});
