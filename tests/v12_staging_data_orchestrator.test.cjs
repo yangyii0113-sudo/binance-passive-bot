@@ -6,7 +6,7 @@ const Context=require('../v12/data/context_normalizer.js');
 const {createStagingHomeService}=require('../v12/staging/home_service.js');
 const {createStagingDataOrchestrator}=require('../v12/staging/data_orchestrator.js');
 
-const nowMs=Date.parse('2026-09-09T04:30:00Z');
+const nowMs=Date.parse('2026-09-09T06:30:00Z');
 const available=data=>({status:'AVAILABLE',data});
 const unavailable=reason=>({status:'UNAVAILABLE',reason});
 
