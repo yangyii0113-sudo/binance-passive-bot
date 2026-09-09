@@ -26,17 +26,51 @@ Present:
 - exchange-scoped IDs
 - currency / timezone metadata
 - shared cross-market contracts
+- Corporate Action / Price Series contract exported from Market Core
 
-## Market Clock
+## Market Clock — P1.2 CLOSED
 
-Present:
+Present and verified:
 
-- Crypto 24/7 behavior
-- Taiwan regular session
-- holiday override behavior
-- unknown exchange fails unavailable rather than guessed
+- Crypto 24/7 behavior isolated from equity-session rules
+- TWSE / TPEx regular session in Taipei local time
+- NYSE / NASDAQ pre-market, regular and after-hours phases
+- US DST behavior through authoritative exchange timezone conversion rather than fixed UTC offsets
+- TSE morning session, lunch break and afternoon reopen
+- KRX regular session in Seoul local time
+- HKEX lunch break and afternoon reopen
+- XETRA representative regular session in Europe/Berlin timezone
+- weekend close behavior
+- next open / next close boundaries where defined
+- verified calendar override with source provenance
+- calendar knowledge-time ordering
+- local-date scoped overrides
+- half-day / exceptional session replacement
+- unknown exchange fails `UNAVAILABLE` rather than being guessed
 
-Further exchange-calendar depth remains the active P1.2 gap.
+Market Clock remains authoritative. UI and provider modules must not independently derive session state.
+
+## Corporate Action / Adjustment foundation — P1.3 CLOSED
+
+Present and verified:
+
+- explicit action vocabulary: split, reverse split, cash dividend, stock dividend, symbol change, delisting, relisting
+- explicit action status vocabulary
+- source / source-event provenance
+- announced-time / receive-time ordering
+- strict effective-date validation
+- split and reverse-split ratios derived only from explicit share counts
+- cash / stock dividend economic metadata
+- symbol-change successor linkage without mutating historical instrument identity
+- delisting / relisting lifecycle representation
+- explicit `RAW` vs `ADJUSTED` price-series descriptors
+- raw series cannot carry adjustment metadata
+- adjusted series requires separate adjusted field, raw-field reference, method, version and corporate-action event lineage
+- point-in-time-safety and retroactive-adjustment-risk conflict is rejected
+- explicit series selection only; raw never falls back to adjusted and adjusted never falls back to raw
+- no execution / trading surface
+
+**Scope note:** P1.3 establishes the canonical contract and invariants. Individual provider adapters may later map their own corporate-action feeds or adjusted-series metadata into this contract, but no adapter may bypass these invariants.
 
 ## Canonical Data / Context Contracts
 
@@ -166,25 +200,26 @@ Verified completion:
 
 **Rule remains:** do not reuse the Crypto execution ledger for research history.
 
-## P1-B — Market Clock completeness — ACTIVE
+## P1-B — Market Clock completeness — COMPLETE
 
-Required:
+Verified completion:
 
 - US regular / pre-market / after-hours
 - US DST transitions
-- Taiwan holiday calendar contract / source metadata
-- Japan session calendar
-- Korea session calendar
+- Taiwan session contract and verified calendar-override metadata
+- Japan split session model
+- Korea session model
+- Hong Kong split session model
 - Europe representative session model
-- half-day / exceptional close representation where supported
+- half-day / exceptional close representation
 - next open / next close boundaries
 - explicit distinction between market-data availability and trading-session phase
 
-Market Clock must remain authoritative; UI may not calculate sessions independently.
+Market Clock remains authoritative; UI may not calculate sessions independently.
 
-## P1-C — Corporate Action / Adjustment contract
+## P1-C — Corporate Action / Adjustment contract — COMPLETE
 
-Required before long-horizon equity price history is treated as comparable:
+Verified completion:
 
 - split
 - reverse split
@@ -192,10 +227,12 @@ Required before long-horizon equity price history is treated as comparable:
 - symbol change
 - delisting / relisting
 - adjusted vs unadjusted price-series distinction
+- explicit adjustment provenance / version / action lineage
+- raw-series no-fallback invariant
 
 No adjusted value may silently replace raw market price.
 
-## P1-D — Provider Health / Rate Governance
+## P1-D — Provider Health / Rate Governance — ACTIVE
 
 Required:
 
@@ -280,11 +317,11 @@ The following do not block P1 Data Foundation unless later promoted by architect
 ```text
 P1.1 Durable Research History Contract       COMPLETE
      ↓
-P1.2 Market Clock completeness              ACTIVE
+P1.2 Market Clock completeness              COMPLETE
      ↓
-P1.3 Corporate Action / Adjustment Contract
+P1.3 Corporate Action / Adjustment Contract COMPLETE
      ↓
-P1.4 Provider Health / Retry / Rate Governance
+P1.4 Provider Health / Retry / Rate Governance   ACTIVE
      ↓
 P1.5 Credential / Entitlement Policy
      ↓
@@ -308,15 +345,15 @@ P1 is GO only when all required foundation items satisfy:
 - [ ] canonical instrument identity survives restart / storage use;
 - [x] research history persists independently of Crypto ledger;
 - [x] research history remains forward-only by default;
-- [ ] supported market sessions / DST / holidays are explicit;
-- [ ] raw vs adjusted equity prices are distinguishable;
+- [x] supported market sessions / DST / calendar exceptions are explicit;
+- [x] raw vs adjusted equity prices are distinguishable;
 - [ ] provider failures / rate limits are observable and isolated;
 - [ ] credentialed sources remain server-only;
 - [ ] entitlement state is distinct from credential presence;
 - [ ] TPEx has end-to-end pipeline parity;
 - [ ] source lineage can trace research output to canonical observations;
 - [x] unresolved US quote data remains honestly unavailable;
-- [x] no provider / research history surface exposes execution write;
+- [x] no provider / research history / corporate-action surface exposes execution write;
 - [x] Branch Scope Gate is green;
 - [x] existing Crypto Runtime regression is green;
 - [x] `PAPER_ONLY` and `REAL_ORDER_LOCK` remain present;
@@ -328,21 +365,25 @@ P1 is GO only when all required foundation items satisfy:
 
 **P1 status: ACTIVE / NOT YET COMPLETE**
 
-**P1.1 status: CLOSED / GREEN**
+**P1.1 status: CLOSED / GREEN**  
+Verified closure baseline: v12 `387 / 387`, Runtime JS `10 / 10`, Python `1 / 1`.
 
-Verified P1.1 CI baseline at closure:
+**P1.2 status: CLOSED / GREEN**  
+Verified closure baseline: v12 `398 / 398`, Runtime JS `10 / 10`, Python `1 / 1`.
 
-- v12 contract / integration: `387 / 387`
-- existing Runtime JS regression: `10 / 10`
-- Python runtime regression: `1 / 1`
+**P1.3 status: CLOSED / GREEN**  
+Verified closure baseline: v12 `409 / 409`, Runtime JS `10 / 10`, Python `1 / 1`.
+
+At all three closure gates:
+
 - Branch Scope Gate: green
 - `PAPER_ONLY` / `REAL_ORDER_LOCK`: green
 - Production release authorized: `false`
 
 Immediate next implementation unit:
 
-**P1.2 — Market Clock completeness**
+**P1.4 — Provider Health / Retry / Rate Governance**
 
-P1.2 must complete session-phase, DST, calendar-override and exceptional-close contracts before any UI or provider independently derives “market open” state.
+P1.4 must make provider degradation observable and domain-local, define deterministic retry/backoff and rate-limit handling, and add circuit-breaker / temporary-disable semantics without converting provider health into execution authority.
 
 No Production migration is authorized by this audit.
