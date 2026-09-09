@@ -1,0 +1,41 @@
+name: FOXYYA Binance Public Data Smoke
+
+on:
+  push:
+    branches:
+      - feat/foxyya-backtest-source-normalization
+    paths:
+      - '.github/workflows/foxyya-binance-public-smoke.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  public-data-smoke:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}/src
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify Binance USD-M public-only access
+        run: |
+          python - <<'PY'
+          import time
+          from foxyya.execution import HOUR
+          from foxyya.market import PublicBinanceClient
+          from backtest.public_data import fetch_kline_range
+
+          client = PublicBinanceClient(timeout=12)
+          info = client.exchange_info()
+          assert any(row.get('symbol') == 'ETHUSDT' for row in info.get('symbols', []))
+
+          end_ms = (int(time.time() * 1000) // HOUR) * HOUR
+          start_ms = end_ms - 6 * HOUR
+          rows = fetch_kline_range(client, 'ETHUSDT', '1h', start_ms, end_ms)
+          assert len(rows) == 6
+          assert all(int(row[6]) < end_ms for row in rows)
+          print({'status': 'PASS', 'symbol': 'ETHUSDT', 'closed_1h_rows': len(rows), 'real_orders': False})
+          PY
