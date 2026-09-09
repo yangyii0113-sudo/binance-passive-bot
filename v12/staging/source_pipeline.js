@@ -4,6 +4,7 @@ const {createPublicSourceLoader}=require('./public_source_loader.js');
 const {createOfficialSourceBindings}=require('./official_source_binding.js');
 const {createStagingDataOrchestrator}=require('./data_orchestrator.js');
 const EvidencePolicy=require('../early_trend/evidence_policy.js');
+const Lineage=require('../data/source_lineage.js');
 
 const finite=value=>typeof value==='number'&&Number.isFinite(value);
 const object=value=>value&&typeof value==='object'&&!Array.isArray(value);
@@ -27,6 +28,15 @@ function arrayConfig(value,label){
 function validateProviderGovernance(value){
   if(value===undefined||value===null)return null;
   if(!object(value)||typeof value.run!=='function'||typeof value.snapshot!=='function')throw Error('PROVIDER_GOVERNANCE_INVALID');
+  return value;
+}
+
+function validateLineageStore(value){
+  if(value===undefined||value===null)return null;
+  if(!object(value))throw Error('LINEAGE_STORE_INVALID');
+  for(const method of ['recordSource','recordOutput','source','output','traceOutput']){
+    if(typeof value[method]!=='function')throw Error('LINEAGE_STORE_INVALID');
+  }
   return value;
 }
 
@@ -74,15 +84,89 @@ function taiwanExchange(value){
   return exchange;
 }
 
-function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,researchHistory,providerGovernance}={}){
+function assertLineageTraceableInputs(input){
+  for(const item of arrayConfig(input.twAssets,'TW_ASSETS')){
+    if(Array.isArray(item?.researchEvidence)&&item.researchEvidence.length)throw Error('LINEAGE_EXTERNAL_EVIDENCE_FORBIDDEN');
+  }
+  for(const item of arrayConfig(input.usAssets,'US_ASSETS')){
+    if((Array.isArray(item?.researchEvidence)&&item.researchEvidence.length)||(Array.isArray(item?.earlyEvidence)&&item.earlyEvidence.length)){
+      throw Error('LINEAGE_EXTERNAL_EVIDENCE_FORBIDDEN');
+    }
+  }
+}
+
+function lineageKey(outputType,subjectId){return outputType+'|'+subjectId;}
+
+function createRunLineageContext({store,publishHome}){
+  const sourceRecordsByOutput=new Map();
+
+  function remember(outputType,outputSubjectId,envelope,sourceSubjectId=outputSubjectId){
+    if(!envelope||envelope.status!=='AVAILABLE')return null;
+    const meta=envelope.lineageMeta;
+    if(!object(meta)||typeof meta.sourceId!=='string'||typeof meta.datasetId!=='string'||typeof meta.bindingVersion!=='string'||typeof meta.adapterVersion!=='string'||typeof meta.canonicalSchemaVersion!=='string'){
+      throw Error('LINEAGE_META_INVALID');
+    }
+    const source=Lineage.createSourceObservationLineage({
+      sourceId:meta.sourceId,
+      datasetId:meta.datasetId,
+      subjectId:sourceSubjectId,
+      fetchStartedAt:envelope.fetchStartedAt,
+      receivedAt:envelope.receivedAt,
+      bindingVersion:meta.bindingVersion,
+      adapterVersion:meta.adapterVersion,
+      canonicalSchemaVersion:meta.canonicalSchemaVersion,
+      sourceStatus:'AVAILABLE',
+      observations:collectObservations(envelope.data),
+      researchOnly:true,
+      executionWrite:false
+    });
+    store.recordSource(source);
+    const key=lineageKey(outputType,outputSubjectId);
+    const records=sourceRecordsByOutput.get(key)||[];
+    records.push(source);
+    sourceRecordsByOutput.set(key,records);
+    return source;
+  }
+
+  function attachOutput(model,outputType,subjectId,asOf){
+    const records=sourceRecordsByOutput.get(lineageKey(outputType,subjectId))||[];
+    if(!records.length)throw Error('LINEAGE_SOURCE_REQUIRED');
+    const output=Lineage.createResearchOutputLineage({
+      outputType,
+      subjectId,
+      asOf,
+      outputSchemaVersion:model.schemaVersion,
+      sourceLineageRefs:records.map(x=>x.lineageRef),
+      observationRefs:records.flatMap(x=>x.observationRefs),
+      researchOnly:true,
+      executionWrite:false
+    });
+    store.recordOutput(output);
+    return Object.freeze({...model,lineageRef:output.lineageRef});
+  }
+
+  function publish(input={}){
+    const twAssets=(Array.isArray(input.twAssets)?input.twAssets:[]).map(model=>attachOutput(model,'TW_RESEARCH',model.instrumentId,input.asOf));
+    const usAssets=(Array.isArray(input.usAssets)?input.usAssets:[]).map(model=>attachOutput(model,'US_RESEARCH',model.instrumentId,input.asOf));
+    const regionalContexts={};
+    for(const [region,model] of Object.entries(object(input.regionalContexts)?input.regionalContexts:{})){
+      regionalContexts[region]=attachOutput(model,'REGIONAL_CONTEXT','REGION:'+region,input.asOf);
+    }
+    return publishHome({...input,twAssets,usAssets,regionalContexts:Object.freeze(regionalContexts)});
+  }
+
+  return Object.freeze({remember,publish});
+}
+
+function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,researchHistory,providerGovernance,lineageStore}={}){
   if(typeof fetchImpl!=='function')throw Error('FETCH_REQUIRED');
   if(typeof clock!=='function')throw Error('CLOCK_REQUIRED');
   if(typeof publishHome!=='function')throw Error('PUBLISH_HOME_REQUIRED');
   const history=validateResearchHistory(researchHistory);
   const providerRuntime=validateProviderGovernance(providerGovernance);
+  const lineage=validateLineageStore(lineageStore);
 
   const bindings=createOfficialSourceBindings();
-  const orchestrator=createStagingDataOrchestrator({publishHome});
 
   function preflight(input){
     const usedProviderIds=new Set();
@@ -185,23 +269,26 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,resea
     });
   }
 
-  function twLoader(item,historyWrites){
+  function twLoader(item,historyWrites,lineageContext){
     return async()=>{
       const quote=await item.quoteBinding.load();
       if(quote.status==='UNAVAILABLE')return readonlyEnvelope('UNAVAILABLE',null,'QUOTE_'+quote.reason);
 
+      const instrumentId=quote.data?.instrument?.instrumentId;
+      if(typeof instrumentId!=='string'||!instrumentId)throw Error('TW_INSTRUMENT_ID_INVALID');
+      if(lineageContext)lineageContext.remember('TW_RESEARCH',instrumentId,quote,instrumentId);
+
       const flow=await item.flowBinding.load();
       if(flow.status==='UNAVAILABLE')return readonlyEnvelope('UNAVAILABLE',null,'FLOW_'+flow.reason);
+      if(lineageContext)lineageContext.remember('TW_RESEARCH',instrumentId,flow,instrumentId);
 
       const cfg=item.config;
       let currentRevenue=cfg.currentRevenue||null;
       if(item.revenueBinding){
         const revenue=await item.revenueBinding.load();
         currentRevenue=revenue.status==='AVAILABLE'?revenue.data:null;
+        if(lineageContext&&revenue.status==='AVAILABLE')lineageContext.remember('TW_RESEARCH',instrumentId,revenue,instrumentId);
       }
-
-      const instrumentId=quote.data?.instrument?.instrumentId;
-      if(typeof instrumentId!=='string'||!instrumentId)throw Error('TW_INSTRUMENT_ID_INVALID');
 
       let institutionalSessions;
       let previousRevenue;
@@ -233,11 +320,14 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,resea
     };
   }
 
-  function usLoader(item){
+  function usLoader(item,lineageContext){
     return async()=>{
       const source=await item.binding.load();
       if(source.status==='UNAVAILABLE')return source;
       const cfg=item.config;
+      const instrumentId=cfg.instrument?.instrumentId;
+      if(typeof instrumentId!=='string'||!instrumentId)throw Error('US_INSTRUMENT_ID_INVALID');
+      if(lineageContext)lineageContext.remember('US_RESEARCH',instrumentId,source,instrumentId);
       return readonlyEnvelope('AVAILABLE',Object.freeze({
         instrument:cfg.instrument,
         fundamentalFacts:Object.freeze([source.data]),
@@ -251,12 +341,15 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,resea
     };
   }
 
-  function regionLoader(sourceBindings){
+  function regionLoader(region,sourceBindings,lineageContext){
     return async()=>{
       const available=[];
       for(const binding of sourceBindings){
         const source=await binding.load();
-        if(source.status==='AVAILABLE')available.push(source.data);
+        if(source.status==='AVAILABLE'){
+          available.push(source.data);
+          if(lineageContext)lineageContext.remember('REGIONAL_CONTEXT','REGION:'+region,source,'REGION:'+region);
+        }
       }
       if(!available.length)return readonlyEnvelope('UNAVAILABLE',null,'ALL_SOURCES_UNAVAILABLE');
 
@@ -284,11 +377,14 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,resea
 
   async function run(input={}){
     if(!finite(input.nowMs)||input.nowMs<0)throw Error('NOW_INVALID');
+    if(lineage)assertLineageTraceableInputs(input);
 
     // Build every loader/binding, validate governance, and reject manual history
     // overrides before the first network request.
     const plan=preflight(input);
     const historyWrites=[];
+    const lineageContext=lineage?createRunLineageContext({store:lineage,publishHome}):null;
+    const orchestrator=createStagingDataOrchestrator({publishHome:lineageContext?lineageContext.publish:publishHome});
 
     const marketSources={TWSE:[],TPEX:[]};
     for(const item of plan.twQuotes){
@@ -314,12 +410,12 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,resea
     }
 
     const regionLoaders={};
-    for(const [region,sourceBindings] of Object.entries(plan.regions))regionLoaders[region]=regionLoader(sourceBindings);
+    for(const [region,sourceBindings] of Object.entries(plan.regions))regionLoaders[region]=regionLoader(region,sourceBindings,lineageContext);
 
     const orchestration=await orchestrator.run({
       nowMs:input.nowMs,
-      twAssets:plan.twAssets.map(item=>twLoader(item,historyWrites)),
-      usAssets:plan.usAssets.map(usLoader),
+      twAssets:plan.twAssets.map(item=>twLoader(item,historyWrites,lineageContext)),
+      usAssets:plan.usAssets.map(item=>usLoader(item,lineageContext)),
       regions:regionLoaders,
       pulses:object(input.pulses)?input.pulses:{},
       todayFocus:Array.isArray(input.todayFocus)?input.todayFocus:[],
