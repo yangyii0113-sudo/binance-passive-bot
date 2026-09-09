@@ -1,6 +1,7 @@
 'use strict';
 
 const TWSE=require('../providers/twse_adapter.js');
+const TPEX=require('../providers/tpex_adapter.js');
 const SEC=require('../providers/sec_edgar_adapter.js');
 const BLS=require('../providers/bls_adapter.js');
 const ECB=require('../providers/ecb_adapter.js');
@@ -100,6 +101,54 @@ function twseMonthlyRevenue({loader,symbol}={}){
   });
 }
 
+function tpexDailyQuote({loader,symbol}={}){
+  if(typeof symbol!=='string'||!symbol.trim())throw Error('SYMBOL_REQUIRED');
+  const requested=symbol.trim();
+  return Object.freeze({
+    async load(){
+      const envelope=await loadExpected(loader,'tpex-openapi');
+      if(envelope.status==='UNAVAILABLE')return envelope;
+      if(!Array.isArray(envelope.data))throw Error('TPEX_QUOTE_PAYLOAD_REQUIRED');
+      const row=envelope.data.find(item=>String(item?.SecuritiesCompanyCode??'').trim()===requested);
+      if(!row)return unavailable('tpex-openapi','ENTITY_NOT_FOUND');
+      const data=TPEX.normalizeDailyQuote(row,{receivedAt:envelope.receivedAt});
+      return available('tpex-openapi',envelope.receivedAt,data);
+    }
+  });
+}
+
+function tpexInstitutional({loader,symbol}={}){
+  if(typeof symbol!=='string'||!symbol.trim())throw Error('SYMBOL_REQUIRED');
+  const requested=symbol.trim();
+  return Object.freeze({
+    async load(){
+      const envelope=await loadExpected(loader,'tpex-openapi');
+      if(envelope.status==='UNAVAILABLE')return envelope;
+      if(!Array.isArray(envelope.data))throw Error('TPEX_FLOW_PAYLOAD_REQUIRED');
+      const row=envelope.data.find(item=>String(item?.SecuritiesCompanyCode??'').trim()===requested);
+      if(!row)return unavailable('tpex-openapi','ENTITY_NOT_FOUND');
+      const data=TPEX.normalizeInstitutionalRow(row,{receivedAt:envelope.receivedAt});
+      return available('tpex-openapi',envelope.receivedAt,data);
+    }
+  });
+}
+
+function tpexMonthlyRevenue({loader,symbol}={}){
+  if(typeof symbol!=='string'||!symbol.trim())throw Error('SYMBOL_REQUIRED');
+  const requested=symbol.trim();
+  return Object.freeze({
+    async load(){
+      const envelope=await loadExpected(loader,'tpex-openapi');
+      if(envelope.status==='UNAVAILABLE')return envelope;
+      if(!Array.isArray(envelope.data))throw Error('TPEX_MONTHLY_REVENUE_PAYLOAD_REQUIRED');
+      const row=envelope.data.find(item=>String(item?.['公司代號']??'').trim()===requested);
+      if(!row)return unavailable('tpex-openapi','ENTITY_NOT_FOUND');
+      const data=TPEX.normalizeMonthlyRevenue(row,{receivedAt:envelope.receivedAt});
+      return available('tpex-openapi',envelope.receivedAt,data);
+    }
+  });
+}
+
 function secCompanyFact({loader,instrument,taxonomy,concept,unit}={}){
   return Object.freeze({
     async load(){
@@ -134,7 +183,17 @@ function ecbSeries({loader,definition}={}){
 }
 
 function createOfficialSourceBindings(){
-  return Object.freeze({twseDailyQuote,twseInstitutional,twseMonthlyRevenue,secCompanyFact,blsSeries,ecbSeries});
+  return Object.freeze({
+    twseDailyQuote,
+    twseInstitutional,
+    twseMonthlyRevenue,
+    tpexDailyQuote,
+    tpexInstitutional,
+    tpexMonthlyRevenue,
+    secCompanyFact,
+    blsSeries,
+    ecbSeries
+  });
 }
 
 module.exports=Object.freeze({createOfficialSourceBindings});
