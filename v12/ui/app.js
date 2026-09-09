@@ -64,4 +64,10 @@
     loadStagingHome,
     getState:()=>Object.freeze({route,context})
   });
+
+  void loadStagingHome().catch(error=>{
+    const health=$('#data-health');
+    if(health)health.textContent='STAGING · READ ERROR';
+    toast('Staging data unavailable · '+error.message);
+  });
 })();
