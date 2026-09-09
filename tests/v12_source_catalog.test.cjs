@@ -52,6 +52,18 @@ test('Taiwan market discovery returns both TWSE and TPEx official sources',()=>{
   assert.ok(sources.every(x=>x.authority==='OFFICIAL'));
 });
 
+test('TWSE OpenAPI and T86 institutional flow are separate canonical sources',()=>{
+  const openapi=SOURCE_CATALOG.find(x=>x.id==='twse-openapi');
+  const t86=SOURCE_CATALOG.find(x=>x.id==='twse-t86');
+  assert.ok(openapi);
+  assert.ok(t86);
+  assert.equal(openapi.capabilities.includes('INSTITUTIONAL_FLOW'),false);
+  assert.equal(t86.capabilities.includes('INSTITUTIONAL_FLOW'),true);
+  assert.equal(t86.latencyClass,'EOD_DELAYED');
+  assert.equal(t86.evidenceRole,'CONFIRMATION');
+  assert.equal(t86.liveEligible,false);
+});
+
 test('source status vocabulary is explicit and stable',()=>{
   assert.deepEqual(Object.keys(SOURCE_STATUS).sort(),[
     'ADOPTED','DECISION_REQUIRED','EXISTING_CORE','KEY_REQUIRED','REVIEW_REQUIRED'
