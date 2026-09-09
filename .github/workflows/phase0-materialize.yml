@@ -26,7 +26,7 @@ jobs:
         run: python -m pip install --disable-pip-version-check pytest
 
       - name: Materialize exact production source bytes
-        run: python tools/materialize_runtime_source.py
+        run: python -m tools.materialize_runtime_source
 
       - name: Verify byte parity before commit
         run: python -m pytest tests/test_source_parity.py -v
