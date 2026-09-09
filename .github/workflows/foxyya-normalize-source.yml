@@ -1,0 +1,48 @@
+name: Normalize FOXYYA Production Source
+
+on:
+  push:
+    branches:
+      - feat/foxyya-backtest-source-normalization
+    paths:
+      - '.github/workflows/foxyya-normalize-source.yml'
+      - 'tools/extract_production_backend.py'
+      - 'backend_parts2/**'
+
+permissions:
+  contents: write
+
+jobs:
+  normalize-production-source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install test dependency
+        run: python -m pip install --upgrade pytest
+      - name: Reconstruct exact production backend
+        run: |
+          rm -rf /tmp/foxyya-production src/foxyya
+          python tools/extract_production_backend.py \
+            --parts-dir backend_parts2 \
+            --manifest artifacts/source-parity/production_manifest.json \
+            --extract-to /tmp/foxyya-production
+          mkdir -p src
+          cp -a /tmp/foxyya-production/foxyya_runtime_backend/src/foxyya src/foxyya
+      - name: Prove byte parity before commit
+        run: python -m pytest tests/test_source_parity.py -v
+      - name: Commit normalized source only after parity passes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/foxyya artifacts/source-parity/production_manifest.json
+          if git diff --cached --quiet; then
+            echo "Normalized source already matches production archive."
+            exit 0
+          fi
+          git commit -m "refactor: normalize production foxyya source tree"
+          git push origin HEAD:${GITHUB_REF_NAME}
