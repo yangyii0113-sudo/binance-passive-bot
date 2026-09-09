@@ -1,0 +1,4 @@
+const test=require('node:test');const assert=require('node:assert/strict');const P=require('../v12/providers/provider_contract.js');const TWSE=require('../v12/providers/twse_adapter.js');const TPEX=require('../v12/providers/tpex_adapter.js');
+test('Taiwan official adapters expose read-only provider descriptors',()=>{for(const a of [TWSE,TPEX]){const r=P.validateProviderDescriptor(a.descriptor);assert.equal(r.ok,true,r.errors.join(','));assert.equal(a.descriptor.executionWrite,false);assert.equal(a.descriptor.transport,'PUBLIC_READ_ONLY');}});
+test('generic normalize dispatch handles quote payloads',()=>{const r=TWSE.normalize('QUOTE',{Date:'1150908',Code:'2330',ClosingPrice:'1425'},{receivedAt:Date.parse('2026-09-08T14:00:00+08:00')});assert.equal(r.instrument.instrumentId,'TWSE:2330');});
+test('unknown dataset type is rejected explicitly',()=>{assert.throws(()=>TPEX.normalize('ORDER',{},{receivedAt:Date.now()}),/DATASET_UNSUPPORTED/);});
