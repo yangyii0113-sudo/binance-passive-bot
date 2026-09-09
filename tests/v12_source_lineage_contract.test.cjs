@@ -2,7 +2,11 @@
 
 const test=require('node:test');
 const assert=require('node:assert/strict');
-const Lineage=require('../v12/lineage/source_lineage.js');
+const fs=require('node:fs');
+const os=require('node:os');
+const path=require('node:path');
+const Lineage=require('../v12/data/source_lineage.js');
+const {createDurableSourceLineageStore}=require('../v12/staging/durable_source_lineage_store.js');
 
 function twObservation(overrides={}){
   return {
@@ -22,142 +26,125 @@ function twObservation(overrides={}){
   };
 }
 
-function sourceLineageInput(overrides={}){
-  const ref=Lineage.makeObservationRef(twObservation());
-  return {
+function sourceInput(overrides={}){
+  const receivedAt=overrides.receivedAt??1100;
+  const observation=twObservation({receivedAt,...(overrides.observation||{})});
+  const base={
     sourceId:'tpex-openapi',
     datasetId:'TPEX:tpex_mainboard_daily_close_quotes',
-    receivedAt:1100,
-    bindingId:'official-source-binding:tpexDailyQuote',
-    bindingVersion:'1',
-    adapterId:'tpex-adapter',
-    adapterVersion:'1',
+    subjectId:'TPEX:6488',
+    fetchStartedAt:1000,
+    receivedAt,
+    bindingVersion:'official-source-binding/1',
+    adapterVersion:'tpex-adapter/1',
     canonicalSchemaVersion:'foxyya-observation/1',
-    status:'AVAILABLE',
-    observationRefs:[ref],
+    sourceStatus:'AVAILABLE',
+    observations:[observation]
+  };
+  const {observation:_ignored,...rest}=overrides;
+  return {...base,...rest};
+}
+
+function outputInput(source,overrides={}){
+  return {
+    outputType:'TW_RESEARCH',
+    subjectId:'TPEX:6488',
+    asOf:1700,
+    outputSchemaVersion:'foxyya-tw-asset-snapshot/1',
+    modelVersion:'tw-research/1',
+    policyVersion:'tw-policy/1',
+    sourceLineageRefs:[source.lineageRef],
+    observationRefs:[...source.observationRefs],
     ...overrides
   };
 }
 
-test('canonical observation reference is deterministic across equivalent object key order',()=>{
+function withStore(fn){
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'foxyya-lineage-contract-'));
+  const filePath=path.join(dir,'audit.lineage.jsonl');
+  try{return fn(createDurableSourceLineageStore({filePath,now:()=>2000}),filePath);}
+  finally{fs.rmSync(dir,{recursive:true,force:true});}
+}
+
+test('canonical observation references are deterministic across equivalent object key order',()=>{
   const a=twObservation();
   const b={
-    source:a.source,
-    confidence:a.confidence,
-    status:a.status,
-    receivedAt:a.receivedAt,
-    observedAt:a.observedAt,
-    currency:a.currency,
-    unit:a.unit,
-    value:a.value,
-    field:a.field,
-    market:a.market,
-    instrumentId:a.instrumentId,
-    schemaVersion:a.schemaVersion
+    source:a.source,confidence:a.confidence,status:a.status,receivedAt:a.receivedAt,
+    observedAt:a.observedAt,currency:a.currency,unit:a.unit,value:a.value,
+    field:a.field,market:a.market,instrumentId:a.instrumentId,schemaVersion:a.schemaVersion
   };
-  const refA=Lineage.makeObservationRef(a);
-  const refB=Lineage.makeObservationRef(b);
-  assert.equal(refA,refB);
-  assert.match(refA,/^obs:[a-f0-9]{64}$/);
+  const left=Lineage.createSourceObservationLineage(sourceInput({observation:a}));
+  const right=Lineage.createSourceObservationLineage(sourceInput({observation:b}));
+  assert.equal(left.lineageRef,right.lineageRef);
+  assert.deepEqual(left.observationRefs,right.observationRefs);
+  assert.match(left.observationRefs[0],/^obs_[a-f0-9]{64}$/);
 });
 
-test('observation reference changes when canonical economic content changes',()=>{
-  const base=Lineage.makeObservationRef(twObservation());
-  const changed=Lineage.makeObservationRef(twObservation({value:124}));
-  assert.notEqual(base,changed);
+test('canonical economic content change changes observation and source lineage references',()=>{
+  const base=Lineage.createSourceObservationLineage(sourceInput());
+  const changed=Lineage.createSourceObservationLineage(sourceInput({observation:{value:124}}));
+  assert.notEqual(base.observationRefs[0],changed.observationRefs[0]);
+  assert.notEqual(base.lineageRef,changed.lineageRef);
 });
 
-test('source lineage separates provider source from dataset and versions every transformation boundary',()=>{
-  const row=Lineage.createSourceLineage(sourceLineageInput());
+test('source lineage separates source dataset timing and transformation versions and stays immutable',()=>{
+  const row=Lineage.createSourceObservationLineage(sourceInput());
   assert.equal(row.schemaVersion,'foxyya-source-lineage/1');
   assert.equal(row.sourceId,'tpex-openapi');
   assert.equal(row.datasetId,'TPEX:tpex_mainboard_daily_close_quotes');
-  assert.equal(row.bindingId,'official-source-binding:tpexDailyQuote');
-  assert.equal(row.bindingVersion,'1');
-  assert.equal(row.adapterId,'tpex-adapter');
-  assert.equal(row.adapterVersion,'1');
+  assert.equal(row.subjectId,'TPEX:6488');
+  assert.equal(row.fetchStartedAt,1000);
+  assert.equal(row.receivedAt,1100);
+  assert.equal(row.bindingVersion,'official-source-binding/1');
+  assert.equal(row.adapterVersion,'tpex-adapter/1');
   assert.equal(row.canonicalSchemaVersion,'foxyya-observation/1');
-  assert.match(row.lineageId,/^src:[a-f0-9]{64}$/);
+  assert.match(row.lineageRef,/^src_[a-f0-9]{64}$/);
   assert.equal(row.researchOnly,true);
   assert.equal(row.executionWrite,false);
   assert.equal(Object.isFrozen(row),true);
+  assert.equal(Object.isFrozen(row.observations),true);
   assert.equal(Object.isFrozen(row.observationRefs),true);
 });
 
-test('equivalent source lineage is restart-stable and produces the same lineage id',()=>{
-  const a=Lineage.createSourceLineage(sourceLineageInput());
-  const b=Lineage.createSourceLineage(sourceLineageInput());
-  assert.equal(a.lineageId,b.lineageId);
-  assert.deepEqual(a,b);
-});
-
-test('unavailable source lineage stays explicit and cannot fabricate canonical observation refs or receive time',()=>{
-  const row=Lineage.createSourceLineage(sourceLineageInput({
-    status:'UNAVAILABLE',
-    receivedAt:null,
-    observationRefs:[],
-    reason:'ENTITY_NOT_FOUND'
-  }));
-  assert.equal(row.status,'UNAVAILABLE');
-  assert.equal(row.receivedAt,null);
+test('unavailable source lineage is explicit and cannot fabricate canonical observations',()=>{
+  const row=Lineage.createSourceObservationLineage(sourceInput({sourceStatus:'UNAVAILABLE',observations:[]}));
+  assert.equal(row.sourceStatus,'UNAVAILABLE');
+  assert.deepEqual(row.observations,[]);
   assert.deepEqual(row.observationRefs,[]);
-  assert.equal(row.reason,'ENTITY_NOT_FOUND');
-  assert.throws(()=>Lineage.createSourceLineage(sourceLineageInput({status:'UNAVAILABLE',receivedAt:null,reason:'ENTITY_NOT_FOUND'})),/UNAVAILABLE_OBSERVATION_REFS_FORBIDDEN/);
+  assert.throws(()=>Lineage.createSourceObservationLineage(sourceInput({sourceStatus:'AVAILABLE',observations:[]})),/AVAILABLE_OBSERVATIONS_REQUIRED/);
+  assert.throws(()=>Lineage.createSourceObservationLineage(sourceInput({sourceStatus:'UNAVAILABLE'})),/UNAVAILABLE_OBSERVATIONS_FORBIDDEN/);
 });
 
-test('research lineage traces output to exact source lineage and canonical observation references',()=>{
-  const source=Lineage.createSourceLineage(sourceLineageInput());
-  const research=Lineage.createResearchLineage({
-    researchOutputId:'TW:TPEX:6488:research:1700',
-    instrumentId:'TPEX:6488',
-    asOf:1700,
-    modelVersion:'tw-research/1',
-    policyVersion:'tw-policy/1',
-    sourceLineages:[source]
+test('research output lineage points to exact source and observation references',()=>{
+  const source=Lineage.createSourceObservationLineage(sourceInput());
+  const output=Lineage.createResearchOutputLineage(outputInput(source));
+  assert.equal(output.schemaVersion,'foxyya-research-output-lineage/1');
+  assert.deepEqual(output.sourceLineageRefs,[source.lineageRef]);
+  assert.deepEqual(output.observationRefs,[...source.observationRefs]);
+  assert.match(output.lineageRef,/^out_[a-f0-9]{64}$/);
+  assert.equal(output.researchOnly,true);
+  assert.equal(output.executionWrite,false);
+  assert.equal(Object.isFrozen(output),true);
+  assert.equal(Object.isFrozen(output.sourceLineageRefs),true);
+  assert.equal(Object.isFrozen(output.observationRefs),true);
+});
+
+test('durable lineage rejects research output that references future source knowledge',()=>{
+  withStore((store)=>{
+    const future=Lineage.createSourceObservationLineage(sourceInput({receivedAt:1800,fetchStartedAt:1750}));
+    store.recordSource(future);
+    const output=Lineage.createResearchOutputLineage(outputInput(future,{asOf:1700}));
+    assert.throws(()=>store.recordOutput(output),/LINEAGE_TIME_ORDER_INVALID/);
+    assert.equal(store.output(output.lineageRef),null);
   });
-  assert.equal(research.schemaVersion,'foxyya-research-lineage/1');
-  assert.deepEqual(research.sourceLineageIds,[source.lineageId]);
-  assert.deepEqual(research.observationRefs,source.observationRefs);
-  assert.equal(research.knowledgeAt,1100);
-  assert.match(research.lineageId,/^research:[a-f0-9]{64}$/);
-  assert.equal(research.researchOnly,true);
-  assert.equal(research.executionWrite,false);
-  assert.equal(Object.isFrozen(research),true);
-  assert.equal(Object.isFrozen(research.sourceLineageIds),true);
-  assert.equal(Object.isFrozen(research.observationRefs),true);
 });
 
-test('research lineage rejects future knowledge and malformed lineage references',()=>{
-  const future=Lineage.createSourceLineage(sourceLineageInput({receivedAt:1800}));
-  assert.throws(()=>Lineage.createResearchLineage({
-    researchOutputId:'TW:TPEX:6488:research:1700',
-    instrumentId:'TPEX:6488',
-    asOf:1700,
-    modelVersion:'tw-research/1',
-    policyVersion:'tw-policy/1',
-    sourceLineages:[future]
-  }),/LINEAGE_TIME_ORDER_INVALID/);
-  assert.throws(()=>Lineage.createResearchLineage({
-    researchOutputId:'TW:TPEX:6488:research:1700',
-    instrumentId:'TPEX:6488',
-    asOf:1700,
-    modelVersion:'tw-research/1',
-    sourceLineages:[{lineageId:'fake'}]
-  }),/SOURCE_LINEAGE_INVALID/);
-});
-
-test('lineage constructors reject secret and execution authority fields',()=>{
-  assert.throws(()=>Lineage.createSourceLineage(sourceLineageInput({apiKey:'do-not-store'})),/SECRET_FIELD_FORBIDDEN/);
-  const source=Lineage.createSourceLineage(sourceLineageInput());
-  assert.throws(()=>Lineage.createResearchLineage({
-    researchOutputId:'TW:TPEX:6488:research:1700',
-    instrumentId:'TPEX:6488',
-    asOf:1700,
-    modelVersion:'tw-research/1',
-    sourceLineages:[source],
-    executionWrite:true
-  }),/EXECUTION_FIELD_FORBIDDEN/);
-  for(const api of [Lineage.createSourceLineage,Lineage.createResearchLineage,Lineage.makeObservationRef]){
+test('canonical lineage constructors reject secret and execution authority fields',()=>{
+  assert.throws(()=>Lineage.createSourceObservationLineage(sourceInput({apiKey:'do-not-store'})),/SECRET_FIELD_FORBIDDEN/);
+  const source=Lineage.createSourceObservationLineage(sourceInput());
+  assert.throws(()=>Lineage.createResearchOutputLineage(outputInput(source,{executionWrite:true})),/EXECUTION_FIELD_FORBIDDEN/);
+  assert.throws(()=>Lineage.createResearchOutputLineage(outputInput(source,{researchOnly:false})),/RESEARCH_ONLY_REQUIRED/);
+  for(const api of [Lineage.createSourceObservationLineage,Lineage.createResearchOutputLineage]){
     assert.equal(/order|trade|position|fill/i.test(api.name),false);
   }
 });
