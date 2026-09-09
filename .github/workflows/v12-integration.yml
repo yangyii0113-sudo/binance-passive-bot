@@ -57,6 +57,9 @@ jobs:
       - name: Run Crypto source-pipeline wiring focused test
         run: node --test tests/v12_execution_source_pipeline_wiring.test.cjs
 
+      - name: Run external read bootstrap focused test
+        run: node --test tests/v12_live_external_read_bootstrap.test.cjs
+
       - name: Run v12 Node contract and integration tests
         shell: bash
         run: |
