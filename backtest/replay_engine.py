@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import dataclass
 
 from backtest.historical_clock import HOUR_MS
@@ -13,6 +15,20 @@ class ReplayPoint:
     phase: str
     open_ms: int
     observed_ms: int
+
+
+def _canonical_bytes(value) -> bytes:
+    return json.dumps(
+        value,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+        allow_nan=False,
+    ).encode("utf-8")
+
+
+def _manifest_sha256(dataset) -> str:
+    return hashlib.sha256(_canonical_bytes(dataset.manifest())).hexdigest()
 
 
 def build_replay_points(
@@ -102,6 +118,7 @@ class HistoricalReplayEngine:
             raise ValueError("run_id required")
 
         self.ledger.verify()
+        manifest_sha256 = _manifest_sha256(self.market.dataset)
         open_times = [
             int(row[0])
             for row in self.market.dataset.rows(self.market.primary_symbol, "1h")
@@ -121,6 +138,7 @@ class HistoricalReplayEngine:
             start_ms=start_ms,
             end_ms=end_ms,
             time_ms=start_ms,
+            manifest_sha256=manifest_sha256,
         )
 
         cycle_count = 0
@@ -158,6 +176,7 @@ class HistoricalReplayEngine:
             start_ms=start_ms,
             end_ms=end_ms,
             time_ms=self.clock.now_ms,
+            manifest_sha256=manifest_sha256,
             cycle_count=cycle_count,
             pending_intents=pending_intents,
             open_positions_5x=open_positions_5x,
@@ -166,6 +185,7 @@ class HistoricalReplayEngine:
 
         return {
             "run_id": str(run_id),
+            "manifest_sha256": manifest_sha256,
             "cycle_count": cycle_count,
             "ledger_integrity": ledger_integrity,
             "event_count": len(self.ledger.events()),
