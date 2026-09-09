@@ -54,6 +54,9 @@ jobs:
       - name: Run P1.4 source-pipeline provider-health focused tests
         run: node --test tests/v12_source_pipeline_provider_health.test.cjs
 
+      - name: Run Crypto source-pipeline wiring focused test
+        run: node --test tests/v12_execution_source_pipeline_wiring.test.cjs
+
       - name: Run v12 Node contract and integration tests
         run: node --test tests/v12_*.test.cjs
 
