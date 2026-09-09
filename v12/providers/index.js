@@ -10,5 +10,6 @@ const adapters=Object.freeze({
   fed:require('./fed_adapter.js'),
   cftc:require('./cftc_cot_adapter.js'),
   finra:require('./finra_adapter.js'),
+  ecb:require('./ecb_adapter.js'),
 });
 module.exports=Object.freeze({...contract,...registry,...catalog,adapters});
