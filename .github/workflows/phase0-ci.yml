@@ -35,8 +35,18 @@ jobs:
               print(f'{digest}  {path}')
           PY
 
-      - name: Archive parity tests
+      - name: Archive and canonical byte parity
         run: python -m pytest tests/test_source_parity.py -v
+
+      - name: Normalized source imports
+        env:
+          PYTHONPATH: src
+        run: python -m pytest tests/test_normalized_imports.py -v
+
+      - name: Paper-only safety invariants
+        env:
+          PYTHONPATH: src
+        run: python -m pytest tests/test_runtime_safety.py -v
 
       - name: Existing Python regressions
         run: python -m pytest tests/test_runtime_view.py -v
