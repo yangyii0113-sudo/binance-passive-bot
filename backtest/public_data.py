@@ -168,6 +168,21 @@ def fetch_funding_range(
     return [collected[key] for key in sorted(collected)]
 
 
+def _native_window(start_ms: int, end_ms: int, interval: str) -> tuple[int, int]:
+    """Resolve a fully-closed native interval window inside an hourly replay range.
+
+    Start is rounded down to provide at least the requested warm-up. End is
+    rounded down so the final returned candle is fully closed before the replay
+    clock. This never rounds the end upward into an incomplete 4H/Daily bar.
+    """
+    step = INTERVAL_MS[interval]
+    aligned_start = (int(start_ms) // step) * step
+    aligned_end = (int(end_ms) // step) * step
+    if aligned_end <= aligned_start:
+        raise ValueError(f"{interval} historical window has no fully closed bars")
+    return aligned_start, aligned_end
+
+
 def fetch_research_dataset(
     client,
     *,
@@ -190,14 +205,25 @@ def fetch_research_dataset(
     if not isinstance(exchange_info, dict) or not isinstance(exchange_info.get("symbols"), list):
         raise ValueError("Binance exchangeInfo response is invalid")
 
+    interval_windows = {
+        interval: _native_window(warmup_start_ms, end_ms, interval)
+        for interval in ("1h", "4h", "1d")
+    }
     klines = {
         symbol: {
-            interval: fetch_kline_range(client, symbol, interval, warmup_start_ms, end_ms)
+            interval: fetch_kline_range(
+                client,
+                symbol,
+                interval,
+                interval_windows[interval][0],
+                interval_windows[interval][1],
+            )
             for interval in ("1h", "4h", "1d")
         }
     }
+    context_start, context_end = interval_windows["1h"]
     context_1h = {
-        context_symbol: fetch_kline_range(client, context_symbol, "1h", warmup_start_ms, end_ms)
+        context_symbol: fetch_kline_range(client, context_symbol, "1h", context_start, context_end)
         for context_symbol in context_symbols
         if context_symbol != symbol
     }
@@ -211,6 +237,10 @@ def fetch_research_dataset(
         "context_1h": context_1h,
         "funding_rows": funding_rows,
         "warmup_start_ms": warmup_start_ms,
+        "interval_windows": {
+            interval: {"start_ms": bounds[0], "end_ms": bounds[1]}
+            for interval, bounds in interval_windows.items()
+        },
         "start_ms": start_ms,
         "end_ms": end_ms,
         "symbol": symbol,
