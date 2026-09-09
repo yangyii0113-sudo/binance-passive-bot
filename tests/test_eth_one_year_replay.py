@@ -13,10 +13,10 @@ from foxyya.runner import ForwardRunner
 DAY = 24 * HOUR
 
 
-def _decision():
+def _decision(signal_id="signal-report-contract"):
     return SimpleNamespace(
         qualified=True,
-        signal_id="signal-report-contract",
+        signal_id=signal_id,
         decision_close_ms=10 * HOUR,
         symbol="ETHUSDT",
         side="LONG",
@@ -25,6 +25,33 @@ def _decision():
         action="ENTRY",
         quality="NORMAL",
     )
+
+
+def _open_trade_ledger(path: Path):
+    ledger = ResearchLedger(path)
+    runner = ForwardRunner(ledger, initial_nav=1000)
+    persist_ms = 10 * HOUR + 7 * 60_000
+    intent = runner.execution.create_intent(
+        _decision("signal-open-terminal"),
+        decision_persist_ms=persist_ms,
+        reference_price=100.0,
+        step=0.001,
+        bucket="ETH_BETA",
+    )
+    runner.execution.revalidate_intent(
+        intent["intent_id"],
+        observed_ms=10 * HOUR + 30 * 60_000,
+        mark=100.0,
+        atr_extension=1.0,
+        data_latest_ms=10 * HOUR + 30 * 60_000,
+    )
+    runner.execution.fill_due_intent(
+        intent["intent_id"],
+        11 * HOUR,
+        100.0,
+        observed_ms=11 * HOUR,
+    )
+    return ledger
 
 
 def _closed_trade_ledger(path: Path):
@@ -105,6 +132,31 @@ def test_report_contract_has_provenance_labels_funnel_costs_and_fidelity(tmp_pat
         assert metrics["segmentation"]["family"]["A"]["sample_status"] == "Sample Insufficient"
         assert metrics["integrity"]["backfill_count"] == 0
         assert metrics["integrity"]["duplicate_fill_count"] == 0
+    finally:
+        ledger.close()
+
+
+def test_terminal_equity_marks_open_positions_without_forcing_fake_exit(tmp_path: Path):
+    ledger = _open_trade_ledger(tmp_path / "open.sqlite")
+    try:
+        before = len(ledger.events())
+        metrics = compute_backtest_metrics(
+            ledger,
+            initial_nav=1000,
+            start_ms=10 * HOUR,
+            end_ms=20 * HOUR,
+            terminal_marks={"ETHUSDT": 110.0},
+        )
+        after = len(ledger.events())
+
+        assert before == after
+        assert metrics["performance"]["closed_trades"] == 0
+        assert metrics["performance"]["net_return"] == 0.0
+        assert metrics["performance"]["terminal_open_positions"] == 1
+        assert metrics["performance"]["terminal_unrealized_pnl_usdt"] > 0
+        assert metrics["performance"]["terminal_equity_usdt"] > 1000
+        assert metrics["performance"]["equity_return_including_unrealized"] > 0
+        assert not any(event.get("kind") == "PAPER_EXIT" for event in ledger.events())
     finally:
         ledger.close()
 
