@@ -138,6 +138,6 @@ test('source-id mismatch and writable transport are validation failures, not dow
 
 test('binding factory surface is fixed and contains no execution methods',()=>{
   const api=bindings();
-  assert.deepEqual(Object.keys(api).sort(),['blsSeries','ecbSeries','secCompanyFact','twseDailyQuote','twseInstitutional','twseMonthlyRevenue']);
+  assert.deepEqual(Object.keys(api).sort(),['blsSeries','ecbSeries','secCompanyFact','tpexDailyQuote','tpexInstitutional','tpexMonthlyRevenue','twseDailyQuote','twseInstitutional','twseMonthlyRevenue']);
   assert.doesNotMatch(JSON.stringify(Object.keys(api)).toLowerCase(),/order|trade|execute|fill/);
 });
