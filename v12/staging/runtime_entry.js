@@ -1,6 +1,8 @@
 'use strict';
 
 const {startStagingPreviewServer}=require('./server.js');
+const {createDurableSourceLineageStore}=require('./durable_source_lineage_store.js');
+const {createLiveResearchBootstrap}=require('./live_research_bootstrap.js');
 
 function runtimeConfig(env=process.env){
   const host=typeof env.HOST==='string'&&env.HOST.trim()?env.HOST.trim():'0.0.0.0';
@@ -14,21 +16,76 @@ function runtimeConfig(env=process.env){
     :'/data/foxyya-v12.lineage.jsonl';
   if(!lineageFilePath.endsWith('.lineage.jsonl'))throw Error('LINEAGE_JOURNAL_PATH_INVALID');
 
+  const rawRefresh=env.FOXYYA_V12_REFRESH_SECONDS===undefined||env.FOXYYA_V12_REFRESH_SECONDS===null||String(env.FOXYYA_V12_REFRESH_SECONDS).trim()===''
+    ?'1800'
+    :String(env.FOXYYA_V12_REFRESH_SECONDS).trim();
+  if(!/^\d+$/.test(rawRefresh))throw Error('REFRESH_SECONDS_INVALID');
+  const refreshSeconds=Number(rawRefresh);
+  if(!Number.isInteger(refreshSeconds)||refreshSeconds<300||refreshSeconds>86400)throw Error('REFRESH_SECONDS_INVALID');
+
   return Object.freeze({
     host,
     port,
     lineageFilePath,
+    refreshSeconds,
     researchOnly:true,
     executionWrite:false
   });
 }
 
-async function startFromEnvironment(env=process.env){
+async function startFromEnvironment(env=process.env,dependencies={}){
   const config=runtimeConfig(env);
-  return startStagingPreviewServer({
+  const fetchImpl=dependencies.fetchImpl||globalThis.fetch;
+  const clock=dependencies.clock||Date.now;
+  const setIntervalImpl=dependencies.setIntervalImpl||setInterval;
+  const clearIntervalImpl=dependencies.clearIntervalImpl||clearInterval;
+  const onResearchError=dependencies.onResearchError||((error)=>console.error('FOXYYA v12 research refresh failed:',error?.message||error));
+
+  if(typeof fetchImpl!=='function')throw Error('FETCH_REQUIRED');
+  if(typeof clock!=='function')throw Error('CLOCK_REQUIRED');
+  if(typeof setIntervalImpl!=='function'||typeof clearIntervalImpl!=='function')throw Error('TIMER_REQUIRED');
+  if(typeof onResearchError!=='function')throw Error('RESEARCH_ERROR_HANDLER_REQUIRED');
+
+  const lineageStore=createDurableSourceLineageStore({filePath:config.lineageFilePath,now:clock});
+  const serverRuntime=await startStagingPreviewServer({
     host:config.host,
     port:config.port,
-    lineageFilePath:config.lineageFilePath
+    lineageStore
+  });
+  const bootstrap=createLiveResearchBootstrap({
+    fetchImpl,
+    clock,
+    lineageStore,
+    publishHome:serverRuntime.app.publishHome
+  });
+
+  let running=false;
+  let closed=false;
+  async function refreshResearch(){
+    if(closed||running)return null;
+    running=true;
+    try{return await bootstrap.runOnce()}
+    catch(error){onResearchError(error);return null}
+    finally{running=false}
+  }
+
+  const researchReady=refreshResearch();
+  const refreshTimer=setIntervalImpl(()=>{void refreshResearch()},config.refreshSeconds*1000);
+
+  async function close(){
+    if(closed)return;
+    closed=true;
+    clearIntervalImpl(refreshTimer);
+    await serverRuntime.close();
+  }
+
+  return Object.freeze({
+    app:serverRuntime.app,
+    server:serverRuntime.server,
+    address:serverRuntime.address,
+    lineageStore,
+    researchReady,
+    close
   });
 }
 
@@ -37,6 +94,19 @@ if(require.main===module){
     const address=runtime.address;
     console.log(`FOXYYA v12 staging listening on ${address.address}:${address.port}`);
     console.log('FOXYYA v12 staging mode: RESEARCH_ONLY=true EXECUTION_WRITE=false');
+    runtime.researchReady.then(result=>{
+      if(!result){
+        console.log('FOXYYA v12 initial research bootstrap unavailable');
+        return;
+      }
+      const home=result.orchestration?.published?.home;
+      console.log('FOXYYA v12 initial research bootstrap published',JSON.stringify({
+        twOpportunities:Array.isArray(home?.opportunities?.TW)?home.opportunities.TW.length:0,
+        usOpportunities:Array.isArray(home?.opportunities?.US)?home.opportunities.US.length:0,
+        researchOnly:result.researchOnly===true,
+        executionWrite:result.executionWrite===true
+      }));
+    });
 
     let closing=false;
     const shutdown=()=>{
