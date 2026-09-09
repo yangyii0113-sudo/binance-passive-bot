@@ -1,0 +1,63 @@
+name: FOXYYA Phase 0 Staging Verify
+
+on:
+  push:
+    branches:
+      - design/foxyya-backtest-source-normalization
+    paths:
+      - .github/workflows/phase0-staging-verify.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-staging:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Verify staging health and paper safety
+        run: |
+          python - <<'PY'
+          import json
+          import time
+          import urllib.request
+
+          base = 'https://foxyya-phase0-staging-production.up.railway.app'
+
+          def get_json(path):
+              last = None
+              for _ in range(12):
+                  try:
+                      with urllib.request.urlopen(base + path, timeout=10) as response:
+                          return json.loads(response.read().decode('utf-8'))
+                  except Exception as exc:
+                      last = exc
+                      time.sleep(5)
+              raise RuntimeError(f'{path} unavailable: {last}')
+
+          health = get_json('/health')
+          status = get_json('/api/runtime/status')
+
+          for name, payload in [('health', health), ('status', status)]:
+              assert payload['ok'] is True, (name, payload)
+              assert payload['paper_only'] is True, (name, payload)
+              assert payload['real_order_lock'] is True, (name, payload)
+              assert payload.get('last_error') is None, (name, payload)
+              assert payload.get('ledger_integrity') is True, (name, payload)
+              assert int(payload.get('cycle_count', 0)) > 0, (name, payload)
+              assert payload.get('strategy_version'), (name, payload)
+
+          assert status['strategy_version'] == health['strategy_version']
+          print(json.dumps({
+              'ok': True,
+              'paper_only': health['paper_only'],
+              'real_order_lock': health['real_order_lock'],
+              'ledger_integrity': health['ledger_integrity'],
+              'strategy_version': health['strategy_version'],
+              'cycle_count': status['cycle_count'],
+          }, ensure_ascii=False))
+          PY
