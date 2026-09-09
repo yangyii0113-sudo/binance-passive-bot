@@ -33,17 +33,22 @@ function assertRegionalReadOnly(region,value){
   return value;
 }
 
+function withRegionStatus(snapshot,status){
+  return Object.freeze({...snapshot,status});
+}
+
 function regionSnapshots(regionEvidence,regionalContexts,asOf){
   const evidenceMap=object(regionEvidence)?regionEvidence:{};
   const contextMap=object(regionalContexts)?regionalContexts:{};
   const out={};
   for(const region of Home.REGIONS){
     if(Object.hasOwn(contextMap,region)){
-      out[region]=assertRegionalReadOnly(region,contextMap[region]).regionalSnapshot;
+      const context=assertRegionalReadOnly(region,contextMap[region]);
+      out[region]=withRegionStatus(context.regionalSnapshot,'AVAILABLE');
       continue;
     }
     const evidence=Array.isArray(evidenceMap[region])?evidenceMap[region]:[];
-    out[region]=Regional.evaluateRegion(region,evidence,asOf);
+    out[region]=withRegionStatus(Regional.evaluateRegion(region,evidence,asOf),evidence.length?'AVAILABLE':'UNAVAILABLE');
   }
   return out;
 }
