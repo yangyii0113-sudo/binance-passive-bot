@@ -23,10 +23,25 @@ function assertCryptoReadOnly(view){
   return view;
 }
 
-function regionSnapshots(regionEvidence,asOf){
+function assertRegionalReadOnly(region,value){
+  if(!object(value)||value.schemaVersion!=='foxyya-regional-context-read-model/1'||value.researchOnly!==true||value.executionWrite!==false){
+    throw Error('REGIONAL_READ_ONLY_REQUIRED');
+  }
+  if(value.region!==region||!object(value.regionalSnapshot)||value.regionalSnapshot.region!==region){
+    throw Error('REGION_CONTEXT_MISMATCH');
+  }
+  return value;
+}
+
+function regionSnapshots(regionEvidence,regionalContexts,asOf){
   const evidenceMap=object(regionEvidence)?regionEvidence:{};
+  const contextMap=object(regionalContexts)?regionalContexts:{};
   const out={};
   for(const region of Home.REGIONS){
+    if(Object.hasOwn(contextMap,region)){
+      out[region]=assertRegionalReadOnly(region,contextMap[region]).regionalSnapshot;
+      continue;
+    }
     const evidence=Array.isArray(evidenceMap[region])?evidenceMap[region]:[];
     out[region]=Regional.evaluateRegion(region,evidence,asOf);
   }
@@ -68,7 +83,7 @@ function buildHomeReadModel(input={}){
   if(twAssets.some(x=>x.market!=='TW'))throw Error('TW_ASSET_MARKET_MISMATCH');
   if(usAssets.some(x=>x.market!=='US'))throw Error('US_ASSET_MARKET_MISMATCH');
 
-  const regions=regionSnapshots(input.regionEvidence,input.asOf);
+  const regions=regionSnapshots(input.regionEvidence,input.regionalContexts,input.asOf);
   const earlyTrend=[...twAssets,...usAssets].map(equityEarlyTrend).filter(Boolean);
   const opportunities={
     CRYPTO:crypto?crypto.candidates.map(cryptoOpportunity):[],
