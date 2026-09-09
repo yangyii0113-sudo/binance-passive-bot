@@ -1,0 +1,10 @@
+const test=require('node:test');const assert=require('node:assert/strict');const BLS=require('../v12/providers/bls_adapter.js');
+const receivedAt=Date.parse('2026-08-12T12:31:00Z');
+const definitions={CUUR0000SA0:{entityId:'MACRO:US:CPI_U',scope:'US',field:'macro.cpi.u_all_items',unit:'INDEX'}};
+const payload={status:'REQUEST_SUCCEEDED',message:[],Results:{series:[{seriesID:'CUUR0000SA0',data:[{year:'2026',period:'M07',periodName:'July',latest:'true',value:'323.976',footnotes:[{}]}]}]}};
+
+test('BLS provider is server-side read-only macro source',()=>{assert.equal(BLS.descriptor.executionWrite,false);assert.equal(BLS.descriptor.serverOnly,true);assert.deepEqual(BLS.descriptor.capabilities,['MACRO']);});
+test('BLS series becomes canonical context observation with receive-time knowledge',()=>{const r=BLS.normalizeSeries(payload,{definitions,receivedAt});assert.equal(r.series.length,1);const s=r.series[0];assert.equal(s.reportPeriod,'2026-07');assert.equal(s.knowledgeTime,'RECEIVED_AT');assert.equal(s.pointInTimeSafe,false);const x=s.observations[0];assert.equal(x.entityId,'MACRO:US:CPI_U');assert.equal(x.value,323.976);assert.equal(x.observedAt,receivedAt);assert.equal(x.source,'BLS:CUUR0000SA0');assert.equal(x.status,'SNAPSHOT');});
+test('BLS requested series missing from response is explicit UNAVAILABLE',()=>{const r=BLS.normalizeSeries({status:'REQUEST_SUCCEEDED',Results:{series:[]}},{definitions,receivedAt});assert.equal(r.series[0].status,'UNAVAILABLE');assert.equal(r.series[0].observations.length,0);});
+test('BLS failed API response is rejected rather than converted to zero',()=>{assert.throws(()=>BLS.normalizeSeries({status:'REQUEST_FAILED',message:['bad'],Results:{series:[]}},{definitions,receivedAt}),/BLS_REQUEST_FAILED/);});
+test('BLS unconfigured series is excluded instead of inventing semantics',()=>{const extra={status:'REQUEST_SUCCEEDED',Results:{series:[{seriesID:'UNKNOWN',data:[{year:'2026',period:'M07',value:'1'}]}]}};const r=BLS.normalizeSeries(extra,{definitions,receivedAt});assert.equal(r.excluded.length,1);assert.equal(r.excluded[0].seriesID,'UNKNOWN');});
