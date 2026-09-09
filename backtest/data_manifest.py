@@ -47,8 +47,15 @@ def _funding_record(rows: list) -> dict:
     }
 
 
-def build_data_manifest(exchange_info: dict, klines: dict, *, funding_rows: dict | None = None) -> dict:
+def build_data_manifest(
+    exchange_info: dict,
+    klines: dict,
+    *,
+    funding_rows: dict | None = None,
+    context_1h: dict | None = None,
+) -> dict:
     funding_rows = funding_rows or {}
+    context_1h = context_1h or {}
     body = {
         "schema": SCHEMA,
         "exchange_info": {
@@ -61,6 +68,10 @@ def build_data_manifest(exchange_info: dict, klines: dict, *, funding_rows: dict
                 for interval, rows in sorted(intervals.items())
             }
             for symbol, intervals in sorted(klines.items())
+        },
+        "context_1h": {
+            symbol: _kline_record(rows)
+            for symbol, rows in sorted(context_1h.items())
         },
         "funding": {
             symbol: _funding_record(rows)
