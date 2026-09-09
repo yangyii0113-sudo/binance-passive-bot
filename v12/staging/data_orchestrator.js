@@ -13,6 +13,18 @@ function freezeDiagnostic(value){
   return Object.freeze({...value});
 }
 
+function latestReceivedAt(value,current=0){
+  let latest=current;
+  if(Array.isArray(value)){
+    for(const item of value)latest=latestReceivedAt(item,latest);
+    return latest;
+  }
+  if(!object(value))return latest;
+  if(finite(value.receivedAt)&&value.receivedAt>=0)latest=Math.max(latest,value.receivedAt);
+  for(const child of Object.values(value))latest=latestReceivedAt(child,latest);
+  return latest;
+}
+
 async function loadEnvelope(loader,label){
   if(typeof loader!=='function')throw Error('LOADER_INVALID:'+label);
   let envelope;
@@ -45,7 +57,8 @@ async function loadAssetGroup(loaders,label,builder,nowMs){
   for(let i=0;i<loaders.length;i++){
     const loaded=await loadEnvelope(loaders[i],label+':'+i);
     if(!loaded.available){diagnostics.push(loaded.diagnostic);continue}
-    const model=builder({...loaded.data,nowMs});
+    const knowledgeTime=Math.max(nowMs,latestReceivedAt(loaded.data,nowMs));
+    const model=builder({...loaded.data,nowMs:knowledgeTime});
     models.push(model);
     diagnostics.push(freezeDiagnostic({status:'AVAILABLE',instrumentId:model.instrumentId,schemaVersion:model.schemaVersion}));
   }
@@ -60,12 +73,15 @@ async function loadRegions(loaders,nowMs){
   for(const [region,loader] of Object.entries(loaders)){
     const loaded=await loadEnvelope(loader,'REGION:'+region);
     if(!loaded.available){diagnostics[region]=loaded.diagnostic;continue}
-    const model=Regional.buildRegionalContextSnapshot({...loaded.data,region,nowMs});
+    const knowledgeTime=Math.max(nowMs,latestReceivedAt(loaded.data,nowMs));
+    const model=Regional.buildRegionalContextSnapshot({...loaded.data,region,nowMs:knowledgeTime});
     models[region]=model;
     diagnostics[region]=freezeDiagnostic({status:'AVAILABLE',region,schemaVersion:model.schemaVersion});
   }
   return Object.freeze({models:Object.freeze(models),diagnostics:Object.freeze(diagnostics)});
 }
+
+function modelAsOf(value){return finite(value?.asOf)&&value.asOf>=0?value.asOf:0}
 
 function createStagingDataOrchestrator({publishHome}={}){
   if(typeof publishHome!=='function')throw Error('PUBLISH_HOME_REQUIRED');
@@ -92,8 +108,16 @@ function createStagingDataOrchestrator({publishHome}={}){
     const us=await loadAssetGroup(input.usAssets,'US',US.buildUSAssetResearchSnapshot,nowMs);
     const regions=await loadRegions(input.regions,nowMs);
 
+    const publishAsOf=Math.max(
+      nowMs,
+      modelAsOf(cryptoExecution),
+      ...tw.models.map(modelAsOf),
+      ...us.models.map(modelAsOf),
+      ...Object.values(regions.models).map(modelAsOf)
+    );
+
     const published=publishHome({
-      asOf:nowMs,
+      asOf:publishAsOf,
       cryptoExecution,
       twAssets:tw.models,
       usAssets:us.models,
@@ -105,7 +129,7 @@ function createStagingDataOrchestrator({publishHome}={}){
 
     return Object.freeze({
       schemaVersion:'foxyya-staging-orchestration-result/1',
-      asOf:nowMs,
+      asOf:publishAsOf,
       published,
       diagnostics:Object.freeze({
         CRYPTO:cryptoDiagnostic,
