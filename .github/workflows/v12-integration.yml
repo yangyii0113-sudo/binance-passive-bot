@@ -1,0 +1,50 @@
+name: FOXYYA v12 Integration
+
+on:
+  push:
+    branches:
+      - v12-multimarket-architecture
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  v12-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout v12 branch
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Show runtime versions
+        run: |
+          node --version
+          python --version
+
+      - name: Run v12 Node contract and integration tests
+        run: node --test tests/v12_*.test.cjs
+
+      - name: Run existing runtime JavaScript regressions
+        run: node --test tests/runtime_bridge.test.cjs tests/runtime_layout.test.cjs tests/runtime_metrics.test.cjs
+
+      - name: Run existing Python runtime regression
+        run: python tests/test_runtime_view.py
+
+      - name: Verify production safety strings remain present
+        shell: bash
+        run: |
+          grep -q 'PAPER_ONLY=true' Dockerfile
+          grep -q 'REAL_ORDER_LOCK=true' Dockerfile
+          grep -q 'PAPER_ONLY' service.py
+          grep -q 'real_orders.*False\|real_orders.*false' runtime_view.py
