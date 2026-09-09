@@ -66,6 +66,14 @@ function historyMeta(item){
   });
 }
 
+function taiwanExchange(value){
+  const exchange=value===undefined||value===null||String(value).trim()===''
+    ?'TWSE'
+    :String(value).trim().toUpperCase();
+  if(exchange!=='TWSE'&&exchange!=='TPEX')throw Error('TW_EXCHANGE_INVALID');
+  return exchange;
+}
+
 function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,researchHistory,providerGovernance}={}){
   if(typeof fetchImpl!=='function')throw Error('FETCH_REQUIRED');
   if(typeof clock!=='function')throw Error('CLOCK_REQUIRED');
@@ -82,10 +90,16 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,resea
 
     const twQuotes=arrayConfig(input.twQuotes,'TW_QUOTES').map(item=>{
       if(!object(item))throw Error('TW_QUOTE_CONFIG_INVALID');
-      const loader=loaderFor('twse-openapi',item.endpoint);
+      const exchange=taiwanExchange(item.exchange);
+      const sourceId=exchange==='TWSE'?'twse-openapi':'tpex-openapi';
+      const loader=loaderFor(sourceId,item.endpoint);
+      const binding=exchange==='TWSE'
+        ?bindings.twseDailyQuote({loader,symbol:item.symbol})
+        :bindings.tpexDailyQuote({loader,symbol:item.symbol});
       return Object.freeze({
+        exchange,
         symbol:String(item.symbol||''),
-        binding:bindings.twseDailyQuote({loader,symbol:item.symbol})
+        binding
       });
     });
 
@@ -95,18 +109,37 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,resea
         throw Error('RESEARCH_HISTORY_OVERRIDE_FORBIDDEN');
       }
       const policy=assertTWPolicy(item.policy);
-      const quoteLoader=loaderFor('twse-openapi',item.quoteEndpoint);
-      const flowLoader=loaderFor('twse-t86',item.flowEndpoint);
+      const exchange=taiwanExchange(item.exchange);
+      let quoteBinding;
+      let flowBinding;
       let revenueBinding=null;
-      if(item.revenueEndpoint!==undefined){
-        const revenueLoader=loaderFor('twse-openapi',item.revenueEndpoint);
-        revenueBinding=bindings.twseMonthlyRevenue({loader:revenueLoader,symbol:item.symbol});
+
+      if(exchange==='TWSE'){
+        const quoteLoader=loaderFor('twse-openapi',item.quoteEndpoint);
+        const flowLoader=loaderFor('twse-t86',item.flowEndpoint);
+        quoteBinding=bindings.twseDailyQuote({loader:quoteLoader,symbol:item.symbol});
+        flowBinding=bindings.twseInstitutional({loader:flowLoader,symbol:item.symbol,tradeDate:item.tradeDate});
+        if(item.revenueEndpoint!==undefined){
+          const revenueLoader=loaderFor('twse-openapi',item.revenueEndpoint);
+          revenueBinding=bindings.twseMonthlyRevenue({loader:revenueLoader,symbol:item.symbol});
+        }
+      }else{
+        const quoteLoader=loaderFor('tpex-openapi',item.quoteEndpoint);
+        const flowLoader=loaderFor('tpex-openapi',item.flowEndpoint);
+        quoteBinding=bindings.tpexDailyQuote({loader:quoteLoader,symbol:item.symbol});
+        flowBinding=bindings.tpexInstitutional({loader:flowLoader,symbol:item.symbol});
+        if(item.revenueEndpoint!==undefined){
+          const revenueLoader=loaderFor('tpex-openapi',item.revenueEndpoint);
+          revenueBinding=bindings.tpexMonthlyRevenue({loader:revenueLoader,symbol:item.symbol});
+        }
       }
+
       return Object.freeze({
+        exchange,
         config:item,
         policy,
-        quoteBinding:bindings.twseDailyQuote({loader:quoteLoader,symbol:item.symbol}),
-        flowBinding:bindings.twseInstitutional({loader:flowLoader,symbol:item.symbol,tradeDate:item.tradeDate}),
+        quoteBinding,
+        flowBinding,
         revenueBinding
       });
     });
@@ -257,28 +290,27 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,resea
     const plan=preflight(input);
     const historyWrites=[];
 
-    const twse=[];
+    const marketSources={TWSE:[],TPEX:[]};
     for(const item of plan.twQuotes){
       const source=await item.binding.load();
-      if(source.status==='AVAILABLE'){
-        twse.push(Object.freeze({
+      const output=source.status==='AVAILABLE'
+        ?Object.freeze({
           status:'AVAILABLE',
           sourceId:source.sourceId,
           instrumentId:source.data.instrument.instrumentId,
           receivedAt:source.receivedAt,
           researchOnly:true,
           executionWrite:false
-        }));
-      }else{
-        twse.push(Object.freeze({
+        })
+        :Object.freeze({
           status:'UNAVAILABLE',
           sourceId:source.sourceId,
           symbol:item.symbol,
           reason:source.reason,
           researchOnly:true,
           executionWrite:false
-        }));
-      }
+        });
+      marketSources[item.exchange].push(output);
     }
 
     const regionLoaders={};
@@ -307,7 +339,10 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,resea
     return Object.freeze({
       schemaVersion:'foxyya-staging-source-pipeline-result/1',
       asOf:input.nowMs,
-      sources:Object.freeze({TWSE:Object.freeze(twse)}),
+      sources:Object.freeze({
+        TWSE:Object.freeze(marketSources.TWSE),
+        TPEX:Object.freeze(marketSources.TPEX)
+      }),
       providerHealth:providerHealth(plan.providerIds),
       orchestration,
       researchOnly:true,
