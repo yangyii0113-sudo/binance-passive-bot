@@ -150,7 +150,12 @@ class HistoricalMarketAdapter:
         for symbol, rows in self.funding_rows.items():
             _validate_funding_rows(symbol, rows)
 
-        self.manifest = build_data_manifest(self.exchange_info, self.klines, funding_rows=self.funding_rows)
+        self.manifest = build_data_manifest(
+            self.exchange_info,
+            self.klines,
+            funding_rows=self.funding_rows,
+            context_1h=self.context_1h,
+        )
 
     def _filtered_exchange_info(self) -> dict:
         out = deepcopy(self.exchange_info)
