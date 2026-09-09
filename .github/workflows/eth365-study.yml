@@ -1,0 +1,52 @@
+name: FOXYYA ETH365 Formal Study
+
+on:
+  push:
+    branches:
+      - feat/foxyya-backtest-phase3-complete
+    paths:
+      - 'backtest/**'
+      - 'src/foxyya/**'
+      - 'FOXYYA_V2_CONFIG.json'
+      - 'tools/validate_eth365_artifacts.py'
+      - '.github/workflows/eth365-study.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  eth365:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      PYTHONPATH: src:.
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run formal ETHUSDT trailing-365-day study
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m backtest.cli eth365 --output-root artifacts/backtests --defer-performance-audit | tee "$RUNNER_TEMP/eth365-summary.json"
+      - name: Validate complete research evidence on exact commit
+        run: python tools/validate_eth365_artifacts.py artifacts/backtests --expected-git-sha "$GITHUB_SHA"
+      - name: Upload deterministic ETH365 research artifact
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: foxyya-eth365-${{ github.sha }}
+          path: artifacts/backtests/**
+          if-no-files-found: error
+          retention-days: 30
+      - name: Download uploaded artifact for round-trip verification
+        uses: actions/download-artifact@v4
+        with:
+          artifact-ids: ${{ steps.upload.outputs.artifact-id }}
+          path: ${{ runner.temp }}/eth365-downloaded
+          merge-multiple: true
+      - name: Verify downloaded artifact hashes and provenance
+        run: python tools/validate_eth365_artifacts.py "$RUNNER_TEMP/eth365-downloaded" --expected-git-sha "$GITHUB_SHA"

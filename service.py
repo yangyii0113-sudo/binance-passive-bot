@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import signal
 import threading
 import time
@@ -19,6 +20,12 @@ from foxyya.portfolio import replay_books
 from foxyya.runner import ForwardRunner
 from intel_feeds import aggregate_news, fetch_bls_calendar
 from runtime_view import project_runtime
+from backtest.artifacts import validate_run_artifacts
+import sqlite3
+
+BACKTEST_MODE = "HISTORICAL BACKTEST"
+BACKTEST_LABEL = "歷史模擬・非 Forward Performance"
+BACKTEST_RUN_ID = re.compile(r"^[A-Za-z0-9._-]+$")
 
 
 class RuntimeState:
@@ -82,7 +89,68 @@ def run_cycle(ledger: EventLedger, runner: ForwardRunner, builder: PublicSnapsho
     }
 
 
-def make_handler(runtime: RuntimeState, ledger: EventLedger | None = None, platform_path: Path | None = None, initial_nav: float = 1000):
+def _load_backtest_payload(root: Path, run_id: str) -> dict | None:
+    run_id = str(run_id)
+    if not run_id or run_id in {".", ".."} or not BACKTEST_RUN_ID.fullmatch(run_id):
+        raise ValueError("invalid backtest run id")
+    root = Path(root).resolve()
+    run_dir = (root / run_id).resolve()
+    try:
+        run_dir.relative_to(root)
+    except ValueError as exc:
+        raise ValueError("invalid backtest run id") from exc
+    if not run_dir.is_dir():
+        return None
+
+    try:
+        payload = validate_run_artifacts(run_dir)
+    except (OSError, ValueError, KeyError, TypeError, AttributeError, sqlite3.Error):
+        return None
+    return {
+        "status": "OK",
+        "mode": BACKTEST_MODE,
+        "label": BACKTEST_LABEL,
+        "run_config": payload["run_config"],
+        "metrics": payload["metrics"],
+        "report": payload["report"],
+    }
+
+
+def _latest_backtest_payload(root: Path) -> dict | None:
+    root = Path(root).resolve()
+    if not root.is_dir():
+        return None
+    candidates = []
+    for child in root.iterdir():
+        if not child.is_dir() or not BACKTEST_RUN_ID.fullmatch(child.name):
+            continue
+        try:
+            resolved = child.resolve()
+            resolved.relative_to(root)
+        except (OSError, ValueError):
+            continue
+        payload = _load_backtest_payload(root, child.name)
+        if payload is None:
+            continue
+        end_ms = payload.get("run_config", {}).get("end_ms")
+        try:
+            key = (int(end_ms), child.name)
+        except (TypeError, ValueError):
+            continue
+        candidates.append((key, payload))
+    if not candidates:
+        return None
+    candidates.sort(key=lambda item: item[0])
+    return candidates[-1][1]
+
+
+def make_handler(
+    runtime: RuntimeState,
+    ledger: EventLedger | None = None,
+    platform_path: Path | None = None,
+    initial_nav: float = 1000,
+    backtest_root: Path | None = None,
+):
     news_feeds = [
         ("CoinDesk", "https://www.coindesk.com/arc/outboundfeeds/rss/"),
         ("Federal Reserve", "https://www.federalreserve.gov/feeds/press_all.xml"),
@@ -90,6 +158,9 @@ def make_handler(runtime: RuntimeState, ledger: EventLedger | None = None, platf
     ]
     cache = {"news": (0, None), "calendar": (0, None)}
     cache_lock = threading.Lock()
+    backtest_root_path = Path(
+        backtest_root if backtest_root is not None else os.getenv("FOXYYA_BACKTEST_ROOT", "/data/backtests")
+    ).resolve()
 
     def cached(key, ttl_ms, loader):
         now = int(time.time() * 1000)
@@ -125,15 +196,30 @@ def make_handler(runtime: RuntimeState, ledger: EventLedger | None = None, platf
             self.send_header("Content-Length", str(len(body)))
             self.end_headers(); self.wfile.write(body)
 
+        def _backtest_unavailable(self):
+            self._json({"status": "UNAVAILABLE", "mode": BACKTEST_MODE, "label": BACKTEST_LABEL}, 503)
+
+        def _script(self, filename: str):
+            file_path = Path(__file__).with_name(filename)
+            if not file_path.is_file():
+                self.send_response(404); self.end_headers(); return
+            body = file_path.read_bytes()
+            self.send_response(200); self.send_header("Content-Type", "text/javascript; charset=utf-8")
+            self.send_header("Cache-Control", "no-store"); self.send_header("Content-Length", str(len(body)))
+            self.end_headers(); self.wfile.write(body)
+
         def do_GET(self):
             u = urlparse(self.path); path = u.path
             if path == "/runtime_ui.js":
-                body = Path(__file__).with_name("runtime_ui.js").read_bytes()
-                self.send_response(200); self.send_header("Content-Type", "text/javascript; charset=utf-8")
-                self.send_header("Cache-Control", "no-store"); self.send_header("Content-Length", str(len(body)))
-                self.end_headers(); self.wfile.write(body); return
+                self._script("runtime_ui.js"); return
+            if path == "/backtest_ui.js":
+                self._script("backtest_ui.js"); return
             if path == "/" and platform_path is not None and platform_path.exists():
                 body = platform_path.read_bytes()
+                marker = b"</body>"
+                injection = b'<script src="/backtest_ui.js"></script></body>'
+                if b'/backtest_ui.js' not in body and marker in body:
+                    body = body.replace(marker, injection, 1)
                 self.send_response(200); self.send_header("Content-Type", "text/html; charset=utf-8")
                 self.send_header("Cache-Control", "no-store"); self.send_header("Content-Length", str(len(body)))
                 self.end_headers(); self.wfile.write(body); return
@@ -160,6 +246,21 @@ def make_handler(runtime: RuntimeState, ledger: EventLedger | None = None, platf
                 except Exception as exc:
                     self._json({"schema":"foxyya-runtime-events/1","status":"ERROR","events":[],"error":type(exc).__name__+': '+str(exc)},500)
                 return
+            if path == "/api/backtest/latest":
+                payload = _latest_backtest_payload(backtest_root_path)
+                if payload is None:
+                    self._backtest_unavailable(); return
+                self._json(payload); return
+            if path == "/api/backtest/report":
+                params = parse_qs(u.query)
+                run_id = params.get("run_id", [""])[0]
+                try:
+                    payload = _load_backtest_payload(backtest_root_path, run_id)
+                except ValueError:
+                    self._json({"status": "INVALID_RUN_ID", "mode": BACKTEST_MODE, "label": BACKTEST_LABEL}, 400); return
+                if payload is None:
+                    self._backtest_unavailable(); return
+                self._json(payload); return
             if path == "/api/intel/news":
                 self._json(cached("news", 120_000, lambda: aggregate_news(news_feeds))); return
             if path == "/api/intel/calendar":
@@ -175,6 +276,7 @@ def make_handler(runtime: RuntimeState, ledger: EventLedger | None = None, platf
 def main() -> None:
     config_path = Path(os.getenv("FOXYYA_CONFIG", "FOXYYA_V2_CONFIG.json"))
     db_path = Path(os.getenv("FOXYYA_DB", "/data/foxyya_v2_paper.sqlite"))
+    backtest_root = Path(os.getenv("FOXYYA_BACKTEST_ROOT", "/data/backtests"))
     interval = max(5, int(os.getenv("FOXYYA_INTERVAL_SECONDS", "30")))
     port = int(os.getenv("PORT", "8080"))
 
@@ -196,7 +298,10 @@ def main() -> None:
     signal.signal(signal.SIGINT, request_stop)
 
     platform_path = Path(os.getenv("FOXYYA_PLATFORM_HTML", "FOXYYA_完整平台_v11.2_live_runtime.html"))
-    server = ThreadingHTTPServer(("0.0.0.0", port), make_handler(runtime, ledger, platform_path, float(cfg["initial_nav_usdt"])))
+    server = ThreadingHTTPServer(
+        ("0.0.0.0", port),
+        make_handler(runtime, ledger, platform_path, float(cfg["initial_nav_usdt"]), backtest_root=backtest_root),
+    )
     server_thread = threading.Thread(target=server.serve_forever, daemon=True)
     server_thread.start()
     print(json.dumps({"event": "service_started", "port": port, "db": str(db_path), "paper_only": True}), flush=True)

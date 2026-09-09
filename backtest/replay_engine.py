@@ -81,12 +81,13 @@ class HistoricalReplayEngine:
     MODE = "HISTORICAL BACKTEST"
     LABEL = "歷史模擬・非 Forward Performance"
 
-    def __init__(self, clock, market, ledger, *, initial_nav: float, runner=None):
+    def __init__(self, clock, market, ledger, *, initial_nav: float, runner=None, progress=None):
         self.clock = clock
         self.market = market
         self.ledger = ledger
         self.initial_nav = float(initial_nav)
         self.runner = runner if runner is not None else ForwardRunner(ledger, initial_nav=self.initial_nav)
+        self.progress = progress
         self._ran = False
 
     def _boundary_event(self, kind: str, *, run_id: str, strategy_version: str, git_sha: str, start_ms: int, end_ms: int, **extra):
@@ -142,6 +143,7 @@ class HistoricalReplayEngine:
         )
 
         cycle_count = 0
+        total_cycles = (end_ms - start_ms) // HOUR_MS
         for point in points:
             self.clock.advance_to(point.observed_ms)
             snapshot = self.market.snapshot()
@@ -163,6 +165,8 @@ class HistoricalReplayEngine:
             self.runner.revalidate(snapshot, now_ms=self.clock.now_ms)
             self.runner.scan_if_new_close(snapshot, now_ms=self.clock.now_ms)
             cycle_count += 1
+            if self.progress is not None and cycle_count % 240 == 0 and cycle_count < total_cycles:
+                self.progress(cycle_count, total_cycles)
 
         pending_intents = len(self.runner.pending())
         state = replay_books(self.ledger, self.initial_nav)["books"]["5x"]
@@ -182,6 +186,8 @@ class HistoricalReplayEngine:
             open_positions_5x=open_positions_5x,
         )
         ledger_integrity = bool(self.ledger.verify())
+        if self.progress is not None:
+            self.progress(cycle_count, total_cycles)
 
         return {
             "run_id": str(run_id),
