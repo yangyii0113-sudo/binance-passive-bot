@@ -27,21 +27,23 @@ function boot(loadResult){
   return {window,health,getCounts:()=>({createCalls,loadCalls,renderCalls})};
 }
 
-test('preview does not fetch staging automatically and exposes explicit loadStagingHome',async()=>{
+async function settle(){
+  await Promise.resolve();
+  await Promise.resolve();
+}
+
+test('preview automatically fetches staging on boot and renders verified Home',async()=>{
   const safe={schemaVersion:'foxyya-home-read-model/1',asOf:1,researchOnly:true,executionWrite:false};
   const env=boot({status:'AVAILABLE',data:safe});
-  assert.deepEqual(env.getCounts(),{createCalls:0,loadCalls:0,renderCalls:0});
-  assert.equal(typeof env.window.FOXY_V12_PREVIEW.loadStagingHome,'function');
-  const result=await env.window.FOXY_V12_PREVIEW.loadStagingHome();
-  assert.equal(result.status,'AVAILABLE');
+  await settle();
   assert.deepEqual(env.getCounts(),{createCalls:1,loadCalls:1,renderCalls:1});
+  assert.equal(typeof env.window.FOXY_V12_PREVIEW.loadStagingHome,'function');
   assert.match(env.health.textContent,/STAGING/);
 });
 
-test('unavailable staging result stays unavailable and is not rendered',async()=>{
+test('automatic staging load keeps unavailable result unrendered',async()=>{
   const env=boot({status:'UNAVAILABLE',data:null});
-  const result=await env.window.FOXY_V12_PREVIEW.loadStagingHome();
-  assert.deepEqual(result,{status:'UNAVAILABLE',data:null});
+  await settle();
   assert.deepEqual(env.getCounts(),{createCalls:1,loadCalls:1,renderCalls:0});
   assert.match(env.health.textContent,/UNAVAILABLE/);
 });
