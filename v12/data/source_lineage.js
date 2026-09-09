@@ -4,8 +4,8 @@ const crypto=require('node:crypto');
 
 const SOURCE_LINEAGE_SCHEMA='foxyya-source-lineage/1';
 const RESEARCH_OUTPUT_LINEAGE_SCHEMA='foxyya-research-output-lineage/1';
-const RESEARCH_LINEAGE_SCHEMA='foxyya-research-lineage/1';
 const SOURCE_STATUSES=Object.freeze(['AVAILABLE','UNAVAILABLE']);
+const SECRET_KEYS=new Set(['apikey','secret','token','authorization','password','credential']);
 
 function text(value){return typeof value==='string'&&value.length>0;}
 function finite(value){return typeof value==='number'&&Number.isFinite(value);}
@@ -43,23 +43,24 @@ function digest(value){return crypto.createHash('sha256').update(stableStringify
 function requiredText(value,label){if(!text(value))throw Error(label+'_REQUIRED');return value;}
 function optionalText(value,label){if(value===undefined||value===null)return null;if(!text(value))throw Error(label+'_INVALID');return value;}
 function validRef(value,prefix){return typeof value==='string'&&new RegExp('^'+prefix+'_[a-f0-9]{64}$').test(value);}
-function validPublicRef(value,prefix){return typeof value==='string'&&new RegExp('^'+prefix+':[a-f0-9]{64}$').test(value);}
 
-function assertNoSecretFields(input){
-  for(const key of Object.keys(input||{})){
-    if(/api.?key|secret|token|password|credential/i.test(key))throw Error('SECRET_FIELD_FORBIDDEN');
+function normalizedKey(key){return String(key).toLowerCase().replace(/[^a-z0-9]/g,'');}
+
+function assertCanonicalSafeInput(input){
+  if(!object(input))throw Error('LINEAGE_INPUT_REQUIRED');
+  for(const key of Object.keys(input)){
+    const normalized=normalizedKey(key);
+    if(SECRET_KEYS.has(normalized))throw Error('SECRET_FIELD_FORBIDDEN');
+    if(normalized==='researchonly'){
+      if(input[key]!==true)throw Error('RESEARCH_ONLY_REQUIRED');
+      continue;
+    }
+    if(normalized==='executionwrite'){
+      if(input[key]!==false)throw Error('EXECUTION_FIELD_FORBIDDEN');
+      continue;
+    }
+    if(/execution|execute|order|fill|position|trade/.test(normalized))throw Error('EXECUTION_FIELD_FORBIDDEN');
   }
-}
-
-function assertNoExecutionFields(input){
-  for(const key of Object.keys(input||{})){
-    if(/execution|order|trade|fill|position/i.test(key))throw Error('EXECUTION_FIELD_FORBIDDEN');
-  }
-}
-
-function makeObservationRef(observation){
-  if(!object(observation))throw Error('CANONICAL_OBSERVATION_REQUIRED');
-  return 'obs:'+digest(observation);
 }
 
 function observationRef({sourceId,datasetId,canonicalSchemaVersion,observation}){
@@ -67,6 +68,7 @@ function observationRef({sourceId,datasetId,canonicalSchemaVersion,observation})
 }
 
 function createSourceObservationLineage(input={}){
+  assertCanonicalSafeInput(input);
   const sourceId=requiredText(input.sourceId,'SOURCE_ID');
   const datasetId=requiredText(input.datasetId,'DATASET_ID');
   const subjectId=requiredText(input.subjectId,'SUBJECT_ID');
@@ -109,6 +111,7 @@ function uniqueSortedRefs(values,prefix,label){
 }
 
 function createResearchOutputLineage(input={}){
+  assertCanonicalSafeInput(input);
   const outputType=requiredText(input.outputType,'OUTPUT_TYPE');
   const subjectId=requiredText(input.subjectId,'SUBJECT_ID');
   const outputSchemaVersion=requiredText(input.outputSchemaVersion,'OUTPUT_SCHEMA_VERSION');
@@ -126,120 +129,6 @@ function createResearchOutputLineage(input={}){
     executionWrite:false
   };
   return deepFreeze({...base,lineageRef:'out_'+digest(base)});
-}
-
-function publicObservationRefs(values,{allowEmpty=false}={}){
-  if(!Array.isArray(values))throw Error('OBSERVATION_REFS_REQUIRED');
-  if(!allowEmpty&&!values.length)throw Error('OBSERVATION_REFS_REQUIRED');
-  const refs=[...new Set(values)];
-  for(const ref of refs)if(!validPublicRef(ref,'obs'))throw Error('OBSERVATION_REF_INVALID');
-  return Object.freeze(refs.sort());
-}
-
-function publicSourceBase(input={}){
-  const status=requiredText(input.status,'SOURCE_STATUS');
-  if(!SOURCE_STATUSES.includes(status))throw Error('SOURCE_STATUS_INVALID');
-  const sourceId=requiredText(input.sourceId,'SOURCE_ID');
-  const datasetId=requiredText(input.datasetId,'DATASET_ID');
-  const bindingId=requiredText(input.bindingId,'BINDING_ID');
-  const bindingVersion=requiredText(input.bindingVersion,'BINDING_VERSION');
-  const adapterId=requiredText(input.adapterId,'ADAPTER_ID');
-  const adapterVersion=requiredText(input.adapterVersion,'ADAPTER_VERSION');
-  const canonicalSchemaVersion=requiredText(input.canonicalSchemaVersion,'CANONICAL_SCHEMA_VERSION');
-  let receivedAt=null;
-  let observationRefs;
-  let reason=null;
-
-  if(status==='AVAILABLE'){
-    if(!finite(input.receivedAt)||input.receivedAt<0)throw Error('RECEIVED_AT_INVALID');
-    receivedAt=input.receivedAt;
-    observationRefs=publicObservationRefs(input.observationRefs);
-  }else{
-    if(input.receivedAt!==null)throw Error('UNAVAILABLE_RECEIVED_AT_INVALID');
-    if(!Array.isArray(input.observationRefs))throw Error('OBSERVATION_REFS_REQUIRED');
-    if(input.observationRefs.length)throw Error('UNAVAILABLE_OBSERVATION_REFS_FORBIDDEN');
-    observationRefs=Object.freeze([]);
-    reason=requiredText(input.reason,'UNAVAILABLE_REASON');
-  }
-
-  return {
-    schemaVersion:SOURCE_LINEAGE_SCHEMA,
-    sourceId,datasetId,receivedAt,
-    bindingId,bindingVersion,adapterId,adapterVersion,
-    canonicalSchemaVersion,
-    status,
-    reason,
-    observationRefs,
-    researchOnly:true,
-    executionWrite:false
-  };
-}
-
-function createSourceLineage(input={}){
-  if(!object(input))throw Error('SOURCE_LINEAGE_INPUT_REQUIRED');
-  assertNoSecretFields(input);
-  assertNoExecutionFields(input);
-  const base=publicSourceBase(input);
-  return deepFreeze({...base,lineageId:'src:'+digest(base)});
-}
-
-function validatePublicSourceLineage(value){
-  if(!object(value)||value.schemaVersion!==SOURCE_LINEAGE_SCHEMA||!validPublicRef(value.lineageId,'src')||value.researchOnly!==true||value.executionWrite!==false)throw Error('SOURCE_LINEAGE_INVALID');
-  let base;
-  try{
-    base=publicSourceBase({
-      sourceId:value.sourceId,
-      datasetId:value.datasetId,
-      receivedAt:value.receivedAt,
-      bindingId:value.bindingId,
-      bindingVersion:value.bindingVersion,
-      adapterId:value.adapterId,
-      adapterVersion:value.adapterVersion,
-      canonicalSchemaVersion:value.canonicalSchemaVersion,
-      status:value.status,
-      reason:value.reason,
-      observationRefs:value.observationRefs
-    });
-  }catch(_error){
-    throw Error('SOURCE_LINEAGE_INVALID');
-  }
-  const expected={...base,lineageId:'src:'+digest(base)};
-  if(stableStringify(expected)!==stableStringify(value))throw Error('SOURCE_LINEAGE_INVALID');
-  return deepFreeze(expected);
-}
-
-function createResearchLineage(input={}){
-  if(!object(input))throw Error('RESEARCH_LINEAGE_INPUT_REQUIRED');
-  assertNoSecretFields(input);
-  assertNoExecutionFields(input);
-  const researchOutputId=requiredText(input.researchOutputId,'RESEARCH_OUTPUT_ID');
-  const instrumentId=requiredText(input.instrumentId,'INSTRUMENT_ID');
-  if(!finite(input.asOf)||input.asOf<0)throw Error('ASOF_INVALID');
-  const modelVersion=requiredText(input.modelVersion,'MODEL_VERSION');
-  const policyVersion=optionalText(input.policyVersion,'POLICY_VERSION');
-  if(!Array.isArray(input.sourceLineages)||!input.sourceLineages.length)throw Error('SOURCE_LINEAGES_REQUIRED');
-
-  const sources=input.sourceLineages.map(validatePublicSourceLineage);
-  const sourceLineageIds=Object.freeze([...new Set(sources.map(source=>source.lineageId))].sort());
-  const observationRefs=Object.freeze([...new Set(sources.flatMap(source=>source.observationRefs))].sort());
-  const knowledgeTimes=sources.map(source=>source.receivedAt).filter(finite);
-  const knowledgeAt=knowledgeTimes.length?Math.max(...knowledgeTimes):null;
-  if(knowledgeAt!==null&&knowledgeAt>input.asOf)throw Error('LINEAGE_TIME_ORDER_INVALID');
-
-  const base={
-    schemaVersion:RESEARCH_LINEAGE_SCHEMA,
-    researchOutputId,
-    instrumentId,
-    asOf:input.asOf,
-    knowledgeAt,
-    modelVersion,
-    policyVersion,
-    sourceLineageIds,
-    observationRefs,
-    researchOnly:true,
-    executionWrite:false
-  };
-  return deepFreeze({...base,lineageId:'research:'+digest(base)});
 }
 
 function validateSourceObservationLineage(value){
@@ -267,11 +156,7 @@ function outputIdentityKey(value){
 module.exports=Object.freeze({
   SOURCE_LINEAGE_SCHEMA,
   RESEARCH_OUTPUT_LINEAGE_SCHEMA,
-  RESEARCH_LINEAGE_SCHEMA,
   SOURCE_STATUSES,
-  makeObservationRef,
-  createSourceLineage,
-  createResearchLineage,
   createSourceObservationLineage,
   createResearchOutputLineage,
   validateSourceObservationLineage,
