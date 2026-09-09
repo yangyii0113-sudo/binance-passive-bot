@@ -38,6 +38,9 @@ jobs:
       - name: Archive and canonical byte parity
         run: python -m pytest tests/test_source_parity.py -v
 
+      - name: Old vs normalized runtime projection parity
+        run: python -m pytest tests/test_packaging_runtime_parity.py -v
+
       - name: Normalized source imports
         env:
           PYTHONPATH: src
