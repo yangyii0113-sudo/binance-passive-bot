@@ -5,6 +5,7 @@
   const VM=window.FOXY_V12_HOME_VIEW_MODEL;
   const Renderer=window.FOXY_V12_HOME_RENDERER;
   const DOM=window.FOXY_V12_HOME_DOM;
+  const Staging=window.FOXY_V12_STAGING_READ_CLIENT;
   let route='HOME',context='ALL';
 
   const toast=(message)=>{const el=$('#toast');if(!el)return;el.textContent=message;el.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>el.classList.remove('show'),2200)};
@@ -32,6 +33,19 @@
     return true;
   }
 
+  async function loadStagingHome(){
+    if(!Staging||typeof Staging.createHomeReadClient!=='function')throw Error('STAGING_READ_CLIENT_REQUIRED');
+    const result=await Staging.createHomeReadClient().load();
+    const health=$('#data-health');
+    if(result&&result.status==='AVAILABLE'){
+      renderHomeReadModel(result.data);
+      if(health)health.textContent='STAGING · VERIFIED READ-ONLY';
+      return result;
+    }
+    if(health)health.textContent='STAGING · DATA UNAVAILABLE';
+    return result;
+  }
+
   $$('[data-route]').forEach(b=>b.addEventListener('click',()=>setRoute(b.dataset.route)));
   $$('[data-context]').forEach(b=>b.addEventListener('click',()=>setContext(b.dataset.context)));
   $$('[data-action]').forEach(b=>b.addEventListener('click',()=>toast(b.dataset.action+' · Preview contract only')));
@@ -47,6 +61,7 @@
     setRoute,
     setContext,
     renderHomeReadModel,
+    loadStagingHome,
     getState:()=>Object.freeze({route,context})
   });
 })();
