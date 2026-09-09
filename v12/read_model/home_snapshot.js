@@ -33,8 +33,10 @@ function assertRegionalReadOnly(region,value){
   return value;
 }
 
-function withRegionStatus(snapshot,status){
-  return Object.freeze({...snapshot,status});
+function withRegionStatus(snapshot,status,lineageRef){
+  return typeof lineageRef==='string'&&lineageRef
+    ?Object.freeze({...snapshot,status,lineageRef})
+    :Object.freeze({...snapshot,status});
 }
 
 function regionSnapshots(regionEvidence,regionalContexts,asOf){
@@ -44,7 +46,7 @@ function regionSnapshots(regionEvidence,regionalContexts,asOf){
   for(const region of Home.REGIONS){
     if(Object.hasOwn(contextMap,region)){
       const context=assertRegionalReadOnly(region,contextMap[region]);
-      out[region]=withRegionStatus(context.regionalSnapshot,'AVAILABLE');
+      out[region]=withRegionStatus(context.regionalSnapshot,'AVAILABLE',context.lineageRef);
       continue;
     }
     const evidence=Array.isArray(evidenceMap[region])?evidenceMap[region]:[];
@@ -65,12 +67,14 @@ function equityEarlyTrend(asset){
 }
 
 function equityOpportunity(asset){
+  const lineage=typeof asset.lineageRef==='string'&&asset.lineageRef?{lineageRef:asset.lineageRef}:{};
   return Object.freeze({
     market:asset.market,
     instrumentId:asset.instrumentId,
     earlyTrend:asset.earlyTrend||null,
     research:asset.research||null,
     sourceLineage:Object.freeze(Array.isArray(asset.sourceLineage)?[...asset.sourceLineage]:[]),
+    ...lineage,
     researchOnly:true,
     executionWrite:false
   });
