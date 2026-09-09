@@ -3,6 +3,7 @@ name: FOXYYA Phase 1 Historical Core
 on:
   push:
     branches:
+      - main
       - feat/foxyya-backtest-phase1-historical-core
   pull_request:
     branches:

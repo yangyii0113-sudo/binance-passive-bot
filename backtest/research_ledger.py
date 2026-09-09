@@ -7,6 +7,8 @@ from pathlib import Path
 
 from foxyya.ledger import EventLedger
 
+from backtest.replay_ledger import ReplayLedger
+
 PRODUCTION_LEDGER = Path("/data/foxyya_v2_paper.sqlite")
 _RUN_ID = re.compile(r"^[A-Za-z0-9._-]+$")
 
@@ -71,4 +73,4 @@ class ResearchLedgerFactory:
             raise ValueError("production ledger path is forbidden")
 
         run_dir.mkdir(parents=True, exist_ok=True)
-        return EventLedger(ledger_path), ledger_path
+        return ReplayLedger(ledger_path), ledger_path
