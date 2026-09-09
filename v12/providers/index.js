@@ -7,5 +7,6 @@ const adapters=Object.freeze({
   tpex:require('./tpex_adapter.js'),
   sec:require('./sec_edgar_adapter.js'),
   bls:require('./bls_adapter.js'),
+  fed:require('./fed_adapter.js'),
 });
 module.exports=Object.freeze({...contract,...registry,...catalog,adapters});
