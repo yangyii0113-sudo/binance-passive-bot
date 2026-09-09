@@ -26,7 +26,9 @@ jobs:
       - name: Run formal ETHUSDT trailing-365-day study
         env:
           PYTHONPATH: src:.
+        shell: bash
         run: |
+          set -euo pipefail
           python -m backtest.cli eth365 --output-root artifacts/backtests | tee /tmp/eth365-summary.json
       - name: Validate research artifacts and print metrics
         env:
@@ -39,7 +41,16 @@ jobs:
           roots = sorted(Path('artifacts/backtests').glob('bt-*'))
           if not roots:
               raise SystemExit('no deterministic backtest run directory found')
-          run_dir = roots[-1]
+          candidates=[]
+          for run_dir in roots:
+              cfg_path=run_dir/'run_config.json'
+              if not cfg_path.is_file():
+                  continue
+              cfg=json.loads(cfg_path.read_text(encoding='utf-8'))
+              candidates.append((int(cfg.get('end_ms',0)),run_dir,cfg))
+          if not candidates:
+              raise SystemExit('no complete deterministic backtest config found')
+          _,run_dir,cfg=max(candidates,key=lambda x:(x[0],x[1].name))
           required = [
               'events.sqlite','input_data.json','data_manifest.json','run_config.json',
               'metrics.json','report.json','report.md'
@@ -48,10 +59,10 @@ jobs:
           if missing:
               raise SystemExit(f'missing run artifacts: {missing}')
 
-          cfg = json.loads((run_dir/'run_config.json').read_text(encoding='utf-8'))
           metrics = json.loads((run_dir/'metrics.json').read_text(encoding='utf-8'))
           report = json.loads((run_dir/'report.json').read_text(encoding='utf-8'))
           manifest = json.loads((run_dir/'data_manifest.json').read_text(encoding='utf-8'))
+          input_data = json.loads((run_dir/'input_data.json').read_text(encoding='utf-8'))
           integrity = cfg.get('integrity') or {}
 
           assert cfg.get('paper_only') is True
@@ -59,6 +70,8 @@ jobs:
           assert cfg.get('symbol') == 'ETHUSDT'
           assert cfg.get('tradable_symbols') == ['ETHUSDT']
           assert len(str(cfg.get('manifest_sha256',''))) == 64
+          assert int(cfg.get('data_lag_ms',-1)) >= 0
+          assert cfg.get('retrieval_mode') in {'BINANCE_REST','BINANCE_OFFICIAL_PUBLIC_ARCHIVE'}
           assert integrity.get('ledger_integrity') is True
           assert integrity.get('duplicate_fills') == 0
           assert integrity.get('backfill_count') == 0
@@ -70,6 +83,8 @@ jobs:
           assert report.get('mode') == 'HISTORICAL BACKTEST'
           assert report.get('label') == '歷史模擬・非 Forward Performance'
           assert manifest.get('source_family') == 'Binance USD-M Public Data'
+          assert input_data.get('source_family') == 'Binance USD-M Public Data'
+          assert int(input_data.get('end_ms')) == int(cfg.get('end_ms'))
           perf = metrics.get('performance') or {}
           costs = metrics.get('cost_attribution') or {}
           funnel = metrics.get('funnel') or {}
@@ -77,8 +92,12 @@ jobs:
               'run_id': cfg.get('run_id'),
               'git_sha': cfg.get('git_sha'),
               'strategy_version': cfg.get('strategy_version'),
+              'retrieval_mode': cfg.get('retrieval_mode'),
+              'exchange_info_source': cfg.get('exchange_info_source'),
+              'requested_end_taipei': cfg.get('requested_end_taipei'),
               'execution_start_taipei': cfg.get('execution_start_taipei'),
               'execution_end_taipei': cfg.get('execution_end_taipei'),
+              'data_lag_ms': cfg.get('data_lag_ms'),
               'manifest_sha256': cfg.get('manifest_sha256'),
               'integrity': integrity,
               'performance': {
