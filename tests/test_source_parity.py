@@ -44,3 +44,16 @@ def test_canonical_source_matches_production_archive_byte_for_byte():
             expected = archive.read(archive_name)
             assert hashlib.sha256(actual).hexdigest() == manifest[archive_name]
             assert actual == expected
+
+
+def test_dockerfile_packages_canonical_source_directly():
+    dockerfile = Path("Dockerfile").read_text(encoding="utf-8")
+
+    assert "backend_parts2" not in dockerfile
+    assert "runtime_backend.b64" not in dockerfile
+    assert "base64" not in dockerfile
+    assert "zipfile" not in dockerfile
+    assert "COPY src ./src" in dockerfile
+    assert "PYTHONPATH=/app/foxyya_runtime_backend/src" in dockerfile
+    assert "PAPER_ONLY=true" in dockerfile
+    assert "REAL_ORDER_LOCK=true" in dockerfile
