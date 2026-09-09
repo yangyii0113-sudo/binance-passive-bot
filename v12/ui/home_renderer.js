@@ -14,6 +14,8 @@
   const object=x=>x&&typeof x==='object'&&!Array.isArray(x);
   const safeClass=value=>String(value??'UNAVAILABLE').toLowerCase().replace(/[^a-z0-9_-]+/g,'-');
   const pct=value=>finite(value)?`${Math.round(value*100)}%`:'—';
+  const number=value=>finite(value)?value.toLocaleString('en-US',{maximumFractionDigits:4}):(value===Infinity?'∞':'—');
+  const time=value=>finite(value)?new Date(value).toISOString():'UNAVAILABLE';
 
   function assertViewModel(value){
     if(!object(value)||value.schemaVersion!=='foxyya-home-view-model/1')throw Error('HOME_VIEW_MODEL_REQUIRED');
@@ -39,10 +41,13 @@
     return rows.map(row=>{
       const market=esc(row.market);
       const status=esc(row.stateLabel||row.status||'UNAVAILABLE');
-      const mode=row.market==='CRYPTO'?'Research · 未連接 Execution':'Research';
-      const reason=row.market==='CRYPTO'?'Unavailable：此環境未連接 Crypto 行情與交易':'市場指數資料未接入；可查看個股官方研究快照';
+      const cryptoAvailable=row.market==='CRYPTO'&&row.status==='AVAILABLE';
+      const mode=row.market==='CRYPTO'?(cryptoAvailable?'PAPER READ-ONLY':'Research · Execution unavailable'):'Research';
+      const reason=row.market==='CRYPTO'
+        ?(cryptoAvailable?`Runtime ${row.data?.health||'AVAILABLE'} · Pending ${row.data?.pendingCount??'—'} · Open ${row.data?.openPositionCount??'—'}`:'Unavailable：Production Paper Runtime 本輪無法讀取')
+        :'市場指數資料未接入；可查看個股官方研究快照';
       const action=row.market==='CRYPTO'?'查看 Crypto':row.market==='US'?'查看美股':'查看台股';
-      return `<article class="pulse-card ${safeClass(row.market)}" data-market-pulse="${market}" data-filter-market="${market}"><div class="pulse-title"><div><b>${esc(MARKET_LABELS[row.market]||row.market)}</b><small>${esc(mode)}</small></div></div><strong data-field="state">${status}</strong><small class="data-state">${esc(row.status||'UNAVAILABLE')}</small><p class="muted">${esc(reason)}</p><button class="card-action" data-route="RESEARCH" data-market="${market}">${action}</button></article>`;
+      return `<article class="pulse-card ${safeClass(row.market)}" data-market-pulse="${market}" data-filter-market="${market}"><div class="pulse-title"><div><b>${esc(MARKET_LABELS[row.market]||row.market)}</b><small>${esc(mode)}</small></div></div><strong data-field="state">${status}</strong><small class="data-state">${esc(row.status||'UNAVAILABLE')}</small><p class="muted">${esc(reason)}</p><button class="card-action" data-route="${row.market==='CRYPTO'?'POSITIONS':'RESEARCH'}" data-market="${market}">${action}</button></article>`;
     }).join('');
   }
 
@@ -52,7 +57,7 @@
   }
 
   function renderCryptoOpportunities(rows){
-    if(!rows.length)return '<div class="empty-state compact"><b>UNAVAILABLE</b><span>Unavailable：獨立研究環境未連接 Crypto 行情或 Execution。</span></div>';
+    if(!rows.length)return '<div class="empty-state compact"><b>UNAVAILABLE</b><span>本輪沒有可顯示的 Crypto Paper candidate。</span></div>';
     return rows.map(row=>`<div class="opportunity-row crypto"><div><b>${esc(row.symbol)}</b><small>${esc(row.family)} · ${esc(row.side)}</small></div><div><strong>${esc(row.status)}</strong><em>PAPER READ-ONLY</em></div></div>`).join('');
   }
 
@@ -72,9 +77,32 @@
     ].join('');
   }
 
-  function renderEvents(rows){
-    if(!rows.length)return '<div class="empty-state"><b>UNAVAILABLE</b><span>Unavailable：新聞、經濟日曆與財報事件來源尚未接入。</span></div>';
-    return `<div class="event-list">${rows.map(row=>`<article class="event-row" data-event-id="${esc(row.id)}"><div><b>${esc(row.title)}</b><small>${esc(row.source)}</small></div><time>${finite(row.asOf)?esc(new Date(row.asOf).toISOString()):'UNAVAILABLE'}</time></article>`).join('')}</div>`;
+  function renderEventRows(rows,emptyText){
+    if(!rows.length)return `<div class="empty-state"><b>UNAVAILABLE</b><span>${esc(emptyText)}</span></div>`;
+    return `<div class="event-list">${rows.map(row=>`<article class="event-row" data-event-id="${esc(row.id)}"><div><span class="eyebrow">${esc(row.kind||'EVENT')} · ${esc(row.impact||'UNAVAILABLE')}</span><b>${esc(row.title)}</b><small>${esc(row.source)} · ${esc(row.status||'UNAVAILABLE')}</small>${row.summary?`<p class="muted">${esc(row.summary)}</p>`:''}${row.description?`<p class="muted">${esc(row.description)}</p>`:''}</div><time>${esc(time(row.asOf))}</time></article>`).join('')}</div>`;
+  }
+
+  function renderEvents(rows){return renderEventRows(rows,'新聞、經濟日曆與事件來源本輪無可用資料。');}
+  function renderCalendar(rows){return renderEventRows(rows,'BLS Calendar 本輪無可用事件。');}
+  function renderNews(rows){return renderEventRows(rows,'News feed 本輪無可用項目。');}
+  function renderTodayFocus(rows){return renderEventRows(rows,'目前沒有 HIGH / EXTREME verified focus。');}
+
+  function renderPositions(value){
+    if(!object(value)||value.status!=='AVAILABLE')return '<div class="empty-state"><b>UNAVAILABLE</b><span>Production Paper Runtime 本輪無法讀取；不顯示舊持倉為最新狀態。</span></div>';
+    const pending=Array.isArray(value.pending)?value.pending:[];
+    const open=Array.isArray(value.open)?value.open:[];
+    const rows=[
+      ...open.map(row=>({label:'OPEN',row})),
+      ...pending.map(row=>({label:'PENDING',row}))
+    ];
+    const body=rows.length?`<div class="position-list">${rows.map(({label,row})=>`<article class="position-row"><div><span class="status-chip">${label}</span><b>${esc(row.symbol||'UNAVAILABLE')}</b><small>${esc(row.family||'—')} · ${esc(row.side||'—')}</small></div><strong>${esc(row.status||label)}</strong></article>`).join('')}</div>`:'<div class="empty-state compact"><b>0 ACTIVE</b><span>目前沒有 Pending / Open Paper position。</span></div>';
+    return `<div class="runtime-summary"><span class="safety-pill">PAPER ONLY</span><small>Runtime ${esc(value.health)} · Ledger ${value.ledgerIntegrity?'OK':'DEGRADED'} · ${esc(time(value.asOf))}</small></div>${body}`;
+  }
+
+  function renderTradingResults(value){
+    if(!object(value))return '<div class="empty-state"><b>UNAVAILABLE</b><span>尚未取得 canonical closed paper trade results。</span></div>';
+    const m=object(value.metrics)?value.metrics:{};
+    return `<div class="metric-grid"><div><span>Samples</span><b>${esc(number(value.sampleCount))}</b></div><div><span>Win Rate</span><b>${finite(m.winRate)?esc(pct(m.winRate)):'—'}</b></div><div><span>Net PnL</span><b>${esc(number(m.netPnl))}</b></div><div><span>Expectancy R</span><b>${esc(number(m.expectancyR))}</b></div><div><span>Profit Factor</span><b>${esc(number(m.profitFactor))}</b></div><div><span>Fees</span><b>${esc(number(m.fees))}</b></div></div><p class="muted">${esc(value.sampleStatus)} · closed PAPER trades only · ${esc(time(value.asOf))}</p>`;
   }
 
   function renderHomeSections(input){
@@ -90,6 +118,11 @@
       earlyTrendHtml:renderEarlyTrend(value.earlyTrend),
       opportunitiesHtml:renderOpportunities(value.opportunities),
       eventsHtml:renderEvents(value.events),
+      positionsHtml:renderPositions(value.positions),
+      tradingResultsHtml:renderTradingResults(value.tradingResults),
+      calendarHtml:renderCalendar(Array.isArray(value.calendar)?value.calendar:[]),
+      newsHtml:renderNews(Array.isArray(value.news)?value.news:[]),
+      todayFocusHtml:renderTodayFocus(Array.isArray(value.todayFocus)?value.todayFocus:[]),
       researchOnly:true,
       executionWrite:false
     });
