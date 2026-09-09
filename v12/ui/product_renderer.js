@@ -4,7 +4,7 @@
   else root.FOXY_V12_PRODUCT_RENDERER=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(){
   'use strict';
-  const esc=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[ch]));
+  const esc=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   const list=value=>Array.isArray(value)?value:[];
   const finite=value=>typeof value==='number'&&Number.isFinite(value);
   const time=value=>finite(value)?new Date(value).toISOString():'UNAVAILABLE';
