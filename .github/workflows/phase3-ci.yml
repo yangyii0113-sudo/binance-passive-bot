@@ -25,7 +25,7 @@ jobs:
           node-version: '22'
       - name: Install test runner
         run: python -m pip install --disable-pip-version-check pytest
-      - name: Backtest metrics report and historical data contracts
+      - name: Backtest completion contracts
         env:
           PYTHONPATH: src:.
         run: >-
@@ -33,4 +33,5 @@ jobs:
           tests/test_backtest_metrics.py
           tests/test_backtest_report.py
           tests/test_binance_history.py
+          tests/test_eth_one_year_replay.py
           -v
