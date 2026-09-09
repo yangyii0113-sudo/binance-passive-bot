@@ -2,12 +2,15 @@ from __future__ import annotations
 
 import hashlib
 import json
+from bisect import bisect_right
 from copy import deepcopy
 
 from backtest.historical_clock import HOUR_MS, HistoricalClock
 
 SUPPORTED_INTERVALS = ("1h", "4h", "1d")
 INTERVAL_MS = {"1h": HOUR_MS, "4h": 4 * HOUR_MS, "1d": 24 * HOUR_MS}
+SNAPSHOT_LIMITS = {"1h": 140, "4h": 100, "1d": 80}
+FUNDING_LOOKBACK_MS = 24 * HOUR_MS
 DEFAULT_SOURCE_FAMILY = "Binance USD-M Public Data"
 
 
@@ -77,26 +80,35 @@ class HistoricalDataset:
         self.retrieved_at_ms = int(retrieved_at_ms)
         self.source_family = str(source_family)
         self._rows_by_symbol: dict[str, dict[str, tuple[tuple, ...]]] = {}
+        self._close_times_by_symbol: dict[str, dict[str, tuple[int, ...]]] = {}
         self._funding_rows_by_symbol: dict[str, tuple[dict, ...]] = {}
+        self._funding_times_by_symbol: dict[str, tuple[int, ...]] = {}
 
         for symbol, interval_map in sorted(rows_by_symbol.items()):
             normalized: dict[str, tuple[tuple, ...]] = {}
+            close_times: dict[str, tuple[int, ...]] = {}
             for interval in SUPPORTED_INTERVALS:
                 rows = interval_map.get(interval, [])
                 normalized[interval] = self._validate_rows(symbol, interval, rows)
+                close_times[interval] = tuple(int(row[6]) for row in normalized[interval])
             unsupported = set(interval_map) - set(SUPPORTED_INTERVALS)
             if unsupported:
                 raise ValueError(f"unsupported historical interval: {sorted(unsupported)[0]}")
-            self._rows_by_symbol[str(symbol)] = normalized
+            symbol = str(symbol)
+            self._rows_by_symbol[symbol] = normalized
+            self._close_times_by_symbol[symbol] = close_times
 
         for symbol, rows in sorted((funding_rows_by_symbol or {}).items()):
             symbol = str(symbol)
             if symbol not in self._rows_by_symbol:
                 raise ValueError("funding symbol missing from historical rows")
-            self._funding_rows_by_symbol[symbol] = self._validate_funding(rows)
+            normalized_funding = self._validate_funding(rows)
+            self._funding_rows_by_symbol[symbol] = normalized_funding
+            self._funding_times_by_symbol[symbol] = tuple(int(row["fundingTime"]) for row in normalized_funding)
 
         for symbol in self._rows_by_symbol:
             self._funding_rows_by_symbol.setdefault(symbol, tuple())
+            self._funding_times_by_symbol.setdefault(symbol, tuple())
 
     @property
     def exchange_info(self) -> dict:
@@ -152,8 +164,16 @@ class HistoricalDataset:
             raise ValueError(f"unsupported historical interval: {interval}")
         return self._rows_by_symbol.get(symbol, {}).get(interval, tuple())
 
+    def close_times(self, symbol: str, interval: str) -> tuple[int, ...]:
+        if interval not in SUPPORTED_INTERVALS:
+            raise ValueError(f"unsupported historical interval: {interval}")
+        return self._close_times_by_symbol.get(symbol, {}).get(interval, tuple())
+
     def funding_rows(self, symbol: str) -> tuple[dict, ...]:
         return tuple(deepcopy(row) for row in self._funding_rows_by_symbol.get(symbol, tuple()))
+
+    def funding_times(self, symbol: str) -> tuple[int, ...]:
+        return self._funding_times_by_symbol.get(symbol, tuple())
 
     def manifest(self) -> dict:
         datasets: dict[str, dict] = {}
@@ -205,12 +225,18 @@ class HistoricalMarketAdapter:
             if item.get("symbol")
         }
 
+    def _visible_tuple(self, symbol: str, interval: str) -> tuple[tuple, ...]:
+        rows = self.dataset.rows(symbol, interval)
+        closes = self.dataset.close_times(symbol, interval)
+        cutoff = bisect_right(closes, int(self.clock.now_ms))
+        return rows[:cutoff]
+
     def visible_rows(self, symbol: str, interval: str) -> list[list]:
-        return [
-            list(row)
-            for row in self.dataset.rows(symbol, interval)
-            if self.clock.visible(int(row[6]))
-        ]
+        return [list(row) for row in self._visible_tuple(symbol, interval)]
+
+    def _snapshot_rows(self, symbol: str, interval: str) -> tuple[tuple, ...]:
+        visible = self._visible_tuple(symbol, interval)
+        return visible[-SNAPSHOT_LIMITS[interval]:]
 
     def _step(self, symbol: str) -> float:
         for item in self._symbol_info.get(symbol, {}).get("filters", []):
@@ -224,7 +250,7 @@ class HistoricalMarketAdapter:
         return 0.001
 
     def _ticker(self, symbol: str) -> dict:
-        visible = self.visible_rows(symbol, "1h")
+        visible = self._visible_tuple(symbol, "1h")
         if not visible:
             return {
                 "symbol": symbol,
@@ -254,6 +280,13 @@ class HistoricalMarketAdapter:
                 break
         return None
 
+    def _visible_funding(self, symbol: str) -> list[dict]:
+        rows = self.dataset.funding_rows(symbol)
+        times = self.dataset.funding_times(symbol)
+        right = bisect_right(times, int(self.clock.now_ms))
+        left = bisect_right(times, int(self.clock.now_ms) - FUNDING_LOOKBACK_MS - 1)
+        return [deepcopy(row) for row in rows[left:right]]
+
     def snapshot(self) -> dict:
         tickers = {symbol: self._ticker(symbol) for symbol in self.dataset.symbols}
         klines = {}
@@ -265,7 +298,7 @@ class HistoricalMarketAdapter:
 
         for symbol in self.dataset.symbols:
             klines[symbol] = {
-                interval: [_bar(row) for row in self.visible_rows(symbol, interval)]
+                interval: [_bar(row) for row in self._snapshot_rows(symbol, interval)]
                 for interval in SUPPORTED_INTERVALS
             }
             steps[symbol] = self._step(symbol)
@@ -274,11 +307,7 @@ class HistoricalMarketAdapter:
             current_open = self._current_hour_open(symbol)
             if current_open is not None:
                 opens[symbol] = current_open
-            funding = [
-                deepcopy(row)
-                for row in self.dataset.funding_rows(symbol)
-                if int(row["fundingTime"]) <= self.clock.now_ms
-            ]
+            funding = self._visible_funding(symbol)
             realized_funding[symbol] = funding
             if funding:
                 try:
@@ -323,5 +352,7 @@ class HistoricalMarketAdapter:
                 "retrieved_at_ms": self.dataset.retrieved_at_ms,
                 "mark_proxy": "last_fully_closed_1h_close",
                 "ticker_24h": "derived_from_latest_24_visible_native_1h_rows",
+                "snapshot_limits": dict(SNAPSHOT_LIMITS),
+                "funding_lookback_ms": FUNDING_LOOKBACK_MS,
             },
         }
