@@ -99,6 +99,32 @@ def test_manifest_hash_is_deterministic_and_changes_with_input():
     assert third["manifest_sha256"] != first["manifest_sha256"]
 
 
+def test_market_context_is_part_of_manifest_provenance():
+    context = {
+        "BTCUSDT": [raw_bar(0, 999, 50000), raw_bar(1000, 1999, 51000)],
+        "SOLUSDT": [raw_bar(0, 999, 100), raw_bar(1000, 1999, 105)],
+    }
+    first = build_data_manifest(exchange_info(), dataset(), funding_rows={}, context_1h=context)
+    changed = copy.deepcopy(context)
+    changed["BTCUSDT"][1][4] = "52000"
+    second = build_data_manifest(exchange_info(), dataset(), funding_rows={}, context_1h=changed)
+
+    assert first["manifest_sha256"] != second["manifest_sha256"]
+    assert first["context_1h"]["BTCUSDT"]["row_count"] == 2
+
+
+def test_adapter_manifest_includes_context_hash():
+    context = {"BTCUSDT": [raw_bar(0, 999, 50000), raw_bar(1000, 1999, 51000)]}
+    adapter = HistoricalMarketAdapter(
+        HistoricalClock(1999),
+        exchange_info(),
+        dataset(),
+        trade_symbols=("ETHUSDT",),
+        context_1h=context,
+    )
+    assert adapter.manifest["context_1h"]["BTCUSDT"]["row_count"] == 2
+
+
 def test_snapshot_uses_only_visible_values_for_ticker_mark_and_24h_metrics():
     clock = HistoricalClock(1999)
     adapter = HistoricalMarketAdapter(clock, exchange_info(), dataset(), trade_symbols=("ETHUSDT",))
