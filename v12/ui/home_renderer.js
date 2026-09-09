@@ -95,7 +95,7 @@
       ...open.map(row=>({label:'OPEN',row})),
       ...pending.map(row=>({label:'PENDING',row}))
     ];
-    const body=rows.length?`<div class="position-list">${rows.map(({label,row})=>`<article class="position-row"><div><span class="status-chip">${label}</span><b>${esc(row.symbol||'UNAVAILABLE')}</b><small>${esc(row.family||'—')} · ${esc(row.side||'—')}</small></div><strong>${esc(row.status||label)}</strong></article>`).join('')}</div>`:'<div class="empty-state compact"><b>0 ACTIVE</b><span>目前沒有 Pending / Open Paper position。</span></div>';
+    const body=rows.length?`<div class="position-list">${rows.map(({label,row})=>`<article class="position-row" data-position-kind="${label}"><div><span class="status-chip">${label}</span><b>${esc(row.symbol||'UNAVAILABLE')}</b><small>${esc(row.family||'—')} · ${esc(row.side||'—')}</small></div><strong>${esc(row.status||label)}</strong></article>`).join('')}</div>`:'<div class="empty-state compact"><b>0 ACTIVE</b><span>目前沒有 Pending / Open Paper position。</span></div>';
     return `<div class="runtime-summary"><span class="safety-pill">PAPER ONLY</span><small>Runtime ${esc(value.health)} · Ledger ${value.ledgerIntegrity?'OK':'DEGRADED'} · ${esc(time(value.asOf))}</small></div>${body}`;
   }
 
