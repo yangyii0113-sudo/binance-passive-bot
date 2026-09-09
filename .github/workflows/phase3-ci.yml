@@ -25,7 +25,7 @@ jobs:
           node-version: '22'
       - name: Install test runner
         run: python -m pip install --disable-pip-version-check pytest
-      - name: Backtest metrics contract
+      - name: Backtest metrics and report contracts
         env:
           PYTHONPATH: src:.
-        run: python -m pytest tests/test_backtest_metrics.py -v
+        run: python -m pytest tests/test_backtest_metrics.py tests/test_backtest_report.py -v
