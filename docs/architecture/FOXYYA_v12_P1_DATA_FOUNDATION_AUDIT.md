@@ -97,7 +97,13 @@ Present and verified:
 - governed transport retries transient HTTP failures and still returns the same safe loader result contract
 - final rate-limit / open-circuit / network failures remain explicit `UNAVAILABLE`
 - legacy public-source loader behavior remains compatible when governance is not supplied
-- no provider health, runtime governance or public loader surface exposes execution write
+- Staging Source Pipeline accepts one shared provider-governance instance and passes it to all public loaders
+- shared provider circuit / rate-limit / health state survives across Source Pipeline runs
+- Source Pipeline exposes immutable `providerHealth` diagnostics only for providers actually used by the run
+- `providerHealth` remains research-only and contains no market direction, bias, order or execution semantics
+- invalid provider governance is rejected before the first network request
+- provider degradation remains isolated: an unhealthy provider does not mark unrelated successful providers unhealthy
+- no provider health, runtime governance, public loader or Source Pipeline diagnostic surface exposes execution write
 
 **Responsibility boundary:** Activation determines whether a source is permitted to run. Runtime governance determines whether an already-permitted source should currently execute, retry, wait, or fail unavailable. Adapters and bindings remain responsible only for data semantics. Research and UI do not implement their own retries or health inference.
 
@@ -207,6 +213,8 @@ Present:
 - durable prior research-history lookup
 - SEC -> US factual read model
 - BLS / ECB -> regional factual context
+- shared optional Provider Runtime Governance
+- immutable provider-local health diagnostics
 - provider degradation isolation
 - no direct execution command
 
@@ -276,6 +284,8 @@ Verified completion:
 - circuit-breaker / cooldown / half-open recovery
 - data, HTTP and network failure distinction
 - public-source loader integration
+- Source Pipeline shared-governance integration
+- immutable provider-health diagnostics
 - domain-local failure isolation
 - no execution authority
 
@@ -409,7 +419,7 @@ Verified closure baseline: v12 `398 / 398`, Runtime JS `10 / 10`, Python `1 / 1`
 Verified closure baseline: v12 `409 / 409`, Runtime JS `10 / 10`, Python `1 / 1`.
 
 **P1.4 status: CLOSED / GREEN**  
-Verified closure baseline: v12 `437 / 437`, Runtime JS `10 / 10`, Python `1 / 1`.
+Verified final closure baseline: v12 `442 / 442`, Runtime JS `10 / 10`, Python `1 / 1`.
 
 At all four closure gates:
 
