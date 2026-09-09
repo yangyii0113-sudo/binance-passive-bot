@@ -38,8 +38,10 @@
       const statusWeight=STATUS_WEIGHT[item.status];
       if(statusWeight<=0){excluded.push(item);continue}
       const effectiveWeight=item.confidence*statusWeight;
+      const basisCount=Number.isInteger(item.basisCount)&&item.basisCount>0?item.basisCount:1;
       const prev=bestByFamily.get(item.family);
-      if(!prev||effectiveWeight>prev.effectiveWeight)bestByFamily.set(item.family,{...item,effectiveWeight});
+      const better=!prev||effectiveWeight>prev.effectiveWeight||(effectiveWeight===prev.effectiveWeight&&basisCount>prev.basisCount)||(effectiveWeight===prev.effectiveWeight&&basisCount===prev.basisCount&&item.asOf>prev.asOf);
+      if(better)bestByFamily.set(item.family,{...item,basisCount,effectiveWeight});
     }
     const usable=[...bestByFamily.values()];
     if(!usable.length){
