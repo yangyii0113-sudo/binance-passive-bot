@@ -5,6 +5,7 @@ import pytest
 from backtest.data_manifest import build_data_manifest
 from backtest.historical_clock import HistoricalClock
 from backtest.historical_market import HistoricalDataError, HistoricalMarketAdapter
+from foxyya.execution import HOUR
 
 
 def raw_bar(open_ms, close_ms, close, *, volume="10", quote_volume="10000000"):
@@ -136,3 +137,34 @@ def test_snapshot_uses_only_visible_values_for_ticker_mark_and_24h_metrics():
     assert ticker["lastPrice"] == "101.0"
     assert float(ticker["quoteVolume"]) > 0
     assert snapshot["steps"]["ETHUSDT"] == 0.001
+
+
+def test_hour_boundary_mark_uses_observable_current_open_not_pre_entry_previous_close():
+    data = {
+        "ETHUSDT": {
+            "1h": [
+                raw_bar(0, HOUR - 1, 100),
+                raw_bar(HOUR, 2 * HOUR - 1, 105),
+            ],
+            "4h": [raw_bar(0, 4 * HOUR - 1, 100)],
+            "1d": [raw_bar(0, 24 * HOUR - 1, 100)],
+        }
+    }
+    adapter = HistoricalMarketAdapter(
+        HistoricalClock(HOUR),
+        exchange_info(),
+        data,
+        trade_symbols=("ETHUSDT",),
+    )
+
+    snapshot = adapter.snapshot()
+
+    # Strategy/ticker context remains on the last fully closed candle.
+    assert snapshot["tickers"]["ETHUSDT"]["lastPrice"] == "100.0"
+    # Execution/position management may observe the new hour's open immediately.
+    assert snapshot["hour_open_prices"]["ETHUSDT"] == 104.0
+    assert snapshot["marks"]["ETHUSDT"] == 104.0
+
+    adapter.clock.advance_to(HOUR + 30 * 60_000)
+    midpoint = adapter.snapshot()
+    assert midpoint["marks"]["ETHUSDT"] == 104.0
