@@ -6,7 +6,7 @@
   'use strict';
   const CAPABILITIES=Object.freeze(['QUOTE','KLINE','FUNDAMENTAL','NEWS','MACRO','CALENDAR','FLOW','OPTIONS','DERIVATIVES']);
   const PROVIDER_MARKETS=Object.freeze(['CRYPTO','US','TW','KR','JP','CN_HK','EU','GLOBAL']);
-  const TRANSPORTS=Object.freeze(['PUBLIC_READ_ONLY','FILE','INTERNAL_READ_ONLY']);
+  const TRANSPORTS=Object.freeze(['PUBLIC_READ_ONLY','AUTHENTICATED_READ_ONLY','FILE','INTERNAL_READ_ONLY']);
   const text=v=>typeof v==='string'&&v.length>0;
   const arr=v=>Array.isArray(v)&&v.length>0;
   const result=errors=>({ok:errors.length===0,errors});
