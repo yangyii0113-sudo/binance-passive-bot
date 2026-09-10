@@ -20,20 +20,26 @@ function revenueRow(){return {'出表日期':'1150909','資料年月':'11508','�
 function tpQuoteRow(){return {Date:'1150909',SecuritiesCompanyCode:'6488',CompanyName:'環球晶',Open:'455.5',High:'470',Low:'452',Close:'468',Change:'12.5',TradingShares:'100000000',TransactionAmount:'46800000000',TransactionNumber:'83000'};}
 function tpFlowRow(){return {Date:'1150909',SecuritiesCompanyCode:'6488',CompanyName:'環球晶','Foreign Investors include Mainland Area Investors (Foreign Dealers excluded)-Difference':'4000000','SecuritiesInvestmentTrustCompanies-Difference':'1000000','Dealers-Difference':'-250000','TotalDifference':'4750000'};}
 function secPayload(){return {cik:'1045810',facts:{'us-gaap':{RevenueFromContractWithCustomerExcludingAssessedTax:{label:'Revenue',description:'Revenue',units:{USD:[{val:30000000000,accn:'0001',form:'10-Q',filed:'2026-08-20',start:'2026-05-01',end:'2026-07-31',fy:2026,fp:'Q2'}]}}}}};}
-function blsPayload(){return {status:'REQUEST_SUCCEEDED',message:[],Results:{series:[{seriesID:'CUUR0000SA0',data:[{year:'2026',period:'M08',periodName:'August',latest:'true',value:'326.5'}]}]}};}
-function ecbPayload(){return [{TIME_PERIOD:'2026-08',OBS_VALUE:'2.1',OBS_STATUS:'A'}];}
+function blsPayload(seriesID,value){return {status:'REQUEST_SUCCEEDED',message:[],Results:{series:[{seriesID,data:[{year:'2026',period:'M08',periodName:'August',latest:'true',value:String(value)}]}]}};}
+function ecbPayload(value){return [{TIME_PERIOD:'2026-08',OBS_VALUE:String(value),OBS_STATUS:'A'}];}
 
 function fixtures(input){
-  return new Map([
+  const table=new Map([
     [input.twAssets[0].quoteEndpoint,response(200,[twQuoteRow()])],
     [input.twAssets[0].flowEndpoint,response(200,twFlowPayload())],
     [input.twAssets[0].revenueEndpoint,response(200,[revenueRow()])],
     [input.twAssets[1].quoteEndpoint,response(200,[tpQuoteRow()])],
     [input.twAssets[1].flowEndpoint,response(200,[tpFlowRow()])],
-    [input.usAssets[0].sec.endpoint,response(200,secPayload())],
-    [input.regions.US.bls[0].endpoint,response(200,blsPayload())],
-    [input.regions.EU.ecb[0].endpoint,response(200,ecbPayload())]
+    [input.usAssets[0].sec.endpoint,response(200,secPayload())]
   ]);
+  const blsValues={CUUR0000SA0:'326.5',LNS14000000:'4.2',CES0000000001:'159500'};
+  for(const item of input.regions.US.bls){
+    const seriesID=Object.keys(item.definitions)[0];
+    table.set(item.endpoint,response(200,blsPayload(seriesID,blsValues[seriesID])));
+  }
+  const ecbValues=['2.1','2.15','2.00'];
+  input.regions.EU.ecb.forEach((item,index)=>table.set(item.endpoint,response(200,ecbPayload(ecbValues[index]))));
+  return table;
 }
 
 test('default research bootstrap uses only approved official read-only sources and current Taipei trade date',()=>{
@@ -50,6 +56,8 @@ test('default research bootstrap uses only approved official read-only sources a
   assert.equal(input.usAssets[0].optionsAvailable,false);
   assert.deepEqual(input.usAssets[0].researchEvidence,[]);
   assert.deepEqual(input.usAssets[0].earlyEvidence,[]);
+  assert.equal(input.regions.US.bls.length,3);
+  assert.equal(input.regions.EU.ecb.length,3);
 
   const endpoints=[
     ...input.twAssets.flatMap(x=>[x.quoteEndpoint,x.flowEndpoint,x.revenueEndpoint].filter(Boolean)),
@@ -89,9 +97,13 @@ test('one bootstrap run publishes traceable TW US and regional research without 
     assert.match(us.lineageRef,/^out_[a-f0-9]{64}$/);
     assert.ok(lineageStore.traceOutput(tw.lineageRef));
     assert.ok(lineageStore.traceOutput(us.lineageRef));
-    assert.equal(result.orchestration.published.home.regions.find(x=>x.region==='US').status,'AVAILABLE');
-    assert.equal(result.orchestration.published.home.regions.find(x=>x.region==='EU').status,'AVAILABLE');
-    assert.equal(calls.length,8);
+    const usRegion=result.orchestration.published.home.regions.find(x=>x.region==='US');
+    const euRegion=result.orchestration.published.home.regions.find(x=>x.region==='EU');
+    assert.equal(usRegion.status,'AVAILABLE');
+    assert.equal(euRegion.status,'AVAILABLE');
+    assert.equal(usRegion.facts.length,3);
+    assert.equal(euRegion.facts.length,3);
+    assert.equal(calls.length,12);
     for(const call of calls){assert.equal(call.init.method,'GET');assert.equal(call.init.redirect,'error')}
     assert.deepEqual(Object.keys(runtime),['runOnce']);
   }finally{fs.rmSync(dir,{recursive:true,force:true})}
