@@ -14,7 +14,7 @@
   const STATUS_LABELS=Object.freeze({
     AVAILABLE:'可用',UNAVAILABLE:'不可用',HEALTHY:'健康',DEGRADED:'降級',STALE:'過期',
     OPEN:'持倉中',PENDING:'等待成交',PENDING_INTENT:'等待執行',QUALIFIED:'條件成立',ARMED:'準備中',WATCH:'觀察中',CANDIDATE:'候選',REJECTED:'未通過',CANCELLED:'已取消',EXITED:'已結束',
-    LIVE:'即時',DELAYED:'延遲',SNAPSHOT:'快照',SAMPLE_INSUFFICIENT:'樣本不足'
+    LIVE:'即時',LIVE_SOURCE:'即時來源',DELAYED:'延遲',SNAPSHOT:'快照',SAMPLE_INSUFFICIENT:'樣本不足'
   });
   const SIDE_LABELS=Object.freeze({LONG:'多方',SHORT:'空方',NEUTRAL:'中性'});
   const STAGE_LABELS=Object.freeze({DETECT:'偵測',EARLY_WATCH:'早期觀察',ACCUMULATION:'累積',CONFIRMING:'確認中',READY:'條件就緒',INVALIDATED:'已失效'});
@@ -46,26 +46,97 @@
     return value;
   }
 
-  function regionalCoverage(row){
-    const directional=typeof row.bias==='string'&&row.bias&&row.bias!=='UNAVAILABLE';
-    const hasFacts=Array.isArray(row.facts)&&row.facts.length>0;
-    const hasData=row.status==='AVAILABLE'||hasFacts;
-    if(directional)return Object.freeze({headline:directionLabel(row.bias),note:`方向可信度 ${pct(row.confidence)}`,dataLabel:'資料已取得',className:'directional'});
-    if(hasData)return Object.freeze({headline:'暫不判斷',note:'方向證據不足',dataLabel:'資料已取得',className:'coverage-only'});
-    return Object.freeze({headline:'暫不判斷',note:'缺少可用區域資料',dataLabel:'資料未接入',className:'not-connected'});
+  function eventText(row){
+    return [row?.title,row?.summary,row?.description,row?.source,...(Array.isArray(row?.tags)?row.tags:[]),...(Array.isArray(row?.assets)?row.assets:[])]
+      .filter(Boolean).join(' ').toLowerCase();
   }
 
-  function renderRegions(rows){
+  function eventMatchesRegion(row,region){
+    const text=eventText(row);
+    if(region==='US')return /(federal reserve|\bfed\b|sec\b|nasdaq|nyse|robinhood|\bamc\b|united states|u\.s\.|wall street)/i.test(text);
+    if(region==='TW')return /(台灣|台股|twse|tpex|taiwan)/i.test(text);
+    if(region==='CN_HK')return /(中國|香港|china|hong kong|hkex|hang seng)/i.test(text);
+    if(region==='JP')return /(日本|japan|jpx|nikkei|bank of japan|\bboj\b)/i.test(text);
+    if(region==='KR')return /(韓國|korea|krx|kospi|bank of korea)/i.test(text);
+    if(region==='EU')return /(歐洲|europe|eurozone|ecb|european central bank|euro area)/i.test(text);
+    if(region==='CRYPTO')return /(crypto|bitcoin|ethereum|blockchain|token|stablecoin|coinbase|binance|chainlink|algorand|kyc)/i.test(text);
+    return false;
+  }
+
+  function highImpactEvents(value,region){
+    return (Array.isArray(value.events)?value.events:[]).filter(row=>['EXTREME','HIGH'].includes(String(row?.impact||'').toUpperCase())&&eventMatchesRegion(row,region));
+  }
+
+  function regionSupplement(value,row){
+    const region=row.region;
+    const opportunities=object(value.opportunities)?value.opportunities:{};
+    const stats=[];
+    let hasSupplement=false;
+    let gap='';
+
+    if(region==='TW'){
+      const count=Array.isArray(opportunities.TW)?opportunities.TW.length:0;
+      if(count){stats.push(`個股研究 ${count} 檔`);hasSupplement=true;}
+      const eventCount=highImpactEvents(value,'TW').length;
+      if(eventCount){stats.push(`重大事件 ${eventCount} 則`);hasSupplement=true;}
+      gap='仍缺台股大盤指數、漲跌家數與市場廣度；個股研究不能代替整體台股方向。';
+    }else if(region==='US'){
+      const count=Array.isArray(opportunities.US)?opportunities.US.length:0;
+      if(count){stats.push(`個股研究 ${count} 檔`);hasSupplement=true;}
+      const eventCount=highImpactEvents(value,'US').length;
+      if(eventCount){stats.push(`重大事件 ${eventCount} 則`);hasSupplement=true;}
+      gap='已有官方宏觀、SEC 個股研究與重大事件；仍缺授權即時美股行情、市場廣度與市場共識資料。';
+    }else if(region==='CRYPTO'){
+      const count=Array.isArray(opportunities.CRYPTO)?opportunities.CRYPTO.length:0;
+      if(count){stats.push(`策略候選 ${count} 筆`);hasSupplement=true;}
+      const pulse=(Array.isArray(value.marketPulse)?value.marketPulse:[]).find(item=>item.market==='CRYPTO');
+      if(pulse?.status==='AVAILABLE'){
+        stats.push(`執行引擎 ${statusLabel(pulse.data?.health||'AVAILABLE')}`);
+        if(finite(pulse.data?.pendingCount)||finite(pulse.data?.openPositionCount))stats.push(`等待 ${pulse.data?.pendingCount??0} · 持倉 ${pulse.data?.openPositionCount??0}`);
+        hasSupplement=true;
+      }
+      const eventCount=highImpactEvents(value,'CRYPTO').length;
+      if(eventCount)stats.push(`重大事件 ${eventCount} 則`);
+      gap='已有 PAPER ONLY 執行狀態與策略候選；候選數不等於整體市場趨勢，方向需由市場核心另行判讀。';
+    }else if(region==='EU'){
+      gap='已有 ECB 官方宏觀資料時會顯示於此；仍需市場廣度與更多跨來源證據，才能形成區域方向。';
+    }else if(region==='CN_HK'){
+      gap='港交所／中國市場官方資料仍在來源審查與授權評估，尚未宣稱可用。';
+    }else if(region==='JP'){
+      gap='JPX J-Quants 需要憑證與方案授權，目前尚未啟用。';
+    }else if(region==='KR'){
+      gap='KRX Open API 需要 API 金鑰與資料授權，目前尚未啟用。';
+    }
+
+    const factCount=Array.isArray(row.facts)?row.facts.length:0;
+    if(factCount){stats.unshift(`官方宏觀 ${factCount} 項`);hasSupplement=true;}
+    if(row.status==='AVAILABLE')hasSupplement=true;
+    return Object.freeze({hasSupplement,stats:Object.freeze(stats),gap});
+  }
+
+  function regionCardState(value,row){
+    const directional=typeof row.bias==='string'&&row.bias&&row.bias!=='UNAVAILABLE';
+    const supplement=regionSupplement(value,row);
+    if(directional)return Object.freeze({headline:directionLabel(row.bias),note:`可判方向 · 可信度 ${pct(row.confidence)}`,dataLabel:'跨來源方向已形成',className:'directional',supplement});
+    if(supplement.hasSupplement)return Object.freeze({headline:'部分可用',note:'已有可驗證內容，但不足以形成完整區域方向',dataLabel:'內容已載入',className:'partial-data',supplement});
+    return Object.freeze({headline:'尚未接入',note:'目前沒有足夠的已驗證區域內容',dataLabel:'等待資料來源',className:'compact-gap not-connected',supplement});
+  }
+
+  function renderRegionStats(stats){
+    if(!stats.length)return '';
+    return `<div class="region-content-stats">${stats.map(item=>`<span class="region-stat">${esc(item)}</span>`).join('')}</div>`;
+  }
+
+  function renderRegions(value){
+    const rows=Array.isArray(value.regions)?value.regions:[];
     if(!rows.length)return '<div class="empty-state" data-raw-status="UNAVAILABLE"><b>資料不足</b><span>等待區域情報資料。</span></div>';
     return rows.map(row=>{
       const region=esc(row.region);
-      const coverage=regionalCoverage(row);
-      const detail=(Array.isArray(row.facts)&&row.facts.length)
-        ?'官方宏觀快照已取得；要形成市場方向仍需要更多跨來源證據。'
-        :row.region==='TW'
-          ?'台股個股研究已有資料，但區域指數與市場廣度仍待補齊。'
-          :'本區域尚未接入足夠來源，或本輪沒有有效觀測；可至「資料來源診斷」查看原因。';
-      return `<article class="region-card ${coverage.className} bias-${safeClass(row.bias)}" data-region="${region}" data-raw-status="${esc(row.status||'UNAVAILABLE')}" data-raw-bias="${esc(row.bias||'UNAVAILABLE')}"><span>${esc(REGION_LABELS[row.region]||row.region)}</span><b data-field="bias">${esc(coverage.headline)}</b><small data-field="confidence">${esc(coverage.note)}</small><small>${esc(coverage.dataLabel)}</small>${Product.factsHtml(row.facts)}<p class="muted">${esc(detail)}</p>${Product.lineageLink(row.lineageRef)}</article>`;
+      const state=regionCardState(value,row);
+      const facts=Array.isArray(row.facts)?row.facts:[];
+      const evidence=facts.length?Product.factsHtml(facts):'';
+      const lineage=facts.length?Product.lineageLink(row.lineageRef):'';
+      return `<article data-region="${region}" class="region-card ${state.className} bias-${safeClass(row.bias)}" data-raw-status="${esc(row.status||'UNAVAILABLE')}" data-raw-bias="${esc(row.bias||'UNAVAILABLE')}"><div class="region-card-head"><span>${esc(REGION_LABELS[row.region]||row.region)}</span><small>${esc(state.dataLabel)}</small></div><b data-field="bias">${esc(state.headline)}</b><small data-field="confidence">${esc(state.note)}</small>${renderRegionStats(state.supplement.stats)}${evidence}<p class="region-gap-note">${esc(state.supplement.gap||'尚待更多跨來源資料。')}</p>${lineage}</article>`;
     }).join('');
   }
 
@@ -128,9 +199,10 @@
     const crypto=cryptoDecision(groups.CRYPTO);
     const us=equityDecision(groups.US,'美股');
     const tw=equityDecision(groups.TW,'台股');
-    const available=value.regions.filter(row=>row.status==='AVAILABLE'||(Array.isArray(row.facts)&&row.facts.length)).length;
+    const states=value.regions.map(row=>regionCardState(value,row));
+    const available=states.filter(state=>state.supplement.hasSupplement).length;
     const directional=value.regions.filter(row=>row.bias&&row.bias!=='UNAVAILABLE').length;
-    const coverage={headline:`資料覆蓋 ${available}/7`,detail:`目前可判方向 ${directional}/7 · 缺資料的區域會直接標示原因`,tone:available>=5?'positive':available>=3?'neutral':'negative'};
+    const coverage={headline:`資料覆蓋 ${available}/7`,detail:`目前可判方向 ${directional}/7 · 部分資料與完整方向會分開標示`,tone:available>=5?'positive':available>=3?'neutral':'negative'};
     const cards=[['加密市場',crypto],['美股',us],['台股',tw],['全球資料',coverage]];
     return `<section class="decision-summary"><div class="section-head"><div><span class="eyebrow">今日判斷</span><h2>今日決策摘要</h2></div><small class="muted">先看方向，再看資料缺口；不以缺失資料硬推多空。</small></div><div class="decision-grid">${cards.map(([name,item])=>`<article class="decision-card ${item.tone}"><span>${esc(name)}</span><b>${esc(item.headline)}</b><p>${esc(item.detail)}</p></article>`).join('')}</div></section>`;
   }
@@ -185,10 +257,26 @@
     return `<div class="event-list">${rows.map(row=>`<article class="event-row" data-event-id="${esc(row.id)}" data-raw-kind="${esc(row.kind||'EVENT')}" data-raw-impact="${esc(row.impact||'UNAVAILABLE')}"><div><span class="eyebrow">${esc(EVENT_KIND_LABELS[row.kind]||'事件')} · 影響程度 ${esc(IMPACT_LABELS[row.impact]||row.impact||'未分級')}</span><b>${esc(row.title)}</b><small>${esc(row.source)} · ${esc(statusLabel(row.status))}</small>${row.summary?`<p class="muted">${esc(row.summary)}</p>`:''}${row.description?`<p class="muted">${esc(row.description)}</p>`:''}</div><time>${esc(time(row.asOf))}</time></article>`).join('')}</div>`;
   }
 
+  function focusContext(row){
+    const text=eventText(row);
+    if(/stock token|tokeni[sz]|robinhood|\bamc\b/i.test(text))return Object.freeze({topic:'股票代幣化與證券規則',why:'股票代幣化正在碰觸發行公司權利、證券監管與第三方交易產品邊界，可能提高券商與代幣化資產的合規風險。',markets:['美股','加密市場']});
+    if(/kyc|identity|privacy|hacker|hackers|personal data/i.test(text))return Object.freeze({topic:'加密身分驗證與資安風險',why:'KYC 與身分資料集中儲存會放大資安與隱私風險，可能推高交易所、錢包與金融服務的合規與資料治理成本。',markets:['加密市場']});
+    if(/algorand|chainlink|chief executive|\bceo\b|executive/i.test(text))return Object.freeze({topic:'加密企業治理與高層異動',why:'高層更替可能改變機構金融、產品與技術路線；這是公司級催化劑，不應直接解讀為整體加密市場多空。',markets:['加密市場']});
+    if(/federal reserve|\bfed\b|enforcement|bank|interest rate|monetary policy/i.test(text))return Object.freeze({topic:'聯準會政策與金融監管動態',why:'聯準會政策與監管事件會影響銀行風險承擔、美元流動性與市場風險偏好，需留意對美股與全球資產的後續傳導。',markets:['美股','全球市場']});
+    return Object.freeze({topic:'市場重要消息',why:'此事件已被納入高影響事件清單，但目前證據不足以直接形成多空方向；應與價格、資金流與後續官方資料一起覆核。',markets:['全球市場']});
+  }
+
+  function renderTodayFocus(rows){
+    if(!rows.length)return '<div class="empty-state" data-raw-status="UNAVAILABLE"><b>目前沒有高影響焦點</b><span>尚無通過資料品質門檻的重大事件。</span></div>';
+    return `<div class="focus-intel-list">${rows.map(row=>{
+      const context=focusContext(row);
+      return `<article class="focus-intel-card" data-event-id="${esc(row.id)}" data-raw-kind="${esc(row.kind||'EVENT')}" data-raw-impact="${esc(row.impact||'UNAVAILABLE')}"><div class="focus-intel-head"><span class="eyebrow">${esc(EVENT_KIND_LABELS[row.kind]||'事件')} · 影響程度 ${esc(IMPACT_LABELS[row.impact]||row.impact||'未分級')}</span><time>${esc(time(row.asOf))}</time></div><h3>${esc(context.topic)}</h3><div class="focus-market-tags"><span>影響市場</span>${context.markets.map(market=>`<b>${esc(market)}</b>`).join('')}</div><div class="focus-why"><strong>為什麼重要</strong><p>${esc(context.why)}</p></div><div class="focus-source"><small>來源：${esc(row.source)} · ${esc(statusLabel(row.status))}</small><p><span>原始標題</span>${esc(row.title)}</p></div></article>`;
+    }).join('')}</div>`;
+  }
+
   function renderEvents(rows){return renderEventRows(rows,'新聞、經濟日曆與事件來源本輪無可用資料。');}
   function renderCalendar(rows){return renderEventRows(rows,'本輪沒有可用的經濟日曆事件。');}
   function renderNews(rows){return renderEventRows(rows,'本輪沒有可用的重要消息。');}
-  function renderTodayFocus(rows){return renderEventRows(rows,'目前沒有高影響等級的已驗證焦點。');}
 
   function renderPositions(value){
     if(!object(value)||value.status!=='AVAILABLE')return '<div class="empty-state" data-raw-status="UNAVAILABLE"><b>持倉資料不可用</b><span>本輪無法讀取正式模擬交易執行資料；不會把舊持倉顯示成最新狀態。</span></div>';
@@ -222,7 +310,7 @@
       dataHealthLabel:unavailable?`已驗證快照 · ${unavailable} 個市場資料不足`:'已驗證資料快照',
       decisionSummaryHtml:renderDecisionSummary(value),
       diagnosticsHtml:Product.diagnosticsHtml(value.providerDiagnostics),
-      regionsHtml:renderRegions(value.regions),
+      regionsHtml:renderRegions(value),
       marketPulseHtml:renderPulse(value.marketPulse),
       earlyTrendHtml:renderEarlyTrend(value.earlyTrend),
       opportunitiesHtml:renderOpportunities(value.opportunities),
