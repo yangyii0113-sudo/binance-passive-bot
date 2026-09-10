@@ -1,6 +1,11 @@
+import json
+from pathlib import Path
 from types import SimpleNamespace
 
+from foxyya import scanner, setups
 from foxyya.setups import evaluate_candidate
+
+EXPECTED_VERSION = "FOXYYA-EXEC-V2-RC1-D-OFF-20260911"
 
 
 def _d_and_c_qualified_feature():
@@ -28,3 +33,13 @@ def test_research_challenger_does_not_select_family_d_when_fallback_is_available
 
     assert decision.qualified is True
     assert decision.family == "C"
+
+
+def test_research_challenger_uses_distinct_strategy_namespace_and_locked_config():
+    cfg = json.loads(Path("FOXYYA_RESEARCH_D_OFF_CONFIG.json").read_text(encoding="utf-8"))
+
+    assert setups.VERSION == EXPECTED_VERSION
+    assert scanner.VERSION == EXPECTED_VERSION
+    assert cfg["strategy_version"] == EXPECTED_VERSION
+    assert cfg["real_order_lock"] is True
+    assert cfg["initial_nav_usdt"] == 997.9020135922431
