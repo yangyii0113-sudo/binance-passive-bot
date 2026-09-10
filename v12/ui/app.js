@@ -5,7 +5,8 @@
   const markets=['ALL','CRYPTO','US','TW'];
   const VM=window.FOXY_V12_HOME_VIEW_MODEL,Renderer=window.FOXY_V12_HOME_RENDERER,DOM=window.FOXY_V12_HOME_DOM,Staging=window.FOXY_V12_STAGING_READ_CLIENT;
   const FAVORITES_KEY='foxyya-v12-local-favorites-v1';
-  const localStorage=window.localStorage||null;
+  const getLocalStorage=()=>{try{return window.localStorage||null}catch(_error){return null}};
+  const localStorage=getLocalStorage();
   let route='HOME',context='ALL',homeRequest=0,lastHomeAsOf=null,homeLoading=false,lastReadError=null,lastViewModel=null,favoritesOnly=false,positionFilter='OPEN';
   const toast=message=>{const el=$('#toast');if(!el)return;el.textContent=message;el.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>el.classList.remove('show'),3500)};
   const esc=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
