@@ -1,0 +1,23 @@
+name: FOXYYA Research Challenger D-Off
+
+on:
+  push:
+    branches:
+      - research/eth365-challenger-d-off-20260911
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  challenger-contract:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: src:.
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run D-off challenger contract
+        run: python -m pytest tests/test_research_challenger_d_off.py -v
