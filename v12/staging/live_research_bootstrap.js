@@ -185,6 +185,7 @@ function normalizeNews(result){
       source:typeof row.source==='string'&&row.source?row.source:'NEWS',
       asOf,
       impact:typeof row.impact==='string'?row.impact:'UNAVAILABLE',
+      status:typeof row.status==='string'&&row.status?row.status:(typeof result.data.status==='string'&&result.data.status?result.data.status:'SNAPSHOT'),
       summary:typeof row.summary==='string'?row.summary:'',
       tags:Object.freeze(Array.isArray(row.tags)?row.tags.filter(x=>typeof x==='string'):[]),
       assets:Object.freeze(Array.isArray(row.assets)?row.assets.filter(x=>typeof x==='string'):[])
