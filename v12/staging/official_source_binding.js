@@ -24,9 +24,23 @@ const META=Object.freeze({
   tpexDailyQuote:frozenLineageMeta({sourceId:'tpex-openapi',datasetId:'TPEX:tpex_mainboard_daily_close_quotes',bindingId:'tpex-daily-quote',bindingVersion:'foxyya-binding/tpex-daily-quote/1',adapterId:'tpex-official',adapterVersion:'foxyya-adapter/tpex/1',canonicalSchemaVersion:ASSET_SCHEMA}),
   tpexInstitutional:frozenLineageMeta({sourceId:'tpex-openapi',datasetId:'TPEX:tpex_3insti_daily_trading',bindingId:'tpex-institutional',bindingVersion:'foxyya-binding/tpex-institutional/1',adapterId:'tpex-official',adapterVersion:'foxyya-adapter/tpex/1',canonicalSchemaVersion:ASSET_SCHEMA}),
   tpexMonthlyRevenue:frozenLineageMeta({sourceId:'tpex-openapi',datasetId:'TPEX:mopsfin_t187ap05_O',bindingId:'tpex-monthly-revenue',bindingVersion:'foxyya-binding/tpex-monthly-revenue/1',adapterId:'tpex-official',adapterVersion:'foxyya-adapter/tpex/1',canonicalSchemaVersion:ASSET_SCHEMA}),
-  secCompanyFact:frozenLineageMeta({sourceId:'sec-edgar',datasetId:'SEC:companyfacts',bindingId:'sec-company-fact',bindingVersion:'foxyya-binding/sec-company-fact/1',adapterId:'sec-edgar-official',adapterVersion:'foxyya-adapter/sec-edgar/1',canonicalSchemaVersion:ASSET_SCHEMA}),
-  blsSeries:frozenLineageMeta({sourceId:'bls-public',datasetId:'BLS:PublicDataAPI',bindingId:'bls-series',bindingVersion:'foxyya-binding/bls-series/1',adapterId:'bls-official',adapterVersion:'foxyya-adapter/bls/1',canonicalSchemaVersion:CONTEXT_SCHEMA})
+  secCompanyFact:frozenLineageMeta({sourceId:'sec-edgar',datasetId:'SEC:companyfacts',bindingId:'sec-company-fact',bindingVersion:'foxyya-binding/sec-company-fact/1',adapterId:'sec-edgar-official',adapterVersion:'foxyya-adapter/sec-edgar/1',canonicalSchemaVersion:ASSET_SCHEMA})
 });
+
+function blsMeta(definitions){
+  if(!definitions||typeof definitions!=='object'||Array.isArray(definitions))throw Error('BLS_DEFINITIONS_REQUIRED');
+  const seriesIds=Object.keys(definitions).map(value=>String(value).trim()).filter(Boolean).sort();
+  if(!seriesIds.length)throw Error('BLS_SERIES_ID_REQUIRED');
+  return frozenLineageMeta({
+    sourceId:'bls-public',
+    datasetId:'BLS:'+seriesIds.join('+'),
+    bindingId:'bls-series',
+    bindingVersion:'foxyya-binding/bls-series/1',
+    adapterId:'bls-official',
+    adapterVersion:'foxyya-adapter/bls/1',
+    canonicalSchemaVersion:CONTEXT_SCHEMA
+  });
+}
 
 function ecbMeta(definition){
   const seriesKey=typeof definition?.seriesKey==='string'?definition.seriesKey.trim():'';
@@ -217,7 +231,7 @@ function secCompanyFact({loader,instrument,taxonomy,concept,unit}={}){
 }
 
 function blsSeries({loader,definitions}={}){
-  const meta=META.blsSeries;
+  const meta=blsMeta(definitions);
   return Object.freeze({
     lineageMeta:meta,
     async load(){
