@@ -2,7 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from .model import deterministic_id
 
-VERSION='FOXYYA-EXEC-V2-20260908'
+VERSION='FOXYYA-EXEC-V2-RC1-D-OFF-20260911'
 
 @dataclass(frozen=True)
 class SignalDecision:
@@ -109,7 +109,7 @@ def evaluate_candidate(f,side,regime,rank,*,c_action='ENTRY',independent_confirm
         evaluate_C(f,side,regime,rank,action=c_action,independent_confirmation=independent_confirmation),
         evaluate_D(f,side,regime,rank),
     ]
-    # Regime preference determines family ordering without allowing a failed preferred setup to hide another valid one.
+    # Research challenger: family D remains computable for diagnostic parity but is not selectable.
     order={'RISK_ON':['B','D','A','C'] if side=='LONG' else ['A','D','B','C'],
            'RISK_OFF':['B','D','A','C'] if side=='SHORT' else ['A','D','B','C'],
            'NEUTRAL_ROTATION':['A','D','B','C']}[regime]
