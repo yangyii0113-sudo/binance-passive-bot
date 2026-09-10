@@ -49,3 +49,10 @@ test('Lab layout contains metric cards instead of overlapping neighboring resear
   const laptop=css.match(/@media\(max-width:1180px\)[^{]*\{[\s\S]*?#lab \.research-columns\s*\{[^}]*repeat\(2,minmax\(0,1fr\)\)[^}]*\}[\s\S]*?#lab \.research-columns>\.panel:first-child\s*\{[^}]*grid-column\s*:\s*1\/-1[^}]*\}/);
   assert.ok(laptop,'laptop widths must promote the Crypto Lab panel to a full row and keep US/TW below it');
 });
+
+test('Lab owns one render target and does not nest a new research grid inside the legacy three-column grid',()=>{
+  const html=fs.readFileSync('v12/ui/index.html','utf8');
+  const lab=html.split('id="lab"')[1].split('</section>')[0];
+  assert.match(lab,/data-lab-content/,'Lab must expose a direct render target in the static shell');
+  assert.doesNotMatch(lab,/class="research-columns"/,'legacy static research-columns would wrap the live grid and compress it into one outer column');
+});
