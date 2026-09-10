@@ -12,7 +12,7 @@ test('preview has six primary screens plus intelligence',()=>{
 
 test('home sections follow approved decision order',()=>{
   const html=read('index.html');
-  const ids=['global-status','today-focus','early-trend','market-pulse','opportunities','risk-events'];
+  const ids=['decision-summary','global-status','today-focus','early-trend','market-pulse','opportunities','risk-events'];
   const pos=ids.map(id=>html.indexOf(`id="${id}"`));
   assert.ok(pos.every(x=>x>=0));
   for(let i=1;i<pos.length;i++)assert.ok(pos[i]>pos[i-1]);
@@ -26,8 +26,9 @@ test('seven regions and three primary markets are present together',()=>{
 
 test('preview does not contain buy sell commands or fabricated live values',()=>{
   const html=read('index.html');
-  assert.doesNotMatch(html,/\bBUY\b|\bSELL\b/i);
-  assert.match(html,/UNAVAILABLE/);
+  assert.doesNotMatch(html,/\bBUY\b|\bSELL\b|PLACE_ORDER|SUBMIT_ORDER|AUTHORIZE_EXECUTION/i);
+  assert.match(html,/等待資料|暫不判斷|尚未提供|載入中/,'missing data remains explicit without fabricated live values');
+  assert.match(html,/EXECUTION_WRITE=false/,'read-only safety contract remains visible');
 });
 
 test('mobile navigation has five daily routes and More',()=>{
