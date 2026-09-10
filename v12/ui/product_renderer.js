@@ -12,13 +12,14 @@
   const labels={
     'price.close':'收盤價','flow.foreign_net':'外資買賣超','flow.investment_trust_net':'投信買賣超','flow.dealer_net':'自營商買賣超',
     'fundamental.revenue.monthly':'月營收','fundamental.revenue.yoy_pct':'月營收年增率',
-    'inflation.cpi_index':'美國 CPI 指數','inflation.hicp_yoy':'歐元區 HICP 年增率',
+    'inflation.cpi_index':'美國 CPI 指數','labor.unemployment_rate':'美國失業率','employment.nonfarm_payroll':'美國非農就業人數',
+    'inflation.hicp_yoy':'歐元區 HICP 年增率','rates.main_refinancing':'歐元區主要再融資利率','rates.deposit_facility':'歐元區存款機制利率',
     realtimeQuote:'即時價格',consensus:'市場共識',options:'選擇權'
   };
-  const statusLabels={AVAILABLE:'可用',UNAVAILABLE:'不可用',SNAPSHOT:'快照',DELAYED:'延遲',LIVE:'即時',STALE:'過期',HEALTHY:'健康',DEGRADED:'降級',READY:'就緒',OPEN:'啟用',CLOSED:'關閉'};
+  const statusLabels={AVAILABLE:'可用',UNAVAILABLE:'不可用',SNAPSHOT:'快照',DELAYED:'延遲',LIVE:'即時',LIVE_SOURCE:'即時來源',STALE:'過期',HEALTHY:'健康',DEGRADED:'降級',READY:'就緒',OPEN:'啟用',CLOSED:'關閉'};
   const directionLabels={POSITIVE:'偏正向',NEGATIVE:'偏負向',BULLISH:'偏多',BEARISH:'偏空',STRONG_BULLISH:'強勢偏多',STRONG_BEARISH:'強勢偏空',NEUTRAL:'中性',UNAVAILABLE:'暫不判斷'};
   const stageLabels={DETECT:'偵測',EARLY_WATCH:'早期觀察',ACCUMULATION:'累積',CONFIRMING:'確認中',READY:'條件就緒',INVALIDATED:'已失效',UNAVAILABLE:'尚未形成'};
-  const unitLabels={PCT:'%',INDEX:'指數',USD:'美元',TWD:'新台幣',SHARES:'股'};
+  const unitLabels={PCT:'%',INDEX:'指數',USD:'美元',TWD:'新台幣',SHARES:'股',THOUSANDS:'千人'};
   const status=value=>statusLabels[String(value??'UNAVAILABLE').toUpperCase()]||String(value??'—');
   const direction=value=>directionLabels[String(value??'UNAVAILABLE').toUpperCase()]||String(value??'暫不判斷');
   const stage=value=>stageLabels[String(value??'UNAVAILABLE').toUpperCase().replaceAll(' ','_')]||String(value??'—');
