@@ -35,7 +35,7 @@ test('首頁產出中文今日決策摘要，並清楚區分策略候選方向�
   assert.doesNotMatch(out.decisionSummaryHtml,/DATA AVAILABLE|DATA NOT CONNECTED|Confidence|Candidates/);
 });
 
-test('區域情報優先顯示中文方向；有資料但方向不足時寫暫不判斷',()=>{
+test('區域情報用可判方向、部分可用、尚未接入區分資料成熟度',()=>{
   const regions=Object.freeze([
     Object.freeze({region:'US',bias:'BULLISH',confidence:.72,status:'AVAILABLE',asOf,facts:Object.freeze([])}),
     Object.freeze({region:'TW',bias:'UNAVAILABLE',confidence:0,status:'UNAVAILABLE',asOf,facts:Object.freeze([])}),
@@ -48,9 +48,10 @@ test('區域情報優先顯示中文方向；有資料但方向不足時寫暫�
   const out=R.renderHomeSections(baseView({regions}));
   assert.match(out.regionsHtml,/偏多/);
   assert.match(out.regionsHtml,/偏空/);
-  assert.match(out.regionsHtml,/暫不判斷/);
-  assert.match(out.regionsHtml,/資料未接入/);
-  assert.match(out.regionsHtml,/資料已取得/);
+  assert.match(out.regionsHtml,/可判方向/);
+  assert.match(out.regionsHtml,/部分可用/);
+  assert.match(out.regionsHtml,/尚未接入/);
+  assert.match(out.regionsHtml,/不足以形成完整區域方向/);
   assert.doesNotMatch(out.regionsHtml,/DATA AVAILABLE|DATA NOT CONNECTED|Source status|Confidence —/);
 });
 
