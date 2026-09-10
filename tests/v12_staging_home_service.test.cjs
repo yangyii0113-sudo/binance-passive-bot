@@ -48,8 +48,8 @@ test('failed internal publish preserves the last API-visible snapshot',()=>withS
   assert.equal(body.asOf,3000);
 }));
 
-test('staging service exposes only internal publish and read handler, never execution methods',()=>{
+test('staging service exposes only home/runtime internal publishers and read handler, never execution methods',()=>{
   const service=createStagingHomeService();
-  assert.deepEqual(Object.keys(service).sort(),['handler','publishHome']);
+  assert.deepEqual(Object.keys(service).sort(),['handler','publishHome','publishRuntime']);
   assert.doesNotMatch(JSON.stringify(Object.keys(service)).toLowerCase(),/order|trade|execute|position|fill/);
 });
