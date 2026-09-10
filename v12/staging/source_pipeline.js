@@ -2,6 +2,8 @@
 
 const {createPublicSourceLoader}=require('./public_source_loader.js');
 const {createOfficialSourceBindings}=require('./official_source_binding.js');
+const {createTaiwanMarketSourceBindings}=require('./tw_market_source_binding.js');
+const {prepareTaiwanMarketPlan,loadTaiwanMarket}=require('./tw_market_source_runtime.js');
 const {createStagingDataOrchestrator}=require('./data_orchestrator.js');
 const EvidencePolicy=require('../early_trend/evidence_policy.js');
 const Lineage=require('../data/source_lineage.js');
@@ -168,7 +170,7 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,resea
   const providerRuntime=validateProviderGovernance(providerGovernance);
   const lineage=validateLineageStore(lineageStore);
 
-  const bindings=createOfficialSourceBindings();
+  const bindings=Object.freeze({...createOfficialSourceBindings(),...createTaiwanMarketSourceBindings()});
 
   function preflight(input,datasetReads){
     function bind(name,options){
@@ -190,7 +192,7 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,resea
         const observedTimes=observations.map(item=>item?.observedAt).filter(finite);
         datasetReads.push(Object.freeze({
           sourceId:envelope.sourceId,datasetId:envelope.lineageMeta.datasetId,
-          subjectId:options.instrument?.instrumentId||options.symbol||null,
+          subjectId:options.instrument?.instrumentId||options.symbol||options.subjectId||null,
           status:envelope.status,reason:envelope.reason||null,
           receivedAt:envelope.receivedAt,
           observedAt:observedTimes.length?Math.max(...observedTimes):null
@@ -200,6 +202,7 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,resea
     }
     const usedProviderIds=new Set();
     const loaderFor=(sourceId,endpoint)=>makeLoader(sourceId,endpoint,fetchImpl,clock,providerRuntime,usedProviderIds);
+    const twMarket=prepareTaiwanMarketPlan(input.twMarket,{bind,loaderFor});
 
     const twQuotes=arrayConfig(input.twQuotes,'TW_QUOTES').map(item=>{
       if(!object(item))throw Error('TW_QUOTE_CONFIG_INVALID');
@@ -290,6 +293,7 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,resea
     }
 
     return Object.freeze({
+      twMarket,
       twQuotes:Object.freeze(twQuotes),
       twAssets:Object.freeze(twAssets),
       usAssets:Object.freeze(usAssets),
@@ -409,8 +413,6 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,resea
     if(!finite(input.nowMs)||input.nowMs<0)throw Error('NOW_INVALID');
     if(lineage)assertLineageTraceableInputs(input);
 
-    // Build every loader/binding, validate governance, and reject manual history
-    // overrides before the first network request.
     const datasetReads=[];
     const plan=preflight(input,datasetReads);
     const publishWithDiagnostics=value=>publishHome({...value,providerDiagnostics:buildProviderDiagnostics({
@@ -424,27 +426,17 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,resea
     for(const item of plan.twQuotes){
       const source=await item.binding.load();
       const output=source.status==='AVAILABLE'
-        ?Object.freeze({
-          status:'AVAILABLE',
-          sourceId:source.sourceId,
-          instrumentId:source.data.instrument.instrumentId,
-          receivedAt:source.receivedAt,
-          researchOnly:true,
-          executionWrite:false
-        })
-        :Object.freeze({
-          status:'UNAVAILABLE',
-          sourceId:source.sourceId,
-          symbol:item.symbol,
-          reason:source.reason,
-          researchOnly:true,
-          executionWrite:false
-        });
+        ?Object.freeze({status:'AVAILABLE',sourceId:source.sourceId,instrumentId:source.data.instrument.instrumentId,receivedAt:source.receivedAt,researchOnly:true,executionWrite:false})
+        :Object.freeze({status:'UNAVAILABLE',sourceId:source.sourceId,symbol:item.symbol,reason:source.reason,researchOnly:true,executionWrite:false});
       marketSources[item.exchange].push(output);
     }
 
+    const twMarket=await loadTaiwanMarket(plan.twMarket,{lineageContext,nowMs:input.nowMs});
     const regionLoaders={};
     for(const [region,sourceBindings] of Object.entries(plan.regions))regionLoaders[region]=regionLoader(region,sourceBindings,lineageContext);
+    if(twMarket?.regionData)regionLoaders.TW=async()=>readonlyEnvelope('AVAILABLE',twMarket.regionData);
+    const pulses=object(input.pulses)?{...input.pulses}:{};
+    if(twMarket)pulses.TW=twMarket.pulse;
 
     const orchestration=await orchestrator.run({
       nowMs:input.nowMs,
@@ -452,14 +444,11 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,resea
       twAssets:plan.twAssets.map(item=>twLoader(item,historyWrites,lineageContext)),
       usAssets:plan.usAssets.map(item=>usLoader(item,lineageContext)),
       regions:regionLoaders,
-      pulses:object(input.pulses)?input.pulses:{},
+      pulses,
       todayFocus:Array.isArray(input.todayFocus)?input.todayFocus:[],
       events:Array.isArray(input.events)?input.events:[]
     });
 
-    // Durable research history advances only after the current Home snapshot was
-    // accepted. Current observations are therefore never visible as their own
-    // prior evidence during this run.
     if(history){
       for(const write of historyWrites){
         history.recordInstitutionalSession(write.session,write.meta);
@@ -470,10 +459,8 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,resea
     return Object.freeze({
       schemaVersion:'foxyya-staging-source-pipeline-result/1',
       asOf:orchestration.asOf,
-      sources:Object.freeze({
-        TWSE:Object.freeze(marketSources.TWSE),
-        TPEX:Object.freeze(marketSources.TPEX)
-      }),
+      sources:Object.freeze({TWSE:Object.freeze(marketSources.TWSE),TPEX:Object.freeze(marketSources.TPEX)}),
+      taiwanMarket:twMarket?.core||null,
       providerHealth:providerHealth(plan.providerIds),
       orchestration,
       researchOnly:true,
