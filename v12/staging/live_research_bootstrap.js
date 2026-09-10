@@ -134,7 +134,15 @@ function buildBootstrapInput(nowMs){
     }),
     todayFocus:Object.freeze([]),
     events:Object.freeze([]),
-    pulses:Object.freeze({})
+    pulses:Object.freeze({
+      US:Object.freeze({
+        status:'UNAVAILABLE',
+        state:'UNAVAILABLE',
+        asOf:nowMs,
+        reason:'NASDAQ_EOD_LICENSE_REVIEW_REQUIRED|US_FULL_MARKET_BREADTH_UNAVAILABLE',
+        data:null
+      })
+    })
   });
 }
 
