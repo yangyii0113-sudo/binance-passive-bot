@@ -5,7 +5,7 @@ from .features import compute_features
 from .router import classify_regime, rank_candidates
 from .setups import evaluate_candidate
 
-VERSION='FOXYYA-EXEC-V2-20260908'
+VERSION='FOXYYA-EXEC-V2-RC1-D-OFF-20260911'
 
 def _ticker_map(x):
     return {r['symbol']:r for r in x} if isinstance(x,list) else x
