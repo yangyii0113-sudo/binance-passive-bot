@@ -25,7 +25,7 @@
   });
   const EVENT_KIND_LABELS=Object.freeze({CALENDAR:'經濟日曆',NEWS:'重要消息',EVENT:'事件'});
   const IMPACT_LABELS=Object.freeze({EXTREME:'極高',HIGH:'高',MEDIUM:'中',LOW:'低',UNAVAILABLE:'未分級'});
-  const esc=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[ch]));
+  const esc=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   const finite=x=>typeof x==='number'&&Number.isFinite(x);
   const object=x=>x&&typeof x==='object'&&!Array.isArray(x);
   const safeClass=value=>String(value??'UNAVAILABLE').toLowerCase().replace(/[^a-z0-9_-]+/g,'-');
