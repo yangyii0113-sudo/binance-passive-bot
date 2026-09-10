@@ -12,6 +12,23 @@ function validateHomeReadModel(value){
   return value;
 }
 
+function validateRuntimeReadModel(value){
+  if(!object(value)||value.schema_version!=='foxyya-runtime/1'||value.api_version!=='v12')throw Error('RUNTIME_READ_MODEL_REQUIRED');
+  if(value.mode!=='PAPER_ONLY'||value.read_only!==true||value.execution_write!==false)throw Error('RUNTIME_READ_ONLY_REQUIRED');
+  if(!finite(value.as_of)||value.as_of<0)throw Error('ASOF_INVALID');
+  if(!object(value.safety)||value.safety.paper_only!==true||value.safety.real_order_lock!==true||value.safety.real_order_capability!==false||value.safety.research_execution_write!==false)throw Error('RUNTIME_SAFETY_REQUIRED');
+  if(!object(value.runtime)||!object(value.execution)||!object(value.positions)||!object(value.ledger)||!object(value.diagnostics)||!object(value.provenance))throw Error('RUNTIME_CONTENT_REQUIRED');
+  if(!Array.isArray(value.positions.open)||!Array.isArray(value.positions.pending))throw Error('RUNTIME_POSITIONS_REQUIRED');
+  if(value.ledger.canonical_nav!==null){
+    if(typeof value.ledger.canonical_book!=='string'||!value.ledger.canonical_book||value.ledger.canonical_book_role!=='PRIMARY'||!finite(value.ledger.canonical_nav))throw Error('CANONICAL_NAV_INVALID');
+    const expected=`runtime_snapshot.books.${value.ledger.canonical_book}.equity`;
+    if(value.ledger.canonical_nav_source!==expected)throw Error('CANONICAL_NAV_SOURCE_INVALID');
+  }else if(value.ledger.canonical_nav_source!==null){
+    throw Error('CANONICAL_NAV_SOURCE_WITHOUT_NAV');
+  }
+  return value;
+}
+
 function validateLineageStore(value){
   if(value===undefined||value===null)return null;
   if(!object(value)||typeof value.traceOutput!=='function')throw Error('LINEAGE_STORE_INVALID');
@@ -42,6 +59,23 @@ function createHomeSnapshotStore(){
   return Object.freeze({publish,read});
 }
 
+function createRuntimeSnapshotStore(){
+  let current=null;
+
+  function publish(value){
+    validateRuntimeReadModel(value);
+    if(current&&value.as_of<current.as_of)throw Error('SNAPSHOT_TIME_REGRESSION');
+    current=value;
+    return current;
+  }
+
+  function read(){
+    return current;
+  }
+
+  return Object.freeze({publish,read});
+}
+
 function sendJson(res,statusCode,body,{head=false}={}){
   const payload=JSON.stringify(body);
   res.statusCode=statusCode;
@@ -60,15 +94,17 @@ function methodAllowed(req,res){
   return null;
 }
 
-function createReadOnlyHandler({homeStore,lineageStore}={}){
+function createReadOnlyHandler({homeStore,runtimeStore,lineageStore}={}){
   if(!homeStore||typeof homeStore.read!=='function')throw Error('HOME_STORE_REQUIRED');
+  if(runtimeStore!==undefined&&runtimeStore!==null&&typeof runtimeStore.read!=='function')throw Error('RUNTIME_STORE_INVALID');
   const lineage=validateLineageStore(lineageStore);
 
   return function readOnlyHandler(req,res){
     const pathname=String(req.url||'').split('?')[0];
     const isHome=pathname==='/v12/api/home';
+    const isRuntime=pathname==='/v12/api/runtime';
     const isLineage=pathname.startsWith(LINEAGE_OUTPUT_PREFIX);
-    if(!isHome&&!isLineage)return sendJson(res,404,{status:'NOT_FOUND'});
+    if(!isHome&&!isRuntime&&!isLineage)return sendJson(res,404,{status:'NOT_FOUND'});
 
     const method=methodAllowed(req,res);
     if(!method)return;
@@ -77,6 +113,15 @@ function createReadOnlyHandler({homeStore,lineageStore}={}){
     if(isHome){
       const snapshot=homeStore.read();
       if(!snapshot)return sendJson(res,503,{status:'UNAVAILABLE',data:null},{head});
+      return sendJson(res,200,snapshot,{head});
+    }
+
+    if(isRuntime){
+      const snapshot=runtimeStore?.read?.()||null;
+      if(!snapshot)return sendJson(res,503,{status:'UNAVAILABLE',data:null},{head});
+      try{validateRuntimeReadModel(snapshot)}catch(_error){
+        return sendJson(res,503,{status:'UNAVAILABLE',reason:'RUNTIME_SNAPSHOT_INVALID',data:null},{head});
+      }
       return sendJson(res,200,snapshot,{head});
     }
 
@@ -107,8 +152,10 @@ function createReadOnlyHandler({homeStore,lineageStore}={}){
 
 module.exports=Object.freeze({
   validateHomeReadModel,
+  validateRuntimeReadModel,
   validateLineageStore,
   validateTrace,
   createHomeSnapshotStore,
+  createRuntimeSnapshotStore,
   createReadOnlyHandler
 });
