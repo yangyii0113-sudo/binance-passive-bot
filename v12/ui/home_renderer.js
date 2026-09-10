@@ -36,6 +36,7 @@
   const sideLabel=value=>SIDE_LABELS[String(value??'').toUpperCase()]||String(value??'—');
   const stageLabel=value=>STAGE_LABELS[String(value??'').trim().toUpperCase().replaceAll(' ','_')]||String(value??'—');
   const directionLabel=value=>DIRECTION_LABELS[String(value??'UNAVAILABLE').toUpperCase()]||String(value??'暫不判斷');
+  const instrumentShort=value=>String(value??'—').split(':').pop();
 
   function assertViewModel(value){
     if(!object(value)||value.schemaVersion!=='foxyya-home-view-model/1')throw Error('HOME_VIEW_MODEL_REQUIRED');
@@ -67,28 +68,41 @@
     return (Array.isArray(value.events)?value.events:[]).filter(row=>['EXTREME','HIGH'].includes(String(row?.impact||'').toUpperCase())&&eventMatchesRegion(row,region));
   }
 
+  function equityHighlights(rows){
+    return (Array.isArray(rows)?rows:[]).slice(0,3).map(item=>`${instrumentShort(item.instrumentId)} · ${directionLabel(item.direction)}`);
+  }
+
   function regionSupplement(value,row){
     const region=row.region;
     const opportunities=object(value.opportunities)?value.opportunities:{};
     const stats=[];
+    const highlights=[];
     let hasSupplement=false;
     let gap='';
 
     if(region==='TW'){
-      const count=Array.isArray(opportunities.TW)?opportunities.TW.length:0;
-      if(count){stats.push(`個股研究 ${count} 檔`);hasSupplement=true;}
+      const items=Array.isArray(opportunities.TW)?opportunities.TW:[];
+      if(items.length){stats.push(`個股研究 ${items.length} 檔`);highlights.push(...equityHighlights(items));hasSupplement=true;}
       const eventCount=highImpactEvents(value,'TW').length;
       if(eventCount){stats.push(`重大事件 ${eventCount} 則`);hasSupplement=true;}
       gap='仍缺台股大盤指數、漲跌家數與市場廣度；個股研究不能代替整體台股方向。';
     }else if(region==='US'){
-      const count=Array.isArray(opportunities.US)?opportunities.US.length:0;
-      if(count){stats.push(`個股研究 ${count} 檔`);hasSupplement=true;}
+      const items=Array.isArray(opportunities.US)?opportunities.US:[];
+      if(items.length){stats.push(`個股研究 ${items.length} 檔`);highlights.push(...equityHighlights(items));hasSupplement=true;}
       const eventCount=highImpactEvents(value,'US').length;
       if(eventCount){stats.push(`重大事件 ${eventCount} 則`);hasSupplement=true;}
       gap='已有官方宏觀、SEC 個股研究與重大事件；仍缺授權即時美股行情、市場廣度與市場共識資料。';
     }else if(region==='CRYPTO'){
-      const count=Array.isArray(opportunities.CRYPTO)?opportunities.CRYPTO.length:0;
-      if(count){stats.push(`策略候選 ${count} 筆`);hasSupplement=true;}
+      const items=Array.isArray(opportunities.CRYPTO)?opportunities.CRYPTO:[];
+      if(items.length){
+        stats.push(`策略候選 ${items.length} 筆`);
+        const inactive=new Set(['REJECTED','CANCELLED','EXITED']);
+        const active=items.filter(item=>!inactive.has(String(item?.status||'').toUpperCase()));
+        const longs=active.filter(item=>String(item?.side||'').toUpperCase()==='LONG').length;
+        const shorts=active.filter(item=>String(item?.side||'').toUpperCase()==='SHORT').length;
+        highlights.push(`有效候選 ${active.length} · 多方 ${longs} · 空方 ${shorts}`);
+        hasSupplement=true;
+      }
       const pulse=(Array.isArray(value.marketPulse)?value.marketPulse:[]).find(item=>item.market==='CRYPTO');
       if(pulse?.status==='AVAILABLE'){
         stats.push(`執行引擎 ${statusLabel(pulse.data?.health||'AVAILABLE')}`);
@@ -111,7 +125,7 @@
     const factCount=Array.isArray(row.facts)?row.facts.length:0;
     if(factCount){stats.unshift(`官方宏觀 ${factCount} 項`);hasSupplement=true;}
     if(row.status==='AVAILABLE')hasSupplement=true;
-    return Object.freeze({hasSupplement,stats:Object.freeze(stats),gap});
+    return Object.freeze({hasSupplement,stats:Object.freeze(stats),highlights:Object.freeze(highlights),gap});
   }
 
   function regionCardState(value,row){
@@ -124,7 +138,12 @@
 
   function renderRegionStats(stats){
     if(!stats.length)return '';
-    return `<div class="region-content-stats">${stats.map(item=>`<span class="region-stat">${esc(item)}</span>`).join('')}</div>`;
+    return `<div class="region-content-stats">${stats.map(item=>`<span class="status-chip region-stat">${esc(item)}</span>`).join('')}</div>`;
+  }
+
+  function renderRegionHighlights(rows){
+    if(!rows.length)return '';
+    return `<div class="region-highlights">${rows.map(item=>`<p class="muted">${esc(item)}</p>`).join('')}</div>`;
   }
 
   function renderRegions(value){
@@ -136,7 +155,7 @@
       const facts=Array.isArray(row.facts)?row.facts:[];
       const evidence=facts.length?Product.factsHtml(facts):'';
       const lineage=facts.length?Product.lineageLink(row.lineageRef):'';
-      return `<article data-region="${region}" class="region-card ${state.className} bias-${safeClass(row.bias)}" data-raw-status="${esc(row.status||'UNAVAILABLE')}" data-raw-bias="${esc(row.bias||'UNAVAILABLE')}"><div class="region-card-head"><span>${esc(REGION_LABELS[row.region]||row.region)}</span><small>${esc(state.dataLabel)}</small></div><b data-field="bias">${esc(state.headline)}</b><small data-field="confidence">${esc(state.note)}</small>${renderRegionStats(state.supplement.stats)}${evidence}<p class="region-gap-note">${esc(state.supplement.gap||'尚待更多跨來源資料。')}</p>${lineage}</article>`;
+      return `<article data-region="${region}" class="region-card ${state.className} bias-${safeClass(row.bias)}" data-raw-status="${esc(row.status||'UNAVAILABLE')}" data-raw-bias="${esc(row.bias||'UNAVAILABLE')}"><div class="research-title region-card-head"><span>${esc(REGION_LABELS[row.region]||row.region)}</span><small>${esc(state.dataLabel)}</small></div><b data-field="bias">${esc(state.headline)}</b><small data-field="confidence">${esc(state.note)}</small>${renderRegionStats(state.supplement.stats)}${renderRegionHighlights(state.supplement.highlights)}${evidence}<p class="muted region-gap-note">${esc(state.supplement.gap||'尚待更多跨來源資料。')}</p>${lineage}</article>`;
     }).join('');
   }
 
@@ -270,7 +289,8 @@
     if(!rows.length)return '<div class="empty-state" data-raw-status="UNAVAILABLE"><b>目前沒有高影響焦點</b><span>尚無通過資料品質門檻的重大事件。</span></div>';
     return `<div class="focus-intel-list">${rows.map(row=>{
       const context=focusContext(row);
-      return `<article class="focus-intel-card" data-event-id="${esc(row.id)}" data-raw-kind="${esc(row.kind||'EVENT')}" data-raw-impact="${esc(row.impact||'UNAVAILABLE')}"><div class="focus-intel-head"><span class="eyebrow">${esc(EVENT_KIND_LABELS[row.kind]||'事件')} · 影響程度 ${esc(IMPACT_LABELS[row.impact]||row.impact||'未分級')}</span><time>${esc(time(row.asOf))}</time></div><h3>${esc(context.topic)}</h3><div class="focus-market-tags"><span>影響市場</span>${context.markets.map(market=>`<b>${esc(market)}</b>`).join('')}</div><div class="focus-why"><strong>為什麼重要</strong><p>${esc(context.why)}</p></div><div class="focus-source"><small>來源：${esc(row.source)} · ${esc(statusLabel(row.status))}</small><p><span>原始標題</span>${esc(row.title)}</p></div></article>`;
+      const sourceSummary=row.summary||row.description||'來源未提供摘要。';
+      return `<article class="panel focus-intel-card" data-event-id="${esc(row.id)}" data-raw-kind="${esc(row.kind||'EVENT')}" data-raw-impact="${esc(row.impact||'UNAVAILABLE')}"><div class="research-title focus-intel-head"><span class="eyebrow">${esc(EVENT_KIND_LABELS[row.kind]||'事件')} · 影響程度 ${esc(IMPACT_LABELS[row.impact]||row.impact||'未分級')}</span><time>${esc(time(row.asOf))}</time></div><h3>${esc(context.topic)}</h3><div class="focus-market-tags"><span class="muted">影響市場</span>${context.markets.map(market=>`<b class="status-chip">${esc(market)}</b>`).join('')}</div><div class="focus-why"><strong>為什麼重要</strong><p class="muted">${esc(context.why)}</p></div><div class="focus-source"><small class="muted">來源：${esc(row.source)} · ${esc(statusLabel(row.status))}</small><p class="muted"><span>原始標題：</span>${esc(row.title)}</p><details><summary>查看來源摘要</summary><p class="muted">${esc(sourceSummary)}</p></details></div></article>`;
     }).join('')}</div>`;
   }
 
