@@ -60,6 +60,10 @@ function createStagingPreviewApp({lineageStore}={}){
     return homeService.publishHome(input);
   }
 
+  function publishRuntime(snapshot){
+    return homeService.publishRuntime(snapshot);
+  }
+
   function handler(req,res){
     const url=new URL(req.url||'/','http://staging.local');
     const pathname=url.pathname;
@@ -90,7 +94,7 @@ function createStagingPreviewApp({lineageStore}={}){
     res.end(body);
   }
 
-  return Object.freeze({publishHome,handler});
+  return Object.freeze({publishHome,publishRuntime,handler});
 }
 
 module.exports=Object.freeze({createStagingPreviewApp});
