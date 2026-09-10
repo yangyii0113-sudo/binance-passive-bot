@@ -69,6 +69,17 @@ function buildBootstrapInput(nowMs){
 
   return Object.freeze({
     nowMs,
+    twMarket:Object.freeze({
+      twse:Object.freeze({
+        tradeDate,
+        endpoint:`https://www.twse.com.tw/rwd/zh/afterTrading/MI_INDEX?date=${tradeDate}&type=ALLBUT0999&response=json`
+      }),
+      tpex:Object.freeze({
+        tradeDate,
+        highlightEndpoint:'https://www.tpex.org.tw/openapi/v1/tpex_mainborad_highlight',
+        industryTurnoverEndpoint:'https://www.tpex.org.tw/openapi/v1/tpex_trading_volume_ratio'
+      })
+    }),
     twAssets:Object.freeze([
       Object.freeze({
         exchange:'TWSE',
