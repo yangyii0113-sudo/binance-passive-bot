@@ -115,6 +115,11 @@ def evaluate_candidate(f,side,regime,rank,*,c_action='ENTRY',independent_confirm
            'NEUTRAL_ROTATION':['A','D','B','C']}[regime]
     by={x.family:x for x in evaluators}
     for fam in order:
+        if fam=='D':
+            continue
         if by[fam].qualified:return by[fam]
-    # Deterministic rejection: return the highest-priority family's reason.
-    return by[order[0]]
+    # Deterministic rejection: return the highest-priority non-D family's reason.
+    for fam in order:
+        if fam!='D':
+            return by[fam]
+    raise AssertionError('challenger family order must contain a non-D fallback')
