@@ -103,7 +103,7 @@ test('SEC BLS and ECB binding metadata declares actual canonical schema families
 
   const blsPayload={status:'REQUEST_SUCCEEDED',message:[],Results:{series:[{seriesID:'CUUR0000SA0',data:[{year:'2026',period:'M08',periodName:'August',latest:'true',value:'326.5'}]}]}};
   const bls=await b.blsSeries({loader:staticLoader(loaderEnvelope('bls-public',blsPayload)),definitions:{CUUR0000SA0:{entityId:'MACRO:US:CPI',scope:'US',field:'inflation.cpi_index',unit:'INDEX'}}}).load();
-  assertMeta(bls.lineageMeta,{sourceId:'bls-public',datasetId:'BLS:PublicDataAPI',bindingId:'bls-series',bindingVersion:'foxyya-binding/bls-series/1',adapterId:'bls-official',adapterVersion:'foxyya-adapter/bls/1',canonicalSchemaVersion:'foxyya-context-observation/1'});
+  assertMeta(bls.lineageMeta,{sourceId:'bls-public',datasetId:'BLS:CUUR0000SA0',bindingId:'bls-series',bindingVersion:'foxyya-binding/bls-series/1',adapterId:'bls-official',adapterVersion:'foxyya-adapter/bls/1',canonicalSchemaVersion:'foxyya-context-observation/1'});
 
   const ecb=await b.ecbSeries({loader:staticLoader(loaderEnvelope('ecb-data',[{TIME_PERIOD:'2026-08',OBS_VALUE:'2.1',OBS_STATUS:'A'}])),definition:{seriesKey:'ICP.M.U2.N.000000.4.ANR',entityId:'MACRO:EU:HICP',scope:'EU',field:'inflation.hicp_yoy',unit:'PCT'}}).load();
   assertMeta(ecb.lineageMeta,{sourceId:'ecb-data',datasetId:'ECB:ICP.M.U2.N.000000.4.ANR',bindingId:'ecb-series',bindingVersion:'foxyya-binding/ecb-series/1',adapterId:'ecb-official',adapterVersion:'foxyya-adapter/ecb/1',canonicalSchemaVersion:'foxyya-context-observation/1'});
