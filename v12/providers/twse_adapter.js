@@ -2,7 +2,7 @@
 const C=require('./taiwan_common.js');
 const Context=require('../data/context_normalizer.js');
 const QUOTE_SOURCE='TWSE:STOCK_DAY_ALL',FLOW_SOURCE='TWSE:T86',REVENUE_SOURCE='TWSE:t187ap05_L',MARKET_SOURCE='TWSE:MI_INDEX';
-const descriptor=Object.freeze({id:'twse-official',sourceLabel:'Taiwan Stock Exchange official public data',markets:['TW'],capabilities:['QUOTE','FLOW','FUNDAMENTAL','MARKET_BREADTH','INDEX','SECTOR'],transport:'PUBLIC_READ_ONLY',executionWrite:false,priority:10});
+const descriptor=Object.freeze({id:'twse-official',sourceLabel:'Taiwan Stock Exchange official public data',markets:['TW'],capabilities:['QUOTE','FLOW','FUNDAMENTAL'],transport:'PUBLIC_READ_ONLY',executionWrite:false,priority:10});
 function normalizeDailyQuote(row,{receivedAt}){
   if(!row||typeof row!=='object')throw Error('ROW_REQUIRED');const tradeDate=C.isoFromRoc(row.Date),observedAt=C.closeMs(tradeDate),instrument=C.instrument('TWSE',row.Code,row.Name);
   const defs=[['price.open',row.OpeningPrice,'TWD_PER_SHARE'],['price.high',row.HighestPrice,'TWD_PER_SHARE'],['price.low',row.LowestPrice,'TWD_PER_SHARE'],['price.close',row.ClosingPrice,'TWD_PER_SHARE'],['price.change',row.Change,'TWD_PER_SHARE'],['volume.shares',row.TradeVolume,'SHARE'],['turnover.value',row.TradeValue,'TWD'],['transactions.count',row.Transaction,'COUNT']];
