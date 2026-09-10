@@ -2,6 +2,7 @@
 const test=require('node:test');
 const assert=require('node:assert/strict');
 const Renderer=require('../v12/ui/home_renderer.js');
+const Product=require('../v12/ui/product_renderer.js');
 const Bootstrap=require('../v12/staging/live_research_bootstrap.js');
 
 const asOf=Date.parse('2026-09-10T12:00:00Z');
@@ -79,4 +80,16 @@ test('預設 live bootstrap 使用更多免費官方宏觀資料：美國 3 條 
   }
   const ecbFields=input.regions.EU.ecb.map(x=>x.definition.field).sort();
   assert.deepEqual(ecbFields,['inflation.hicp_yoy','rates.deposit_facility','rates.main_refinancing'].sort());
+});
+
+test('新增宏觀欄位在使用者介面必須是繁體中文標籤與單位',()=>{
+  const facts=[
+    {field:'labor.unemployment_rate',value:4.2,unit:'PCT',status:'SNAPSHOT',source:'BLS',observedAt:asOf,receivedAt:asOf},
+    {field:'employment.nonfarm_payroll',value:159500,unit:'THOUSANDS',status:'SNAPSHOT',source:'BLS',observedAt:asOf,receivedAt:asOf},
+    {field:'rates.main_refinancing',value:2.15,unit:'PCT',status:'SNAPSHOT',source:'ECB',observedAt:asOf,receivedAt:asOf},
+    {field:'rates.deposit_facility',value:2,unit:'PCT',status:'SNAPSHOT',source:'ECB',observedAt:asOf,receivedAt:asOf}
+  ];
+  const html=Product.factsHtml(facts);
+  for(const label of ['美國失業率','美國非農就業人數','歐元區主要再融資利率','歐元區存款機制利率','千人'])assert.match(html,new RegExp(label));
+  assert.doesNotMatch(html,/labor\.unemployment_rate|employment\.nonfarm_payroll|rates\.main_refinancing|rates\.deposit_facility|THOUSANDS/);
 });
