@@ -68,8 +68,10 @@ jobs:
           status=$?
           set -e
           if [ "$status" -ne 0 ]; then
-            echo '--- concise v12 failures ---'
-            grep -E '^(not ok|# Subtest:)|failureType:|location:|error:|actual:|expected:' /tmp/v12-node.log | tail -n 120 || true
+            echo '--- exact failing v12 tests ---'
+            grep -E '^not ok ' /tmp/v12-node.log || true
+            echo '--- concise v12 failure details ---'
+            grep -E 'failureType:|location:|error:|actual:|expected:' /tmp/v12-node.log | tail -n 120 || true
             echo '--- summary ---'
             tail -n 12 /tmp/v12-node.log
             exit "$status"
