@@ -29,16 +29,17 @@ test('Markets keeps very large Crypto paper candidate sets decision-readable',()
   assert.match(out.opportunitiesHtml,/data-favorite-card="CRYPTO:/,'Crypto rows participate in local Favorites filtering');
 });
 
-test('Regional Intelligence separates source coverage from directional evidence',()=>{
+test('Regional Intelligence separates source coverage from directional evidence in Chinese',()=>{
   const rows=regions.map(region=>{
     if(region==='EU')return Object.freeze({region,bias:'UNAVAILABLE',confidence:0,status:'AVAILABLE',asOf,facts:[Object.freeze({field:'inflation.hicp_yoy',value:1.9,unit:'PCT',status:'SNAPSHOT',source:'ECB',observedAt:asOf,receivedAt:asOf})]});
     return Object.freeze({region,bias:'UNAVAILABLE',confidence:0,status:'UNAVAILABLE',asOf,facts:[]});
   });
   const out=R.renderHomeSections(baseView({regions:Object.freeze(rows)}));
-  assert.match(out.regionsHtml,/DATA AVAILABLE/);
+  assert.match(out.regionsHtml,/資料已取得/);
   assert.match(out.regionsHtml,/方向證據不足/);
-  assert.match(out.regionsHtml,/DATA NOT CONNECTED/);
-  assert.doesNotMatch(out.regionsHtml,/Confidence —/,'missing directional evidence should not masquerade as a zero-confidence direction score');
+  assert.match(out.regionsHtml,/資料未接入/);
+  assert.match(out.regionsHtml,/暫不判斷/);
+  assert.doesNotMatch(out.regionsHtml,/DATA AVAILABLE|DATA NOT CONNECTED|Confidence —/,'coverage and direction states must be user-facing Chinese');
 });
 
 test('Lab layout contains metric cards instead of overlapping neighboring research panels',()=>{
