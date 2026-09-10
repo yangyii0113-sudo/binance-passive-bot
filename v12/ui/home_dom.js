@@ -37,6 +37,7 @@
     });
     for(const {target,node} of resolved)node[target.property]=plan[target.field];
     const optional=[
+      ['[data-home-content="decision-summary"]','decisionSummaryHtml'],
       ['[data-home-content="diagnostics"]','diagnosticsHtml'],
       ['[data-research-content]','opportunitiesHtml'],
       ['[data-global-content]','regionsHtml'],
