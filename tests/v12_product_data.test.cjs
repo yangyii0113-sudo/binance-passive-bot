@@ -20,20 +20,26 @@ function revenueRow(){return {'出表日期':'1150909','資料年月':'11508','�
 function tpQuoteRow(){return {Date:'1150909',SecuritiesCompanyCode:'6488',CompanyName:'環球晶',Open:'455.5',High:'470',Low:'452',Close:'468',Change:'12.5',TradingShares:'100000000',TransactionAmount:'46800000000',TransactionNumber:'83000'};}
 function tpFlowRow(){return {Date:'1150909',SecuritiesCompanyCode:'6488',CompanyName:'環球晶','Foreign Investors include Mainland Area Investors (Foreign Dealers excluded)-Difference':'4000000','SecuritiesInvestmentTrustCompanies-Difference':'1000000','Dealers-Difference':'-250000','TotalDifference':'4750000'};}
 function secPayload(){return {cik:'1045810',facts:{'us-gaap':{RevenueFromContractWithCustomerExcludingAssessedTax:{label:'Revenue',description:'Revenue',units:{USD:[{val:30000000000,accn:'0001',form:'10-Q',filed:'2026-08-20',start:'2026-05-01',end:'2026-07-31',fy:2026,fp:'Q2'}]}}}}};}
-function blsPayload(){return {status:'REQUEST_SUCCEEDED',message:[],Results:{series:[{seriesID:'CUUR0000SA0',data:[{year:'2026',period:'M08',periodName:'August',latest:'true',value:'326.5'}]}]}};}
-function ecbPayload(){return [{TIME_PERIOD:'2026-08',OBS_VALUE:'2.1',OBS_STATUS:'A'}];}
+function blsPayload(seriesID='CUUR0000SA0',value='326.5'){return {status:'REQUEST_SUCCEEDED',message:[],Results:{series:[{seriesID,data:[{year:'2026',period:'M08',periodName:'August',latest:'true',value:String(value)}]}]}};}
+function ecbPayload(value='2.1'){return [{TIME_PERIOD:'2026-08',OBS_VALUE:String(value),OBS_STATUS:'A'}];}
 
 function fixtures(input){
-  return new Map([
+  const table=new Map([
     [input.twAssets[0].quoteEndpoint,response(200,[twQuoteRow()])],
     [input.twAssets[0].flowEndpoint,response(200,twFlowPayload())],
     [input.twAssets[0].revenueEndpoint,response(200,[revenueRow()])],
     [input.twAssets[1].quoteEndpoint,response(200,[tpQuoteRow()])],
     [input.twAssets[1].flowEndpoint,response(200,[tpFlowRow()])],
-    [input.usAssets[0].sec.endpoint,response(200,secPayload())],
-    [input.regions.US.bls[0].endpoint,response(200,blsPayload())],
-    [input.regions.EU.ecb[0].endpoint,response(200,ecbPayload())]
+    [input.usAssets[0].sec.endpoint,response(200,secPayload())]
   ]);
+  const blsValues={CUUR0000SA0:'326.5',LNS14000000:'4.2',CES0000000001:'159500'};
+  for(const item of input.regions.US.bls){
+    const seriesID=Object.keys(item.definitions)[0];
+    table.set(item.endpoint,response(200,blsPayload(seriesID,blsValues[seriesID])));
+  }
+  const ecbValues=['2.1','2.15','2.00'];
+  input.regions.EU.ecb.forEach((item,index)=>table.set(item.endpoint,response(200,ecbPayload(ecbValues[index]))));
+  return table;
 }
 
 const VM=require('../v12/ui/home_view_model.js');
@@ -56,7 +62,7 @@ test('completed source cycle publishes transport health and dataset diagnostics 
   const read=result.orchestration.published;
   assert.ok(read.providerDiagnostics,'completed Home must include provider diagnostics');
   assert.equal(read.providerDiagnostics.providers.length,6);
-  assert.equal(read.providerDiagnostics.datasets.length,8);
+  assert.equal(read.providerDiagnostics.datasets.length,12);
   const sec=read.providerDiagnostics.providers.find(x=>x.providerId==='sec-edgar');
   assert.equal(sec.health,'HEALTHY');
   assert.equal(sec.lastSuccessAt,nowMs);
@@ -119,27 +125,35 @@ test('Global overview shows macro facts without inventing regional direction',as
   const us=view.regions.find(x=>x.region==='US');
   assert.equal(us.bias,'UNAVAILABLE');
   assert.ok(us.facts,'regional facts must survive presentation');
-  assert.equal(us.facts[0].value,326.5);
-  assert.equal(us.facts[0].unit,'INDEX');
+  assert.equal(us.facts.length,3);
+  assert.equal(us.facts.find(x=>x.field==='inflation.cpi_index').value,326.5);
+  assert.equal(us.facts.find(x=>x.field==='labor.unemployment_rate').value,4.2);
+  assert.equal(us.facts.find(x=>x.field==='employment.nonfarm_payroll').value,159500);
   assert.equal(view.regions.find(x=>x.region==='JP').status,'UNAVAILABLE');
   assert.equal(view.regions.find(x=>x.region==='JP').facts.length,0);
   const html=Renderer.renderHomeSections(view).regionsHtml;
   assert.match(html,/326.5/);
+  assert.match(html,/美國失業率/);
+  assert.match(html,/美國非農就業人數/);
   assert.match(html,/BLS/);
   assert.match(html,/data-lineage-ref/);
 });
 
-test('non-JSON provider error is isolated and never replaces missing facts with zero',async t=>{
+test('one regional macro source failure is isolated and valid sibling facts remain available',async t=>{
   const input=Bootstrap.buildBootstrapInput(nowMs);
   const {result}=await runResearch(t,{[input.regions.EU.ecb[0].endpoint]:{
     ok:true,status:200,headers:{get(){return 'text/csv'}},json(){throw Error('must not parse')}
   }});
   const read=result.orchestration.published;
   assert.ok(read.providerDiagnostics,'non-JSON failures must be diagnosed');
-  assert.equal(read.providerDiagnostics.datasets.find(x=>x.sourceId==='ecb-data').reason,'CONTENT_TYPE_INVALID');
+  const failed=read.providerDiagnostics.datasets.find(x=>x.datasetId===input.regions.EU.ecb[0].definition.seriesKey||x.datasetId==='ECB:'+input.regions.EU.ecb[0].definition.seriesKey);
+  assert.ok(failed);
+  assert.equal(failed.reason,'CONTENT_TYPE_INVALID');
   const eu=VM.buildHomeViewModel(read).regions.find(x=>x.region==='EU');
-  assert.equal(eu.status,'UNAVAILABLE');
-  assert.deepEqual(eu.facts,[]);
+  assert.equal(eu.status,'AVAILABLE','other valid ECB sources keep EU partial coverage available');
+  assert.equal(eu.facts.length,2);
+  assert.equal(eu.facts.some(x=>x.field==='rates.main_refinancing'),true);
+  assert.equal(eu.facts.some(x=>x.field==='rates.deposit_facility'),true);
 });
 
 
@@ -156,10 +170,10 @@ test('thrown canonical schema failures publish a failed dataset instead of false
 
 test('macro read model chooses newest reported period independently of provider array order',async t=>{
   const input=Bootstrap.buildBootstrapInput(nowMs);
-  const bls=blsPayload();
+  const bls=blsPayload('CUUR0000SA0','326.5');
   bls.Results.series[0].data=[{year:'2026',period:'M07',value:'325.0'},{year:'2026',period:'M08',value:'326.5'}];
   const {result}=await runResearch(t,{[input.regions.US.bls[0].endpoint]:response(200,bls)});
-  const fact=VM.buildHomeViewModel(result.orchestration.published).regions.find(x=>x.region==='US').facts[0];
+  const fact=VM.buildHomeViewModel(result.orchestration.published).regions.find(x=>x.region==='US').facts.find(x=>x.field==='inflation.cpi_index');
   assert.equal(fact.value,326.5);
   assert.equal(fact.reportPeriod,'2026-08');
 });
