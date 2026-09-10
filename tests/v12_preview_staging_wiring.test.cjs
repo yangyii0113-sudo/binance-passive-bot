@@ -10,7 +10,7 @@ function boot(loadResult,pathname=''){
   let createCalls=0,loadCalls=0,renderCalls=0; const rendered=[];
   const more={hidden:false};
   const toast={textContent:'',classList:{add(){},remove(){}}};
-  const health={textContent:'PREVIEW · DATA UNAVAILABLE'};
+  const health={textContent:'研究測試環境 · 等待資料'};
   const document={
     querySelector(selector){if(selector==='#more-sheet')return more;if(selector==='#toast')return toast;if(selector==='#data-health')return health;return null},
     querySelectorAll(){return []}
@@ -35,7 +35,8 @@ test('preview does not fetch staging automatically and exposes explicit loadStag
   const result=await env.window.FOXY_V12_PREVIEW.loadStagingHome();
   assert.equal(result.status,'AVAILABLE');
   assert.deepEqual(env.getCounts(),{createCalls:1,loadCalls:1,renderCalls:1});
-  assert.match(env.health.textContent,/STAGING/);
+  assert.match(env.health.textContent,/研究測試環境/);
+  assert.match(env.health.textContent,/快照過期/,'timestamp 1 is intentionally stale and should be labeled in Chinese');
 });
 
 test('unavailable staging result stays unavailable and is not rendered',async()=>{
@@ -43,7 +44,7 @@ test('unavailable staging result stays unavailable and is not rendered',async()=
   const result=await env.window.FOXY_V12_PREVIEW.loadStagingHome();
   assert.deepEqual(result,{status:'UNAVAILABLE',data:null});
   assert.deepEqual(env.getCounts(),{createCalls:1,loadCalls:1,renderCalls:0});
-  assert.match(env.health.textContent,/UNAVAILABLE/);
+  assert.match(env.health.textContent,/資料不可用/);
 });
 
 test('preview loads fixed staging read client before app',()=>{
@@ -59,7 +60,7 @@ test('served v12 staging preview automatically loads Home on entry',async()=>{
   const env=boot({status:'UNAVAILABLE',data:null},'/v12-preview/');
   await Promise.resolve();await Promise.resolve();
   assert.equal(env.getCounts().loadCalls,1);
-  assert.match(env.health.textContent,/UNAVAILABLE/);
+  assert.match(env.health.textContent,/資料不可用/);
 });
 
 const snapshot=asOf=>({status:'AVAILABLE',data:{schemaVersion:'foxyya-home-read-model/1',asOf,researchOnly:true,executionWrite:false}});
@@ -68,7 +69,7 @@ test('failed Home refresh persistently marks retained data stale',async()=>{
   const env=boot(()=>{if(failed)throw Error('NETWORK_FAILED');return snapshot(100)});
   await env.window.FOXY_V12_PREVIEW.loadStagingHome();failed=true;
   await env.window.FOXY_V12_PREVIEW.loadStagingHome();
-  assert.match(env.health.textContent,/STALE/);
+  assert.match(env.health.textContent,/保留舊快照/);
   assert.deepEqual(env.rendered,[100]);
 });
 
