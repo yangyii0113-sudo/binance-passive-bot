@@ -19,8 +19,8 @@
   const SIDE_LABELS=Object.freeze({LONG:'多方',SHORT:'空方',NEUTRAL:'中性'});
   const STAGE_LABELS=Object.freeze({DETECT:'偵測',EARLY_WATCH:'早期觀察',ACCUMULATION:'累積',CONFIRMING:'確認中',READY:'條件就緒',INVALIDATED:'已失效'});
   const DIRECTION_LABELS=Object.freeze({
-    STRONG_BULLISH:'強勢偏多',BULLISH:'偏多',POSITIVE:'偏正向',UP:'偏多',LONG:'偏多',
-    STRONG_BEARISH:'強勢偏空',BEARISH:'偏空',NEGATIVE:'偏負向',DOWN:'偏空',SHORT:'偏空',
+    STRONG_BULLISH:'強勢偏多',BULLISH:'偏多',POSITIVE:'偏正向',UP:'偏多',LONG:'偏多',BROAD_ADVANCE:'廣泛上漲',
+    STRONG_BEARISH:'強勢偏空',BEARISH:'偏空',NEGATIVE:'偏負向',DOWN:'偏空',SHORT:'偏空',BROAD_DECLINE:'廣泛下跌',
     NEUTRAL:'中性',MIXED:'多空混合',UNAVAILABLE:'暫不判斷'
   });
   const EVENT_KIND_LABELS=Object.freeze({CALENDAR:'經濟日曆',NEWS:'重要消息',EVENT:'事件'});
@@ -72,6 +72,23 @@
     return (Array.isArray(rows)?rows:[]).slice(0,3).map(item=>`${instrumentShort(item.instrumentId)} · ${directionLabel(item.direction)}`);
   }
 
+  function taiwanPulse(value){
+    return (Array.isArray(value.marketPulse)?value.marketPulse:[]).find(item=>item?.market==='TW')||null;
+  }
+
+  function coverageLabel(value){
+    const raw=String(value||'NONE').toUpperCase();
+    if(raw==='COMPLETE')return '完整';
+    if(raw==='PARTIAL')return '部分';
+    return '無可用資料';
+  }
+
+  function percentPoint(value){
+    if(!finite(value))return '—';
+    const sign=value>0?'+':'';
+    return `${sign}${number(value)}%`;
+  }
+
   function regionSupplement(value,row){
     const region=row.region;
     const opportunities=object(value.opportunities)?value.opportunities:{};
@@ -81,11 +98,24 @@
     let gap='';
 
     if(region==='TW'){
+      const pulse=taiwanPulse(value);
+      const marketData=object(pulse?.data)?pulse.data:null;
+      if(pulse?.status==='AVAILABLE'&&marketData){
+        const complete=marketData.directionCoverage==='COMPLETE';
+        stats.push(complete?'台股大盤與市場廣度已接入':'台股市場資料部分可用');
+        if(marketData.taiex&&marketData.otc)highlights.push(`加權/櫃買 ${number(marketData.taiex.close)} / ${number(marketData.otc.close)}`);
+        else if(marketData.taiex)highlights.push(`加權 ${number(marketData.taiex.close)} · 櫃買待補`);
+        gap=complete
+          ?'台股大盤與市場廣度已接入；加權/櫃買、漲跌家數與產業輪動可供研究判讀。'
+          :'台股市場資料部分可用；目前僅保留已驗證來源，暫不判斷全台股方向。';
+        hasSupplement=true;
+      }else{
+        gap='台股市場核心本輪尚未取得完整資料；個股研究不能代替整體台股方向。';
+      }
       const items=Array.isArray(opportunities.TW)?opportunities.TW:[];
       if(items.length){stats.push(`個股研究 ${items.length} 檔`);highlights.push(...equityHighlights(items));hasSupplement=true;}
       const eventCount=highImpactEvents(value,'TW').length;
       if(eventCount){stats.push(`重大事件 ${eventCount} 則`);hasSupplement=true;}
-      gap='仍缺台股大盤指數、漲跌家數與市場廣度；個股研究不能代替整體台股方向。';
     }else if(region==='US'){
       const items=Array.isArray(opportunities.US)?opportunities.US:[];
       if(items.length){stats.push(`個股研究 ${items.length} 檔`);highlights.push(...equityHighlights(items));hasSupplement=true;}
@@ -164,9 +194,41 @@
     return STATUS_LABELS[raw]||DIRECTION_LABELS[raw]||stageLabel(raw)||statusLabel(raw);
   }
 
+  function twSectorList(rows,key){
+    const values=Array.isArray(rows)?rows:[];
+    if(!values.length)return '—';
+    return values.slice(0,3).map(item=>`${item?.name||'—'} ${key==='tradeWeightPct'?number(item?.[key])+'%':percentPoint(item?.[key])}`).join(' · ');
+  }
+
+  function renderTaiwanPulse(row){
+    const market=esc(row.market);
+    const data=object(row.data)?row.data:null;
+    const action='<button class="card-action" data-route="RESEARCH" data-market="TW">查看台股</button>';
+    if(row.status!=='AVAILABLE'||!data){
+      return `<article class="pulse-card tw" data-market-pulse="${market}" data-filter-market="${market}" data-raw-status="${esc(row.status||'UNAVAILABLE')}"><div class="pulse-title"><div><b>${esc(MARKET_LABELS.TW)}</b><small>研究模式</small></div></div><strong data-field="state">暫不判斷</strong><small class="data-state">資料狀態：${esc(statusLabel(row.status))}</small><p class="muted">本輪台股市場核心資料不可用</p>${action}</article>`;
+    }
+    const complete=data.directionCoverage==='COMPLETE';
+    const headline=complete?pulseStateLabel(row):'暫不判斷';
+    const breadth=object(data.breadth?.combined)?data.breadth.combined:(object(data.breadth?.twse)?data.breadth.twse:null);
+    const breadthLabels=complete
+      ?Object.freeze({up:'上漲家數',down:'下跌家數',ratio:'A/D 比'})
+      :Object.freeze({up:'上市上漲',down:'上市下跌',ratio:'上市 A/D 比'});
+    const indexRows=[
+      data.taiex?`<div><span>加權指數</span><b>${esc(number(data.taiex.close))}</b><small>${esc(percentPoint(data.taiex.changePct))}</small></div>`:'',
+      data.otc?`<div><span>櫃買指數</span><b>${esc(number(data.otc.close))}</b><small>${esc(percentPoint(data.otc.changePct))}</small></div>`:''
+    ].join('');
+    const breadthRows=breadth?`<div><span>${breadthLabels.up}</span><b>${esc(number(breadth.advancers))}</b></div><div><span>${breadthLabels.down}</span><b>${esc(number(breadth.decliners))}</b></div><div><span>${breadthLabels.ratio}</span><b>${esc(number(breadth.advanceDeclineRatio))}</b></div>`:'';
+    const industries=object(data.industries)?data.industries:{};
+    const sectorRows=`<div class="tw-sector-grid"><div><span>強勢類股</span><b>${esc(twSectorList(industries.twseLeaders,'changePct'))}</b></div><div><span>弱勢類股</span><b>${esc(twSectorList(industries.twseLaggards,'changePct'))}</b></div><div><span>上櫃成交集中</span><b>${esc(twSectorList(industries.tpexTurnoverLeaders,'tradeWeightPct'))}</b><small>成交比重，不代表類股漲跌幅</small></div></div>`;
+    const note=complete?'上市與上櫃市場核心資料已完成':'部分資料可用，暫不判斷全台股方向';
+    const coverage=`方向資料 ${coverageLabel(data.directionCoverage)} · 產業資料 ${coverageLabel(data.industryCoverage)}`;
+    return `<article class="pulse-card tw tw-market-core" data-market-pulse="${market}" data-filter-market="${market}" data-raw-status="${esc(row.status||'UNAVAILABLE')}"><div class="pulse-title"><div><b>${esc(MARKET_LABELS.TW)}</b><small>研究模式 · 市場核心</small></div></div><strong data-field="state">${esc(headline)}</strong><small class="data-state">資料狀態：${esc(statusLabel(row.status))} · ${esc(coverage)}</small><p class="muted">${esc(note)}</p><div class="tw-index-grid">${indexRows}</div><div class="tw-breadth-grid">${breadthRows}</div>${sectorRows}${action}</article>`;
+  }
+
   function renderPulse(rows){
     if(!rows.length)return '<div class="empty-state" data-raw-status="UNAVAILABLE"><b>資料不足</b><span>等待市場資料。</span></div>';
     return rows.map(row=>{
+      if(row.market==='TW')return renderTaiwanPulse(row);
       const market=esc(row.market);
       const status=pulseStateLabel(row);
       const cryptoAvailable=row.market==='CRYPTO'&&row.status==='AVAILABLE';
@@ -181,8 +243,8 @@
 
   function directionSign(value){
     const raw=String(value??'').toUpperCase();
-    if(['POSITIVE','BULLISH','STRONG_BULLISH','UP','LONG'].includes(raw))return 1;
-    if(['NEGATIVE','BEARISH','STRONG_BEARISH','DOWN','SHORT'].includes(raw))return -1;
+    if(['POSITIVE','BULLISH','STRONG_BULLISH','UP','LONG','BROAD_ADVANCE'].includes(raw))return 1;
+    if(['NEGATIVE','BEARISH','STRONG_BEARISH','DOWN','SHORT','BROAD_DECLINE'].includes(raw))return -1;
     return 0;
   }
 
