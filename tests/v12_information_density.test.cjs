@@ -46,11 +46,15 @@ test('七大區域市場會聚合已存在的研究、事件與 Crypto 執行資
   assert.match(out.regionsHtml,/台灣/);
   assert.match(out.regionsHtml,/部分可用/);
   assert.match(out.regionsHtml,/個股研究 2 檔/);
+  assert.match(out.regionsHtml,/2330 · 偏正向/);
+  assert.match(out.regionsHtml,/6488 · 暫不判斷/);
   assert.match(out.regionsHtml,/美國/);
   assert.match(out.regionsHtml,/個股研究 1 檔/);
+  assert.match(out.regionsHtml,/NVDA · 暫不判斷/);
   assert.match(out.regionsHtml,/重大事件 2 則/);
   assert.match(out.regionsHtml,/加密市場/);
   assert.match(out.regionsHtml,/策略候選 12 筆/);
+  assert.match(out.regionsHtml,/多方 6 · 空方 6/);
   assert.match(out.regionsHtml,/執行引擎 健康/);
   assert.match(out.regionsHtml,/data-region="JP"[^>]*compact-gap/);
   assert.match(out.regionsHtml,/data-region="KR"[^>]*compact-gap/);
@@ -64,7 +68,9 @@ test('今日焦點以中文研究解讀為主，原始英文標題降為來源�
   assert.match(out.todayFocusHtml,/影響市場/);
   assert.match(out.todayFocusHtml,/美股/);
   assert.match(out.todayFocusHtml,/原始標題/);
-  assert.match(out.todayFocusHtml,/Robinhood CEO Vlad Tenev/);
+  assert.match(out.todayFocusHtml,/查看來源摘要/);
+  assert.match(out.todayFocusHtml,/Public companies should not have veto power/);
+  assert.match(out.todayFocusHtml,/class="panel focus-intel-card"/);
 });
 
 test('預設 live bootstrap 使用更多免費官方宏觀資料：美國 3 條 BLS、歐洲 3 條 ECB',()=>{
