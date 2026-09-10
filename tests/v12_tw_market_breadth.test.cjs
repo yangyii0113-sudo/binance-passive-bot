@@ -2,6 +2,7 @@
 const test=require('node:test');
 const assert=require('node:assert/strict');
 const TWSE=require('../v12/providers/twse_adapter.js');
+const TPEX=require('../v12/providers/tpex_adapter.js');
 
 const receivedAt=Date.parse('2026-09-09T08:30:00Z');
 
@@ -71,4 +72,45 @@ test('TWSE MI_INDEX fails closed when the stock breadth table is absent instead 
   const payload=miIndexPayload();
   payload.tables=payload.tables.filter(table=>table.title!=='漲跌證券數合計');
   assert.throws(()=>TWSE.normalizeMarketBreadth(payload,{tradeDate:'20260909',receivedAt}),/TWSE_BREADTH_TABLE_REQUIRED/);
+});
+
+test('TPEx market highlight normalizes OTC index and official advance decline counts',()=>{
+  const row={
+    Date:'1150909',ListedCompanyNumbers:'864',AuthorizedCapital:'900000',MarketCapitalization:'7100000',DailyTradingValue:'210000',DailyTradingVolume:'1900000',
+    CloseIndex:'401.25',IndexChange:'-3.75',PriceRiseCompanyNumbers:'336',LimitUpCompanyNumbers:'13',PriceDeclineCompanyNumbers:'444',LimitDownCompanyNumbers:'6',PriceFlatCompanyNumbers:'58',UnmatchedCompanyNumbersSuspensionStocksIncluded:'26'
+  };
+  const result=TPEX.normalizeMarketHighlight(row,{receivedAt});
+  assert.equal(result.market,'TW');
+  assert.equal(result.venue,'TPEX');
+  assert.equal(result.tradeDate,'2026-09-09');
+  assert.equal(result.otc.close,401.25);
+  assert.equal(result.otc.change,-3.75);
+  assert.ok(Math.abs(result.otc.changePct-(-3.75/405*100))<1e-12);
+  assert.deepEqual(result.breadth,{advancers:336,decliners:444,unchanged:58,limitUp:13,limitDown:6,untraded:26,listed:864,advanceDeclineRatio:336/444,participationPct:(336+444+58)/864});
+  assert.ok(result.observations.some(x=>x.field==='market.index.otc.close'&&x.value===401.25));
+  assert.ok(result.observations.some(x=>x.field==='market.breadth.advancers'&&x.value===336));
+  assert.equal(result.researchOnly,true);
+  assert.equal(result.executionWrite,false);
+});
+
+test('TPEx industry turnover ranks sectors by official TradeWeight without pretending it is sector return',()=>{
+  const rows=[
+    {Date:'1150909',Sector:'半導體業',TradeAmount:'28237126414',TradeWeight:'14.84',' NumberOfSharesTraded':'146286717'},
+    {Date:'1150909',Sector:'電子零組件業',TradeAmount:'51072604401',TradeWeight:'50.11',' NumberOfSharesTraded':'493814334'},
+    {Date:'1150909',Sector:'光電業',TradeAmount:'7544468549',TradeWeight:'6.5',' NumberOfSharesTraded':'64054578'}
+  ];
+  const result=TPEX.normalizeIndustryTurnover(rows,{receivedAt});
+  assert.equal(result.tradeDate,'2026-09-09');
+  assert.deepEqual(result.sectors.map(x=>[x.name,x.tradeWeightPct]),[
+    ['電子零組件業',50.11],['半導體業',14.84],['光電業',6.5]
+  ]);
+  assert.equal(result.sectors[0].tradeAmount,51072604401);
+  assert.equal(result.sectors[0].sharesTraded,493814334);
+  assert.equal(Object.hasOwn(result.sectors[0],'changePct'),false,'turnover share is not sector price performance');
+  assert.ok(result.observations.some(x=>x.field==='market.industry.turnover_weight_pct'&&x.value===50.11));
+});
+
+test('TPEx highlight rejects accounting mismatch instead of silently making breadth percentages misleading',()=>{
+  const row={Date:'1150909',ListedCompanyNumbers:'10',CloseIndex:'400',IndexChange:'1',PriceRiseCompanyNumbers:'8',LimitUpCompanyNumbers:'1',PriceDeclineCompanyNumbers:'8',LimitDownCompanyNumbers:'0',PriceFlatCompanyNumbers:'1',UnmatchedCompanyNumbersSuspensionStocksIncluded:'1'};
+  assert.throws(()=>TPEX.normalizeMarketHighlight(row,{receivedAt}),/TPEX_BREADTH_TOTAL_MISMATCH/);
 });
