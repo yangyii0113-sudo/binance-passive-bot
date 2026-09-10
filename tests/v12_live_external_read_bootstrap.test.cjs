@@ -62,7 +62,9 @@ test('live bootstrap combines read-only Production runtime calendar and news wit
   assert.equal(home.opportunities.CRYPTO[0].executionWrite,false);
   assert.equal(home.events.length,2);
   assert.ok(home.events.some(x=>x.kind==='CALENDAR'&&x.title==='Consumer Price Index'));
-  assert.ok(home.events.some(x=>x.kind==='NEWS'&&x.title==='Federal Reserve publishes statement'));
+  const news=home.events.find(x=>x.kind==='NEWS'&&x.title==='Federal Reserve publishes statement');
+  assert.ok(news);
+  assert.equal(news.status,'LIVE_SOURCE','valid news content must carry an explicit non-unavailable source status');
   for(const event of home.events){
     assert.equal(Object.hasOwn(event,'direction'),false);
     assert.equal(Object.hasOwn(event,'bias'),false);
