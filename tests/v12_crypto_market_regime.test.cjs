@@ -54,7 +54,7 @@ test('Crypto market regime projects the Production router classification without
 
 test('stale Production scan is not presented as the current Crypto market regime',()=>{
   const old=nowMs-(3*60*60*1000);
-  const execution=Crypto.adaptRuntime(status(),snapshot({latest_scan:{...snapshot().latest_scan,time_ms:old}}));
+  const execution=Crypto.adaptRuntime(status(),snapshot({latest_scan:{...snapshot().latest_scan,time_ms:old,decision_cutoff_ms:old-3_600_000}}));
   const result=Regime.buildCryptoMarketRegime({execution,nowMs,staleAfterMs:2*60*60*1000});
   assert.equal(result.status,'STALE');
   assert.equal(result.state,'UNAVAILABLE');
