@@ -72,8 +72,15 @@
     return (Array.isArray(rows)?rows:[]).slice(0,3).map(item=>`${instrumentShort(item.instrumentId)} · ${directionLabel(item.direction)}`);
   }
 
-  function taiwanPulse(value){
-    return (Array.isArray(value.marketPulse)?value.marketPulse:[]).find(item=>item?.market==='TW')||null;
+  function marketPulse(value,market){
+    return (Array.isArray(value.marketPulse)?value.marketPulse:[]).find(item=>item?.market===market)||null;
+  }
+
+  function taiwanPulse(value){return marketPulse(value,'TW');}
+
+  function usLicenseGateActive(value){
+    const reason=marketPulse(value,'US')?.reason;
+    return typeof reason==='string'&&reason.includes('NASDAQ_EOD_LICENSE_REVIEW_REQUIRED');
   }
 
   function coverageLabel(value){
@@ -121,7 +128,13 @@
       if(items.length){stats.push(`個股研究 ${items.length} 檔`);highlights.push(...equityHighlights(items));hasSupplement=true;}
       const eventCount=highImpactEvents(value,'US').length;
       if(eventCount){stats.push(`重大事件 ${eventCount} 則`);hasSupplement=true;}
-      gap='已有官方宏觀、SEC 個股研究與重大事件；仍缺授權即時美股行情、市場廣度與市場共識資料。';
+      if(usLicenseGateActive(value)){
+        stats.push('Nasdaq-listed EOD 方案已完成 · 授權審查中');
+        gap='Nasdaq-listed EOD 市場廣度與指數技術方案已完成，但仍在授權審查；全美股即時廣度尚未取得，未授權前不展示 Nasdaq 市場數值。';
+        hasSupplement=true;
+      }else{
+        gap='已有官方宏觀、SEC 個股研究與重大事件；仍缺授權即時美股行情、市場廣度與市場共識資料。';
+      }
     }else if(region==='CRYPTO'){
       const items=Array.isArray(opportunities.CRYPTO)?opportunities.CRYPTO:[];
       if(items.length){
@@ -225,6 +238,13 @@
     return `<article class="pulse-card tw tw-market-core" data-market-pulse="${market}" data-filter-market="${market}" data-raw-status="${esc(row.status||'UNAVAILABLE')}"><div class="pulse-title"><div><b>${esc(MARKET_LABELS.TW)}</b><small>研究模式 · 市場核心</small></div></div><strong data-field="state">${esc(headline)}</strong><small class="data-state">資料狀態：${esc(statusLabel(row.status))} · ${esc(coverage)}</small><p class="muted">${esc(note)}</p><div class="tw-index-grid">${indexRows}</div><div class="tw-breadth-grid">${breadthRows}</div>${sectorRows}${action}</article>`;
   }
 
+  function usPulseReason(row){
+    if(typeof row?.reason==='string'&&row.reason.includes('NASDAQ_EOD_LICENSE_REVIEW_REQUIRED')){
+      return 'Nasdaq-listed EOD 市場廣度與指數方案已完成，但授權審查中；全美股即時廣度尚未取得。';
+    }
+    return '市場指數資料仍待補齊；目前可查看個股官方研究快照';
+  }
+
   function renderPulse(rows){
     if(!rows.length)return '<div class="empty-state" data-raw-status="UNAVAILABLE"><b>資料不足</b><span>等待市場資料。</span></div>';
     return rows.map(row=>{
@@ -235,7 +255,7 @@
       const mode=row.market==='CRYPTO'?(cryptoAvailable?'模擬交易只讀':'研究模式 · 執行資料不可用'):'研究模式';
       const reason=row.market==='CRYPTO'
         ?(cryptoAvailable?`執行引擎 ${statusLabel(row.data?.health||'AVAILABLE')} · 等待成交 ${row.data?.pendingCount??'—'} · 持倉 ${row.data?.openPositionCount??'—'}`:'本輪無法讀取正式模擬交易執行資料')
-        :'市場指數資料仍待補齊；目前可查看個股官方研究快照';
+        :row.market==='US'?usPulseReason(row):'市場指數資料仍待補齊；目前可查看個股官方研究快照';
       const action=row.market==='CRYPTO'?'查看加密市場':row.market==='US'?'查看美股':'查看台股';
       return `<article class="pulse-card ${safeClass(row.market)}" data-market-pulse="${market}" data-filter-market="${market}" data-raw-status="${esc(row.status||'UNAVAILABLE')}"><div class="pulse-title"><div><b>${esc(MARKET_LABELS[row.market]||row.market)}</b><small>${esc(mode)}</small></div></div><strong data-field="state">${esc(status)}</strong><small class="data-state">資料狀態：${esc(statusLabel(row.status))}</small><p class="muted">${esc(reason)}</p><button class="card-action" data-route="${row.market==='CRYPTO'?'POSITIONS':'RESEARCH'}" data-market="${market}">${action}</button></article>`;
     }).join('');
