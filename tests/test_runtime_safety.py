@@ -27,6 +27,12 @@ def test_runtime_status_is_paper_only_and_real_order_locked():
     assert REAL_ORDER_LOCK is True
 
 
+def test_runtime_status_declares_canonical_primary_book():
+    snapshot = service.RuntimeState("canonical-book-test").snapshot()
+    assert snapshot["canonical_book"] == "5x"
+    assert snapshot["canonical_book_role"] == "PRIMARY"
+
+
 def test_runtime_config_rejects_disabling_real_order_lock(tmp_path: Path):
     config = tmp_path / "unsafe.json"
     config.write_text(json.dumps({"real_order_lock": False}), encoding="utf-8")

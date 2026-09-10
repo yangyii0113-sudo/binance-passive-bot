@@ -58,6 +58,8 @@ class RuntimeState:
                 "ok": self.last_error is None,
                 "paper_only": True,
                 "real_order_lock": True,
+                "canonical_book": "5x",
+                "canonical_book_role": "PRIMARY",
                 "strategy_version": self.strategy_version,
                 "started_ms": self.started_ms,
                 "uptime_seconds": max(0, int((time.time() * 1000 - self.started_ms) / 1000)),
