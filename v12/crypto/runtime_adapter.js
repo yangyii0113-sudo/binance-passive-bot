@@ -21,8 +21,10 @@
     if(!finite(snapshot.served_at)||snapshot.served_at<0)throw Error('SERVED_AT_INVALID');
     for(const k of ['candidates','pending','trades'])if(!Array.isArray(snapshot[k]))throw Error(k.toUpperCase()+'_REQUIRED');
     if(!obj(snapshot.books)||!obj(snapshot.diagnostics))throw Error('SNAPSHOT_CONTENT_INVALID');
+    if(snapshot.latest_scan!==undefined&&snapshot.latest_scan!==null&&!obj(snapshot.latest_scan))throw Error('LATEST_SCAN_INVALID');
     const trades=clone(snapshot.trades);
-    const out={schema:'foxyya-v12-crypto-execution-read/1',paperOnly:true,realOrderLock:true,readOnly:true,strategyVersion:status.strategy_version,cycleCount:status.cycle_count,ledgerIntegrity:status.ledger_integrity===true,health:status.ok===true&&status.ledger_integrity===true?'HEALTHY':'DEGRADED',asOf:snapshot.served_at,ledgerEvents:snapshot.ledger_events??null,candidates:Object.freeze(clone(snapshot.candidates)),pending:Object.freeze(clone(snapshot.pending)),openPositions:Object.freeze(trades.filter(t=>t.closed!==true)),closedTrades:Object.freeze(trades.filter(t=>t.closed===true)),books:Object.freeze(clone(snapshot.books)),diagnostics:Object.freeze(clone(snapshot.diagnostics))};
+    const latestScan=snapshot.latest_scan==null?null:Object.freeze(clone(snapshot.latest_scan));
+    const out={schema:'foxyya-v12-crypto-execution-read/1',paperOnly:true,realOrderLock:true,readOnly:true,strategyVersion:status.strategy_version,cycleCount:status.cycle_count,ledgerIntegrity:status.ledger_integrity===true,health:status.ok===true&&status.ledger_integrity===true?'HEALTHY':'DEGRADED',asOf:snapshot.served_at,ledgerEvents:snapshot.ledger_events??null,candidates:Object.freeze(clone(snapshot.candidates)),pending:Object.freeze(clone(snapshot.pending)),openPositions:Object.freeze(trades.filter(t=>t.closed!==true)),closedTrades:Object.freeze(trades.filter(t=>t.closed===true)),books:Object.freeze(clone(snapshot.books)),diagnostics:Object.freeze(clone(snapshot.diagnostics)),latestScan};
     return Object.freeze(out);
   }
   return Object.freeze({adaptRuntime});
