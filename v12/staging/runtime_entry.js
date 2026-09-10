@@ -3,6 +3,7 @@
 const {startStagingPreviewServer}=require('./server.js');
 const {createDurableSourceLineageStore}=require('./durable_source_lineage_store.js');
 const {createLiveResearchBootstrap}=require('./live_research_bootstrap.js');
+const {createRuntimeSyncService}=require('./runtime_sync_service.js');
 
 function runtimeConfig(env=process.env){
   const host=typeof env.HOST==='string'&&env.HOST.trim()?env.HOST.trim():'0.0.0.0';
@@ -23,11 +24,25 @@ function runtimeConfig(env=process.env){
   const refreshSeconds=Number(rawRefresh);
   if(!Number.isInteger(refreshSeconds)||refreshSeconds<300||refreshSeconds>86400)throw Error('REFRESH_SECONDS_INVALID');
 
+  const runtimeSourceRaw=env.FOXYYA_V12_RUNTIME_SOURCE_URL===undefined||env.FOXYYA_V12_RUNTIME_SOURCE_URL===null
+    ?''
+    :String(env.FOXYYA_V12_RUNTIME_SOURCE_URL).trim();
+  const runtimeSourceUrl=runtimeSourceRaw||null;
+
+  const rawRuntimeRefresh=env.FOXYYA_V12_RUNTIME_REFRESH_SECONDS===undefined||env.FOXYYA_V12_RUNTIME_REFRESH_SECONDS===null||String(env.FOXYYA_V12_RUNTIME_REFRESH_SECONDS).trim()===''
+    ?'30'
+    :String(env.FOXYYA_V12_RUNTIME_REFRESH_SECONDS).trim();
+  if(!/^\d+$/.test(rawRuntimeRefresh))throw Error('RUNTIME_REFRESH_SECONDS_INVALID');
+  const runtimeRefreshSeconds=Number(rawRuntimeRefresh);
+  if(!Number.isInteger(runtimeRefreshSeconds)||runtimeRefreshSeconds<10||runtimeRefreshSeconds>300)throw Error('RUNTIME_REFRESH_SECONDS_INVALID');
+
   return Object.freeze({
     host,
     port,
     lineageFilePath,
     refreshSeconds,
+    runtimeSourceUrl,
+    runtimeRefreshSeconds,
     researchOnly:true,
     executionWrite:false
   });
@@ -40,11 +55,15 @@ async function startFromEnvironment(env=process.env,dependencies={}){
   const setIntervalImpl=dependencies.setIntervalImpl||setInterval;
   const clearIntervalImpl=dependencies.clearIntervalImpl||clearInterval;
   const onResearchError=dependencies.onResearchError||((error)=>console.error('FOXYYA v12 research refresh failed:',error?.message||error));
+  const onRuntimeError=dependencies.onRuntimeError||((error)=>console.error('FOXYYA v12 runtime read sync failed:',error?.message||error));
+  const runtimeSyncFactory=dependencies.runtimeSyncFactory||createRuntimeSyncService;
 
   if(typeof fetchImpl!=='function')throw Error('FETCH_REQUIRED');
   if(typeof clock!=='function')throw Error('CLOCK_REQUIRED');
   if(typeof setIntervalImpl!=='function'||typeof clearIntervalImpl!=='function')throw Error('TIMER_REQUIRED');
   if(typeof onResearchError!=='function')throw Error('RESEARCH_ERROR_HANDLER_REQUIRED');
+  if(typeof onRuntimeError!=='function')throw Error('RUNTIME_ERROR_HANDLER_REQUIRED');
+  if(typeof runtimeSyncFactory!=='function')throw Error('RUNTIME_SYNC_FACTORY_REQUIRED');
 
   const lineageStore=createDurableSourceLineageStore({filePath:config.lineageFilePath,now:clock});
   const serverRuntime=await startStagingPreviewServer({
@@ -57,6 +76,16 @@ async function startFromEnvironment(env=process.env,dependencies={}){
     clock,
     lineageStore,
     publishHome:serverRuntime.app.publishHome
+  });
+
+  const runtimeSync=runtimeSyncFactory({
+    sourceUrl:config.runtimeSourceUrl,
+    refreshSeconds:config.runtimeRefreshSeconds,
+    fetchImpl,
+    publishRuntime:serverRuntime.app.publishRuntime,
+    setIntervalImpl,
+    clearIntervalImpl,
+    onError:onRuntimeError
   });
 
   let running=false;
@@ -76,6 +105,7 @@ async function startFromEnvironment(env=process.env,dependencies={}){
     if(closed)return;
     closed=true;
     clearIntervalImpl(refreshTimer);
+    await runtimeSync.close();
     await serverRuntime.close();
   }
 
