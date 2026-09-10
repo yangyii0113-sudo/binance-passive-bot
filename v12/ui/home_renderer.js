@@ -9,6 +9,8 @@
     US:'🇺🇸 美國',TW:'🇹🇼 台灣',CN_HK:'🇨🇳🇭🇰 中國／香港',JP:'🇯🇵 日本',KR:'🇰🇷 韓國',EU:'🇪🇺 歐洲',CRYPTO:'₿ Crypto'
   });
   const MARKET_LABELS=Object.freeze({CRYPTO:'₿ Crypto',US:'🇺🇸 US Stocks',TW:'🇹🇼 Taiwan Stocks'});
+  const CRYPTO_PREVIEW_LIMIT=12;
+  const CRYPTO_STATUS_PRIORITY=Object.freeze({OPEN:0,PENDING:1,PENDING_INTENT:1,QUALIFIED:2,ARMED:3,WATCH:4,CANDIDATE:5,REJECTED:6,CANCELLED:7,EXITED:8});
   const esc=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   const finite=x=>typeof x==='number'&&Number.isFinite(x);
   const object=x=>x&&typeof x==='object'&&!Array.isArray(x);
@@ -26,13 +28,27 @@
     return value;
   }
 
+  function regionalCoverage(row){
+    const directional=typeof row.bias==='string'&&row.bias&&row.bias!=='UNAVAILABLE';
+    const hasFacts=Array.isArray(row.facts)&&row.facts.length>0;
+    const hasData=row.status==='AVAILABLE'||hasFacts;
+    if(directional)return Object.freeze({headline:row.bias,note:`Confidence ${pct(row.confidence)}`,className:'directional'});
+    if(hasData)return Object.freeze({headline:'DATA AVAILABLE',note:'方向證據不足',className:'coverage-only'});
+    return Object.freeze({headline:'DATA NOT CONNECTED',note:'本輪無有效區域來源',className:'not-connected'});
+  }
+
   function renderRegions(rows){
     if(!rows.length)return '<div class="empty-state"><b>UNAVAILABLE</b><span>等待 Regional Intelligence verified data。</span></div>';
     return rows.map(row=>{
       const region=esc(row.region);
-      const bias=esc(row.bias||'UNAVAILABLE');
-      const confidence=row.bias==='UNAVAILABLE'?'Confidence —':`Confidence ${pct(row.confidence)}`;
-      return `<article class="region-card bias-${safeClass(row.bias)}" data-region="${region}"><span>${esc(REGION_LABELS[row.region]||row.region)}</span><b data-field="bias">${bias}</b><small data-field="confidence">${esc(confidence)}</small><small>Context ${esc(row.status)}</small>${Product.factsHtml(row.facts)}<p class="muted">${row.facts?.length?'官方宏觀快照；單一指標不足以判定市場方向。':row.region==='TW'?'區域指數尚未接入；個股資料見台股研究。':'Unavailable：本區域資料來源尚未接入或本輪無有效觀測；詳見系統診斷。'}</p>${Product.lineageLink(row.lineageRef)}</article>`;
+      const coverage=regionalCoverage(row);
+      const sourceState=row.status==='AVAILABLE'?'Source status AVAILABLE':'Source status UNAVAILABLE';
+      const detail=(Array.isArray(row.facts)&&row.facts.length)
+        ?'官方宏觀快照已取得；方向評級需更多跨來源證據。'
+        :row.region==='TW'
+          ?'區域指數尚未接入；個股資料可至台股研究查看。'
+          :'區域來源尚未接入或本輪無有效觀測；詳見系統診斷。';
+      return `<article class="region-card ${coverage.className} bias-${safeClass(row.bias)}" data-region="${region}"><span>${esc(REGION_LABELS[row.region]||row.region)}</span><b data-field="bias">${esc(coverage.headline)}</b><small data-field="confidence">${esc(coverage.note)}</small><small>${esc(sourceState)}</small>${Product.factsHtml(row.facts)}<p class="muted">${esc(detail)}</p>${Product.lineageLink(row.lineageRef)}</article>`;
     }).join('');
   }
 
@@ -56,9 +72,28 @@
     return `<div class="signal-list">${rows.map(row=>`<article class="signal-row" data-research-instrument="${esc(row.instrumentId)}" data-filter-market="${esc(row.market)}"><div><span>${esc(row.market)}</span><b>${esc(row.instrumentId)}</b></div><div><strong>${esc(row.stateLabel||'UNAVAILABLE')}</strong><small>${esc(row.direction||'UNAVAILABLE')} · Confidence ${esc(pct(row.confidence))}</small></div><em>RESEARCH</em></article>`).join('')}</div>`;
   }
 
+  function cryptoStatusRank(row){
+    const status=String(row?.status||'UNAVAILABLE').toUpperCase();
+    return Object.hasOwn(CRYPTO_STATUS_PRIORITY,status)?CRYPTO_STATUS_PRIORITY[status]:50;
+  }
+
+  function cryptoFavoriteId(row){
+    const raw=`CRYPTO:${row?.symbol||'UNAVAILABLE'}:${row?.family||'NA'}:${row?.side||'NA'}`;
+    return raw.slice(0,80);
+  }
+
   function renderCryptoOpportunities(rows){
     if(!rows.length)return '<div class="empty-state compact"><b>UNAVAILABLE</b><span>本輪沒有可顯示的 Crypto Paper candidate。</span></div>';
-    return rows.map(row=>`<div class="opportunity-row crypto"><div><b>${esc(row.symbol)}</b><small>${esc(row.family)} · ${esc(row.side)}</small></div><div><strong>${esc(row.status)}</strong><em>PAPER READ-ONLY</em></div></div>`).join('');
+    const sorted=[...rows].sort((a,b)=>cryptoStatusRank(a)-cryptoStatusRank(b)||String(a?.symbol||'').localeCompare(String(b?.symbol||'')));
+    const visible=sorted.slice(0,CRYPTO_PREVIEW_LIMIT);
+    const inactive=new Set(['REJECTED','CANCELLED','EXITED']);
+    const activeCount=rows.filter(row=>!inactive.has(String(row?.status||'').toUpperCase())).length;
+    const summary=`<div class="crypto-opportunity-summary"><div><b>${esc(rows.length)} candidates</b><small>Active ${esc(activeCount)} · 依 Execution lifecycle 優先排序</small></div><span>顯示 ${esc(visible.length)} / ${esc(rows.length)}</span></div>`;
+    const list=visible.map(row=>{
+      const favoriteId=cryptoFavoriteId(row);
+      return `<div class="opportunity-row crypto" data-favorite-card="${esc(favoriteId)}"><div class="opportunity-main"><b>${esc(row.symbol)}</b><small>${esc(row.family)} · ${esc(row.side)}</small></div><div class="opportunity-state"><strong>${esc(row.status)}</strong><em>PAPER READ-ONLY</em><button class="text-btn favorite-btn crypto-favorite" data-favorite-id="${esc(favoriteId)}" aria-pressed="false" title="本機收藏，不同步帳號">☆ 收藏</button></div></div>`;
+    }).join('');
+    return `${summary}<div class="crypto-opportunity-list">${list}</div>`;
   }
 
   function renderEquityOpportunities(rows,market){
