@@ -1,6 +1,7 @@
 'use strict';
 
 const Crypto=require('../crypto/runtime_adapter.js');
+const CryptoRegime=require('../read_model/crypto_market_regime.js');
 const TW=require('../read_model/tw_asset_snapshot.js');
 const US=require('../read_model/us_asset_snapshot.js');
 const Regional=require('../read_model/regional_context_snapshot.js');
@@ -91,6 +92,7 @@ function createStagingDataOrchestrator({publishHome}={}){
     const nowMs=input.nowMs;
 
     let cryptoExecution=null;
+    let cryptoRegime=null;
     let cryptoDiagnostic=freezeDiagnostic({status:'UNAVAILABLE',reason:'NOT_CONFIGURED'});
     if(input.crypto!==undefined){
       const loaded=await loadEnvelope(input.crypto,'CRYPTO');
@@ -98,7 +100,8 @@ function createStagingDataOrchestrator({publishHome}={}){
         const data=loaded.data;
         if(!object(data.status)||!object(data.snapshot))throw Error('CRYPTO_RUNTIME_INPUT_REQUIRED');
         cryptoExecution=Crypto.adaptRuntime(data.status,data.snapshot);
-        cryptoDiagnostic=freezeDiagnostic({status:'AVAILABLE',schemaVersion:cryptoExecution.schema,health:cryptoExecution.health});
+        cryptoRegime=CryptoRegime.buildCryptoMarketRegime({execution:cryptoExecution,nowMs:Math.max(nowMs,modelAsOf(cryptoExecution))});
+        cryptoDiagnostic=freezeDiagnostic({status:'AVAILABLE',schemaVersion:cryptoExecution.schema,health:cryptoExecution.health,regimeStatus:cryptoRegime.status,regimeState:cryptoRegime.state});
       }else{
         cryptoDiagnostic=loaded.diagnostic;
       }
@@ -111,6 +114,7 @@ function createStagingDataOrchestrator({publishHome}={}){
     const publishAsOf=Math.max(
       nowMs,
       modelAsOf(cryptoExecution),
+      modelAsOf(cryptoRegime),
       ...tw.models.map(modelAsOf),
       ...us.models.map(modelAsOf),
       ...Object.values(regions.models).map(modelAsOf)
@@ -119,7 +123,7 @@ function createStagingDataOrchestrator({publishHome}={}){
     const pulses=object(input.pulses)?{...input.pulses}:{};
     if(cryptoExecution&&!Object.hasOwn(pulses,'CRYPTO')){
       pulses.CRYPTO=Object.freeze({
-        state:'PAPER ONLY',
+        state:cryptoRegime?.status==='AVAILABLE'?cryptoRegime.state:'PAPER ONLY',
         asOf:cryptoExecution.asOf,
         data:Object.freeze({
           health:cryptoExecution.health,
@@ -127,7 +131,19 @@ function createStagingDataOrchestrator({publishHome}={}){
           candidateCount:cryptoExecution.candidates.length,
           pendingCount:cryptoExecution.pending.length,
           openPositionCount:cryptoExecution.openPositions.length,
-          ledgerIntegrity:cryptoExecution.ledgerIntegrity
+          ledgerIntegrity:cryptoExecution.ledgerIntegrity,
+          regimeStatus:cryptoRegime?.status||'UNAVAILABLE',
+          regimeState:cryptoRegime?.state||'UNAVAILABLE',
+          lastRegimeState:cryptoRegime?.lastState||null,
+          regimeAsOf:cryptoRegime?.asOf??null,
+          regimeAgeMs:cryptoRegime?.scanAgeMs??null,
+          regimeSource:cryptoRegime?.source||'PRODUCTION_REGIME_ROUTER_READ_ONLY',
+          rawRegimeInputsAvailable:cryptoRegime?.rawInputsAvailable===true,
+          regimeEvidenceCompleteness:cryptoRegime?.evidenceCompleteness||'CLASSIFICATION_ONLY',
+          decisionCutoffMs:cryptoRegime?.decisionCutoffMs??null,
+          eligibleUniverseCount:cryptoRegime?.eligibleUniverseCount??null,
+          dataInsufficientCount:cryptoRegime?.dataInsufficientCount??null,
+          decisionBarPolicy:cryptoRegime?.decisionBarPolicy||'FULLY_CLOSED_1H'
         })
       });
     }
