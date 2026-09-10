@@ -35,10 +35,11 @@ test('Regional Intelligence separates source coverage from directional evidence 
     return Object.freeze({region,bias:'UNAVAILABLE',confidence:0,status:'UNAVAILABLE',asOf,facts:[]});
   });
   const out=R.renderHomeSections(baseView({regions:Object.freeze(rows)}));
-  assert.match(out.regionsHtml,/資料已取得/);
-  assert.match(out.regionsHtml,/方向證據不足/);
-  assert.match(out.regionsHtml,/資料未接入/);
-  assert.match(out.regionsHtml,/暫不判斷/);
+  assert.match(out.regionsHtml,/部分可用/);
+  assert.match(out.regionsHtml,/內容已載入/);
+  assert.match(out.regionsHtml,/不足以形成完整區域方向/);
+  assert.match(out.regionsHtml,/尚未接入/);
+  assert.match(out.regionsHtml,/等待資料來源/);
   assert.doesNotMatch(out.regionsHtml,/DATA AVAILABLE|DATA NOT CONNECTED|Confidence —/,'coverage and direction states must be user-facing Chinese');
 });
 
