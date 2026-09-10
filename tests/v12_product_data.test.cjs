@@ -22,9 +22,15 @@ function tpFlowRow(){return {Date:'1150909',SecuritiesCompanyCode:'6488',Company
 function secPayload(){return {cik:'1045810',facts:{'us-gaap':{RevenueFromContractWithCustomerExcludingAssessedTax:{label:'Revenue',description:'Revenue',units:{USD:[{val:30000000000,accn:'0001',form:'10-Q',filed:'2026-08-20',start:'2026-05-01',end:'2026-07-31',fy:2026,fp:'Q2'}]}}}}};}
 function blsPayload(seriesID='CUUR0000SA0',value='326.5'){return {status:'REQUEST_SUCCEEDED',message:[],Results:{series:[{seriesID,data:[{year:'2026',period:'M08',periodName:'August',latest:'true',value:String(value)}]}]}};}
 function ecbPayload(value='2.1'){return [{TIME_PERIOD:'2026-08',OBS_VALUE:String(value),OBS_STATUS:'A'}];}
+function twMarketPayload(){return {stat:'OK',date:'20260909',tables:[{title:'價格指數',fields:['指數','收盤指數','漲跌(+/-)','漲跌點數','漲跌百分比(%)','特殊處理註記'],data:[['發行量加權股價指數','25,500.00','+','250.00','0.99',''],['半導體類指數','820','+','16','2.0',''],['電機機械類指數','560','+','5','0.9',''],['鋼鐵類指數','120','-','1','-0.8','']]},{title:'漲跌證券數合計',fields:['類型','整體市場','股票'],data:[['上漲(漲停)','700(20)','700(20)'],['下跌(跌停)','200(3)','200(3)'],['持平','50','50'],['未成交','0','0'],['無比價','0','0']]}]};}
+function tpexHighlight(){return [{Date:'1150909',ListedCompanyNumbers:'850',CloseIndex:'300',IndexChange:'3',PriceRiseCompanyNumbers:'600',LimitUpCompanyNumbers:'18',PriceDeclineCompanyNumbers:'200',LimitDownCompanyNumbers:'4',PriceFlatCompanyNumbers:'50',UnmatchedCompanyNumbersSuspensionStocksIncluded:'0'}];}
+function tpexTurnover(){return [{Date:'1150909',Sector:'電子零組件業',TradeAmount:'51072604401',TradeWeight:'50.11',' NumberOfSharesTraded':'493814334'},{Date:'1150909',Sector:'半導體業',TradeAmount:'28237126414',TradeWeight:'14.84',' NumberOfSharesTraded':'146286717'}];}
 
 function fixtures(input){
   const table=new Map([
+    [input.twMarket.twse.endpoint,response(200,twMarketPayload())],
+    [input.twMarket.tpex.highlightEndpoint,response(200,tpexHighlight())],
+    [input.twMarket.tpex.industryTurnoverEndpoint,response(200,tpexTurnover())],
     [input.twAssets[0].quoteEndpoint,response(200,[twQuoteRow()])],
     [input.twAssets[0].flowEndpoint,response(200,twFlowPayload())],
     [input.twAssets[0].revenueEndpoint,response(200,[revenueRow()])],
@@ -61,13 +67,15 @@ test('completed source cycle publishes transport health and dataset diagnostics 
   const {result}=await runResearch(t);
   const read=result.orchestration.published;
   assert.ok(read.providerDiagnostics,'completed Home must include provider diagnostics');
-  assert.equal(read.providerDiagnostics.providers.length,6);
-  assert.equal(read.providerDiagnostics.datasets.length,12);
+  assert.equal(read.providerDiagnostics.providers.length,7);
+  assert.equal(read.providerDiagnostics.datasets.length,15);
   const sec=read.providerDiagnostics.providers.find(x=>x.providerId==='sec-edgar');
   assert.equal(sec.health,'HEALTHY');
   assert.equal(sec.lastSuccessAt,nowMs);
   assert.equal(sec.lastHttpStatus,200);
   assert.equal(sec.freshnessMs,0);
+  const twseMarket=read.providerDiagnostics.providers.find(x=>x.providerId==='twse-market');
+  assert.equal(twseMarket.health,'HEALTHY');
   assert.equal(read.providerDiagnostics.status,'AVAILABLE');
   assert.equal(read.providerDiagnostics.researchOnly,true);
   assert.equal(read.providerDiagnostics.executionWrite,false);
@@ -129,6 +137,10 @@ test('Global overview shows macro facts without inventing regional direction',as
   assert.equal(us.facts.find(x=>x.field==='inflation.cpi_index').value,326.5);
   assert.equal(us.facts.find(x=>x.field==='labor.unemployment_rate').value,4.2);
   assert.equal(us.facts.find(x=>x.field==='employment.nonfarm_payroll').value,159500);
+  const tw=view.regions.find(x=>x.region==='TW');
+  assert.equal(tw.status,'AVAILABLE');
+  assert.ok(tw.facts.some(x=>x.field==='market.index.taiex.close'));
+  assert.ok(tw.facts.some(x=>x.field==='market.index.otc.close'));
   assert.equal(view.regions.find(x=>x.region==='JP').status,'UNAVAILABLE');
   assert.equal(view.regions.find(x=>x.region==='JP').facts.length,0);
   const html=Renderer.renderHomeSections(view).regionsHtml;
