@@ -38,13 +38,15 @@
     const row=source.find(x=>x&&x.market===market);
     if(!row)return {market,status:'UNAVAILABLE',stateLabel:'UNAVAILABLE',asOf:null,data:null};
     const status=text(row.status)?row.status:'UNAVAILABLE';
-    return {
+    const out={
       market,
       status,
       stateLabel:status==='UNAVAILABLE'?'UNAVAILABLE':(text(row.state)?row.state:status),
       asOf:finite(row.asOf)?row.asOf:null,
       data:status==='UNAVAILABLE'?null:(object(row.data)?Object.freeze({...row.data}):null)
     };
+    if(text(row.reason))out.reason=row.reason;
+    return out;
   }
 
   function researchStageLabel(stage){
