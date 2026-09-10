@@ -46,6 +46,23 @@ function nvdaInstrument(){
   });
 }
 
+function blsSource(seriesId,entityId,field,unit){
+  return Object.freeze({
+    endpoint:`https://api.bls.gov/publicAPI/v2/timeseries/data/${seriesId}?latest=true`,
+    definitions:Object.freeze({
+      [seriesId]:Object.freeze({entityId,scope:'US',field,unit})
+    })
+  });
+}
+
+function ecbSource(seriesKey,entityId,field,unit='PCT'){
+  const [flow,...key]=seriesKey.split('.');
+  return Object.freeze({
+    endpoint:`https://data-api.ecb.europa.eu/service/data/${flow}/${key.join('.')}`,
+    definition:Object.freeze({seriesKey,entityId,scope:'EU',field,unit})
+  });
+}
+
 function buildBootstrapInput(nowMs){
   if(!finite(nowMs)||nowMs<0)throw Error('NOW_INVALID');
   const tradeDate=taipeiTradeDate(nowMs);
@@ -91,31 +108,16 @@ function buildBootstrapInput(nowMs){
     regions:Object.freeze({
       US:Object.freeze({
         bls:Object.freeze([
-          Object.freeze({
-            endpoint:'https://api.bls.gov/publicAPI/v2/timeseries/data/CUUR0000SA0',
-            definitions:Object.freeze({
-              CUUR0000SA0:Object.freeze({
-                entityId:'MACRO:US:CPI',
-                scope:'US',
-                field:'inflation.cpi_index',
-                unit:'INDEX'
-              })
-            })
-          })
+          blsSource('CUUR0000SA0','MACRO:US:CPI','inflation.cpi_index','INDEX'),
+          blsSource('LNS14000000','MACRO:US:UNEMPLOYMENT','labor.unemployment_rate','PCT'),
+          blsSource('CES0000000001','MACRO:US:PAYROLL','employment.nonfarm_payroll','THOUSANDS')
         ])
       }),
       EU:Object.freeze({
         ecb:Object.freeze([
-          Object.freeze({
-            endpoint:'https://data-api.ecb.europa.eu/service/data/ICP/M.U2.N.000000.4.ANR',
-            definition:Object.freeze({
-              seriesKey:'ICP.M.U2.N.000000.4.ANR',
-              entityId:'MACRO:EU:HICP',
-              scope:'EU',
-              field:'inflation.hicp_yoy',
-              unit:'PCT'
-            })
-          })
+          ecbSource('ICP.M.U2.N.000000.4.ANR','MACRO:EU:HICP','inflation.hicp_yoy'),
+          ecbSource('FM.D.U2.EUR.4F.KR.MRR_FR.LEV','MACRO:EU:MRO_RATE','rates.main_refinancing'),
+          ecbSource('FM.D.U2.EUR.4F.KR.DFR.LEV','MACRO:EU:DEPOSIT_RATE','rates.deposit_facility')
         ])
       })
     }),
