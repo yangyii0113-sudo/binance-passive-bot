@@ -23,6 +23,7 @@
     STRONG_BEARISH:'強勢偏空',BEARISH:'偏空',NEGATIVE:'偏負向',DOWN:'偏空',SHORT:'偏空',BROAD_DECLINE:'廣泛下跌',
     NEUTRAL:'中性',MIXED:'多空混合',UNAVAILABLE:'暫不判斷'
   });
+  const REGIME_LABELS=Object.freeze({RISK_ON:'風險偏好開啟',RISK_OFF:'風險偏好關閉',NEUTRAL_ROTATION:'中性輪動',UNAVAILABLE:'尚未形成'});
   const EVENT_KIND_LABELS=Object.freeze({CALENDAR:'經濟日曆',NEWS:'重要消息',EVENT:'事件'});
   const IMPACT_LABELS=Object.freeze({EXTREME:'極高',HIGH:'高',MEDIUM:'中',LOW:'低',UNAVAILABLE:'未分級'});
   const esc=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
@@ -36,6 +37,7 @@
   const sideLabel=value=>SIDE_LABELS[String(value??'').toUpperCase()]||String(value??'—');
   const stageLabel=value=>STAGE_LABELS[String(value??'').trim().toUpperCase().replaceAll(' ','_')]||String(value??'—');
   const directionLabel=value=>DIRECTION_LABELS[String(value??'UNAVAILABLE').toUpperCase()]||String(value??'暫不判斷');
+  const regimeLabel=value=>REGIME_LABELS[String(value??'UNAVAILABLE').toUpperCase()]||'尚未形成';
   const instrumentShort=value=>String(value??'—').split(':').pop();
 
   function assertViewModel(value){
@@ -146,15 +148,17 @@
         highlights.push(`有效候選 ${active.length} · 多方 ${longs} · 空方 ${shorts}`);
         hasSupplement=true;
       }
-      const pulse=(Array.isArray(value.marketPulse)?value.marketPulse:[]).find(item=>item.market==='CRYPTO');
+      const pulse=marketPulse(value,'CRYPTO');
       if(pulse?.status==='AVAILABLE'){
         stats.push(`執行引擎 ${statusLabel(pulse.data?.health||'AVAILABLE')}`);
+        if(pulse.data?.regimeStatus==='AVAILABLE')stats.push(`市場環境 ${regimeLabel(pulse.data?.regimeState)}`);
+        else if(pulse.data?.regimeStatus)stats.push('市場環境尚未更新');
         if(finite(pulse.data?.pendingCount)||finite(pulse.data?.openPositionCount))stats.push(`等待 ${pulse.data?.pendingCount??0} · 持倉 ${pulse.data?.openPositionCount??0}`);
         hasSupplement=true;
       }
       const eventCount=highImpactEvents(value,'CRYPTO').length;
       if(eventCount)stats.push(`重大事件 ${eventCount} 則`);
-      gap='已有 PAPER ONLY 執行狀態與策略候選；候選數不等於整體市場趨勢，方向需由市場核心另行判讀。';
+      gap='市場環境沿用 Production Regime Router 唯讀分類；PAPER ONLY 策略候選與 Regime 分開顯示，Regime 不是交易訊號。';
     }else if(region==='EU'){
       gap='已有 ECB 官方宏觀資料時會顯示於此；仍需市場廣度與更多跨來源證據，才能形成區域方向。';
     }else if(region==='CN_HK'){
@@ -238,6 +242,25 @@
     return `<article class="pulse-card tw tw-market-core" data-market-pulse="${market}" data-filter-market="${market}" data-raw-status="${esc(row.status||'UNAVAILABLE')}"><div class="pulse-title"><div><b>${esc(MARKET_LABELS.TW)}</b><small>研究模式 · 市場核心</small></div></div><strong data-field="state">${esc(headline)}</strong><small class="data-state">資料狀態：${esc(statusLabel(row.status))} · ${esc(coverage)}</small><p class="muted">${esc(note)}</p><div class="tw-index-grid">${indexRows}</div><div class="tw-breadth-grid">${breadthRows}</div>${sectorRows}${action}</article>`;
   }
 
+  function decisionBarLabel(value){return value==='FULLY_CLOSED_1H'?'完整收盤 1H':'—';}
+
+  function renderCryptoPulse(row){
+    const market=esc(row.market);
+    const data=object(row.data)?row.data:null;
+    const action='<button class="card-action" data-route="POSITIONS" data-market="CRYPTO">查看加密市場</button>';
+    if(row.status!=='AVAILABLE'||!data){
+      return `<article class="pulse-card crypto" data-market-pulse="${market}" data-filter-market="${market}" data-raw-status="${esc(row.status||'UNAVAILABLE')}"><div class="pulse-title"><div><b>${esc(MARKET_LABELS.CRYPTO)}</b><small>研究模式 · 執行資料不可用</small></div></div><strong data-field="state">Regime 尚未更新</strong><small class="data-state">資料狀態：${esc(statusLabel(row.status))}</small><p class="muted">本輪無法讀取正式模擬交易執行資料；目前不形成市場環境結論。</p>${action}</article>`;
+    }
+    const fresh=data.regimeStatus==='AVAILABLE'&&REGIME_LABELS[data.regimeState];
+    const headline=fresh?regimeLabel(data.regimeState):'Regime 尚未更新';
+    const lastState=!fresh&&REGIME_LABELS[data.lastRegimeState]?`<p class="muted">上次狀態：${esc(regimeLabel(data.lastRegimeState))} · 僅供歷史參考，目前不形成市場環境結論。</p>`:'';
+    const engineLabel=data.health==='HEALTHY'?'引擎健康':`引擎${statusLabel(data.health)}`;
+    const evidenceNote=data.rawRegimeInputsAvailable===false
+      ?'<p class="muted regime-caveat">目前 runtime 只暴露分類結果；major_returns / breadth / volatility 原始值尚未暴露，因此不生成 Regime confidence。Regime 是市場環境判讀，不是交易訊號。</p>'
+      :'<p class="muted regime-caveat">Regime 是市場環境判讀，不是交易訊號。</p>';
+    return `<article class="pulse-card crypto crypto-regime" data-market-pulse="${market}" data-filter-market="${market}" data-raw-status="${esc(row.status||'UNAVAILABLE')}"><div class="pulse-title"><div><b>${esc(MARKET_LABELS.CRYPTO)}</b><small>Production Regime Router（唯讀） · 市場環境判讀</small></div><span class="safety-pill">僅模擬交易（PAPER ONLY）</span></div><strong data-field="state">${esc(headline)}</strong><small class="data-state">Regime ${esc(statusLabel(data.regimeStatus||'UNAVAILABLE'))} · ${esc(engineLabel)}</small>${lastState}<div class="crypto-regime-grid"><div><span>更新</span><b>${esc(time(data.regimeAsOf))}</b></div><div><span>決策截止</span><b>${esc(time(data.decisionCutoffMs))}</b></div><div><span>決策資料</span><b>${esc(decisionBarLabel(data.decisionBarPolicy))}</b></div><div><span>可用幣種</span><b>${esc(number(data.eligibleUniverseCount))}</b></div><div><span>資料不足</span><b>${esc(number(data.dataInsufficientCount))}</b></div><div><span>執行狀態</span><b>${esc(engineLabel)} · 等待成交 ${esc(number(data.pendingCount))} · 持倉 ${esc(number(data.openPositionCount))}</b></div></div>${evidenceNote}${action}</article>`;
+  }
+
   function usPulseReason(row){
     if(typeof row?.reason==='string'&&row.reason.includes('NASDAQ_EOD_LICENSE_REVIEW_REQUIRED')){
       return 'Nasdaq-listed EOD 市場廣度與指數方案已完成，但授權審查中；全美股即時廣度尚未取得。';
@@ -248,16 +271,14 @@
   function renderPulse(rows){
     if(!rows.length)return '<div class="empty-state" data-raw-status="UNAVAILABLE"><b>資料不足</b><span>等待市場資料。</span></div>';
     return rows.map(row=>{
+      if(row.market==='CRYPTO')return renderCryptoPulse(row);
       if(row.market==='TW')return renderTaiwanPulse(row);
       const market=esc(row.market);
       const status=pulseStateLabel(row);
-      const cryptoAvailable=row.market==='CRYPTO'&&row.status==='AVAILABLE';
-      const mode=row.market==='CRYPTO'?(cryptoAvailable?'模擬交易只讀':'研究模式 · 執行資料不可用'):'研究模式';
-      const reason=row.market==='CRYPTO'
-        ?(cryptoAvailable?`執行引擎 ${statusLabel(row.data?.health||'AVAILABLE')} · 等待成交 ${row.data?.pendingCount??'—'} · 持倉 ${row.data?.openPositionCount??'—'}`:'本輪無法讀取正式模擬交易執行資料')
-        :row.market==='US'?usPulseReason(row):'市場指數資料仍待補齊；目前可查看個股官方研究快照';
-      const action=row.market==='CRYPTO'?'查看加密市場':row.market==='US'?'查看美股':'查看台股';
-      return `<article class="pulse-card ${safeClass(row.market)}" data-market-pulse="${market}" data-filter-market="${market}" data-raw-status="${esc(row.status||'UNAVAILABLE')}"><div class="pulse-title"><div><b>${esc(MARKET_LABELS[row.market]||row.market)}</b><small>${esc(mode)}</small></div></div><strong data-field="state">${esc(status)}</strong><small class="data-state">資料狀態：${esc(statusLabel(row.status))}</small><p class="muted">${esc(reason)}</p><button class="card-action" data-route="${row.market==='CRYPTO'?'POSITIONS':'RESEARCH'}" data-market="${market}">${action}</button></article>`;
+      const mode='研究模式';
+      const reason=row.market==='US'?usPulseReason(row):'市場指數資料仍待補齊；目前可查看個股官方研究快照';
+      const action=row.market==='US'?'查看美股':'查看台股';
+      return `<article class="pulse-card ${safeClass(row.market)}" data-market-pulse="${market}" data-filter-market="${market}" data-raw-status="${esc(row.status||'UNAVAILABLE')}"><div class="pulse-title"><div><b>${esc(MARKET_LABELS[row.market]||row.market)}</b><small>${esc(mode)}</small></div></div><strong data-field="state">${esc(status)}</strong><small class="data-state">資料狀態：${esc(statusLabel(row.status))}</small><p class="muted">${esc(reason)}</p><button class="card-action" data-route="RESEARCH" data-market="${market}">${action}</button></article>`;
     }).join('');
   }
 
