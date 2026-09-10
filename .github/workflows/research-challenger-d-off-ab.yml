@@ -1,0 +1,199 @@
+name: FOXYYA Research D-Off A/B
+
+on:
+  push:
+    branches:
+      - research/eth365-challenger-d-off-20260911
+    paths:
+      - 'research_runs/d_off_ab.trigger'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  ab-study:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      PYTHONPATH: src:.
+      PYTHONUNBUFFERED: '1'
+      CONTROL_RUN_ID: '34367229010'
+      CONTROL_GIT_SHA: '2b8481b83852f0839b44602027cb473016f1b9e1'
+      CONTROL_ARTIFACT: 'foxyya-eth365-2b8481b83852f0839b44602027cb473016f1b9e1'
+      CHALLENGER_VERSION: 'FOXYYA-EXEC-V2-RC1-D-OFF-20260911'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install test dependency
+        run: python -m pip install pytest
+      - name: Verify focused challenger contract
+        run: python -m pytest tests/test_research_challenger_d_off.py -v
+      - name: Verify safety and historical integrity contracts
+        run: >-
+          python -m pytest
+          tests/test_runtime_safety.py
+          tests/test_no_lookahead.py
+          tests/test_replay_reproducibility.py
+          tests/test_artifact_integrity.py
+          -v
+      - name: Download sealed Control ETH365 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.CONTROL_ARTIFACT }}
+          path: ${{ runner.temp }}/control-eth365
+          run-id: ${{ env.CONTROL_RUN_ID }}
+          github-token: ${{ github.token }}
+      - name: Revalidate Control artifact before comparison
+        run: python tools/validate_eth365_artifacts.py "$RUNNER_TEMP/control-eth365" --expected-git-sha "$CONTROL_GIT_SHA"
+      - name: Run D-off Challenger on exact Control input
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY' | tee "$RUNNER_TEMP/d-off-summary.json"
+          import json
+          import os
+          from pathlib import Path
+          from backtest.cli import run_eth_365_study
+
+          control_root = Path(os.environ['RUNNER_TEMP']) / 'control-eth365'
+          runs = sorted(p for p in control_root.glob('bt-*') if p.is_dir())
+          if len(runs) != 1:
+              raise SystemExit(f'expected exactly one Control run, got {len(runs)}')
+          control = runs[0]
+          input_payload = json.loads((control / 'input_data.json').read_text(encoding='utf-8'))
+          control_cfg = json.loads((control / 'run_config.json').read_text(encoding='utf-8'))
+          result = run_eth_365_study(
+              output_root=Path('artifacts/research-d-off'),
+              now_ms=int(control_cfg['requested_end_ms']),
+              input_payload=input_payload,
+              execution_days=365,
+              warmup_days=200,
+              git_sha=os.environ['GITHUB_SHA'],
+              config_path=Path('FOXYYA_RESEARCH_D_OFF_CONFIG.json'),
+          )
+          print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True, allow_nan=False))
+          PY
+      - name: Validate Challenger evidence and namespace
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/validate_eth365_artifacts.py artifacts/research-d-off --expected-git-sha "$GITHUB_SHA"
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          roots = sorted(p for p in Path('artifacts/research-d-off').glob('bt-*') if p.is_dir())
+          if len(roots) != 1:
+              raise SystemExit(f'expected one Challenger run, got {len(roots)}')
+          run = roots[0]
+          cfg = json.loads((run / 'run_config.json').read_text(encoding='utf-8'))
+          metrics = json.loads((run / 'metrics.json').read_text(encoding='utf-8'))
+          if cfg.get('strategy_version') != os.environ['CHALLENGER_VERSION']:
+              raise SystemExit('challenger strategy_version mismatch')
+          if cfg.get('paper_only') is not True or cfg.get('real_orders') is not False:
+              raise SystemExit('challenger paper safety flags invalid')
+          d = ((metrics.get('segments') or {}).get('family') or {}).get('D') or {}
+          if int(d.get('n', 0) or 0) != 0:
+              raise SystemExit('family D produced a closed trade in D-off Challenger')
+          print('D_OFF_CHALLENGER_PROVENANCE_VERIFIED')
+          PY
+      - name: Build Control vs Challenger comparison
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/comparison
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          control_root = Path(os.environ['RUNNER_TEMP']) / 'control-eth365'
+          control_run = next(p for p in control_root.glob('bt-*') if p.is_dir())
+          challenger_run = next(p for p in Path('artifacts/research-d-off').glob('bt-*') if p.is_dir())
+          cm = json.loads((control_run / 'metrics.json').read_text(encoding='utf-8'))
+          qm = json.loads((challenger_run / 'metrics.json').read_text(encoding='utf-8'))
+          cc = json.loads((control_run / 'run_config.json').read_text(encoding='utf-8'))
+          qc = json.loads((challenger_run / 'run_config.json').read_text(encoding='utf-8'))
+
+          def headline(m):
+              p = m.get('performance') or {}
+              costs = m.get('cost_attribution') or {}
+              return {
+                  'closed_trades': p.get('closed_trades'),
+                  'win_rate': p.get('win_rate'),
+                  'net_return': p.get('net_return'),
+                  'net_pnl_usdt': p.get('net_pnl_usdt'),
+                  'expectancy_r': p.get('expectancy_r'),
+                  'profit_factor': p.get('profit_factor'),
+                  'max_drawdown': p.get('max_drawdown'),
+                  'gross_raw_pnl_usdt': costs.get('gross_raw_pnl_usdt'),
+                  'slippage_usdt': costs.get('slippage_usdt'),
+                  'fees_usdt': costs.get('fees_usdt'),
+                  'funding_usdt': costs.get('funding_usdt'),
+              }
+
+          control = headline(cm)
+          challenger = headline(qm)
+          keys = ('closed_trades','win_rate','net_return','net_pnl_usdt','expectancy_r','profit_factor','max_drawdown',
+                  'gross_raw_pnl_usdt','slippage_usdt','fees_usdt','funding_usdt')
+          delta = {}
+          for key in keys:
+              a, b = control.get(key), challenger.get(key)
+              delta[key] = None if a is None or b is None else b - a
+
+          control_n = int(control.get('closed_trades') or 0)
+          challenger_n = int(challenger.get('closed_trades') or 0)
+          trade_retention = (challenger_n / control_n) if control_n else None
+          screen = {
+              'trade_retention_ratio': trade_retention,
+              'retains_at_least_80pct_trades': trade_retention is not None and trade_retention >= 0.80,
+              'profit_factor_improved': (challenger.get('profit_factor') or 0) > (control.get('profit_factor') or 0),
+              'expectancy_r_improved': (challenger.get('expectancy_r') or 0) > (control.get('expectancy_r') or 0),
+              'net_return_improved': (challenger.get('net_return') or 0) > (control.get('net_return') or 0),
+              'max_drawdown_not_worse': (challenger.get('max_drawdown') or 1) <= (control.get('max_drawdown') or 1),
+              'note': 'Research screen only; it does not authorize promotion or production deployment.'
+          }
+          comparison = {
+              'schema': 'foxyya-research-control-vs-challenger/1',
+              'experiment': 'D_OFF_ONLY',
+              'control': {'strategy_version': cc.get('strategy_version'), 'git_sha': cc.get('git_sha'), **control},
+              'challenger': {'strategy_version': qc.get('strategy_version'), 'git_sha': qc.get('git_sha'), **challenger},
+              'delta_challenger_minus_control': delta,
+              'research_screen': screen,
+              'same_input_window': cc.get('start_ms') == qc.get('start_ms') and cc.get('end_ms') == qc.get('end_ms'),
+              'same_initial_nav': cc.get('initial_nav_usdt') == qc.get('initial_nav_usdt'),
+              'same_cost_model': cc.get('cost_model') == qc.get('cost_model'),
+              'same_exit_model': cc.get('official_exit_model') == qc.get('official_exit_model'),
+              'same_risk_model': cc.get('risk') == qc.get('risk'),
+          }
+          out = Path('artifacts/comparison/control_vs_d_off.json')
+          out.write_text(json.dumps(comparison, ensure_ascii=False, indent=2, sort_keys=True, allow_nan=False) + '\n', encoding='utf-8')
+          print('FOXYYA_D_OFF_AB=' + json.dumps(comparison, ensure_ascii=False, sort_keys=True, allow_nan=False))
+          PY
+      - name: Upload deterministic D-off Challenger artifact
+        id: upload_challenger
+        uses: actions/upload-artifact@v4
+        with:
+          name: foxyya-eth365-d-off-${{ github.sha }}
+          path: artifacts/research-d-off/**
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload Control-vs-D-off comparison
+        uses: actions/upload-artifact@v4
+        with:
+          name: foxyya-control-vs-d-off-${{ github.sha }}
+          path: artifacts/comparison/control_vs_d_off.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Round-trip Challenger artifact
+        uses: actions/download-artifact@v4
+        with:
+          artifact-ids: ${{ steps.upload_challenger.outputs.artifact-id }}
+          path: ${{ runner.temp }}/d-off-roundtrip
+          merge-multiple: true
+      - name: Revalidate round-trip Challenger artifact
+        run: python tools/validate_eth365_artifacts.py "$RUNNER_TEMP/d-off-roundtrip" --expected-git-sha "$GITHUB_SHA"
