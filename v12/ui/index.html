@@ -4,127 +4,162 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#05070c">
-  <title>FOXYYA v12 Preview · Research Staging</title>
+  <title>FOXYYA v12 預覽 · 研究測試環境</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 <div class="app-shell">
   <aside class="sidebar" aria-label="主導覽">
     <button class="brand" data-route="HOME" aria-label="FOXYYA 首頁">
-      <strong>FOXYYA</strong><span>v12 · PREVIEW</span>
+      <strong>FOXYYA</strong><span>v12 · 研究預覽</span>
     </button>
     <div class="context-switch" aria-label="市場範圍">
-      <button class="context-btn active" data-context="ALL">All</button>
-      <button class="context-btn" data-context="CRYPTO">Crypto</button>
-      <button class="context-btn" data-context="US">US</button>
-      <button class="context-btn" data-context="TW">TW</button>
+      <button class="context-btn active" data-context="ALL">全部</button>
+      <button class="context-btn" data-context="CRYPTO">加密</button>
+      <button class="context-btn" data-context="US">美股</button>
+      <button class="context-btn" data-context="TW">台股</button>
     </div>
     <nav class="side-nav">
       <button class="nav-btn active" data-route="HOME"><span>⌂</span>首頁</button>
       <button class="nav-btn" data-route="MARKETS"><span>⌁</span>市場</button>
       <button class="nav-btn" data-route="RESEARCH"><span>◇</span>研究</button>
-      <button class="nav-btn" data-route="POSITIONS" disabled title="UNAVAILABLE：此研究環境未連接交易持倉" aria-disabled="true"><span>▣</span>持倉</button>
-      <button class="nav-btn" data-route="RESULTS" disabled title="Coming Soon：尚未建立研究追蹤與歷史驗證結果" aria-disabled="true"><span>↗</span>交易結果</button>
-      <button class="nav-btn" data-route="LAB" disabled title="Coming Soon：研究實驗室尚未實作" aria-disabled="true"><span>⌬</span>Lab</button>
+      <button class="nav-btn" data-route="POSITIONS" disabled title="初始載入後將依正式模擬交易只讀資料啟用" aria-disabled="true"><span>▣</span>持倉</button>
+      <button class="nav-btn" data-route="RESULTS" disabled title="初始載入後將依已平倉模擬交易資料啟用" aria-disabled="true"><span>↗</span>交易結果</button>
+      <button class="nav-btn" data-route="LAB" disabled title="初始載入後將依研究與模擬交易快照啟用" aria-disabled="true"><span>⌬</span>實驗室</button>
     </nav>
     <div class="nav-divider"></div>
     <nav class="side-nav secondary-nav">
       <button class="nav-btn" data-route="INTELLIGENCE"><span>◎</span>情報中心</button>
-      <button class="nav-btn" data-action="CALENDAR" disabled title="尚未實作：缺少已授權經濟日曆來源" aria-disabled="true"><span>□</span>經濟日曆</button>
-      <button class="nav-btn" data-action="NOTIFICATIONS" disabled title="尚未實作：通知服務未啟用" aria-disabled="true"><span>◌</span>通知</button>
+      <button class="nav-btn" data-action="CALENDAR" disabled title="初始載入後將依官方經濟日曆資料啟用" aria-disabled="true"><span>□</span>經濟日曆</button>
+      <button class="nav-btn" data-action="NOTIFICATIONS" disabled title="尚未提供：通知服務未啟用" aria-disabled="true"><span>◌</span>通知</button>
       <button class="nav-btn" data-route="SYSTEM"><span>⚙</span>系統</button>
     </nav>
     <div class="safety-card">
-      <span class="dot safe"></span><b>RESEARCH ONLY</b>
-      <small>EXECUTION_WRITE=false · 禁止下單</small>
+      <span class="dot safe"></span><b>僅研究模式</b>
+      <small>執行寫入關閉（EXECUTION_WRITE=false）· 禁止真實下單</small>
     </div>
   </aside>
 
   <div class="content-shell">
     <header class="topbar">
       <div class="mobile-brand"><b>FOXYYA</b><span>v12</span></div>
-      <div class="data-banner"><span class="dot neutral"></span><span id="data-health">PREVIEW · DATA UNAVAILABLE</span></div>
+      <div class="data-banner"><span class="dot neutral"></span><span id="data-health">研究測試環境 · 等待資料</span></div>
       <div class="top-actions">
-        <button class="icon-btn" data-action="SEARCH" aria-label="搜尋" disabled title="尚未實作：跨市場搜尋尚未建立" aria-disabled="true">⌕</button>
-        <button class="icon-btn" data-action="NOTIFICATIONS" aria-label="通知" disabled title="尚未實作：通知服務未啟用" aria-disabled="true">◌</button>
-        <button class="profile-btn" data-action="PROFILE" aria-label="個人與設定" disabled title="尚未實作：個人帳戶功能未建立" aria-disabled="true">O</button>
+        <button class="icon-btn" data-action="SEARCH" aria-label="搜尋" disabled title="初始載入後啟用本機快照搜尋" aria-disabled="true">⌕</button>
+        <button class="icon-btn" data-action="NOTIFICATIONS" aria-label="通知" disabled title="尚未提供：通知服務未啟用" aria-disabled="true">◌</button>
+        <button class="profile-btn" data-action="PROFILE" aria-label="個人與設定" disabled title="尚未提供：個人帳戶功能未建立" aria-disabled="true">O</button>
       </div>
     </header>
 
     <div class="research-toolbar"><span id="market-scope-label">研究範圍：全部市場 · 全球總覽維持完整</span><button class="text-btn" id="refresh-research">重新讀取</button></div>
     <p id="read-status" class="read-status" role="status" aria-live="polite" hidden></p>
-    <div class="mobile-context" aria-label="手機市場範圍"><button data-context="ALL">全部</button><button data-context="CRYPTO">Crypto</button><button data-context="US">美股</button><button data-context="TW">台股</button></div>
+    <div class="mobile-context" aria-label="手機市場範圍"><button data-context="ALL">全部</button><button data-context="CRYPTO">加密</button><button data-context="US">美股</button><button data-context="TW">台股</button></div>
+
     <main class="main">
-      <details class="feature-notice"><summary>研究環境範圍與尚未提供功能</summary><p>可用：TW／US 官方研究快照、Global Overview、來源診斷與 Lineage 證據。資料為延遲／申報快照。</p><p>Coming Soon：搜尋、收藏、個人設定、Lab、研究追蹤結果尚未實作。Unavailable：日曆與新聞事件來源未接入；通知未啟用；Crypto、持倉與交易結果未連接 Execution。</p><p>美股即時價格、市場共識、選擇權缺少正式授權資料；統計優勢與歷史／前瞻驗證尚未成立。</p></details>
+      <details class="feature-notice"><summary>研究環境範圍與資料限制</summary><p>目前可用：台股／美股官方研究快照、加密貨幣模擬交易只讀資料、持倉與已平倉結果、官方經濟日曆與重要消息、全球總覽、資料來源診斷及來源追溯證據。資料依來源可能為即時、延遲或申報快照。</p><p>尚未提供：通知、個人帳戶與個人設定。美股即時行情、市場共識與選擇權分析仍缺正式授權資料；研究結果的 +1 日／+5 日／+20 日追蹤仍需累積可驗證樣本。</p><p>日本、韓國與中國／香港區域資料仍受 API 憑證、授權或來源審查限制；平台不以假資料填補缺口。</p></details>
+
       <section class="screen active" id="home" data-screen="HOME">
         <div class="page-head">
-          <div><span class="eyebrow">DAILY DECISION DESK</span><h1 tabindex="-1">今日市場</h1><p>先看全球狀態，再看早期趨勢、三市場與重要事件。</p></div>
+          <div><span class="eyebrow">每日決策台</span><h1 tabindex="-1">今日市場</h1><p>先看方向與可信度，再看資料缺口、早期趨勢與重要事件。</p></div>
           <div class="asof"><span>研究快照 · UTC</span><b id="home-asof">—</b></div>
         </div>
 
+        <section class="home-section" id="decision-summary" data-home-content="decision-summary">
+          <div class="empty-state"><b>決策摘要載入中</b><span>正在整理加密市場、美股、台股與全球資料覆蓋。</span></div>
+        </section>
+
         <section class="home-section" id="global-status">
-          <div class="section-head"><div><span class="eyebrow">GLOBAL MARKET STATUS</span><h2>七大區域市場</h2></div><button class="text-btn" data-route="INTELLIGENCE" data-primary-action>查看全球市場 →</button></div>
+          <div class="section-head"><div><span class="eyebrow">全球市場狀態</span><h2>七大區域市場</h2></div><button class="text-btn" data-route="INTELLIGENCE" data-primary-action>查看全球市場 →</button></div>
           <div class="region-grid">
-            <article class="region-card" data-region="US"><span>🇺🇸 美國</span><b data-field="bias">UNAVAILABLE</b><small data-field="confidence">Confidence —</small></article>
-            <article class="region-card" data-region="TW"><span>🇹🇼 台灣</span><b data-field="bias">UNAVAILABLE</b><small data-field="confidence">Confidence —</small></article>
-            <article class="region-card" data-region="CN_HK"><span>🇨🇳🇭🇰 中國／香港</span><b data-field="bias">UNAVAILABLE</b><small data-field="confidence">Confidence —</small></article>
-            <article class="region-card" data-region="JP"><span>🇯🇵 日本</span><b data-field="bias">UNAVAILABLE</b><small data-field="confidence">Confidence —</small></article>
-            <article class="region-card" data-region="KR"><span>🇰🇷 韓國</span><b data-field="bias">UNAVAILABLE</b><small data-field="confidence">Confidence —</small></article>
-            <article class="region-card" data-region="EU"><span>🇪🇺 歐洲</span><b data-field="bias">UNAVAILABLE</b><small data-field="confidence">Confidence —</small></article>
-            <article class="region-card" data-region="CRYPTO"><span>₿ Crypto</span><b data-field="bias">UNAVAILABLE</b><small data-field="confidence">Confidence —</small></article>
+            <article class="region-card" data-region="US"><span>🇺🇸 美國</span><b data-field="bias">暫不判斷</b><small data-field="confidence">等待資料</small></article>
+            <article class="region-card" data-region="TW"><span>🇹🇼 台灣</span><b data-field="bias">暫不判斷</b><small data-field="confidence">等待資料</small></article>
+            <article class="region-card" data-region="CN_HK"><span>🇨🇳🇭🇰 中國／香港</span><b data-field="bias">暫不判斷</b><small data-field="confidence">等待資料</small></article>
+            <article class="region-card" data-region="JP"><span>🇯🇵 日本</span><b data-field="bias">暫不判斷</b><small data-field="confidence">等待資料</small></article>
+            <article class="region-card" data-region="KR"><span>🇰🇷 韓國</span><b data-field="bias">暫不判斷</b><small data-field="confidence">等待資料</small></article>
+            <article class="region-card" data-region="EU"><span>🇪🇺 歐洲</span><b data-field="bias">暫不判斷</b><small data-field="confidence">等待資料</small></article>
+            <article class="region-card" data-region="CRYPTO"><span>₿ 加密市場</span><b data-field="bias">暫不判斷</b><small data-field="confidence">等待資料</small></article>
           </div>
         </section>
 
         <section class="home-section" id="today-focus">
-          <div class="section-head"><div><span class="eyebrow">TODAY FOCUS</span><h2>今天最值得注意</h2></div><button class="text-btn" disabled title="Coming Soon：今日焦點排序尚未實作">完整情報 · Coming Soon</button></div>
-          <div class="empty-state"><b>UNAVAILABLE</b><span>Coming Soon：今日焦點排序尚未實作；可至全球總覽查看現有官方資料。</span></div>
+          <div class="section-head"><div><span class="eyebrow">今日焦點</span><h2>今天最值得注意</h2></div><button class="text-btn" disabled title="初始載入後依已驗證事件產生焦點">完整情報 · 等待資料</button></div>
+          <div class="empty-state"><b>載入中</b><span>正在整理高影響等級的已驗證事件。</span></div>
         </section>
 
         <section class="home-section" id="early-trend">
-          <div class="section-head"><div><span class="eyebrow">EARLY TREND INTELLIGENCE</span><h2>資金正在提前往哪裡走？</h2></div><button class="text-btn" data-route="RESEARCH" data-section="research-early" data-primary-action>查看 Pre-Entry →</button></div>
-          <div class="stage-strip" aria-label="Early Trend 狀態流">
-            <span>DETECT</span><i>→</i><span>EARLY WATCH</span><i>→</i><span>ACCUMULATION</span><i>→</i><span>CONFIRMING</span><i>→</i><span>READY</span>
+          <div class="section-head"><div><span class="eyebrow">早期趨勢情報</span><h2>資金正在提前往哪裡走？</h2></div><button class="text-btn" data-route="RESEARCH" data-section="research-early" data-primary-action>查看進場前研究 →</button></div>
+          <div class="stage-strip" aria-label="早期趨勢狀態流">
+            <span>偵測</span><i>→</i><span>早期觀察</span><i>→</i><span>累積</span><i>→</i><span>確認中</span><i>→</i><span>條件就緒</span>
           </div>
-          <div data-home-content="early-trend"><div class="empty-state"><b>UNAVAILABLE</b><span>Smart Money / Expectation / Breadth / Rotation / Lead-Lag 尚未接入即時證據。</span></div></div>
+          <div data-home-content="early-trend"><div class="empty-state"><b>等待研究證據</b><span>智慧資金、預期、市場廣度、輪動與領先落後關係依可用來源逐步補齊。</span></div></div>
         </section>
 
         <section class="home-section" id="market-pulse">
-          <div class="section-head"><div><span class="eyebrow">THREE-MARKET PULSE</span><h2>三市場一起看</h2></div><button class="text-btn" data-route="MARKETS" data-primary-action>查看行情 →</button></div>
+          <div class="section-head"><div><span class="eyebrow">三市場脈動</span><h2>三市場一起看</h2></div><button class="text-btn" data-route="MARKETS" data-primary-action>查看市場 →</button></div>
           <div class="pulse-grid">
-            <article class="pulse-card crypto" data-market-pulse="CRYPTO" data-filter-market="CRYPTO"><div class="pulse-title"><span>₿</span><div><b>Crypto</b><small>Automation</small></div></div><strong data-field="state">UNAVAILABLE</strong><div class="pulse-lines"><span>BTC / ETH</span><b>—</b><span>Breadth / Funding</span><b>—</b><span>Qualified / Pending</span><b>—</b></div><button data-route="MARKETS" data-market="CRYPTO" class="card-action">查看 Crypto</button></article>
-            <article class="pulse-card us" data-market-pulse="US" data-filter-market="US"><div class="pulse-title"><span>🇺🇸</span><div><b>US Stocks</b><small>Research</small></div></div><strong data-field="state">UNAVAILABLE</strong><div class="pulse-lines"><span>S&P / Nasdaq</span><b>—</b><span>VIX / US10Y</span><b>—</b><span>Sector / Earnings</span><b>—</b></div><button data-route="MARKETS" data-market="US" class="card-action">查看美股</button></article>
-            <article class="pulse-card tw" data-market-pulse="TW" data-filter-market="TW"><div class="pulse-title"><span>🇹🇼</span><div><b>Taiwan Stocks</b><small>Research</small></div></div><strong data-field="state">UNAVAILABLE</strong><div class="pulse-lines"><span>TAIEX / TPEx</span><b>—</b><span>外資 / 投信</span><b>—</b><span>產業輪動</span><b>—</b></div><button data-route="MARKETS" data-market="TW" class="card-action">查看台股</button></article>
+            <article class="pulse-card crypto" data-market-pulse="CRYPTO" data-filter-market="CRYPTO"><div class="pulse-title"><span>₿</span><div><b>加密市場</b><small>模擬交易只讀</small></div></div><strong data-field="state">等待資料</strong><div class="pulse-lines"><span>BTC / ETH</span><b>—</b><span>市場廣度 / 資金費率</span><b>—</b><span>條件成立 / 等待成交</span><b>—</b></div><button data-route="MARKETS" data-market="CRYPTO" class="card-action">查看加密市場</button></article>
+            <article class="pulse-card us" data-market-pulse="US" data-filter-market="US"><div class="pulse-title"><span>🇺🇸</span><div><b>美股</b><small>研究模式</small></div></div><strong data-field="state">等待資料</strong><div class="pulse-lines"><span>S&amp;P / Nasdaq</span><b>—</b><span>VIX / 美國 10 年債</span><b>—</b><span>產業 / 財報</span><b>—</b></div><button data-route="MARKETS" data-market="US" class="card-action">查看美股</button></article>
+            <article class="pulse-card tw" data-market-pulse="TW" data-filter-market="TW"><div class="pulse-title"><span>🇹🇼</span><div><b>台股</b><small>研究模式</small></div></div><strong data-field="state">等待資料</strong><div class="pulse-lines"><span>加權 / 櫃買</span><b>—</b><span>外資 / 投信</span><b>—</b><span>產業輪動</span><b>—</b></div><button data-route="MARKETS" data-market="TW" class="card-action">查看台股</button></article>
           </div>
         </section>
 
         <section class="home-section" id="opportunities">
-          <div class="section-head"><div><span class="eyebrow">OPPORTUNITIES</span><h2>策略與研究機會</h2></div><button class="text-btn" data-route="RESEARCH" data-primary-action>查看研究 →</button></div>
+          <div class="section-head"><div><span class="eyebrow">策略與研究機會</span><h2>目前值得人工覆核的項目</h2></div><button class="text-btn" data-route="RESEARCH" data-primary-action>查看研究 →</button></div>
           <div class="opportunity-grid">
-            <article class="opportunity-card" data-filter-market="CRYPTO"><span>Crypto Strategies</span><b>A / B / C / D</b><p>Qualified / Pending / Open 只讀取正式 Paper Runtime。</p><small>UNAVAILABLE</small></article>
-            <article class="opportunity-card" data-filter-market="US"><span>US Research</span><b>Trend · Earnings · Expectation</b><p>Early Trend + 六維研究，不產生自動成交。</p><small>UNAVAILABLE</small></article>
-            <article class="opportunity-card" data-filter-market="TW"><span>TW Research</span><b>Trend · 法人 · 產業</b><p>月營收、法人與海外連動分開保留。</p><small>UNAVAILABLE</small></article>
+            <article class="opportunity-card" data-filter-market="CRYPTO"><span>加密策略</span><b>A / B / C / D</b><p>條件成立、等待成交與持倉資料只讀取正式模擬交易執行資料。</p><small>等待資料</small></article>
+            <article class="opportunity-card" data-filter-market="US"><span>美股研究</span><b>趨勢 · 財報 · 預期</b><p>早期趨勢與六維研究僅供研究，不產生自動成交。</p><small>等待資料</small></article>
+            <article class="opportunity-card" data-filter-market="TW"><span>台股研究</span><b>趨勢 · 法人 · 產業</b><p>月營收、法人與海外連動分開保留並追溯來源。</p><small>等待資料</small></article>
           </div>
         </section>
 
         <section class="home-section" id="risk-events">
-          <div class="section-head"><div><span class="eyebrow">GLOBAL RISK & EVENTS</span><h2>國際情勢與重要事件</h2></div><button class="text-btn" disabled title="Unavailable：新聞與日曆資料未接入">全部事件 · Unavailable</button></div>
-          <div class="filter-row"><button class="filter" disabled title="Unavailable：對應資料或功能尚未接入">熱點</button><button class="filter" disabled title="Unavailable：對應資料或功能尚未接入">經濟</button><button class="filter" disabled title="Unavailable：對應資料或功能尚未接入">地緣政治</button><button class="filter" disabled title="Unavailable：對應資料或功能尚未接入">政策</button><button class="filter" disabled title="Unavailable：對應資料或功能尚未接入">財報</button></div>
-          <div data-home-content="events"><div class="empty-state"><b>UNAVAILABLE</b><span>等待 News / Macro / Calendar verified sources。</span></div></div>
+          <div class="section-head"><div><span class="eyebrow">全球風險與事件</span><h2>國際情勢與重要事件</h2></div><button class="text-btn" disabled title="事件分類篩選尚未提供">全部事件 · 分類篩選尚未提供</button></div>
+          <div class="filter-row"><button class="filter" disabled title="事件分類篩選尚未提供">熱點</button><button class="filter" disabled title="事件分類篩選尚未提供">經濟</button><button class="filter" disabled title="事件分類篩選尚未提供">地緣政治</button><button class="filter" disabled title="事件分類篩選尚未提供">政策</button><button class="filter" disabled title="事件分類篩選尚未提供">財報</button></div>
+          <div data-home-content="events"><div class="empty-state"><b>載入中</b><span>等待重要消息、宏觀與經濟日曆資料。</span></div></div>
         </section>
       </section>
 
-      <section class="screen" id="markets" data-screen="MARKETS"><div class="page-head"><div><span class="eyebrow">MARKET DISCOVERY</span><h1 tabindex="-1">市場</h1><p>找正在變化的標的，不在這裡授權交易。</p></div></div><div class="filter-row"><button class="filter active" data-context="ALL">全部市場</button><button class="filter" data-context="CRYPTO">Crypto</button><button class="filter" data-context="US">美股</button><button class="filter" data-context="TW">台股</button><button class="filter" disabled title="Unavailable：對應資料或功能尚未接入">收藏</button></div><p class="muted">目前涵蓋 TWSE:2330、TPEX:6488、NASDAQ:NVDA；資料卡依上方市場範圍篩選。</p><div class="opportunity-grid" data-market-content><p class="muted">研究資料載入中…</p></div></section>
+      <section class="screen" id="markets" data-screen="MARKETS">
+        <div class="page-head"><div><span class="eyebrow">市場探索</span><h1 tabindex="-1">市場</h1><p>找正在變化的標的，不在這裡授權交易。</p></div></div>
+        <div class="filter-row"><button class="filter active" data-context="ALL">全部市場</button><button class="filter" data-context="CRYPTO">加密市場</button><button class="filter" data-context="US">美股</button><button class="filter" data-context="TW">台股</button><button class="filter" disabled title="初始載入後啟用本機收藏">收藏</button></div>
+        <p class="muted">台股／美股研究與加密模擬候選依上方市場範圍篩選；資料缺口不以假值補齊。</p>
+        <div class="opportunity-grid" data-market-content><p class="muted">研究資料載入中…</p></div>
+      </section>
 
-      <section class="screen" id="research" data-screen="RESEARCH"><div class="page-head"><div><span class="eyebrow">RESEARCH</span><h1 tabindex="-1">研究</h1><p>Crypto 看 A/B/C/D；股票看 Early Trend、基本面、預期與資金。</p></div></div><section id="research-early"><h2>Pre-Entry 研究觀察</h2><p class="muted">探索階段，未通過交易訊號與統計有效性驗證。</p><div data-research-early></div></section><div class="opportunity-grid" data-research-content><p class="muted">研究資料載入中…</p></div></section>
+      <section class="screen" id="research" data-screen="RESEARCH">
+        <div class="page-head"><div><span class="eyebrow">研究</span><h1 tabindex="-1">研究</h1><p>加密市場看 A/B/C/D 策略生命週期；股票看早期趨勢、基本面、預期與資金證據。</p></div></div>
+        <section id="research-early"><h2>進場前研究觀察</h2><p class="muted">探索階段；未通過統計有效性驗證的內容不視為交易訊號。</p><div data-research-early></div></section>
+        <div class="opportunity-grid" data-research-content><p class="muted">研究資料載入中…</p></div>
+      </section>
 
-      <section class="screen" id="positions" data-screen="POSITIONS"><p class="feature-notice">UNAVAILABLE：此研究環境未連接交易持倉</p><div class="page-head"><div><span class="eyebrow">CRYPTO FORWARD PAPER</span><h1 tabindex="-1">持倉</h1><p>只顯示 Crypto Pending / Open / Cancelled；股票研究不會偽裝成持倉。</p></div><span class="safety-pill">PAPER ONLY</span></div><div class="filter-row"><button class="filter" disabled title="Unavailable：對應資料或功能尚未接入">Open</button><button class="filter" disabled title="Unavailable：對應資料或功能尚未接入">Pending</button><button class="filter" disabled title="Unavailable：對應資料或功能尚未接入">Cancelled</button></div><div class="panel"><div class="empty-state"><b>UNAVAILABLE</b><span>尚未連接 v11.2 Read-Only Runtime Adapter。</span></div></div></section>
+      <section class="screen" id="positions" data-screen="POSITIONS">
+        <p class="feature-notice">載入後只顯示正式模擬交易的等待成交與持倉資料；不提供真實下單。</p>
+        <div class="page-head"><div><span class="eyebrow">加密貨幣前瞻模擬</span><h1 tabindex="-1">持倉</h1><p>股票研究不會偽裝成持倉；此頁僅為模擬交易只讀檢視。</p></div><span class="safety-pill">僅模擬交易</span></div>
+        <div class="filter-row"><button class="filter" data-position-filter="OPEN" disabled title="初始載入後啟用">持倉中</button><button class="filter" data-position-filter="PENDING" disabled title="初始載入後啟用">等待成交</button><button class="filter" data-position-filter="CANCELLED" disabled title="取消資料篩選尚未提供">已取消</button></div>
+        <div class="panel"><div class="empty-state"><b>載入中</b><span>正在連接正式模擬交易只讀資料。</span></div></div>
+      </section>
 
-      <section class="screen" id="results" data-screen="RESULTS"><p class="feature-notice">Coming Soon：尚未建立研究追蹤與歷史驗證結果</p><div class="page-head"><div><span class="eyebrow">RESULTS</span><h1 tabindex="-1">交易結果 / 研究結果</h1><p>兩種結果使用不同語意與統計，不合併勝率。</p></div></div><div class="results-grid"><div class="panel"><span class="eyebrow">TRADING RESULTS</span><h2>Crypto Forward Paper</h2><div class="metric-grid"><div><span>Samples</span><b>—</b></div><div><span>Win Rate</span><b>—</b></div><div><span>Expectancy</span><b>—</b></div><div><span>PF</span><b>—</b></div></div><p class="muted">UNAVAILABLE</p></div><div class="panel"><span class="eyebrow">RESEARCH RESULTS</span><h2>US / TW Follow-through</h2><div class="metric-grid"><div><span>+1D</span><b>—</b></div><div><span>+5D</span><b>—</b></div><div><span>+20D</span><b>—</b></div><div><span>Tracking</span><b>—</b></div></div><p class="muted">UNAVAILABLE</p></div></div></section>
+      <section class="screen" id="results" data-screen="RESULTS">
+        <p class="feature-notice">模擬交易結果與股票研究結果使用不同統計，不合併成單一勝率。</p>
+        <div class="page-head"><div><span class="eyebrow">模擬交易結果</span><h1 tabindex="-1">交易結果 / 研究結果</h1><p>先看樣本可信度，再看勝率、期望值與研究追蹤。</p></div></div>
+        <div class="results-grid"><div class="panel"><span class="eyebrow">模擬交易結果</span><h2>加密貨幣前瞻模擬</h2><div data-trading-results><div class="empty-state compact"><b>載入中</b><span>正在讀取已平倉模擬交易。</span></div></div></div><div class="panel"><span class="eyebrow">研究結果</span><h2>美股 / 台股後續表現追蹤</h2><div class="metric-grid"><div><span>+1 日</span><b>—</b></div><div><span>+5 日</span><b>—</b></div><div><span>+20 日</span><b>—</b></div><div><span>追蹤樣本</span><b>—</b></div></div><p class="muted">尚未建立足夠的可驗證研究追蹤樣本，不計算研究勝率。</p></div></div>
+      </section>
 
-      <section class="screen" id="lab" data-screen="LAB"><p class="feature-notice">Coming Soon：研究實驗室尚未實作</p><div class="page-head"><div><span class="eyebrow">RESEARCH ONLY</span><h1 tabindex="-1">Lab</h1><p>Control / Shadow / Backtest / Cross-Market Research。</p></div></div><div data-lab-content><div class="empty-state"><b>LOADING</b><span>等待 Research / Paper snapshot。</span></div></div></section>
+      <section class="screen" id="lab" data-screen="LAB">
+        <p class="feature-notice">研究實驗室載入後提供策略與研究狀態摘要；版本變更仍需人工審查。</p>
+        <div class="page-head"><div><span class="eyebrow">研究管制台</span><h1 tabindex="-1">實驗室</h1><p>正式策略／影子策略／回測／跨市場研究。</p></div></div>
+        <div data-lab-content><div class="empty-state"><b>載入中</b><span>等待研究與模擬交易快照。</span></div></div>
+      </section>
 
-      <section class="screen" id="intelligence" data-screen="INTELLIGENCE"><div class="page-head"><div><span class="eyebrow">GLOBAL INTELLIGENCE</span><h1 tabindex="-1">情報中心</h1><p>Regional Trend、Capital Rotation、Cross-Market、Macro、Geopolitics、Calendar。</p></div></div><div class="region-grid" data-global-content><p class="muted">區域資料載入中…</p></div></section>
-      <section class="screen" id="system" data-screen="SYSTEM"><div class="page-head"><div><span class="eyebrow">PROVIDER DIAGNOSTICS</span><h1 tabindex="-1">資料來源診斷</h1><p>每輪來源請求與資料驗證結果。觀測時間與取得時間分開保留。</p></div></div><div data-home-content="diagnostics"><p class="muted">Provider Diagnostics UNAVAILABLE</p></div></section>
+      <section class="screen" id="intelligence" data-screen="INTELLIGENCE">
+        <div class="page-head"><div><span class="eyebrow">全球情報</span><h1 tabindex="-1">情報中心</h1><p>區域趨勢、資金輪動、跨市場、宏觀、地緣政治與經濟日曆。</p></div></div>
+        <div class="region-grid" data-global-content><p class="muted">區域資料載入中…</p></div>
+      </section>
+
+      <section class="screen" id="system" data-screen="SYSTEM">
+        <div class="page-head"><div><span class="eyebrow">資料來源診斷</span><h1 tabindex="-1">資料來源診斷</h1><p>每輪來源請求與資料驗證結果；觀測時間與取得時間分開保留。</p></div></div>
+        <div data-home-content="diagnostics"><p class="muted">資料來源診斷載入中…</p></div>
+      </section>
     </main>
   </div>
 
@@ -132,15 +167,16 @@
     <button class="active" data-route="HOME">⌂<span>首頁</span></button>
     <button data-route="MARKETS">⌁<span>市場</span></button>
     <button data-route="RESEARCH">◇<span>研究</span></button>
-    <button data-route="POSITIONS" disabled title="UNAVAILABLE：此研究環境未連接交易持倉" aria-disabled="true">▣<span>持倉</span></button>
-    <button data-route="RESULTS" disabled title="Coming Soon：尚未建立研究追蹤與歷史驗證結果" aria-disabled="true">↗<span>結果</span></button>
+    <button data-route="POSITIONS" disabled title="初始載入後將依正式模擬交易只讀資料啟用" aria-disabled="true">▣<span>持倉</span></button>
+    <button data-route="RESULTS" disabled title="初始載入後將依已平倉模擬交易資料啟用" aria-disabled="true">↗<span>結果</span></button>
     <button data-route="MORE" aria-expanded="false" aria-controls="more-sheet">•••<span>更多</span></button>
   </nav>
 
   <div class="more-sheet" id="more-sheet" hidden>
-    <button data-route="LAB" disabled title="Coming Soon：研究實驗室尚未實作" aria-disabled="true">Lab</button><button data-route="INTELLIGENCE">情報中心</button><button data-action="CALENDAR" disabled title="尚未實作：缺少已授權經濟日曆來源" aria-disabled="true">經濟日曆</button><button data-route="SYSTEM">系統</button><button data-action="SETTINGS" disabled title="尚未實作：個人設定未建立" aria-disabled="true">設定</button>
+    <button data-route="LAB" disabled title="初始載入後將依研究與模擬交易快照啟用" aria-disabled="true">實驗室</button><button data-route="INTELLIGENCE">情報中心</button><button data-action="CALENDAR" disabled title="初始載入後將依官方經濟日曆資料啟用" aria-disabled="true">經濟日曆</button><button data-route="SYSTEM">資料來源診斷</button><button data-action="SETTINGS" disabled title="尚未提供：個人設定未建立" aria-disabled="true">設定</button>
   </div>
-  <dialog id="lineage-dialog" aria-labelledby="lineage-title"><div class="dialog-head"><h2 id="lineage-title">Lineage Evidence</h2><button class="icon-btn" data-close-lineage aria-label="關閉來源證據">×</button></div><div id="lineage-content" aria-live="polite"></div></dialog>
+
+  <dialog id="lineage-dialog" aria-labelledby="lineage-title"><div class="dialog-head"><h2 id="lineage-title">來源追溯證據</h2><button class="icon-btn" data-close-lineage aria-label="關閉來源證據">×</button></div><div id="lineage-content" aria-live="polite"></div></dialog>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 </div>
 <script src="routes.js"></script>
