@@ -23,7 +23,9 @@ test('staging preview serves v12 shell and required same-origin assets without t
   const root=await request(server,{path:'/v12-preview/'});
   assert.equal(root.status,200);
   assert.match(root.headers['content-type'],/text\/html/);
-  assert.match(root.body,/FOXYYA v12 Preview/);
+  assert.match(root.body,/FOXYYA v12 預覽/);
+  assert.match(root.body,/研究測試環境/);
+  assert.match(root.body,/EXECUTION_WRITE=false/,'technical safety flag remains visible in localized shell');
   assert.match(root.body,/\.\.\/staging\/read_client\.js/);
 
   const css=await request(server,{path:'/v12-preview/styles.css'});
