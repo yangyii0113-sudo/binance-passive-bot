@@ -64,7 +64,9 @@ test('交易結果把小樣本 100% 勝率標示為低可信度而非成熟績�
   assert.match(out.tradingResultsHtml,/樣本不足/);
   assert.match(out.tradingResultsHtml,/可信度低/);
   assert.match(out.tradingResultsHtml,/距離初步判讀還差 26 筆/);
-  assert.doesNotMatch(out.tradingResultsHtml,/Samples|Win Rate|Net PnL|Expectancy R|Profit Factor|Fees|SAMPLE_INSUFFICIENT/);
+  assert.match(out.tradingResultsHtml,/data-raw-sample-status="SAMPLE_INSUFFICIENT"/,'raw machine status stays traceable for diagnostics');
+  const visible=out.tradingResultsHtml.replace(/\sdata-raw-[^=]+="[^"]*"/g,'');
+  assert.doesNotMatch(visible,/Samples|Win Rate|Net PnL|Expectancy R|Profit Factor|Fees|SAMPLE_INSUFFICIENT/);
 });
 
 test('主要靜態頁面與 Lab 動態介面以繁體中文為主',()=>{
