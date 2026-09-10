@@ -34,8 +34,8 @@ test('fresh Production Crypto regime renders as a market environment, not a trad
   assert.match(crypto,/引擎健康/);
   assert.match(crypto,/等待成交 2/);
   assert.match(crypto,/持倉 1/);
-  assert.match(crypto,/可用幣種 120/);
-  assert.match(crypto,/資料不足 1/);
+  assert.match(crypto,/可用幣種<\/span><b>120/);
+  assert.match(crypto,/資料不足<\/span><b>1/);
   assert.match(crypto,/完整收盤 1H/);
   assert.match(crypto,/決策截止/);
   assert.match(crypto,/更新/);
