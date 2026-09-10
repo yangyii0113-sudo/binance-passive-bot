@@ -8,6 +8,7 @@ const PUBLIC_SOURCE_ORIGINS=Object.freeze({
   'fed-official':'https://www.federalreserve.gov',
   'cftc-cot':'https://publicreporting.cftc.gov',
   'twse-openapi':'https://openapi.twse.com.tw',
+  'twse-market':'https://www.twse.com.tw',
   'twse-t86':'https://www.twse.com.tw',
   'tpex-openapi':'https://www.tpex.org.tw',
   'ecb-data':'https://data-api.ecb.europa.eu'
