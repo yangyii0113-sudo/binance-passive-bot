@@ -18,7 +18,10 @@ test('staging bootstrap starts an isolated HTTP preview with no fabricated initi
   try{
     const preview=await request(runtime.address);
     assert.equal(preview.status,200);
-    assert.match(preview.body,/FOXYYA v12 Preview/);
+    assert.match(preview.body,/FOXYYA v12 預覽/);
+    assert.match(preview.body,/研究測試環境/);
+    assert.match(preview.body,/EXECUTION_WRITE=false/,'technical safety flag remains visible even when product copy is localized');
+    assert.doesNotMatch(preview.body,/\bBUY\b|\bSELL\b|PLACE_ORDER|SUBMIT_ORDER|AUTHORIZE_EXECUTION|WITHDRAW|TRANSFER/i);
     assert.equal((await request(runtime.address,{path:'/v12/api/home'})).status,503);
     assert.equal((await request(runtime.address,{path:'/'})).status,404);
     assert.equal((await request(runtime.address,{method:'POST',path:'/v12/api/home'})).status,405);
