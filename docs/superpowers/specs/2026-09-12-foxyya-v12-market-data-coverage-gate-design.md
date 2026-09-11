@@ -186,6 +186,28 @@ A BLOCKED market can still contain useful data. Therefore readiness fields remai
 
 No meaningful target capability is currently usable, or all runtime evidence required for the target role failed. Runtime failure is not the same as licensing block.
 
+### 6.1 Deterministic status precedence
+
+The builder calculates readiness and missing capabilities first, then derives `coverageStatus` using this order:
+
+1. `READY` — all required capabilities for the market's current target role are satisfied and fresh enough.
+2. `BLOCKED` — not READY, and at least one missing **required** capability has an external activation blocker (`API_KEY_REQUIRED`, `ENTITLEMENT_REQUIRED`, `LICENSE_REVIEW_REQUIRED`, `DATA_PRODUCT_REQUIRED`, or `PROVIDER_DECISION_REQUIRED`). This remains BLOCKED even when other useful capabilities are already available.
+3. `PARTIAL` — not READY or BLOCKED, but at least one meaningful required capability is usable.
+4. `UNAVAILABLE` — none of the meaningful required capabilities are usable.
+
+This precedence is mandatory so US / JP / KR / HK do not oscillate between PARTIAL and BLOCKED based on UI interpretation.
+
+### 6.2 Activation state
+
+`activationState` describes source activation independently of data readiness:
+
+- `ACTIVE` — all selected sources required by the current target role are activated.
+- `PARTIAL` — at least one selected source is activated and at least one other selected source is not activated.
+- `BLOCKED` — no source capable of satisfying a currently missing required capability can activate without credentials, entitlement, licensing approval, paid data product, or explicit provider decision.
+- `NONE` — no selected/implemented source path currently exists for the missing capability.
+
+`activationState` never overrides actual runtime availability; it explains why missing capabilities cannot currently be satisfied.
+
 ## 7. Blocker classification
 
 Normalized blocker types:
@@ -322,7 +344,7 @@ Required for full direction readiness:
 - `INDEX`
 - `MARKET_BREADTH`
 
-Until equity breadth/index evidence is available, EU remains PARTIAL or BLOCKED depending on source activation state.
+Until equity breadth/index evidence is available, EU remains PARTIAL or BLOCKED according to the deterministic status precedence in section 6.1.
 
 ### 9.5 Japan
 
@@ -371,18 +393,25 @@ For each market:
 6. Calculate missing required capabilities by market profile.
 7. Classify missing reasons into runtime failure, implementation gap, or external blocker.
 8. Calculate `directionReadiness`, `researchReadiness`, and `rankingEligibility` separately.
-9. Derive final `coverageStatus`.
+9. Derive final `coverageStatus` using section 6.1 precedence.
 10. Freeze output.
 
 ## 12. Ranking gate integration
 
 This spec does not change ranking weights, but it defines the future integration contract.
 
-After Coverage Gate is deployed and validated:
+For equity human-review ranking:
 
-- `ELIGIBLE`: ranking may use the opportunity normally.
-- `LIMITED`: ranking may show the research item but must display the market coverage limitation and may not present it as high-confidence solely from score.
-- `NOT_ELIGIBLE`: research item is excluded from "priority review" lists but remains visible in diagnostics if it exists.
+- `ELIGIBLE` — `researchReadiness === READY`.
+- `LIMITED` — `researchReadiness === PARTIAL`; the item may remain visible but must carry its market coverage limitation.
+- `NOT_ELIGIBLE` — `researchReadiness === NOT_READY`.
+
+For markets that do not currently participate in the equity human-review ranking:
+
+- `CRYPTO` is always `NOT_ELIGIBLE` for this ranking system because Crypto retains its separate paper-execution candidate lifecycle.
+- `CN_HK`, `JP`, `KR`, and `EU` remain `NOT_ELIGIBLE` until an equity-research read model for that market is explicitly implemented and approved.
+
+After Coverage Gate is deployed and validated, a separate follow-on phase may apply this field to Research Ranking display/filter behavior. This phase only computes and exposes the field; it does not change ranking weights or suppress existing ranked output.
 
 No ranking state can create execution authority.
 
@@ -502,7 +531,8 @@ TDD is mandatory.
 
 Test:
 
-- status derivation;
+- status derivation and section 6.1 precedence;
+- activation-state derivation;
 - blocker classification;
 - capability mapping;
 - freshness handling;
@@ -516,12 +546,14 @@ Assert:
 
 - seven markets always exist in output;
 - no market can be READY without required capabilities;
+- externally blocked required capability produces BLOCKED even when useful partial data exists;
 - US SEC/BLS-only state is not full direction READY;
 - EU macro-only state is not full direction READY;
 - JP/KR credential blockers are BLOCKED, not PROVIDER_UNAVAILABLE;
 - HK licensing/data-product blockers are BLOCKED;
 - TW market breadth cannot be inferred from individual stocks;
-- Crypto coverage remains read-only and paper-only.
+- Crypto coverage remains read-only and paper-only;
+- Crypto is NOT_ELIGIBLE for equity human-review ranking.
 
 ### 18.3 Integration tests
 
@@ -571,7 +603,7 @@ The phase is complete only when all of the following are true:
 6. TW individual research cannot substitute for TW market breadth.
 7. JP/KR/HK external activation requirements are explicit.
 8. Coverage output is immutable, research-only, and execution-write false.
-9. Existing Research Ranking weights are unchanged in this phase.
+9. Existing Research Ranking weights and current ranked-output visibility are unchanged in this phase.
 10. Full CI and Production safety gates pass.
 11. Live v12 Staging displays the same coverage state returned by backend Home API.
 12. Production Execution V2 is not redeployed or modified.
@@ -580,7 +612,7 @@ The phase is complete only when all of the following are true:
 
 Only after this spec is implemented and validated:
 
-1. Coverage-aware Research Ranking gate.
+1. Coverage-aware Research Ranking display/filter gate.
 2. Home decision-summary confidence tied to market coverage.
 3. Forward-validation confidence tiers by sample count / regime.
 4. Expansion of licensed / credentialed providers where explicitly approved.
