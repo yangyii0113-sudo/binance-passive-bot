@@ -45,7 +45,6 @@
       ['[data-research-early]','earlyTrendHtml'],
       ['[data-positions-content]','positionsHtml'],
       ['[data-trading-results]','tradingResultsHtml'],
-      ['[data-research-performance]','researchPerformanceHtml'],
       ['[data-calendar-content]','calendarHtml'],
       ['[data-news-content]','newsHtml'],
       ['[data-home-content="today-focus"]','todayFocusHtml']
@@ -53,6 +52,14 @@
     for(const [selector,field] of optional){
       const node=doc.querySelector(selector);
       if(node&&typeof plan[field]==='string')node.innerHTML=plan[field];
+    }
+    if(typeof plan.researchPerformanceHtml==='string'){
+      const target=doc.querySelector('[data-research-performance]');
+      if(target)target.innerHTML=plan.researchPerformanceHtml;
+      else{
+        const legacy=doc.querySelector('#results .results-grid > .panel:nth-child(2)');
+        if(legacy)legacy.innerHTML=`<span class="eyebrow">研究結果</span><h2>台股 / 美股前瞻研究驗證</h2><div data-research-performance>${plan.researchPerformanceHtml}</div>`;
+      }
     }
     return Object.freeze({ok:true,updated:Object.freeze(TARGETS.map(x=>x.selector))});
   }
