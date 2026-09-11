@@ -77,6 +77,7 @@ function createForwardResearchTracker({store}={}){
       const last=track.sessions[track.sessions.length-1];
       if(current.session.sessionDate<=track.baseline.sessionDate)continue;
       if(last&&current.session.sessionDate<=last.sessionDate)continue;
+      if(current.session.asOf<=track.createdAt)continue;
       ledger.recordSession(track.id,current.session);sessionsRecorded++;
     }
 
