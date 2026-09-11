@@ -3,6 +3,8 @@
 const EvidencePolicy=require('../early_trend/evidence_policy.js');
 const NewsImpact=require('../intelligence/news_impact_engine.js');
 const {createProviderRuntimeGovernance}=require('../providers/runtime_governance.js');
+const {createPublicSourceLoader}=require('./public_source_loader.js');
+const {createOfficialSourceBindings}=require('./official_source_binding.js');
 const {createStagingSourcePipeline}=require('./source_pipeline.js');
 
 const TW_POLICY=EvidencePolicy.freezeEvidencePolicy({
@@ -32,6 +34,59 @@ function taipeiTradeDate(nowMs){
   const values={};
   for(const part of parts)if(part.type!=='literal')values[part.type]=part.value;
   return `${values.year}${values.month}${values.day}`;
+}
+
+function compactTradeDate(value){
+  if(typeof value!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(value))return null;
+  return value.replaceAll('-','');
+}
+
+function twseMarketEndpoint(tradeDate){
+  return `https://www.twse.com.tw/rwd/zh/afterTrading/MI_INDEX?date=${tradeDate}&type=ALLBUT0999&response=json`;
+}
+
+function twseFlowEndpoint(tradeDate){
+  return `https://www.twse.com.tw/rwd/zh/fund/T86?date=${tradeDate}&selectType=ALL&response=json`;
+}
+
+function rebaseTaiwanTradeDate(base,tradeDate){
+  if(!object(base)||typeof tradeDate!=='string'||!/^\d{8}$/.test(tradeDate))return base;
+  const twMarket=object(base.twMarket)
+    ?Object.freeze({
+      ...base.twMarket,
+      twse:Object.freeze({...base.twMarket.twse,tradeDate,endpoint:twseMarketEndpoint(tradeDate)}),
+      tpex:Object.freeze({...base.twMarket.tpex,tradeDate})
+    })
+    :base.twMarket;
+  const twAssets=Object.freeze((Array.isArray(base.twAssets)?base.twAssets:[]).map(item=>{
+    if(item?.exchange!=='TWSE')return item;
+    return Object.freeze({...item,tradeDate,flowEndpoint:twseFlowEndpoint(tradeDate)});
+  }));
+  return Object.freeze({...base,twMarket,twAssets});
+}
+
+async function alignTaiwanTradeDate(base,{fetchImpl,clock=Date.now,providerGovernance}={}){
+  if(typeof fetchImpl!=='function'||typeof clock!=='function')throw Error('TAIWAN_TRADE_DATE_RESOLVER_INVALID');
+  const assets=Array.isArray(base?.twAssets)?base.twAssets:[];
+  const twse=assets.find(item=>item?.exchange==='TWSE'&&item?.symbol==='2330')||assets.find(item=>item?.exchange==='TWSE');
+  if(!twse||typeof twse.quoteEndpoint!=='string'||!twse.quoteEndpoint)return base;
+  try{
+    const loader=createPublicSourceLoader({
+      sourceId:'twse-openapi',
+      endpoint:twse.quoteEndpoint,
+      fetchImpl,
+      clock,
+      governance:providerGovernance
+    });
+    const binding=createOfficialSourceBindings().twseDailyQuote({loader,symbol:twse.symbol});
+    const resolved=await binding.load();
+    if(resolved.status!=='AVAILABLE')return base;
+    const tradeDate=compactTradeDate(resolved.data?.tradeDate);
+    if(!tradeDate)return base;
+    return rebaseTaiwanTradeDate(base,tradeDate);
+  }catch(_error){
+    return base;
+  }
 }
 
 function nvdaInstrument(){
@@ -73,7 +128,7 @@ function buildBootstrapInput(nowMs){
     twMarket:Object.freeze({
       twse:Object.freeze({
         tradeDate,
-        endpoint:`https://www.twse.com.tw/rwd/zh/afterTrading/MI_INDEX?date=${tradeDate}&type=ALLBUT0999&response=json`
+        endpoint:twseMarketEndpoint(tradeDate)
       }),
       tpex:Object.freeze({
         tradeDate,
@@ -87,7 +142,7 @@ function buildBootstrapInput(nowMs){
         symbol:'2330',
         tradeDate,
         quoteEndpoint:'https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL',
-        flowEndpoint:`https://www.twse.com.tw/rwd/zh/fund/T86?date=${tradeDate}&selectType=ALL&response=json`,
+        flowEndpoint:twseFlowEndpoint(tradeDate),
         revenueEndpoint:'https://openapi.twse.com.tw/v1/opendata/t187ap05_L',
         policy:TW_POLICY,
         researchEvidence:Object.freeze([])
@@ -223,19 +278,20 @@ function createLiveResearchBootstrap({fetchImpl=globalThis.fetch,clock=Date.now,
   if(!lineageStore||typeof lineageStore!=='object')throw Error('LINEAGE_STORE_REQUIRED');
   if(typeof publishHome!=='function')throw Error('PUBLISH_HOME_REQUIRED');
   const external=validateExecutionBridge(executionBridge);
+  const providerGovernance=createProviderRuntimeGovernance({clock,policy:{freshnessWarnMs:3600000}});
 
   const pipeline=createStagingSourcePipeline({
     fetchImpl,
     clock,
     lineageStore,
-    providerGovernance:createProviderRuntimeGovernance({clock,policy:{freshnessWarnMs:3600000}}),
+    providerGovernance,
     publishHome
   });
 
   async function runOnce(){
     const nowMs=Number(clock());
     if(!finite(nowMs)||nowMs<0)throw Error('NOW_INVALID');
-    const base=buildBootstrapInput(nowMs);
+    const base=await alignTaiwanTradeDate(buildBootstrapInput(nowMs),{fetchImpl,clock,providerGovernance});
     if(!external)return pipeline.run(base);
 
     const [runtimeRead,calendarRead,newsRead]=await Promise.all([
@@ -250,4 +306,4 @@ function createLiveResearchBootstrap({fetchImpl=globalThis.fetch,clock=Date.now,
   return Object.freeze({runOnce});
 }
 
-module.exports=Object.freeze({buildBootstrapInput,createLiveResearchBootstrap,taipeiTradeDate});
+module.exports=Object.freeze({buildBootstrapInput,alignTaiwanTradeDate,createLiveResearchBootstrap,taipeiTradeDate});
