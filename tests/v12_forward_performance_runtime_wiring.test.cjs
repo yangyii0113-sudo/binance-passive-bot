@@ -57,18 +57,19 @@ test('staging runtime wires durable forward tracker into Home even when upstream
   }
 });
 
-test('Results screen exposes a dedicated research-performance target and Home DOM fills it separately from trading results',()=>{
-  const html=fs.readFileSync(path.join(__dirname,'../v12/ui/index.html'),'utf8');
-  assert.match(html,/data-research-performance/);
+test('Home DOM upgrades the legacy Results research panel and keeps research performance separate from trading results',()=>{
   const calls=[];
   const nodes=new Map();
   for(const target of HomeDom.TARGETS)nodes.set(target.selector,{});
-  nodes.set('[data-research-performance]',{});
+  const legacyResearchPanel={};
+  nodes.set('#results .results-grid > .panel:nth-child(2)',legacyResearchPanel);
   const doc={querySelector(selector){calls.push(selector);return nodes.get(selector)||null}};
   const plan={schemaVersion:'foxyya-home-render/1',researchOnly:true,executionWrite:false};
   for(const target of HomeDom.TARGETS)plan[target.field]='x';
   plan.researchPerformanceHtml='<b>台股前瞻追蹤</b>';
   HomeDom.applyHomeRender(doc,plan);
-  assert.equal(nodes.get('[data-research-performance]').innerHTML,'<b>台股前瞻追蹤</b>');
+  assert.match(legacyResearchPanel.innerHTML,/data-research-performance/);
+  assert.match(legacyResearchPanel.innerHTML,/台股前瞻追蹤/);
   assert.ok(calls.includes('[data-research-performance]'));
+  assert.ok(calls.includes('#results .results-grid > .panel:nth-child(2)'));
 });
