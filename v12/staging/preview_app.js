@@ -55,8 +55,8 @@ function readMethod(req,res){
   return null;
 }
 
-function createStagingPreviewApp({lineageStore}={}){
-  const homeService=createStagingHomeService({lineageStore});
+function createStagingPreviewApp({lineageStore,forwardResearchTracker}={}){
+  const homeService=createStagingHomeService({lineageStore,forwardResearchTracker});
 
   function publishHome(input={}){
     return homeService.publishHome(input);
