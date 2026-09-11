@@ -10,6 +10,7 @@ const EVENT_TYPES=Object.freeze({
   SOURCE:'SOURCE_RECORDED',
   OUTPUT:'OUTPUT_RECORDED'
 });
+const SCAN_CHUNK_BYTES=64*1024;
 
 function object(value){return value&&typeof value==='object'&&!Array.isArray(value);}
 function finite(value){return typeof value==='number'&&Number.isFinite(value);}
@@ -58,12 +59,17 @@ function createDurableSourceLineageStore({filePath,now=Date.now,fsImpl=fs}={}){
   if(typeof now!=='function')throw Error('LINEAGE_CLOCK_REQUIRED');
   if(!fsImpl||typeof fsImpl!=='object')throw Error('LINEAGE_FS_REQUIRED');
 
-  const sourcesByRef=new Map();
-  const outputsByRef=new Map();
+  // Only compact references and byte offsets stay resident. Canonical payloads remain on disk
+  // and are validated/read on demand. This prevents an append-only journal from consuming
+  // heap proportional to its full JSON payload size at every process restart.
+  const sourceIndexByRef=new Map();
+  const outputIndexByRef=new Map();
   const sourceIdentityRefs=new Map();
   const outputIdentityRefs=new Map();
-  const observationsByRef=new Map();
+  const observationSourceRefs=new Map();
   let sequence=0;
+  let repairTailOffset=null;
+  let needsTrailingSeparator=false;
 
   function currentTime(){
     const value=Number(now());
@@ -71,50 +77,43 @@ function createDurableSourceLineageStore({filePath,now=Date.now,fsImpl=fs}={}){
     return value;
   }
 
+  function validateRawEvent(raw,expectedSequence){
+    if(!object(raw)||raw.schema!==EVENT_SCHEMA||raw.sequence!==expectedSequence||!finite(raw.recordedAt)||raw.recordedAt<0||typeof raw.type!=='string'||!object(raw.record)||typeof raw.checksum!=='string')throw Error('LINEAGE_JOURNAL_CORRUPT');
+    if(raw.checksum!==sha256(eventPayload(raw)))throw Error('LINEAGE_JOURNAL_CORRUPT');
+    return raw;
+  }
+
+  function sourceMeta(lineageRef){return sourceIndexByRef.get(lineageRef)||null;}
+
   function assertSourceCanApply(record,{replay=false}={}){
     const identity=Lineage.sourceIdentityKey(record);
     const existingIdentityRef=sourceIdentityRefs.get(identity);
     if(existingIdentityRef&&existingIdentityRef!==record.lineageRef)throw Error(replay?'LINEAGE_JOURNAL_CORRUPT':'SOURCE_LINEAGE_CONFLICT');
-
-    const existing=sourcesByRef.get(record.lineageRef);
-    if(existing&&stableStringify(existing)!==stableStringify(record))throw Error(replay?'LINEAGE_JOURNAL_CORRUPT':'SOURCE_LINEAGE_CONFLICT');
-
-    for(let i=0;i<record.observationRefs.length;i++){
-      const observationRef=record.observationRefs[i];
-      const existingObservation=observationsByRef.get(observationRef);
-      if(existingObservation){
-        const sameSource=existingObservation.sourceLineageRef===record.lineageRef;
-        const sameObservation=stableStringify(existingObservation.observation)===stableStringify(record.observations[i]);
-        if(!sameSource||!sameObservation)throw Error(replay?'LINEAGE_JOURNAL_CORRUPT':'SOURCE_LINEAGE_CONFLICT');
-      }
+    for(const observationRef of record.observationRefs){
+      const existingSourceRef=observationSourceRefs.get(observationRef);
+      if(existingSourceRef&&existingSourceRef!==record.lineageRef)throw Error(replay?'LINEAGE_JOURNAL_CORRUPT':'SOURCE_LINEAGE_CONFLICT');
     }
     return identity;
   }
 
-  function applySource(record,{replay=false}={}){
+  function applySourceIndex(record,index,{replay=false}={}){
     const identity=assertSourceCanApply(record,{replay});
-    sourcesByRef.set(record.lineageRef,record);
+    const existing=sourceIndexByRef.get(record.lineageRef);
+    if(!existing)sourceIndexByRef.set(record.lineageRef,Object.freeze({...index,receivedAt:record.receivedAt,type:EVENT_TYPES.SOURCE}));
     sourceIdentityRefs.set(identity,record.lineageRef);
-    for(let i=0;i<record.observationRefs.length;i++){
-      const observationRef=record.observationRefs[i];
-      observationsByRef.set(observationRef,deepFreeze({
-        observationRef,
-        sourceLineageRef:record.lineageRef,
-        observation:record.observations[i]
-      }));
-    }
+    for(const observationRef of record.observationRefs)observationSourceRefs.set(observationRef,record.lineageRef);
   }
 
   function assertOutputReferences(record,{replay=false}={}){
     for(const sourceRef of record.sourceLineageRefs){
-      const source=sourcesByRef.get(sourceRef);
+      const source=sourceMeta(sourceRef);
       if(!source)throw Error(replay?'LINEAGE_JOURNAL_CORRUPT':'SOURCE_LINEAGE_REF_UNKNOWN');
       if(source.receivedAt>record.asOf)throw Error(replay?'LINEAGE_JOURNAL_CORRUPT':'LINEAGE_TIME_ORDER_INVALID');
     }
     for(const observationRef of record.observationRefs){
-      const indexed=observationsByRef.get(observationRef);
-      if(!indexed)throw Error(replay?'LINEAGE_JOURNAL_CORRUPT':'OBSERVATION_REF_UNKNOWN');
-      if(!record.sourceLineageRefs.includes(indexed.sourceLineageRef))throw Error(replay?'LINEAGE_JOURNAL_CORRUPT':'OBSERVATION_SOURCE_REF_MISMATCH');
+      const sourceRef=observationSourceRefs.get(observationRef);
+      if(!sourceRef)throw Error(replay?'LINEAGE_JOURNAL_CORRUPT':'OBSERVATION_REF_UNKNOWN');
+      if(!record.sourceLineageRefs.includes(sourceRef))throw Error(replay?'LINEAGE_JOURNAL_CORRUPT':'OBSERVATION_SOURCE_REF_MISMATCH');
     }
   }
 
@@ -123,94 +122,175 @@ function createDurableSourceLineageStore({filePath,now=Date.now,fsImpl=fs}={}){
     const identity=Lineage.outputIdentityKey(record);
     const existingIdentityRef=outputIdentityRefs.get(identity);
     if(existingIdentityRef&&existingIdentityRef!==record.lineageRef)throw Error(replay?'LINEAGE_JOURNAL_CORRUPT':'RESEARCH_OUTPUT_LINEAGE_CONFLICT');
-
-    const existing=outputsByRef.get(record.lineageRef);
-    if(existing&&stableStringify(existing)!==stableStringify(record))throw Error(replay?'LINEAGE_JOURNAL_CORRUPT':'RESEARCH_OUTPUT_LINEAGE_CONFLICT');
     return identity;
   }
 
-  function applyOutput(record,{replay=false}={}){
+  function applyOutputIndex(record,index,{replay=false}={}){
     const identity=assertOutputCanApply(record,{replay});
-    outputsByRef.set(record.lineageRef,record);
+    const existing=outputIndexByRef.get(record.lineageRef);
+    if(!existing)outputIndexByRef.set(record.lineageRef,Object.freeze({...index,asOf:record.asOf,type:EVENT_TYPES.OUTPUT}));
     outputIdentityRefs.set(identity,record.lineageRef);
+  }
+
+  function writeAll(fd,buffer){
+    let written=0;
+    while(written<buffer.length){
+      const count=fsImpl.writeSync(fd,buffer,written,buffer.length-written,null);
+      if(!Number.isInteger(count)||count<=0)throw Error('DURABLE_WRITE_FAILED');
+      written+=count;
+    }
   }
 
   function appendEvent(type,record,minimumRecordedAt){
     const recordedAt=currentTime();
     if(recordedAt<minimumRecordedAt)throw Error('RECORDED_AT_INVALID');
     const event=createEvent({sequence:sequence+1,type,recordedAt,record});
-    const line=JSON.stringify(event)+'\n';
+    const lineBuffer=Buffer.from(JSON.stringify(event)+'\n','utf8');
     let fd=null;
     try{
       fsImpl.mkdirSync(path.dirname(journalPath),{recursive:true});
-      fd=fsImpl.openSync(journalPath,'a');
-      fsImpl.writeSync(fd,line,null,'utf8');
+      fd=fsImpl.openSync(journalPath,'a+');
+      if(repairTailOffset!==null){
+        fsImpl.ftruncateSync(fd,repairTailOffset);
+        repairTailOffset=null;
+        needsTrailingSeparator=false;
+      }
+      let offset=fsImpl.fstatSync(fd).size;
+      if(needsTrailingSeparator&&offset>0){
+        writeAll(fd,Buffer.from('\n','utf8'));
+        offset+=1;
+        needsTrailingSeparator=false;
+      }
+      writeAll(fd,lineBuffer);
       fsImpl.fsyncSync(fd);
       fsImpl.closeSync(fd);
       fd=null;
-    }catch(_error){
-      if(fd!==null){
-        try{fsImpl.closeSync(fd);}catch(_closeError){}
-      }
+      sequence=event.sequence;
+      return Object.freeze({
+        event,
+        index:Object.freeze({offset,length:lineBuffer.length-1,sequence:event.sequence})
+      });
+    }catch(error){
+      if(fd!==null){try{fsImpl.closeSync(fd);}catch(_closeError){}}
+      if(error?.message==='DURABLE_WRITE_FAILED')throw error;
       throw Error('DURABLE_WRITE_FAILED');
     }
-    sequence=event.sequence;
-    return event;
   }
 
-  function replayEvent(raw,expectedSequence){
-    if(!object(raw)||raw.schema!==EVENT_SCHEMA||raw.sequence!==expectedSequence||!finite(raw.recordedAt)||raw.recordedAt<0||typeof raw.type!=='string'||!object(raw.record)||typeof raw.checksum!=='string')throw Error('LINEAGE_JOURNAL_CORRUPT');
-    if(raw.checksum!==sha256(eventPayload(raw)))throw Error('LINEAGE_JOURNAL_CORRUPT');
-
+  function replayIndexedEvent(raw,index){
+    validateRawEvent(raw,sequence+1);
     try{
       if(raw.type===EVENT_TYPES.SOURCE){
         const record=Lineage.validateSourceObservationLineage(raw.record);
         if(raw.recordedAt<record.receivedAt)throw Error('LINEAGE_JOURNAL_CORRUPT');
-        applySource(record,{replay:true});
+        applySourceIndex(record,index,{replay:true});
       }else if(raw.type===EVENT_TYPES.OUTPUT){
         const record=Lineage.validateResearchOutputLineage(raw.record);
         if(raw.recordedAt<record.asOf)throw Error('LINEAGE_JOURNAL_CORRUPT');
-        applyOutput(record,{replay:true});
+        applyOutputIndex(record,index,{replay:true});
       }else{
         throw Error('LINEAGE_JOURNAL_CORRUPT');
       }
     }catch(_error){
       throw Error('LINEAGE_JOURNAL_CORRUPT');
     }
-    sequence=expectedSequence;
+    sequence=raw.sequence;
+  }
+
+  function parseCompleteLine(buffer,index){
+    if(!buffer.length||!buffer.toString('utf8').trim())return;
+    let parsed;
+    try{parsed=JSON.parse(buffer.toString('utf8'));}
+    catch(_error){throw Error('LINEAGE_JOURNAL_CORRUPT');}
+    replayIndexedEvent(parsed,index);
   }
 
   function replay(){
     if(!fsImpl.existsSync(journalPath))return;
-    let raw;
-    try{raw=fsImpl.readFileSync(journalPath,'utf8');}
-    catch(_error){throw Error('LINEAGE_JOURNAL_CORRUPT');}
-    if(!raw)return;
+    let fd=null;
+    try{
+      fd=fsImpl.openSync(journalPath,'r');
+      const chunk=Buffer.allocUnsafe(SCAN_CHUNK_BYTES);
+      let filePosition=0;
+      let lineStart=0;
+      let carryParts=[];
+      let carryLength=0;
 
-    const hasTrailingNewline=raw.endsWith('\n');
-    const chunks=raw.split('\n');
-    if(hasTrailingNewline)chunks.pop();
-    else{
-      const tail=chunks.pop();
-      if(tail&&tail.trim()){
+      while(true){
+        const bytesRead=fsImpl.readSync(fd,chunk,0,chunk.length,filePosition);
+        if(!Number.isInteger(bytesRead)||bytesRead<0)throw Error('LINEAGE_JOURNAL_CORRUPT');
+        if(bytesRead===0)break;
+        let segmentStart=0;
+        for(let i=0;i<bytesRead;i++){
+          if(chunk[i]!==0x0a)continue;
+          const segment=chunk.subarray(segmentStart,i);
+          const length=carryLength+segment.length;
+          const line=carryLength?Buffer.concat([...carryParts,segment],length):segment;
+          if(length)parseCompleteLine(line,Object.freeze({offset:lineStart,length,sequence:sequence+1}));
+          carryParts=[];
+          carryLength=0;
+          lineStart=filePosition+i+1;
+          segmentStart=i+1;
+        }
+        if(segmentStart<bytesRead){
+          const remainder=Buffer.from(chunk.subarray(segmentStart,bytesRead));
+          carryParts.push(remainder);
+          carryLength+=remainder.length;
+        }
+        filePosition+=bytesRead;
+      }
+
+      if(carryLength){
+        const tail=carryParts.length===1?carryParts[0]:Buffer.concat(carryParts,carryLength);
         try{
-          const parsed=JSON.parse(tail);
-          replayEvent(parsed,sequence+1);
+          const parsed=JSON.parse(tail.toString('utf8'));
+          replayIndexedEvent(parsed,Object.freeze({offset:lineStart,length:carryLength,sequence:sequence+1}));
+          needsTrailingSeparator=true;
         }catch(error){
-          if(error?.message!=='LINEAGE_JOURNAL_CORRUPT'){
-            // An unterminated, unparsable final fragment may be a torn append.
-          }else{
-            throw error;
-          }
+          if(error?.message==='LINEAGE_JOURNAL_CORRUPT')throw error;
+          // Preserve historical torn-append semantics: ignore the incomplete fragment now,
+          // and truncate it durably before the next successful append.
+          repairTailOffset=lineStart;
         }
       }
+    }catch(error){
+      if(error?.message==='LINEAGE_JOURNAL_CORRUPT')throw error;
+      throw Error('LINEAGE_JOURNAL_CORRUPT');
+    }finally{
+      if(fd!==null){try{fsImpl.closeSync(fd);}catch(_closeError){}}
     }
+  }
 
-    for(const line of chunks){
-      if(!line.trim())continue;
-      let parsed;
-      try{parsed=JSON.parse(line);}catch(_error){throw Error('LINEAGE_JOURNAL_CORRUPT');}
-      replayEvent(parsed,sequence+1);
+  function readIndexedEvent(index,expectedType){
+    let fd=null;
+    try{
+      fd=fsImpl.openSync(journalPath,'r');
+      const buffer=Buffer.allocUnsafe(index.length);
+      let read=0;
+      while(read<buffer.length){
+        const count=fsImpl.readSync(fd,buffer,read,buffer.length-read,index.offset+read);
+        if(!Number.isInteger(count)||count<=0)throw Error('LINEAGE_JOURNAL_CORRUPT');
+        read+=count;
+      }
+      fsImpl.closeSync(fd);
+      fd=null;
+      let raw;
+      try{raw=JSON.parse(buffer.toString('utf8'));}
+      catch(_error){throw Error('LINEAGE_JOURNAL_CORRUPT');}
+      validateRawEvent(raw,index.sequence);
+      if(raw.type!==expectedType)throw Error('LINEAGE_JOURNAL_CORRUPT');
+      if(expectedType===EVENT_TYPES.SOURCE){
+        const record=Lineage.validateSourceObservationLineage(raw.record);
+        if(record.receivedAt!==index.receivedAt)throw Error('LINEAGE_JOURNAL_CORRUPT');
+        return record;
+      }
+      const record=Lineage.validateResearchOutputLineage(raw.record);
+      if(record.asOf!==index.asOf)throw Error('LINEAGE_JOURNAL_CORRUPT');
+      return record;
+    }catch(error){
+      if(fd!==null){try{fsImpl.closeSync(fd);}catch(_closeError){}}
+      if(error?.message==='LINEAGE_JOURNAL_CORRUPT')throw error;
+      throw Error('LINEAGE_JOURNAL_CORRUPT');
     }
   }
 
@@ -222,10 +302,10 @@ function createDurableSourceLineageStore({filePath,now=Date.now,fsImpl=fs}={}){
       if(existingIdentityRef===record.lineageRef)return Object.freeze({status:'IDEMPOTENT',lineageRef:record.lineageRef});
       throw Error('SOURCE_LINEAGE_CONFLICT');
     }
-    if(sourcesByRef.has(record.lineageRef))return Object.freeze({status:'IDEMPOTENT',lineageRef:record.lineageRef});
+    if(sourceIndexByRef.has(record.lineageRef))return Object.freeze({status:'IDEMPOTENT',lineageRef:record.lineageRef});
     assertSourceCanApply(record);
-    appendEvent(EVENT_TYPES.SOURCE,record,record.receivedAt);
-    applySource(record);
+    const appended=appendEvent(EVENT_TYPES.SOURCE,record,record.receivedAt);
+    applySourceIndex(record,appended.index);
     return Object.freeze({status:'RECORDED',lineageRef:record.lineageRef});
   }
 
@@ -237,21 +317,46 @@ function createDurableSourceLineageStore({filePath,now=Date.now,fsImpl=fs}={}){
       if(existingIdentityRef===record.lineageRef)return Object.freeze({status:'IDEMPOTENT',lineageRef:record.lineageRef});
       throw Error('RESEARCH_OUTPUT_LINEAGE_CONFLICT');
     }
-    if(outputsByRef.has(record.lineageRef))return Object.freeze({status:'IDEMPOTENT',lineageRef:record.lineageRef});
+    if(outputIndexByRef.has(record.lineageRef))return Object.freeze({status:'IDEMPOTENT',lineageRef:record.lineageRef});
     assertOutputCanApply(record);
-    appendEvent(EVENT_TYPES.OUTPUT,record,record.asOf);
-    applyOutput(record);
+    const appended=appendEvent(EVENT_TYPES.OUTPUT,record,record.asOf);
+    applyOutputIndex(record,appended.index);
     return Object.freeze({status:'RECORDED',lineageRef:record.lineageRef});
   }
 
-  function source(lineageRef){return sourcesByRef.get(lineageRef)||null;}
-  function output(lineageRef){return outputsByRef.get(lineageRef)||null;}
+  function source(lineageRef){
+    const index=sourceIndexByRef.get(lineageRef);
+    return index?readIndexedEvent(index,EVENT_TYPES.SOURCE):null;
+  }
+
+  function output(lineageRef){
+    const index=outputIndexByRef.get(lineageRef);
+    return index?readIndexedEvent(index,EVENT_TYPES.OUTPUT):null;
+  }
 
   function traceOutput(lineageRef){
-    const record=outputsByRef.get(lineageRef);
+    const record=output(lineageRef);
     if(!record)return null;
-    const sources=record.sourceLineageRefs.map(ref=>sourcesByRef.get(ref));
-    const observations=record.observationRefs.map(ref=>observationsByRef.get(ref));
+    const sources=record.sourceLineageRefs.map(ref=>{
+      const value=source(ref);
+      if(!value)throw Error('LINEAGE_JOURNAL_CORRUPT');
+      return value;
+    });
+    const observationsByRef=new Map();
+    for(const sourceRecord of sources){
+      for(let i=0;i<sourceRecord.observationRefs.length;i++){
+        observationsByRef.set(sourceRecord.observationRefs[i],deepFreeze({
+          observationRef:sourceRecord.observationRefs[i],
+          sourceLineageRef:sourceRecord.lineageRef,
+          observation:sourceRecord.observations[i]
+        }));
+      }
+    }
+    const observations=record.observationRefs.map(ref=>{
+      const value=observationsByRef.get(ref);
+      if(!value)throw Error('LINEAGE_JOURNAL_CORRUPT');
+      return value;
+    });
     return deepFreeze({
       output:record,
       sources:Object.freeze(sources),
