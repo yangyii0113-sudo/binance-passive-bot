@@ -8,6 +8,7 @@
   const REGION_ORDER=Object.freeze(['US','TW','CN_HK','JP','KR','EU','CRYPTO']);
   const MARKET_ORDER=Object.freeze(['CRYPTO','US','TW']);
   const EVENT_PRIORITY=Object.freeze({EXTREME:90,HIGH:75,MEDIUM:55,LOW:35,UNAVAILABLE:0});
+  const IMPACT_MARKET_LABELS=Object.freeze({GLOBAL:'全球市場',US:'美股',TW:'台股',CN_HK:'中國／香港',JP:'日本',KR:'韓國',EU:'歐洲',CRYPTO:'加密市場'});
   const object=x=>x&&typeof x==='object'&&!Array.isArray(x);
   const text=x=>typeof x==='string'&&x.length>0;
   const finite=x=>typeof x==='number'&&Number.isFinite(x);
@@ -157,6 +158,19 @@
     return EVENT_PRIORITY[String(row?.impact||'UNAVAILABLE').toUpperCase()]??0;
   }
 
+  function focusDisplayRow(row){
+    if(row.kind!=='NEWS'||!finite(row.impactScore))return row;
+    const markets=row.relatedMarkets.map(value=>IMPACT_MARKET_LABELS[value]||value);
+    const meta=[
+      `影響分數 ${Math.round(row.impactScore)}/100`,
+      finite(row.impactConfidence)?`可信度 ${Math.round(row.impactConfidence*100)}%`:null,
+      finite(row.freshnessWeight)?`新鮮度 ${Math.round(row.freshnessWeight*100)}%`:null,
+      markets.length?`影響市場 ${markets.join('、')}`:null,
+      row.relatedAssets.length?`相關資產 ${row.relatedAssets.join('、')}`:null
+    ].filter(Boolean).join(' · ');
+    return Object.freeze({...row,sourceName:row.source,source:`${row.source} · ${meta}`});
+  }
+
   function focusRows(homeFocus,events){
     const supplied=(Array.isArray(homeFocus)?homeFocus:[]).map(eventRow);
     const highImpact=events.filter(row=>['EXTREME','HIGH'].includes(row.impact));
@@ -166,7 +180,7 @@
     for(const row of source){
       const key=row.kind+'|'+row.id;
       if(seen.has(key))continue;
-      seen.add(key);unique.push(row);
+      seen.add(key);unique.push(focusDisplayRow(row));
       if(unique.length>=5)break;
     }
     return freezeList(unique);
