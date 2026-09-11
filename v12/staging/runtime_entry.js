@@ -1,5 +1,6 @@
 'use strict';
 
+const path=require('node:path');
 const {startStagingPreviewServer}=require('./server.js');
 const {createDurableSourceLineageStore}=require('./durable_source_lineage_store.js');
 const {createDurableForwardResearchStore}=require('./durable_forward_research_store.js');
@@ -14,14 +15,18 @@ function runtimeConfig(env=process.env){
   const port=Number(rawPort);
   if(!Number.isInteger(port)||port<0||port>65535)throw Error('PORT_INVALID');
 
-  const lineageFilePath=typeof env.FOXYYA_V12_LINEAGE_PATH==='string'&&env.FOXYYA_V12_LINEAGE_PATH.trim()
+  const explicitLineagePath=typeof env.FOXYYA_V12_LINEAGE_PATH==='string'&&env.FOXYYA_V12_LINEAGE_PATH.trim();
+  const lineageFilePath=explicitLineagePath
     ?env.FOXYYA_V12_LINEAGE_PATH.trim()
     :'/data/foxyya-v12.lineage.jsonl';
   if(!lineageFilePath.endsWith('.lineage.jsonl'))throw Error('LINEAGE_JOURNAL_PATH_INVALID');
 
-  const forwardResearchFilePath=typeof env.FOXYYA_V12_FORWARD_RESEARCH_PATH==='string'&&env.FOXYYA_V12_FORWARD_RESEARCH_PATH.trim()
+  const explicitForwardPath=typeof env.FOXYYA_V12_FORWARD_RESEARCH_PATH==='string'&&env.FOXYYA_V12_FORWARD_RESEARCH_PATH.trim();
+  const forwardResearchFilePath=explicitForwardPath
     ?env.FOXYYA_V12_FORWARD_RESEARCH_PATH.trim()
-    :'/data/foxyya-v12-forward-research.forward.jsonl';
+    :(explicitLineagePath
+      ?path.join(path.dirname(lineageFilePath),'foxyya-v12-forward-research.forward.jsonl')
+      :'/data/foxyya-v12-forward-research.forward.jsonl');
   if(!forwardResearchFilePath.endsWith('.forward.jsonl'))throw Error('FORWARD_LEDGER_PATH_INVALID');
 
   const rawRefresh=env.FOXYYA_V12_REFRESH_SECONDS===undefined||env.FOXYYA_V12_REFRESH_SECONDS===null||String(env.FOXYYA_V12_REFRESH_SECONDS).trim()===''
