@@ -35,9 +35,11 @@ test('adopted TWSE public source fetches only approved HTTPS origin with GET and
 test('decision-required and credential-required sources are blocked before network access',async()=>{
   let calls=0;
   const fetchImpl=async()=>{calls++;return jsonResponse({})};
-  const unresolved=createPublicSourceLoader({sourceId:'us-equity-realtime',endpoint:'https://example.invalid/quote',fetchImpl});
+  const unresolved=createPublicSourceLoader({sourceId:'eu-equity-realtime',endpoint:'https://example.invalid/quote',fetchImpl});
+  const usSip=createPublicSourceLoader({sourceId:'us-equity-realtime',endpoint:'https://example.invalid/quote',fetchImpl});
   const finra=createPublicSourceLoader({sourceId:'finra-research',endpoint:'https://api.finra.org/data/group/otcMarket/name/regShoDaily',fetchImpl});
   assert.equal((await unresolved.load()).reason,'DECISION_REQUIRED');
+  assert.equal((await usSip.load()).reason,'CREDENTIAL_REQUIRED');
   assert.equal((await finra.load()).reason,'CREDENTIAL_REQUIRED');
   assert.equal(calls,0);
 });
