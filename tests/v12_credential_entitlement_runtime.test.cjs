@@ -108,10 +108,42 @@ test('FINRA credentialed public source requires credential but not entitlement',
   assert.deepEqual(h.calls.entitlement,[]);
 });
 
-test('review and decision required sources stay blocked before any credential or entitlement lookup',()=>{
-  const h=runtime({secrets:{'hkex-marketplace':'secret','us-equity-realtime':'secret'},entitlements:{'hkex-marketplace':true,'us-equity-realtime':true}});
+test('Alpaca SIP market data is blocked without key, unavailable with unknown plan, and ready only with explicit entitlement',()=>{
+  const missing=runtime();
+  const blocked=missing.runtime.evaluate('us-equity-realtime');
+  assert.equal(blocked.access,'BLOCKED');
+  assert.equal(blocked.reason,'CREDENTIAL_MISSING');
+  assert.equal(blocked.credential.state,'MISSING');
+  assert.equal(blocked.entitlement.state,'UNKNOWN');
+  assert.equal(blocked.activation.readiness,'CREDENTIAL_REQUIRED');
+  assert.equal(blocked.activation.liveEligible,true);
+  assert.deepEqual(missing.calls.entitlement,[]);
+
+  const keyOnly=runtime({secrets:{'us-equity-realtime':'alpaca-secret-never-return'}});
+  const unknown=keyOnly.runtime.evaluate('us-equity-realtime');
+  assert.equal(unknown.access,'UNAVAILABLE');
+  assert.equal(unknown.reason,'ENTITLEMENT_UNKNOWN');
+  assert.equal(unknown.credential.state,'PRESENT');
+  assert.equal(unknown.entitlement.state,'UNKNOWN');
+  assert.equal(unknown.activation.readiness,'ENTITLEMENT_REQUIRED');
+  assert.equal(unknown.activation.canActivate,false);
+
+  const entitled=runtime({secrets:{'us-equity-realtime':'alpaca-secret-never-return'},entitlements:{'us-equity-realtime':true}});
+  const ready=entitled.runtime.evaluate('us-equity-realtime');
+  assert.equal(ready.access,'READY');
+  assert.equal(ready.reason,'READY');
+  assert.equal(ready.credential.state,'PRESENT');
+  assert.equal(ready.entitlement.state,'ENTITLED');
+  assert.equal(ready.activation.readiness,'READY');
+  assert.equal(ready.activation.canActivate,true);
+  assert.equal(ready.activation.liveEligible,true);
+  assert.doesNotMatch(JSON.stringify(ready),/alpaca-secret-never-return/);
+});
+
+test('review and unresolved decision sources stay blocked before any credential or entitlement lookup',()=>{
+  const h=runtime({secrets:{'hkex-marketplace':'secret','eu-equity-realtime':'secret'},entitlements:{'hkex-marketplace':true,'eu-equity-realtime':true}});
   const review=h.runtime.evaluate('hkex-marketplace');
-  const decision=h.runtime.evaluate('us-equity-realtime');
+  const decision=h.runtime.evaluate('eu-equity-realtime');
   assert.equal(review.access,'BLOCKED');
   assert.equal(review.reason,'SOURCE_REVIEW_REQUIRED');
   assert.equal(review.activation.readiness,'REVIEW_REQUIRED');

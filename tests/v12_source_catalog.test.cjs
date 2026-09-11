@@ -18,14 +18,39 @@ test('secret-bearing providers are always server-only',()=>{
   assert.ok(secretSources.every(x=>x.serverOnly===true));
 });
 
-test('unresolved licensed real-time quotes cannot claim LIVE eligibility',()=>{
+test('US licensed real-time quote source is explicitly selected as Alpaca SIP and remains credential plus entitlement gated',()=>{
   const us=SOURCE_CATALOG.find(x=>x.id==='us-equity-realtime');
+  assert.ok(us);
+  assert.equal(us.provider,'Alpaca Market Data SIP');
+  assert.equal(us.status,SOURCE_STATUS.KEY_REQUIRED);
+  assert.equal(us.authority,'LICENSED');
+  assert.equal(us.accessClass,'API_KEY');
+  assert.equal(us.secretRequired,true);
+  assert.equal(us.entitlementRequired,true);
+  assert.equal(us.serverOnly,true);
+  assert.equal(us.liveEligible,true);
+  assert.equal(us.latencyClass,'REALTIME');
+  assert.equal(us.feed,'sip');
+  assert.equal(us.coverage,'ALL_US_EXCHANGES');
+  assert.equal(us.subscription,'ALGO_TRADER_PLUS');
+  assert.equal(us.redistributionStatus,'NOT_REVIEWED');
+});
+
+test('licensed LIVE sources cannot bypass credential entitlement or server-only gates',()=>{
+  const us=SOURCE_CATALOG.find(x=>x.id==='us-equity-realtime');
+  const bad={...us,id:'bad-licensed-live',secretRequired:false,entitlementRequired:false,serverOnly:false};
+  const result=validateSourceCatalog(SOURCE_CATALOG.concat(bad));
+  assert.equal(result.ok,false);
+  assert.ok(result.errors.includes('LICENSED_LIVE_CREDENTIAL_REQUIRED:bad-licensed-live'));
+  assert.ok(result.errors.includes('LICENSED_LIVE_ENTITLEMENT_REQUIRED:bad-licensed-live'));
+  assert.ok(result.errors.includes('LICENSED_LIVE_SERVER_ONLY:bad-licensed-live'));
+});
+
+test('unresolved Europe licensed real-time quote source cannot claim LIVE eligibility',()=>{
   const eu=SOURCE_CATALOG.find(x=>x.id==='eu-equity-realtime');
-  for(const source of [us,eu]){
-    assert.equal(source.status,SOURCE_STATUS.DECISION_REQUIRED);
-    assert.equal(source.liveEligible,false);
-    assert.equal(source.provider,null);
-  }
+  assert.equal(eu.status,SOURCE_STATUS.DECISION_REQUIRED);
+  assert.equal(eu.liveEligible,false);
+  assert.equal(eu.provider,null);
 });
 
 test('slow positioning evidence is classified as confirmation, not early live signal',()=>{
