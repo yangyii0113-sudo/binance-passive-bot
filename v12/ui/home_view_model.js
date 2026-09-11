@@ -173,8 +173,9 @@
 
   function focusRows(homeFocus,events){
     const supplied=(Array.isArray(homeFocus)?homeFocus:[]).map(eventRow);
+    const scored=events.filter(row=>finite(row.impactScore));
     const highImpact=events.filter(row=>['EXTREME','HIGH'].includes(row.impact));
-    const source=(supplied.length?supplied:highImpact.length?highImpact:events.slice(0,5)).slice();
+    const source=(supplied.length?supplied:scored.length?scored:highImpact.length?highImpact:events.slice(0,5)).slice();
     source.sort((a,b)=>eventPriority(b)-eventPriority(a)||(b.asOf||0)-(a.asOf||0)||String(a.id).localeCompare(String(b.id)));
     const unique=[];const seen=new Set();
     for(const row of source){
