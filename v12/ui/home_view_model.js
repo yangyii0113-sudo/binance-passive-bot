@@ -7,6 +7,7 @@
 
   const REGION_ORDER=Object.freeze(['US','TW','CN_HK','JP','KR','EU','CRYPTO']);
   const MARKET_ORDER=Object.freeze(['CRYPTO','US','TW']);
+  const EVENT_PRIORITY=Object.freeze({EXTREME:90,HIGH:75,MEDIUM:55,LOW:35,UNAVAILABLE:0});
   const object=x=>x&&typeof x==='object'&&!Array.isArray(x);
   const text=x=>typeof x==='string'&&x.length>0;
   const finite=x=>typeof x==='number'&&Number.isFinite(x);
@@ -100,7 +101,7 @@
   }
 
   function eventRow(row){
-    return {
+    const out={
       kind:text(row?.kind)?row.kind:'EVENT',
       id:text(row?.id)?row.id:'UNAVAILABLE',
       title:text(row?.title)?row.title:'UNAVAILABLE',
@@ -111,8 +112,17 @@
       description:text(row?.description)?row.description:'',
       summary:text(row?.summary)?row.summary:'',
       tags:Object.freeze(Array.isArray(row?.tags)?row.tags.filter(text):[]),
-      assets:Object.freeze(Array.isArray(row?.assets)?row.assets.filter(text):[])
+      assets:Object.freeze(Array.isArray(row?.assets)?row.assets.filter(text):[]),
+      impactScore:finite(row?.impactScore)?row.impactScore:null,
+      impactLevel:text(row?.impactLevel)?row.impactLevel:'UNAVAILABLE',
+      impactConfidence:finite(row?.impactConfidence)?row.impactConfidence:null,
+      freshnessWeight:finite(row?.freshnessWeight)?row.freshnessWeight:null,
+      relatedMarkets:Object.freeze(Array.isArray(row?.relatedMarkets)?row.relatedMarkets.filter(text):[]),
+      relatedAssets:Object.freeze(Array.isArray(row?.relatedAssets)?row.relatedAssets.filter(text):[]),
+      topic:text(row?.topic)?row.topic:'',
+      impactRationale:text(row?.impactRationale)?row.impactRationale:''
     };
+    return out;
   }
 
   function positionsView(execution){
@@ -142,10 +152,16 @@
     });
   }
 
+  function eventPriority(row){
+    if(finite(row?.impactScore))return row.impactScore;
+    return EVENT_PRIORITY[String(row?.impact||'UNAVAILABLE').toUpperCase()]??0;
+  }
+
   function focusRows(homeFocus,events){
     const supplied=(Array.isArray(homeFocus)?homeFocus:[]).map(eventRow);
     const highImpact=events.filter(row=>['EXTREME','HIGH'].includes(row.impact));
-    const source=supplied.length?supplied:highImpact.length?highImpact:events.slice(0,3);
+    const source=(supplied.length?supplied:highImpact.length?highImpact:events.slice(0,5)).slice();
+    source.sort((a,b)=>eventPriority(b)-eventPriority(a)||(b.asOf||0)-(a.asOf||0)||String(a.id).localeCompare(String(b.id)));
     const unique=[];const seen=new Set();
     for(const row of source){
       const key=row.kind+'|'+row.id;
