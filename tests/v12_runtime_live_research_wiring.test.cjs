@@ -34,7 +34,7 @@ function fixtures(){
     [input.twAssets[0].flowEndpoint,response(200,twFlowPayload())],
     [input.twAssets[0].revenueEndpoint,response(200,[revenueRow()])],
     [input.twAssets[1].quoteEndpoint,response(200,[tpQuoteRow()])],
-    [input.twAssets[1].flowEndpoint,response(200,[tpFlowRow()])],
+    [input.twAssets[1].flowEndpoint,response(200,tpFlowRow())],
     [input.usAssets[0].sec.endpoint,response(200,secPayload())]
   ]);
   const blsValues={CUUR0000SA0:'326.5',LNS14000000:'4.2',CES0000000001:'159500'};
@@ -84,7 +84,7 @@ test('staging runtime shares one durable lineage store across bootstrap, Home, a
     try{
       const initial=await runtime.researchReady;
       assert.ok(initial);
-      assert.equal(calls.length,15);
+      assert.equal(calls.length,16);
       assert.equal(timers.length,1);
       assert.equal(timers[0].ms,1800*1000);
 
