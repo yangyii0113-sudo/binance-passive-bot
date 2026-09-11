@@ -2,6 +2,8 @@
 
 const {startStagingPreviewServer}=require('./server.js');
 const {createDurableSourceLineageStore}=require('./durable_source_lineage_store.js');
+const {createDurableForwardResearchStore}=require('./durable_forward_research_store.js');
+const {createForwardResearchTracker}=require('./forward_research_tracker.js');
 const {createLiveResearchBootstrap}=require('./live_research_bootstrap.js');
 const {createExecutionReadBridge}=require('./execution_read_bridge.js');
 
@@ -17,6 +19,11 @@ function runtimeConfig(env=process.env){
     :'/data/foxyya-v12.lineage.jsonl';
   if(!lineageFilePath.endsWith('.lineage.jsonl'))throw Error('LINEAGE_JOURNAL_PATH_INVALID');
 
+  const forwardResearchFilePath=typeof env.FOXYYA_V12_FORWARD_RESEARCH_PATH==='string'&&env.FOXYYA_V12_FORWARD_RESEARCH_PATH.trim()
+    ?env.FOXYYA_V12_FORWARD_RESEARCH_PATH.trim()
+    :'/data/foxyya-v12-forward-research.forward.jsonl';
+  if(!forwardResearchFilePath.endsWith('.forward.jsonl'))throw Error('FORWARD_LEDGER_PATH_INVALID');
+
   const rawRefresh=env.FOXYYA_V12_REFRESH_SECONDS===undefined||env.FOXYYA_V12_REFRESH_SECONDS===null||String(env.FOXYYA_V12_REFRESH_SECONDS).trim()===''
     ?'1800'
     :String(env.FOXYYA_V12_REFRESH_SECONDS).trim();
@@ -28,6 +35,7 @@ function runtimeConfig(env=process.env){
     host,
     port,
     lineageFilePath,
+    forwardResearchFilePath,
     refreshSeconds,
     researchOnly:true,
     executionWrite:false
@@ -48,10 +56,14 @@ async function startFromEnvironment(env=process.env,dependencies={}){
   if(typeof onResearchError!=='function')throw Error('RESEARCH_ERROR_HANDLER_REQUIRED');
 
   const lineageStore=createDurableSourceLineageStore({filePath:config.lineageFilePath,now:clock});
+  const forwardResearchStore=dependencies.forwardResearchStore||createDurableForwardResearchStore({filePath:config.forwardResearchFilePath,now:clock});
+  const forwardResearchTracker=dependencies.forwardResearchTracker||createForwardResearchTracker({store:forwardResearchStore});
+
   const serverRuntime=await startStagingPreviewServer({
     host:config.host,
     port:config.port,
-    lineageStore
+    lineageStore,
+    forwardResearchTracker
   });
 
   const hasInjectedBridge=Object.prototype.hasOwnProperty.call(dependencies,'executionBridge');
@@ -92,6 +104,8 @@ async function startFromEnvironment(env=process.env,dependencies={}){
     server:serverRuntime.server,
     address:serverRuntime.address,
     lineageStore,
+    forwardResearchStore,
+    forwardResearchTracker,
     researchReady,
     close
   });
@@ -107,12 +121,15 @@ if(require.main===module){
         console.log('FOXYYA v12 initial research bootstrap unavailable');
         return;
       }
-      const home=result.orchestration?.published?.home;
+      const published=result.orchestration?.published;
+      const home=published?.home;
       console.log('FOXYYA v12 initial research bootstrap published',JSON.stringify({
         cryptoOpportunities:Array.isArray(home?.opportunities?.CRYPTO)?home.opportunities.CRYPTO.length:0,
         twOpportunities:Array.isArray(home?.opportunities?.TW)?home.opportunities.TW.length:0,
         usOpportunities:Array.isArray(home?.opportunities?.US)?home.opportunities.US.length:0,
         eventCount:Array.isArray(home?.events)?home.events.length:0,
+        twForwardSamples:published?.researchPerformance?.tw?.summary?.sampleCount??0,
+        usForwardStatus:published?.researchPerformance?.us?.status||'UNAVAILABLE',
         researchOnly:result.researchOnly===true,
         executionWrite:result.executionWrite===true
       }));
