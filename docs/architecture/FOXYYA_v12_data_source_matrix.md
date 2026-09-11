@@ -1,8 +1,8 @@
 # FOXYYA v12 Data Source Matrix
 
-**Status:** Phase 11 Source Selection Gate  
-**Date:** 2026-09-09  
-**Branch:** `v12-multimarket-architecture`  
+**Status:** P1.8 US Quote Provider Decision CLOSED; activation remains credential / entitlement gated  
+**Date:** 2026-09-12  
+**Branch:** `v12-p1-data-gate`  
 **Production impact:** None.
 
 ## 1. Source policy
@@ -26,7 +26,7 @@ Every adapter must map provider payloads into `foxyya-observation/1` and then pa
 |---|---|---|---|---|
 | Crypto market / derivatives | Binance USD-M Public API | Public read-only | Crypto quotes, klines, Funding, OI context | Existing core; retain |
 | US company filings / financial facts | SEC EDGAR `data.sec.gov` submissions + XBRL APIs | Official public, server-side | filings, 10-K/10-Q/8-K, company facts, Form 4/13D/13G discovery | Adopt |
-| US real-time equity prices | Nasdaq / NYSE licensed feeds or licensed redistributor | Licensed / entitlement | Quotes, intraday chart, relative volume | Provider decision required |
+| US real-time equity prices | **Alpaca Market Data SIP** (`feed=sip`) | Licensed API key + subscription entitlement; server-side only | consolidated quotes, intraday chart inputs, full-market volume / relative-volume inputs | **Selected for v12; runtime activation blocked until key + entitlement are present** |
 | US OTC / short-sale evidence | FINRA Developer APIs / OTC Transparency | Official API; dataset-specific terms | Reg SHO daily volume, short-interest/OTC research evidence | Adopt where terms permit |
 | US macro labor/inflation | BLS Public Data API | Official public API | CPI, employment and related macro series | Adopt |
 | Federal Reserve policy/news | Federal Reserve official RSS / releases | Official public feeds | Fed policy, speeches, releases, selected rates context | Adopt |
@@ -42,7 +42,42 @@ Every adapter must map provider payloads into `foxyya-observation/1` and then pa
 | Global news | Official issuer/regulator/central-bank RSS first; licensed news provider later | Mixed | facts/catalysts with source/time | Official-first |
 | Economic calendar | Official BLS/Fed/issuer schedules + normalized calendar layer | Official sources | high-impact events | Adopt |
 
-## 3. Source latency semantics
+## 3. US SIP provider decision
+
+P1.8 selects **Alpaca Market Data SIP** as the v12 US consolidated real-time equity market-data provider for internal research use.
+
+Provider facts verified at the decision date:
+
+- Alpaca exposes separate stock feeds for `sip`, `iex` and `delayed_sip`.
+- `sip` represents consolidated US exchange data; `iex` is a single exchange and is not equivalent to consolidated market coverage.
+- recent / live SIP access requires an authenticated account with the appropriate market-data subscription entitlement.
+- the Trading API reference identifies Algo Trader Plus as the plan providing all-US-exchange real-time stock coverage at the time of this decision.
+
+FOXYYA therefore encodes `us-equity-realtime` with:
+
+- provider: `Alpaca Market Data SIP`
+- `feed: 'sip'`
+- authority: `LICENSED`
+- access class: `API_KEY`
+- `secretRequired: true`
+- `entitlementRequired: true`
+- `serverOnly: true`
+- `liveEligible: true`
+- latency class: `REALTIME`
+- redistribution status: `NOT_REVIEWED`
+
+**Important boundary:** provider selection is not the same as runtime activation. No Alpaca key, paid plan, adapter transport or Production deployment is added by P1.8.
+
+### No fallback rule
+
+For the capability `us-equity-realtime`:
+
+- IEX may not be silently substituted for SIP and still be labeled consolidated / full-market / LIVE.
+- `delayed_sip` may not be silently substituted for real-time SIP and still be labeled LIVE.
+- if the key or entitlement is missing or unknown, the capability remains blocked / unavailable.
+- SEC EDGAR facts remain filing data and must never be presented as market-price observations.
+
+## 4. Source latency semantics
 
 Provider metadata must state the capability's natural latency and publication cadence.
 
@@ -52,9 +87,11 @@ Examples:
 - FINRA OTC transparency: delayed publication; never labeled LIVE Smart Money.
 - CFTC COT: weekly positioning confirmation; never an intraday lead signal.
 - JPX J-Quants standard historical/daily data: not assumed real-time; higher-frequency add-ons retain their documented delivery semantics.
-- Exchange real-time quote data: may be labeled LIVE only when entitlement, timestamp and freshness policy validate it.
+- Alpaca SIP: may be labeled LIVE only when key, subscription entitlement, provider timestamp and freshness policy validate the observation.
+- Alpaca IEX: single-exchange coverage; never a silent replacement for consolidated SIP market breadth.
+- Alpaca delayed SIP: explicit delayed research data only; never a silent replacement for live SIP.
 
-## 4. Smart Money evidence classification
+## 5. Smart Money evidence classification
 
 `SMART_MONEY` is not a provider field and never means certainty. It is a FOXYYA evidence family assembled from traceable sub-evidence.
 
@@ -80,21 +117,21 @@ Examples:
 
 Each evidence item preserves source, as-of, release cadence, confidence and known limitations.
 
-## 5. Providers intentionally NOT selected yet
+## 6. Providers intentionally NOT selected yet
 
-The following require an explicit cost/licensing decision before implementation:
+The following still require an explicit cost/licensing decision before implementation:
 
-1. Consolidated / real-time US equity quote provider.
-2. US earnings consensus / analyst estimate revision provider.
-3. US options flow / IV / unusual options provider.
-4. Europe real-time equity provider.
-5. HKEX datasets that require product subscription.
-6. Japan J-Quants plan/add-ons beyond baseline capability.
-7. Any redistributable real-time Taiwan data product beyond official public datasets.
+1. US earnings consensus / analyst estimate revision provider.
+2. US options flow / IV / unusual options provider.
+3. Europe real-time equity provider.
+4. HKEX datasets that require product subscription.
+5. Japan J-Quants plan/add-ons beyond baseline capability.
+6. Any redistributable real-time Taiwan data product beyond official public datasets.
+7. External redistribution rights for Alpaca SIP if FOXYYA evolves from internal research into a multi-user or commercial data product.
 
 No v12 module should silently substitute delayed web-scraped values for these capabilities.
 
-## 6. Provider implementation order
+## 7. Provider implementation order
 
 ### Wave A — official/no-secret or existing public sources
 
@@ -116,19 +153,24 @@ No v12 module should silently substitute delayed web-scraped values for these ca
 
 ### Wave C — licensed market-data / consensus providers
 
-13. US real-time quotes
+13. **Alpaca SIP US real-time quote adapter — provider selected; implementation pending key / entitlement**
 14. US consensus / revisions
 15. Options analytics
 16. Europe real-time equities
 
-## 7. Release gate
+## 8. Release gate
 
-A provider cannot be promoted from `UNAVAILABLE` to a live v12 capability until:
+A provider cannot be promoted from `UNAVAILABLE` / `BLOCKED` to a live v12 capability until:
 
 - source terms and entitlement are documented;
+- required credentials are server-side only;
 - timestamps map correctly into canonical observations;
 - Quality Gate downgrade behavior is tested;
 - retry/rate-limit behavior is tested;
 - provider failure does not affect Crypto Execution V2;
 - no API key/secret reaches the frontend;
-- UI displays the provider's real freshness status.
+- UI displays the provider's real freshness status;
+- for `us-equity-realtime`, the selected feed is explicitly `sip` and no implicit IEX / delayed-SIP fallback occurs;
+- redistribution remains disabled until redistribution rights are separately reviewed.
+
+P1.8 satisfies **provider selection + activation-policy definition only**. It does not authorize purchasing a plan, adding credentials, external redistribution, enabling US equity execution, or releasing to Production.
