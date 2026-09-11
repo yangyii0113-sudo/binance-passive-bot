@@ -28,8 +28,25 @@ test('review-required source cannot be activated by credential presence',()=>{
   assert.equal(r.canActivate,false);
 });
 
-test('decision-required source stays blocked until catalog decision is changed',()=>{
-  const r=evaluateSource('us-equity-realtime',{credentialSources:['us-equity-realtime'],entitledSources:['us-equity-realtime']});
+test('Alpaca SIP US quote source requires credential and subscription entitlement before activation',()=>{
+  const missing=evaluateSource('us-equity-realtime');
+  assert.equal(missing.readiness,READINESS.CREDENTIAL_REQUIRED);
+  assert.equal(missing.canActivate,false);
+  assert.equal(missing.liveEligible,true);
+
+  const keyOnly=evaluateSource('us-equity-realtime',{credentialSources:['us-equity-realtime']});
+  assert.equal(keyOnly.readiness,READINESS.ENTITLEMENT_REQUIRED);
+  assert.equal(keyOnly.canActivate,false);
+  assert.equal(keyOnly.liveEligible,true);
+
+  const ready=evaluateSource('us-equity-realtime',{credentialSources:['us-equity-realtime'],entitledSources:['us-equity-realtime']});
+  assert.equal(ready.readiness,READINESS.READY);
+  assert.equal(ready.canActivate,true);
+  assert.equal(ready.liveEligible,true);
+});
+
+test('decision-required Europe source stays blocked until catalog decision is changed',()=>{
+  const r=evaluateSource('eu-equity-realtime',{credentialSources:['eu-equity-realtime'],entitledSources:['eu-equity-realtime']});
   assert.equal(r.readiness,READINESS.DECISION_REQUIRED);
   assert.equal(r.canActivate,false);
   assert.equal(r.liveEligible,false);
