@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - v12-multimarket-architecture
+      - v12-p1-data-gate
   workflow_dispatch:
 
 permissions:
