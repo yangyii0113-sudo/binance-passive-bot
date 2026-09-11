@@ -21,6 +21,8 @@ function request(address,pathname){
 test('runtime config defines a durable forward-research ledger path and rejects wrong suffix',()=>{
   const cfg=Entry.runtimeConfig({});
   assert.equal(cfg.forwardResearchFilePath,'/data/foxyya-v12-forward-research.forward.jsonl');
+  const customLineage=Entry.runtimeConfig({FOXYYA_V12_LINEAGE_PATH:'/tmp/runtime.lineage.jsonl'});
+  assert.equal(customLineage.forwardResearchFilePath,'/tmp/foxyya-v12-forward-research.forward.jsonl');
   assert.throws(()=>Entry.runtimeConfig({FOXYYA_V12_FORWARD_RESEARCH_PATH:'/tmp/forward.jsonl'}),/FORWARD_LEDGER_PATH_INVALID/);
   assert.equal(Entry.runtimeConfig({FOXYYA_V12_FORWARD_RESEARCH_PATH:'/tmp/research.forward.jsonl'}).forwardResearchFilePath,'/tmp/research.forward.jsonl');
 });
