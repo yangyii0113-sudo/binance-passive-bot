@@ -1,6 +1,7 @@
 'use strict';
 
 const EvidencePolicy=require('../early_trend/evidence_policy.js');
+const NewsImpact=require('../intelligence/news_impact_engine.js');
 const {createProviderRuntimeGovernance}=require('../providers/runtime_governance.js');
 const {createStagingSourcePipeline}=require('./source_pipeline.js');
 
@@ -193,13 +194,13 @@ function normalizeCalendar(result){
   }).filter(Boolean);
 }
 
-function normalizeNews(result){
+function normalizeNews(result,nowMs){
   if(result?.status!=='AVAILABLE'||!object(result.data)||!Array.isArray(result.data.items))return [];
   return result.data.items.map((row,index)=>{
     if(!object(row)||typeof row.title!=='string'||!row.title)return null;
     const asOf=parseTime(row.published_at)??parseTime(result.data.fetched_at);
     if(asOf===null)return null;
-    return Object.freeze({
+    const event={
       kind:'NEWS',
       id:`news:${asOf}:${index}`,
       title:row.title,
@@ -210,7 +211,9 @@ function normalizeNews(result){
       summary:typeof row.summary==='string'?row.summary:'',
       tags:Object.freeze(Array.isArray(row.tags)?row.tags.filter(x=>typeof x==='string'):[]),
       assets:Object.freeze(Array.isArray(row.assets)?row.assets.filter(x=>typeof x==='string'):[])
-    });
+    };
+    const intelligence=NewsImpact.evaluateNewsImpact(event,nowMs);
+    return Object.freeze({...event,...intelligence});
   }).filter(Boolean);
 }
 
@@ -240,7 +243,7 @@ function createLiveResearchBootstrap({fetchImpl=globalThis.fetch,clock=Date.now,
       safeExternalRead(()=>external.loadCalendar(),'CALENDAR'),
       safeExternalRead(()=>external.loadNews(),'NEWS')
     ]);
-    const events=Object.freeze([...normalizeCalendar(calendarRead),...normalizeNews(newsRead)]);
+    const events=Object.freeze([...normalizeCalendar(calendarRead),...normalizeNews(newsRead,nowMs)]);
     return pipeline.run({...base,crypto:async()=>runtimeRead,events});
   }
 
