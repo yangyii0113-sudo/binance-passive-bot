@@ -15,6 +15,12 @@
     Object.freeze({selector:'[data-home-content="events"]',property:'innerHTML',field:'eventsHtml'})
   ]);
 
+  const REGIONAL_SOURCE_GATES=Object.freeze({
+    JP:'JPX J-Quants API V2 的程式 adapter 已完成；目前缺 API Key 與方案 entitlement。免費方案資料有 12 週延遲，不適合作為當前市場方向；要做目前 EOD 判讀需啟用合適方案。',
+    KR:'KRX Data Marketplace OPEN API 的程式 adapter 已完成；目前缺 KRX 會員／API Key 與對應資料 entitlement，取得前不展示 KOSPI 或個股市場數值。',
+    CN_HK:'HKEX Data Marketplace 官方來源已確認；可用 EOD／End-of-Session 市場檔屬付費授權資料產品，需先選定授權與交付方式後才能接入，不以網頁抓取或假資料替代。'
+  });
+
   const object=value=>value&&typeof value==='object'&&!Array.isArray(value);
   const text=value=>typeof value==='string';
 
@@ -25,6 +31,19 @@
       if(!text(plan[target.field]))throw Error('HOME_RENDER_FIELD_REQUIRED:'+target.field);
     }
     return plan;
+  }
+
+  function applyRegionalSourceGates(doc){
+    if(!doc||typeof doc.querySelector!=='function')throw Error('DOCUMENT_REQUIRED');
+    for(const [region,message] of Object.entries(REGIONAL_SOURCE_GATES)){
+      const card=doc.querySelector(`[data-region="${region}"]`);
+      if(!card)continue;
+      const rawStatus=typeof card.getAttribute==='function'?card.getAttribute('data-raw-status'):null;
+      if(rawStatus!=='UNAVAILABLE')continue;
+      const note=doc.querySelector(`[data-region="${region}"] .region-gap-note`);
+      if(note)note.textContent=message;
+    }
+    return true;
   }
 
   function applyHomeRender(doc,plan){
@@ -61,8 +80,9 @@
         if(legacy)legacy.innerHTML=`<span class="eyebrow">研究結果</span><h2>台股 / 美股前瞻研究驗證</h2><div data-research-performance>${plan.researchPerformanceHtml}</div>`;
       }
     }
+    applyRegionalSourceGates(doc);
     return Object.freeze({ok:true,updated:Object.freeze(TARGETS.map(x=>x.selector))});
   }
 
-  return Object.freeze({TARGETS,applyHomeRender});
+  return Object.freeze({TARGETS,REGIONAL_SOURCE_GATES,applyRegionalSourceGates,applyHomeRender});
 });
