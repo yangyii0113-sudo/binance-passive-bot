@@ -2,28 +2,30 @@
 
 const test=require('node:test');
 const assert=require('node:assert/strict');
-const Renderer=require('../v12/ui/home_renderer.js');
+const HomeDom=require('../v12/ui/home_dom.js');
 
-function view(){
-  const regions=['US','TW','CN_HK','JP','KR','EU','CRYPTO'].map(region=>Object.freeze({region,bias:'UNAVAILABLE',confidence:0,status:'UNAVAILABLE',asOf:null,facts:Object.freeze([]),lineageRef:null}));
-  return Object.freeze({
-    schemaVersion:'foxyya-home-view-model/1',asOf:Date.parse('2026-09-11T05:30:00Z'),
-    providerDiagnostics:null,regions:Object.freeze(regions),marketPulse:Object.freeze([]),earlyTrend:Object.freeze([]),
-    opportunities:Object.freeze({CRYPTO:Object.freeze([]),US:Object.freeze([]),TW:Object.freeze([])}),events:Object.freeze([]),calendar:Object.freeze([]),news:Object.freeze([]),todayFocus:Object.freeze([]),
-    positions:Object.freeze({status:'UNAVAILABLE'}),tradingResults:null,researchPerformance:Object.freeze({status:'UNAVAILABLE'}),researchOnly:true,executionWrite:false
-  });
-}
+test('regional source-gate copy explains legal activation blockers without claiming market direction',()=>{
+  const gates=HomeDom.REGIONAL_SOURCE_GATES;
+  assert.match(gates.JP,/J-Quants API V2/);
+  assert.match(gates.JP,/API Key/);
+  assert.match(gates.JP,/免費方案.*12 週延遲/);
+  assert.match(gates.KR,/KRX Data Marketplace OPEN API/);
+  assert.match(gates.KR,/會員.*API Key/);
+  assert.match(gates.CN_HK,/HKEX Data Marketplace/);
+  assert.match(gates.CN_HK,/付費授權/);
+  assert.match(gates.CN_HK,/EOD/);
+  assert.doesNotMatch(Object.values(gates).join(' '),/可判方向|偏多|偏空/);
+});
 
-test('regional cards explain the exact legal activation gate instead of generic unavailable copy',()=>{
-  const html=Renderer.renderHomeSections(view()).regionsHtml;
-  assert.match(html,/J-Quants API V2/);
-  assert.match(html,/API Key/);
-  assert.match(html,/免費方案.*12 週延遲/);
-  assert.match(html,/KRX Data Marketplace OPEN API/);
-  assert.match(html,/會員.*API Key/);
-  assert.match(html,/HKEX Data Marketplace/);
-  assert.match(html,/付費授權/);
-  assert.match(html,/EOD/);
-  assert.match(html,/尚未接入/);
-  assert.doesNotMatch(html,/日本.*可判方向|韓國.*可判方向|中國／香港.*可判方向/s);
+test('Home DOM replaces only unavailable regional gap notes with source activation guidance',()=>{
+  const nodes={};
+  for(const region of ['JP','KR','CN_HK']){
+    nodes[`[data-region="${region}"]`]={getAttribute(name){return name==='data-raw-status'?'UNAVAILABLE':null}};
+    nodes[`[data-region="${region}"] .region-gap-note`]={textContent:''};
+  }
+  const doc={querySelector(selector){return nodes[selector]||null}};
+  HomeDom.applyRegionalSourceGates(doc);
+  assert.equal(nodes['[data-region="JP"] .region-gap-note'].textContent,HomeDom.REGIONAL_SOURCE_GATES.JP);
+  assert.equal(nodes['[data-region="KR"] .region-gap-note'].textContent,HomeDom.REGIONAL_SOURCE_GATES.KR);
+  assert.equal(nodes['[data-region="CN_HK"] .region-gap-note'].textContent,HomeDom.REGIONAL_SOURCE_GATES.CN_HK);
 });
