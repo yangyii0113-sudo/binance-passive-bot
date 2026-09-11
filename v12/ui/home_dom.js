@@ -45,6 +45,7 @@
       ['[data-research-early]','earlyTrendHtml'],
       ['[data-positions-content]','positionsHtml'],
       ['[data-trading-results]','tradingResultsHtml'],
+      ['[data-research-performance]','researchPerformanceHtml'],
       ['[data-calendar-content]','calendarHtml'],
       ['[data-news-content]','newsHtml'],
       ['[data-home-content="today-focus"]','todayFocusHtml']
