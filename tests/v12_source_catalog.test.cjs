@@ -36,6 +36,16 @@ test('US licensed real-time quote source is explicitly selected as Alpaca SIP an
   assert.equal(us.redistributionStatus,'NOT_REVIEWED');
 });
 
+test('licensed LIVE sources cannot bypass credential entitlement or server-only gates',()=>{
+  const us=SOURCE_CATALOG.find(x=>x.id==='us-equity-realtime');
+  const bad={...us,id:'bad-licensed-live',secretRequired:false,entitlementRequired:false,serverOnly:false};
+  const result=validateSourceCatalog(SOURCE_CATALOG.concat(bad));
+  assert.equal(result.ok,false);
+  assert.ok(result.errors.includes('LICENSED_LIVE_CREDENTIAL_REQUIRED:bad-licensed-live'));
+  assert.ok(result.errors.includes('LICENSED_LIVE_ENTITLEMENT_REQUIRED:bad-licensed-live'));
+  assert.ok(result.errors.includes('LICENSED_LIVE_SERVER_ONLY:bad-licensed-live'));
+});
+
 test('unresolved Europe licensed real-time quote source cannot claim LIVE eligibility',()=>{
   const eu=SOURCE_CATALOG.find(x=>x.id==='eu-equity-realtime');
   assert.equal(eu.status,SOURCE_STATUS.DECISION_REQUIRED);
