@@ -41,13 +41,7 @@
     const row=source.find(x=>x&&x.market===market);
     if(!row)return {market,status:'UNAVAILABLE',stateLabel:'UNAVAILABLE',asOf:null,data:null};
     const status=text(row.status)?row.status:'UNAVAILABLE';
-    const out={
-      market,
-      status,
-      stateLabel:status==='UNAVAILABLE'?'UNAVAILABLE':(text(row.state)?row.state:status),
-      asOf:finite(row.asOf)?row.asOf:null,
-      data:status==='UNAVAILABLE'?null:(object(row.data)?Object.freeze({...row.data}):null)
-    };
+    const out={market,status,stateLabel:status==='UNAVAILABLE'?'UNAVAILABLE':(text(row.state)?row.state:status),asOf:finite(row.asOf)?row.asOf:null,data:status==='UNAVAILABLE'?null:(object(row.data)?Object.freeze({...row.data}):null)};
     if(text(row.reason))out.reason=row.reason;
     return out;
   }
@@ -55,15 +49,7 @@
   function researchStageLabel(stage){return text(stage)?stage.replaceAll('_',' '):'UNAVAILABLE';}
 
   function earlyTrendRow(row){
-    return {
-      market:text(row?.market)?row.market:'UNAVAILABLE',
-      instrumentId:text(row?.instrumentId)?row.instrumentId:'UNAVAILABLE',
-      stateLabel:researchStageLabel(row?.stage),
-      direction:text(row?.direction)?row.direction:'UNAVAILABLE',
-      confidence:finite(row?.confidence)?row.confidence:0,
-      mode:'RESEARCH',
-      sourceLineage:Object.freeze(Array.isArray(row?.sourceLineage)?row.sourceLineage.filter(text):[])
-    };
+    return {market:text(row?.market)?row.market:'UNAVAILABLE',instrumentId:text(row?.instrumentId)?row.instrumentId:'UNAVAILABLE',stateLabel:researchStageLabel(row?.stage),direction:text(row?.direction)?row.direction:'UNAVAILABLE',confidence:finite(row?.confidence)?row.confidence:0,mode:'RESEARCH',sourceLineage:Object.freeze(Array.isArray(row?.sourceLineage)?row.sourceLineage.filter(text):[])};
   }
 
   function cryptoOpportunity(row){
@@ -91,17 +77,13 @@
       rankingComponents:Object.freeze(object(row?.rankingComponents)?{...row.rankingComponents}:{}),
       rankingPurpose:text(row?.rankingPurpose)?row.rankingPurpose:'',
       catalystEventId:text(row?.catalystEventId)?row.catalystEventId:null,
-      mode:'RESEARCH',
-      researchOnly:true,
-      executionWrite:false,
+      mode:'RESEARCH',researchOnly:true,executionWrite:false,
       sourceLineage:Object.freeze(Array.isArray(row?.sourceLineage)?row.sourceLineage.filter(text):[])
     };
   }
 
   function eventRow(row){
-    return {
-      kind:text(row?.kind)?row.kind:'EVENT',id:text(row?.id)?row.id:'UNAVAILABLE',title:text(row?.title)?row.title:'UNAVAILABLE',source:text(row?.source)?row.source:'UNAVAILABLE',asOf:finite(row?.asOf)?row.asOf:null,impact:text(row?.impact)?row.impact:'UNAVAILABLE',status:text(row?.status)?row.status:'UNAVAILABLE',description:text(row?.description)?row.description:'',summary:text(row?.summary)?row.summary:'',tags:Object.freeze(Array.isArray(row?.tags)?row.tags.filter(text):[]),assets:Object.freeze(Array.isArray(row?.assets)?row.assets.filter(text):[]),impactScore:finite(row?.impactScore)?row.impactScore:null,impactLevel:text(row?.impactLevel)?row.impactLevel:'UNAVAILABLE',impactConfidence:finite(row?.impactConfidence)?row.impactConfidence:null,freshnessWeight:finite(row?.freshnessWeight)?row.freshnessWeight:null,relatedMarkets:Object.freeze(Array.isArray(row?.relatedMarkets)?row.relatedMarkets.filter(text):[]),relatedAssets:Object.freeze(Array.isArray(row?.relatedAssets)?row.relatedAssets.filter(text):[]),topic:text(row?.topic)?row.topic:'',impactRationale:text(row?.impactRationale)?row.impactRationale:''
-    };
+    return {kind:text(row?.kind)?row.kind:'EVENT',id:text(row?.id)?row.id:'UNAVAILABLE',title:text(row?.title)?row.title:'UNAVAILABLE',source:text(row?.source)?row.source:'UNAVAILABLE',asOf:finite(row?.asOf)?row.asOf:null,impact:text(row?.impact)?row.impact:'UNAVAILABLE',status:text(row?.status)?row.status:'UNAVAILABLE',description:text(row?.description)?row.description:'',summary:text(row?.summary)?row.summary:'',tags:Object.freeze(Array.isArray(row?.tags)?row.tags.filter(text):[]),assets:Object.freeze(Array.isArray(row?.assets)?row.assets.filter(text):[]),impactScore:finite(row?.impactScore)?row.impactScore:null,impactLevel:text(row?.impactLevel)?row.impactLevel:'UNAVAILABLE',impactConfidence:finite(row?.impactConfidence)?row.impactConfidence:null,freshnessWeight:finite(row?.freshnessWeight)?row.freshnessWeight:null,relatedMarkets:Object.freeze(Array.isArray(row?.relatedMarkets)?row.relatedMarkets.filter(text):[]),relatedAssets:Object.freeze(Array.isArray(row?.relatedAssets)?row.relatedAssets.filter(text):[]),topic:text(row?.topic)?row.topic:'',impactRationale:text(row?.impactRationale)?row.impactRationale:''};
   }
 
   function positionsView(execution){
@@ -114,6 +96,20 @@
     if(!object(results))return null;
     if(results.type!=='TRADING_RESULTS'||results.market!=='CRYPTO')throw Error('TRADING_RESULTS_INVALID');
     return Object.freeze({type:'TRADING_RESULTS',market:'CRYPTO',sampleCount:results.sampleCount,sampleStatus:text(results.sampleStatus)?results.sampleStatus:'UNAVAILABLE',asOf:finite(results.asOf)?results.asOf:null,metrics:Object.freeze(object(results.metrics)?{...results.metrics}:{}),trades:cloneList(results.trades),readOnly:true,paperOnly:true});
+  }
+
+  function researchPerformanceView(value,asOf){
+    if(!object(value))return Object.freeze({schemaVersion:'foxyya-research-performance-read/1',status:'UNAVAILABLE',asOf,tw:Object.freeze({status:'UNAVAILABLE',summary:null}),us:Object.freeze({status:'UNAVAILABLE',summary:null}),researchOnly:true,executionWrite:false});
+    if(value.researchOnly!==true||value.executionWrite!==false)throw Error('RESEARCH_PERFORMANCE_READ_ONLY_REQUIRED');
+    return Object.freeze({
+      schemaVersion:'foxyya-research-performance-read/1',
+      status:text(value.status)?value.status:'AVAILABLE',
+      asOf:finite(value.asOf)?value.asOf:asOf,
+      tw:object(value.tw)?Object.freeze({...value.tw}):Object.freeze({status:'UNAVAILABLE',summary:null}),
+      us:object(value.us)?Object.freeze({...value.us}):Object.freeze({status:'UNAVAILABLE',summary:null}),
+      researchOnly:true,
+      executionWrite:false
+    });
   }
 
   function eventPriority(row){return finite(row?.impactScore)?row.impactScore:(EVENT_PRIORITY[String(row?.impact||'UNAVAILABLE').toUpperCase()]??0);}
@@ -162,8 +158,9 @@
     const calendar=freezeList(events.filter(row=>row.kind==='CALENDAR'));
     const news=freezeList(events.filter(row=>row.kind==='NEWS'));
     const todayFocus=focusRows(home.todayFocus,events);
+    const researchPerformance=researchPerformanceView(read.researchPerformance,read.asOf);
 
-    return Object.freeze({schemaVersion:'foxyya-home-view-model/1',asOf:read.asOf,providerDiagnostics:read.providerDiagnostics||null,regions,marketPulse,earlyTrend,opportunities,events,calendar,news,todayFocus,positions:positionsView(read.cryptoExecution),tradingResults:tradingResultsView(read.cryptoResults),researchOnly:true,executionWrite:false});
+    return Object.freeze({schemaVersion:'foxyya-home-view-model/1',asOf:read.asOf,providerDiagnostics:read.providerDiagnostics||null,regions,marketPulse,earlyTrend,opportunities,events,calendar,news,todayFocus,positions:positionsView(read.cryptoExecution),tradingResults:tradingResultsView(read.cryptoResults),researchPerformance,researchOnly:true,executionWrite:false});
   }
 
   return Object.freeze({REGION_ORDER,MARKET_ORDER,buildHomeViewModel});
