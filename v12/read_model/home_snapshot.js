@@ -4,6 +4,7 @@ const Facts=require('./product_facts.js');
 const Home=require('../ui/home_model.js');
 const Regional=require('../intelligence/regional_engine.js');
 const CryptoResults=require('../results/crypto_results.js');
+const Ranking=require('../research/ranking.js');
 
 const finite=x=>typeof x==='number'&&Number.isFinite(x);
 const object=x=>x&&typeof x==='object'&&!Array.isArray(x);
@@ -92,6 +93,28 @@ function cryptoOpportunity(candidate){
   return Object.freeze({...candidate,market:'CRYPTO',executionReadOnly:true,executionWrite:false});
 }
 
+function rankedEquityOpportunities(usAssets,twAssets,events,asOf){
+  const raw=[...usAssets.map(equityOpportunity),...twAssets.map(equityOpportunity)];
+  if(!raw.length)return Object.freeze({US:Object.freeze([]),TW:Object.freeze([])});
+  const ranked=Ranking.rankResearch(raw,events,asOf);
+  const enriched=ranked.map(item=>Object.freeze({
+    ...item.source,
+    rank:item.rank,
+    researchScore:item.researchScore,
+    priority:item.priority,
+    rankingReasons:item.reasons,
+    rankingComponents:item.components,
+    rankingPurpose:item.rankingPurpose,
+    catalystEventId:item.catalystEventId,
+    researchOnly:true,
+    executionWrite:false
+  }));
+  return Object.freeze({
+    US:Object.freeze(enriched.filter(row=>row.market==='US')),
+    TW:Object.freeze(enriched.filter(row=>row.market==='TW'))
+  });
+}
+
 function buildHomeReadModel(input={}){
   if(!finite(input.asOf)||input.asOf<0)throw Error('ASOF_INVALID');
   const crypto=assertCryptoReadOnly(input.cryptoExecution||null);
@@ -100,12 +123,14 @@ function buildHomeReadModel(input={}){
   if(twAssets.some(x=>x.market!=='TW'))throw Error('TW_ASSET_MARKET_MISMATCH');
   if(usAssets.some(x=>x.market!=='US'))throw Error('US_ASSET_MARKET_MISMATCH');
 
+  const events=Array.isArray(input.events)?input.events:[];
   const regions=regionSnapshots(input.regionEvidence,input.regionalContexts,input.asOf);
   const earlyTrend=[...twAssets,...usAssets].map(equityEarlyTrend).filter(Boolean);
+  const ranked=rankedEquityOpportunities(usAssets,twAssets,events,input.asOf);
   const opportunities={
     CRYPTO:crypto?crypto.candidates.map(cryptoOpportunity):[],
-    US:usAssets.map(equityOpportunity),
-    TW:twAssets.map(equityOpportunity)
+    US:ranked.US,
+    TW:ranked.TW
   };
 
   const home=Home.buildHomeModel({
@@ -115,7 +140,7 @@ function buildHomeReadModel(input={}){
     todayFocus:Array.isArray(input.todayFocus)?input.todayFocus:[],
     earlyTrend,
     opportunities,
-    events:Array.isArray(input.events)?input.events:[]
+    events
   });
 
   return Object.freeze({
