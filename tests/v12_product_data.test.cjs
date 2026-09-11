@@ -35,7 +35,7 @@ function fixtures(input){
     [input.twAssets[0].flowEndpoint,response(200,twFlowPayload())],
     [input.twAssets[0].revenueEndpoint,response(200,[revenueRow()])],
     [input.twAssets[1].quoteEndpoint,response(200,[tpQuoteRow()])],
-    [input.twAssets[1].flowEndpoint,response(200,[tpFlowRow()])],
+    [input.twAssets[1].flowEndpoint,response(200,tpFlowRow()? [tpFlowRow()] : [])],
     [input.usAssets[0].sec.endpoint,response(200,secPayload())]
   ]);
   const blsValues={CUUR0000SA0:'326.5',LNS14000000:'4.2',CES0000000001:'159500'};
@@ -96,7 +96,8 @@ test('canonical provider rejection remains visible even when HTTP succeeded',asy
 test('Home keeps canonical values, observation times, SEC periods and explicit research gaps',async t=>{
   const {result,lineageStore}=await runResearch(t);
   const read=result.orchestration.published;
-  const tw=read.home.opportunities.TW[0];
+  const tw=read.home.opportunities.TW.find(x=>x.instrumentId==='TWSE:2330');
+  assert.ok(tw,'2330 research must remain present regardless of rank ordering');
   assert.ok(tw.facts,'Home must preserve canonical facts');
   const close=tw.facts.find(x=>x.field==='price.close');
   assert.equal(close.value,1215);
@@ -106,7 +107,8 @@ test('Home keeps canonical values, observation times, SEC periods and explicit r
   assert.equal(tw.facts.find(x=>x.field==='flow.foreign_net').value,4000000);
   assert.equal(tw.facts.find(x=>x.field==='flow.investment_trust_net').value,1000000);
   assert.equal(tw.facts.find(x=>x.field==='flow.dealer_net').value,-250000);
-  const us=read.home.opportunities.US[0];
+  const us=read.home.opportunities.US.find(x=>x.instrumentId==='NASDAQ:NVDA');
+  assert.ok(us,'NVDA research must remain present regardless of rank ordering');
   assert.deepEqual(us.dataGaps,{realtimeQuote:'UNAVAILABLE',consensus:'UNAVAILABLE',options:'UNAVAILABLE'});
   assert.equal(us.facts[0].value,30000000000);
   assert.equal(us.facts[0].reportEnd,'2026-07-31');
@@ -114,10 +116,12 @@ test('Home keeps canonical values, observation times, SEC periods and explicit r
   assert.equal(us.facts[0].pointInTimeSafe,false);
   assert.equal(us.research.direction,'UNAVAILABLE');
   const view=VM.buildHomeViewModel(read);
-  assert.equal(view.opportunities.US[0].lineageRef,us.lineageRef);
-  assert.equal(view.opportunities.TW[0].facts[0].source,tw.facts[0].source);
-  assert.equal(view.opportunities.US[0].dataGaps.options,'UNAVAILABLE');
-  assert.ok(lineageStore.traceOutput(view.opportunities.US[0].lineageRef));
+  const viewUs=view.opportunities.US.find(x=>x.instrumentId==='NASDAQ:NVDA');
+  const viewTw=view.opportunities.TW.find(x=>x.instrumentId==='TWSE:2330');
+  assert.equal(viewUs.lineageRef,us.lineageRef);
+  assert.equal(viewTw.facts[0].source,tw.facts[0].source);
+  assert.equal(viewUs.dataGaps.options,'UNAVAILABLE');
+  assert.ok(lineageStore.traceOutput(viewUs.lineageRef));
   const html=Renderer.renderHomeSections(view);
   assert.match(html.opportunitiesHtml,/30,000,000,000/);
   assert.match(html.opportunitiesHtml,/2026-07-31/);
