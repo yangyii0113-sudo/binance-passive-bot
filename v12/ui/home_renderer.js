@@ -262,9 +262,7 @@
   }
 
   function usPulseReason(row){
-    if(typeof row?.reason==='string'&&row.reason.includes('NASDAQ_EOD_LICENSE_REVIEW_REQUIRED')){
-      return 'Nasdaq-listed EOD 市場廣度與指數方案已完成，但授權審查中；全美股即時廣度尚未取得。';
-    }
+    if(typeof row?.reason==='string'&&row.reason.includes('NASDAQ_EOD_LICENSE_REVIEW_REQUIRED'))return 'Nasdaq-listed EOD 市場廣度與指數方案已完成，但授權審查中；全美股即時廣度尚未取得。';
     return '市場指數資料仍待補齊；目前可查看個股官方研究快照';
   }
 
@@ -339,10 +337,7 @@
     return Object.hasOwn(CRYPTO_STATUS_PRIORITY,status)?CRYPTO_STATUS_PRIORITY[status]:50;
   }
 
-  function cryptoFavoriteId(row){
-    const raw=`CRYPTO:${row?.symbol||'UNAVAILABLE'}:${row?.family||'NA'}:${row?.side||'NA'}`;
-    return raw.slice(0,80);
-  }
+  function cryptoFavoriteId(row){const raw=`CRYPTO:${row?.symbol||'UNAVAILABLE'}:${row?.family||'NA'}:${row?.side||'NA'}`;return raw.slice(0,80);}
 
   function renderCryptoOpportunities(rows){
     if(!rows.length)return '<div class="empty-state compact" data-raw-status="UNAVAILABLE"><b>暫無候選</b><span>本輪沒有可顯示的加密模擬交易候選。</span></div>';
@@ -351,10 +346,7 @@
     const inactive=new Set(['REJECTED','CANCELLED','EXITED']);
     const activeCount=rows.filter(row=>!inactive.has(String(row?.status||'').toUpperCase())).length;
     const summary=`<div class="crypto-opportunity-summary" data-raw-summary="${esc(rows.length)} candidates"><div><b>${esc(rows.length)} 個候選</b><small>有效候選 ${esc(activeCount)} · 依執行生命週期優先排序</small></div><span>顯示 ${esc(visible.length)} / ${esc(rows.length)}</span></div>`;
-    const list=visible.map(row=>{
-      const favoriteId=cryptoFavoriteId(row);
-      return `<div class="opportunity-row crypto" data-favorite-card="${esc(favoriteId)}" data-mode="PAPER READ-ONLY" data-raw-status="${esc(row.status)}"><div class="opportunity-main"><b>${esc(row.symbol)}</b><small>策略 ${esc(row.family)} · ${esc(sideLabel(row.side))}</small></div><div class="opportunity-state"><strong>${esc(statusLabel(row.status))}</strong><em>模擬只讀</em><button class="text-btn favorite-btn crypto-favorite" data-favorite-id="${esc(favoriteId)}" aria-pressed="false" title="本機收藏，不同步帳號">☆ 收藏</button></div></div>`;
-    }).join('');
+    const list=visible.map(row=>{const favoriteId=cryptoFavoriteId(row);return `<div class="opportunity-row crypto" data-favorite-card="${esc(favoriteId)}" data-mode="PAPER READ-ONLY" data-raw-status="${esc(row.status)}"><div class="opportunity-main"><b>${esc(row.symbol)}</b><small>策略 ${esc(row.family)} · ${esc(sideLabel(row.side))}</small></div><div class="opportunity-state"><strong>${esc(statusLabel(row.status))}</strong><em>模擬只讀</em><button class="text-btn favorite-btn crypto-favorite" data-favorite-id="${esc(favoriteId)}" aria-pressed="false" title="本機收藏，不同步帳號">☆ 收藏</button></div></div>`;}).join('');
     return `${summary}<div class="crypto-opportunity-list">${list}</div>`;
   }
 
@@ -390,11 +382,7 @@
 
   function renderTodayFocus(rows){
     if(!rows.length)return '<div class="empty-state" data-raw-status="UNAVAILABLE"><b>目前沒有高影響焦點</b><span>尚無通過資料品質門檻的重大事件。</span></div>';
-    return `<div class="focus-intel-list">${rows.map(row=>{
-      const context=focusContext(row);
-      const sourceSummary=row.summary||row.description||'來源未提供摘要。';
-      return `<article class="panel focus-intel-card" data-event-id="${esc(row.id)}" data-raw-kind="${esc(row.kind||'EVENT')}" data-raw-impact="${esc(row.impact||'UNAVAILABLE')}"><div class="research-title focus-intel-head"><span class="eyebrow">${esc(EVENT_KIND_LABELS[row.kind]||'事件')} · 影響程度 ${esc(IMPACT_LABELS[row.impact]||row.impact||'未分級')}</span><time>${esc(time(row.asOf))}</time></div><h3>${esc(context.topic)}</h3><div class="focus-market-tags"><span class="muted">影響市場</span>${context.markets.map(market=>`<b class="status-chip">${esc(market)}</b>`).join('')}</div><div class="focus-why"><strong>為什麼重要</strong><p class="muted">${esc(context.why)}</p></div><div class="focus-source"><small class="muted">來源：${esc(row.source)} · ${esc(statusLabel(row.status))}</small><p class="muted"><span>原始標題：</span>${esc(row.title)}</p><details><summary>查看來源摘要</summary><p class="muted">${esc(sourceSummary)}</p></details></div></article>`;
-    }).join('')}</div>`;
+    return `<div class="focus-intel-list">${rows.map(row=>{const context=focusContext(row);const sourceSummary=row.summary||row.description||'來源未提供摘要。';return `<article class="panel focus-intel-card" data-event-id="${esc(row.id)}" data-raw-kind="${esc(row.kind||'EVENT')}" data-raw-impact="${esc(row.impact||'UNAVAILABLE')}"><div class="research-title focus-intel-head"><span class="eyebrow">${esc(EVENT_KIND_LABELS[row.kind]||'事件')} · 影響程度 ${esc(IMPACT_LABELS[row.impact]||row.impact||'未分級')}</span><time>${esc(time(row.asOf))}</time></div><h3>${esc(context.topic)}</h3><div class="focus-market-tags"><span class="muted">影響市場</span>${context.markets.map(market=>`<b class="status-chip">${esc(market)}</b>`).join('')}</div><div class="focus-why"><strong>為什麼重要</strong><p class="muted">${esc(context.why)}</p></div><div class="focus-source"><small class="muted">來源：${esc(row.source)} · ${esc(statusLabel(row.status))}</small><p class="muted"><span>原始標題：</span>${esc(row.title)}</p><details><summary>查看來源摘要</summary><p class="muted">${esc(sourceSummary)}</p></details></div></article>`;}).join('')}</div>`;
   }
 
   function renderEvents(rows){return renderEventRows(rows,'新聞、經濟日曆與事件來源本輪無可用資料。');}
@@ -424,6 +412,38 @@
     return `<div class="metric-grid" data-raw-sample-status="${esc(value.sampleStatus||'UNAVAILABLE')}"><div><span>樣本數</span><b>${esc(number(value.sampleCount))}</b></div><div><span>勝率</span><b>${finite(m.winRate)?esc(pct(m.winRate)):'—'}</b></div><div><span>淨損益</span><b>${esc(number(m.netPnl))}</b></div><div><span>期望值（R）</span><b>${esc(number(m.expectancyR))}</b></div><div><span>獲利因子</span><b>${esc(number(m.profitFactor))}</b></div><div><span>交易成本</span><b>${esc(number(m.fees))}</b></div></div><div class="sample-confidence"><b>${esc(confidence.headline)}</b><p>${esc(confidence.detail)}</p></div><p class="muted">僅統計已平倉模擬交易 · ${esc(time(value.asOf))}</p>`;
   }
 
+  function researchSampleLabel(value){
+    const raw=String(value||'UNAVAILABLE').toUpperCase();
+    if(raw==='SAMPLE_INSUFFICIENT')return '樣本不足';
+    if(raw==='INITIAL_SAMPLE')return '初步樣本';
+    if(raw==='SAMPLE_ESTABLISHED')return '樣本較完整';
+    return '尚無樣本';
+  }
+
+  function renderResearchHorizon(label,row){
+    const data=object(row)?row:{};
+    return `<article class="research-performance-horizon"><div class="research-title"><b>+${esc(label)} 日</b><span class="status-chip">${esc(researchSampleLabel(data.sampleStatus))}</span></div><div class="metric-grid"><div><span>樣本數</span><b>${esc(number(data.sampleCount))}</b></div><div><span>命中率</span><b>${esc(pct(data.hitRate))}</b></div><div><span>平均方向報酬</span><b>${esc(pct(data.meanDirectionalReturnPct))}</b></div><div><span>最大有利變動（MFE）</span><b>${esc(pct(data.meanMfePct))}</b></div><div><span>最大不利變動（MAE）</span><b>${esc(pct(data.meanMaePct))}</b></div></div></article>`;
+  }
+
+  function renderResearchRegimes(regimes){
+    const rows=object(regimes)?Object.values(regimes):[];
+    if(!rows.length)return '<p class="muted">市場環境分層：樣本尚未形成。</p>';
+    return `<div class="research-regime-breakdown"><h4>市場環境分層</h4>${rows.map(row=>`<article class="panel"><div class="research-title"><b>${esc(row.label||row.state||'未分類')}</b><span class="status-chip">樣本 ${esc(number(row.sampleCount))}</span></div>${renderResearchHorizon('1',row.horizons?.['1D'])}${renderResearchHorizon('5',row.horizons?.['5D'])}${renderResearchHorizon('20',row.horizons?.['20D'])}</article>`).join('')}</div>`;
+  }
+
+  function renderResearchMarket(label,row){
+    if(!object(row)||row.status==='UNAVAILABLE')return `<article class="panel research-performance-market"><h3>${esc(label)}前瞻追蹤</h3><div class="empty-state compact"><b>尚未啟用</b><span>目前沒有可驗證的前瞻研究績效。</span></div></article>`;
+    if(row.status==='WAITING_LEGAL_DATA_SOURCE')return `<article class="panel research-performance-market"><h3>${esc(label)}前瞻追蹤</h3><div class="empty-state compact"><b>等待合法價格資料來源</b><span>${esc(row.reason||'尚未啟用合規日線價格來源，不建立績效。')}</span></div></article>`;
+    const summary=object(row.summary)?row.summary:null;
+    if(!summary)return `<article class="panel research-performance-market"><h3>${esc(label)}前瞻追蹤</h3><div class="empty-state compact"><b>等待樣本</b><span>追蹤已啟用，但尚無可彙總結果。</span></div></article>`;
+    return `<article class="panel research-performance-market"><div class="section-head"><div><span class="eyebrow">前瞻研究驗證</span><h3>${esc(label)}前瞻追蹤</h3></div><small class="muted">僅研究追蹤，不等於交易績效</small></div><div class="research-performance-horizons">${renderResearchHorizon('1',summary.horizons?.['1D'])}${renderResearchHorizon('5',summary.horizons?.['5D'])}${renderResearchHorizon('20',summary.horizons?.['20D'])}</div>${renderResearchRegimes(summary.regimes)}<p class="muted">前瞻樣本 ${esc(number(summary.sampleCount))} · 驗證模式 ${esc(summary.validationMode||'FORWARD_ONLY')} · ${esc(time(summary.asOf))}</p></article>`;
+  }
+
+  function renderResearchPerformance(value){
+    if(!object(value)||value.status==='UNAVAILABLE')return '<div class="empty-state" data-raw-status="UNAVAILABLE"><b>前瞻研究績效尚未啟用</b><span>尚未建立 +1 日／+5 日／+20 日的可驗證前瞻研究追蹤。</span></div>';
+    return `<div class="research-performance-grid">${renderResearchMarket('台股',value.tw)}${renderResearchMarket('美股',value.us)}</div>`;
+  }
+
   function renderHomeSections(input){
     const value=assertViewModel(input);
     const unavailable=value.marketPulse.filter(x=>x.status==='UNAVAILABLE').length;
@@ -440,6 +460,7 @@
       eventsHtml:renderEvents(value.events),
       positionsHtml:renderPositions(value.positions),
       tradingResultsHtml:renderTradingResults(value.tradingResults),
+      researchPerformanceHtml:renderResearchPerformance(value.researchPerformance),
       calendarHtml:renderCalendar(Array.isArray(value.calendar)?value.calendar:[]),
       newsHtml:renderNews(Array.isArray(value.news)?value.news:[]),
       todayFocusHtml:renderTodayFocus(Array.isArray(value.todayFocus)?value.todayFocus:[]),
