@@ -119,7 +119,7 @@ test('one bootstrap run publishes traceable TW US and regional research without 
     const twPulse=result.orchestration.published.home.marketPulse.find(x=>x.market==='TW');
     assert.equal(twPulse.status,'AVAILABLE');
     assert.equal(twPulse.state,'BROAD_ADVANCE');
-    assert.equal(calls.length,15);
+    assert.equal(calls.length,16);
     for(const call of calls){assert.equal(call.init.method,'GET');assert.equal(call.init.redirect,'error')}
     assert.deepEqual(Object.keys(runtime),['runOnce']);
   }finally{fs.rmSync(dir,{recursive:true,force:true})}
