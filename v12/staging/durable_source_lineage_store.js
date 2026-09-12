@@ -4,6 +4,10 @@ const fs=require('node:fs');
 const path=require('node:path');
 const crypto=require('node:crypto');
 const Lineage=require('../data/source_lineage.js');
+const {
+  assertLineageWriteCapacity,
+  maintainLineageStorage
+}=require('./lineage_storage_policy.js');
 
 const EVENT_SCHEMA='foxyya-lineage-event/1';
 const EVENT_TYPES=Object.freeze({
@@ -57,11 +61,12 @@ function createEvent({sequence,type,recordedAt,record}){
   return Object.freeze({...base,checksum:sha256(base)});
 }
 
-function createDurableSourceLineageStore({filePath,now=Date.now,fsImpl=fs}={}){
+function createDurableSourceLineageStore({filePath,now=Date.now,fsImpl=fs,policy={}}={}){
   const journalPath=validatePath(filePath);
   const checkpointPath=checkpointPathFor(journalPath);
   if(typeof now!=='function')throw Error('LINEAGE_CLOCK_REQUIRED');
   if(!fsImpl||typeof fsImpl!=='object')throw Error('LINEAGE_FS_REQUIRED');
+  const storagePolicy=policy;
 
   // Only compact references and byte offsets stay resident. Canonical payloads remain on disk
   // and are validated/read on demand. This prevents lineage persistence from consuming heap
@@ -146,21 +151,40 @@ function createDurableSourceLineageStore({filePath,now=Date.now,fsImpl=fs}={}){
     }
   }
 
+  function retireSupersededActive(){
+    if(!activeSuperseded)return;
+    let fd=null;
+    try{
+      fd=fsImpl.openSync(journalPath,'r+');
+      fsImpl.ftruncateSync(fd,0);
+      fsImpl.fsyncSync(fd);
+      fsImpl.closeSync(fd);
+      fd=null;
+      activeSuperseded=false;
+      repairTailOffset=null;
+      needsTrailingSeparator=false;
+    }catch(_error){
+      if(fd!==null){try{fsImpl.closeSync(fd)}catch(_closeError){}}
+      throw Error('DURABLE_WRITE_FAILED');
+    }
+  }
+
   function appendEvent(type,record,minimumRecordedAt){
     const recordedAt=currentTime();
     if(recordedAt<minimumRecordedAt)throw Error('RECORDED_AT_INVALID');
     const event=createEvent({sequence:sequence+1,type,recordedAt,record});
     const lineBuffer=Buffer.from(JSON.stringify(event)+'\n','utf8');
+    retireSupersededActive();
+    assertLineageWriteCapacity({
+      filePath:journalPath,
+      fsImpl,
+      policy:storagePolicy,
+      anticipatedBytes:lineBuffer.length+(needsTrailingSeparator?1:0)
+    });
     let fd=null;
     try{
       fsImpl.mkdirSync(path.dirname(journalPath),{recursive:true});
       fd=fsImpl.openSync(journalPath,'a+');
-      if(activeSuperseded){
-        fsImpl.ftruncateSync(fd,0);
-        activeSuperseded=false;
-        repairTailOffset=null;
-        needsTrailingSeparator=false;
-      }
       if(repairTailOffset!==null){
         fsImpl.ftruncateSync(fd,repairTailOffset);
         repairTailOffset=null;
@@ -418,10 +442,37 @@ function createDurableSourceLineageStore({filePath,now=Date.now,fsImpl=fs}={}){
     });
   }
 
-  replayFile(checkpointPath,{active:false});
-  replayFile(journalPath,{active:true});
+  function resetReplayState(){
+    sourceIndexByRef.clear();
+    outputIndexByRef.clear();
+    sourceIdentityRefs.clear();
+    outputIdentityRefs.clear();
+    observationSourceRefs.clear();
+    sequence=0;
+    repairTailOffset=null;
+    needsTrailingSeparator=false;
+    activeSuperseded=false;
+  }
 
-  return Object.freeze({recordSource,recordOutput,source,output,traceOutput});
+  function replayAll(){
+    replayFile(checkpointPath,{active:false});
+    replayFile(journalPath,{active:true});
+  }
+
+  function maintenance(){
+    const result=maintainLineageStorage({filePath:journalPath,now,fsImpl,policy:storagePolicy});
+    if(result.status==='COMPACTED'){
+      resetReplayState();
+      replayAll();
+    }
+    return result;
+  }
+
+  replayAll();
+
+  const api={recordSource,recordOutput,source,output,traceOutput};
+  Object.defineProperty(api,'maintenance',{value:maintenance,enumerable:false,writable:false,configurable:false});
+  return Object.freeze(api);
 }
 
 module.exports=Object.freeze({EVENT_SCHEMA,EVENT_TYPES,createDurableSourceLineageStore});
