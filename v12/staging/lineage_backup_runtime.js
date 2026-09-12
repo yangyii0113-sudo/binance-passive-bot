@@ -11,18 +11,19 @@ function runtimeConfig(env=process.env){
   if(!Number.isInteger(port)||port<0||port>65535)throw Error('PORT_INVALID');
   const token=typeof env.FOXYYA_V12_BACKUP_TOKEN==='string'?env.FOXYYA_V12_BACKUP_TOKEN.trim():'';
   if(!token)throw Error('LINEAGE_BACKUP_TOKEN_REQUIRED');
+  if(String(env.FOXYYA_V12_BACKUP_DURABLE||'').trim().toLowerCase()!=='true')throw Error('LINEAGE_BACKUP_DURABLE_REQUIRED');
   const storageDir=typeof env.FOXYYA_V12_BACKUP_STORAGE_DIR==='string'&&env.FOXYYA_V12_BACKUP_STORAGE_DIR.trim()?env.FOXYYA_V12_BACKUP_STORAGE_DIR.trim():'/backup';
   if(!storageDir.startsWith('/'))throw Error('LINEAGE_BACKUP_STORAGE_INVALID');
-  return Object.freeze({host,port,token,storageDir,researchOnly:true,executionWrite:false});
+  return Object.freeze({host,port,token,storageDir,durableStorage:true,researchOnly:true,executionWrite:false});
 }
 
 function startBackupRuntime(env=process.env){
   const config=runtimeConfig(env);
-  const backupHandler=createLineageBackupHandler({storageDir:config.storageDir,token:config.token});
+  const backupHandler=createLineageBackupHandler({storageDir:config.storageDir,token:config.token,durableStorage:config.durableStorage});
   const server=http.createServer((req,res)=>{
     if(req.method==='GET'&&req.url==='/health'){
       res.writeHead(200,{'content-type':'application/json'});
-      res.end(JSON.stringify({service:'foxyya-v12-lineage-backup',status:'ok',researchOnly:true,executionWrite:false}));
+      res.end(JSON.stringify({service:'foxyya-v12-lineage-backup',status:'ok',durableStorage:true,researchOnly:true,executionWrite:false}));
       return;
     }
     if((req.method==='PUT'||req.method==='HEAD')&&String(req.url||'').startsWith('/v1/lineage-backups/')){
@@ -34,10 +35,7 @@ function startBackupRuntime(env=process.env){
     server.once('error',reject);
     server.listen(config.port,config.host,()=>{
       const address=server.address();
-      resolve(Object.freeze({
-        server,address,
-        close:()=>new Promise((done,fail)=>server.close(error=>error?fail(error):done()))
-      }));
+      resolve(Object.freeze({server,address,close:()=>new Promise((done,fail)=>server.close(error=>error?fail(error):done()))}));
     });
   });
 }
@@ -45,7 +43,7 @@ function startBackupRuntime(env=process.env){
 if(require.main===module){
   startBackupRuntime().then(runtime=>{
     console.log(`FOXYYA v12 lineage backup helper listening on ${runtime.address.address}:${runtime.address.port}`);
-    console.log('FOXYYA v12 lineage backup helper mode: RESEARCH_ONLY=true EXECUTION_WRITE=false');
+    console.log('FOXYYA v12 lineage backup helper mode: DURABLE_STORAGE=true RESEARCH_ONLY=true EXECUTION_WRITE=false');
     let closing=false;
     const shutdown=()=>{if(closing)return;closing=true;runtime.close().then(()=>process.exit(0)).catch(()=>process.exit(1));};
     process.once('SIGTERM',shutdown);process.once('SIGINT',shutdown);
