@@ -6,6 +6,7 @@ on:
       - v12-multimarket-architecture
       - v12-research-usability-20260909
       - v12-platform-completion-20260910
+      - v12-lineage-p0-backup-integrated-20260912
   workflow_dispatch:
 
 permissions:
