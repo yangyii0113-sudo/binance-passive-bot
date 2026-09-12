@@ -2,13 +2,20 @@
 
 const path=require('node:path');
 const {startStagingPreviewServer}=require('./server.js');
-const {createDurableSourceLineageStore}=require('./durable_source_lineage_store.js');
+const {prepareDurableLineageStore}=require('./lineage_migration_preflight.js');
 const {createDurableForwardResearchStore}=require('./durable_forward_research_store.js');
 const {createForwardResearchTracker}=require('./forward_research_tracker.js');
 const {createLiveResearchBootstrap}=require('./live_research_bootstrap.js');
 const {createExecutionReadBridge}=require('./execution_read_bridge.js');
 
 const LINEAGE_COMPACT_THRESHOLD_BYTES=128*1024*1024;
+const BACKUP_ENV=Object.freeze({
+  bucket:'FOXYYA_V12_BACKUP_BUCKET',
+  region:'FOXYYA_V12_BACKUP_REGION',
+  endpoint:'FOXYYA_V12_BACKUP_ENDPOINT',
+  accessKeyId:'FOXYYA_V12_BACKUP_ACCESS_KEY_ID',
+  secretAccessKey:'FOXYYA_V12_BACKUP_SECRET_ACCESS_KEY'
+});
 
 function runtimeConfig(env=process.env){
   const host=typeof env.HOST==='string'&&env.HOST.trim()?env.HOST.trim():'0.0.0.0';
@@ -50,6 +57,19 @@ function runtimeConfig(env=process.env){
   });
 }
 
+function backupConfigFromEnv(env){
+  const values={};
+  let present=0;
+  for(const [key,name] of Object.entries(BACKUP_ENV)){
+    const value=typeof env[name]==='string'?env[name].trim():'';
+    values[key]=value;
+    if(value)present+=1;
+  }
+  if(present===0)return null;
+  if(present!==Object.keys(BACKUP_ENV).length)throw Error('LINEAGE_BACKUP_CONFIG_INVALID');
+  return Object.freeze(values);
+}
+
 async function startFromEnvironment(env=process.env,dependencies={}){
   const config=runtimeConfig(env);
   const fetchImpl=dependencies.fetchImpl||globalThis.fetch;
@@ -57,17 +77,24 @@ async function startFromEnvironment(env=process.env,dependencies={}){
   const setIntervalImpl=dependencies.setIntervalImpl||setInterval;
   const clearIntervalImpl=dependencies.clearIntervalImpl||clearInterval;
   const onResearchError=dependencies.onResearchError||((error)=>console.error('FOXYYA v12 research refresh failed:',error?.message||error));
+  const prepareLineageStoreImpl=dependencies.prepareLineageStoreImpl||prepareDurableLineageStore;
 
   if(typeof fetchImpl!=='function')throw Error('FETCH_REQUIRED');
   if(typeof clock!=='function')throw Error('CLOCK_REQUIRED');
   if(typeof setIntervalImpl!=='function'||typeof clearIntervalImpl!=='function')throw Error('TIMER_REQUIRED');
   if(typeof onResearchError!=='function')throw Error('RESEARCH_ERROR_HANDLER_REQUIRED');
+  if(typeof prepareLineageStoreImpl!=='function')throw Error('LINEAGE_PREPARE_REQUIRED');
 
-  const lineageStore=createDurableSourceLineageStore({
+  const preparedLineage=await prepareLineageStoreImpl({
     filePath:config.lineageFilePath,
     now:clock,
-    compactThresholdBytes:config.lineageCompactThresholdBytes
+    compactThresholdBytes:config.lineageCompactThresholdBytes,
+    scratchDir:dependencies.lineageScratchDir||'/tmp',
+    backupConfig:backupConfigFromEnv(env),
+    backupLineageFileImpl:dependencies.backupLineageFileImpl
   });
+  const lineageStore=preparedLineage.store;
+  const lineageMigration=preparedLineage.migration;
   const forwardResearchStore=dependencies.forwardResearchStore||createDurableForwardResearchStore({filePath:config.forwardResearchFilePath,now:clock});
   const forwardResearchTracker=dependencies.forwardResearchTracker||createForwardResearchTracker({store:forwardResearchStore});
 
@@ -116,6 +143,7 @@ async function startFromEnvironment(env=process.env,dependencies={}){
     server:serverRuntime.server,
     address:serverRuntime.address,
     lineageStore,
+    lineageMigration,
     forwardResearchStore,
     forwardResearchTracker,
     researchReady,
@@ -128,6 +156,14 @@ if(require.main===module){
     const address=runtime.address;
     console.log(`FOXYYA v12 staging listening on ${address.address}:${address.port}`);
     console.log('FOXYYA v12 staging mode: RESEARCH_ONLY=true EXECUTION_WRITE=false');
+    if(runtime.lineageMigration?.status==='COMPACTED'){
+      console.log('FOXYYA v12 lineage migration completed',JSON.stringify({
+        originalBytes:runtime.lineageMigration.originalBytes,
+        compactedBytes:runtime.lineageMigration.compactedBytes,
+        backupKey:runtime.lineageMigration.backup?.key,
+        backupSha256:runtime.lineageMigration.backup?.sha256
+      }));
+    }
     runtime.researchReady.then(result=>{
       if(!result){
         console.log('FOXYYA v12 initial research bootstrap unavailable');
