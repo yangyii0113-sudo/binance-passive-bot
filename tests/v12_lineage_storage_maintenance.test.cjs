@@ -115,3 +115,34 @@ test('critical disk high-water rejects compressed append before write and live s
     assert.equal(fs.existsSync(filePath),false);
   }finally{fs.rmSync(dir,{recursive:true,force:true})}
 });
+
+test('checkpoint audit retention preserves a verifiable chain anchor across repeated rollovers',()=>{
+  const {dir,filePath}=tmpFile();
+  try{
+    let now=20000;
+    const policy={
+      retainedTargetBytes:64*1024*1024,
+      activeRotationBytes:1,
+      compactionTriggerBytes:128*1024*1024,
+      softHighWaterRatio:0.8,
+      criticalHighWaterRatio:0.9,
+      reserveBytes:0,
+      checkpointAuditRecords:2
+    };
+    const store=createDurableSourceLineageStore({filePath,now:()=>now++,policy});
+    for(let generation=0;generation<4;generation++){
+      const receivedAt=1000+generation*1000;
+      const source=sourceRecord({receivedAt,value:468+generation});
+      const output=outputRecord([source],{asOf:receivedAt+500});
+      store.recordSource(source);
+      store.recordOutput(output);
+      assert.equal(store.maintenance().status,'COMPACTED');
+      assert.equal(store.traceOutput(output.lineageRef).output.lineageRef,output.lineageRef);
+    }
+    const ledgerPath=filePath.replace('.lineage.jsonl','.lineage.checkpoints.jsonl');
+    const records=fs.readFileSync(ledgerPath,'utf8').trim().split('\n').map(JSON.parse);
+    assert.equal(records.length,2);
+    assert.equal(typeof records[0].previousCheckpointDigest,'string','old retained head must carry removed-history chain anchor');
+    assert.equal(records[1].previousCheckpointDigest,records[0].checksum);
+  }finally{fs.rmSync(dir,{recursive:true,force:true})}
+});
