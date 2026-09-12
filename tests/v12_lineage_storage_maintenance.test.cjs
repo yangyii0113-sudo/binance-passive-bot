@@ -107,3 +107,60 @@ test('bounded compaction retains the newest output dependency closure and replay
     fs.rmSync(dir,{recursive:true,force:true});
   }
 });
+
+test('non-enumerable store maintenance rotates an oversized active journal and rebuilds live indexes',()=>{
+  const {dir,filePath}=tmpFile();
+  try{
+    let now=7000;
+    const store=createDurableSourceLineageStore({
+      filePath,
+      now:()=>now++,
+      policy:{
+        retainedTargetBytes:64*1024*1024,
+        activeRotationBytes:1,
+        compactionTriggerBytes:128*1024*1024,
+        softHighWaterRatio:0.8,
+        criticalHighWaterRatio:0.9,
+        reserveBytes:0
+      }
+    });
+    const source=sourceRecord({receivedAt:6000,value:471});
+    const output=outputRecord([source],{asOf:6500});
+    store.recordSource(source);
+    store.recordOutput(output);
+
+    assert.deepEqual(Object.keys(store),['recordSource','recordOutput','source','output','traceOutput']);
+    assert.equal(typeof store.maintenance,'function');
+    const result=store.maintenance();
+    assert.equal(result.status,'COMPACTED');
+    const audit=auditLineageStorage({filePath});
+    assert.equal(audit.activeBytes,0);
+    assert.equal(audit.checkpointBytes>0,true);
+    assert.equal(store.traceOutput(output.lineageRef).output.lineageRef,output.lineageRef);
+  }finally{
+    fs.rmSync(dir,{recursive:true,force:true});
+  }
+});
+
+test('critical disk high-water rejects lineage append before write and live state does not advance',()=>{
+  const {dir,filePath}=tmpFile();
+  try{
+    const fsImpl=Object.create(fs);
+    let writeCalls=0;
+    fsImpl.statfsSync=()=>({blocks:100,bsize:1024,bavail:5,bfree:5});
+    fsImpl.writeSync=(...args)=>{writeCalls+=1;return fs.writeSync(...args)};
+    const store=createDurableSourceLineageStore({
+      filePath,
+      now:()=>2000,
+      fsImpl,
+      policy:{softHighWaterRatio:0.8,criticalHighWaterRatio:0.9,reserveBytes:0}
+    });
+    const source=sourceRecord({receivedAt:1000});
+    assert.throws(()=>store.recordSource(source),/LINEAGE_DISK_HIGH_WATER/);
+    assert.equal(writeCalls,0);
+    assert.equal(store.source(source.lineageRef),null);
+    assert.equal(fs.existsSync(filePath),false);
+  }finally{
+    fs.rmSync(dir,{recursive:true,force:true});
+  }
+});
