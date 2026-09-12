@@ -6,6 +6,7 @@ on:
       - v12-multimarket-architecture
       - v12-research-usability-20260909
       - v12-platform-completion-20260910
+      - v12-lineage-p0-20260912
   workflow_dispatch:
 
 permissions:
@@ -20,7 +21,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '22'
 
