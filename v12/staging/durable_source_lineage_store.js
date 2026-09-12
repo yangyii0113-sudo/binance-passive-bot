@@ -38,6 +38,9 @@ function validatePath(filePath){
   if(typeof filePath!=='string'||!filePath.endsWith('.lineage.jsonl'))throw Error('LINEAGE_JOURNAL_PATH_INVALID');
   return filePath;
 }
+function checkpointPathFor(journalPath){
+  return journalPath.slice(0,-'.lineage.jsonl'.length)+'.lineage.checkpoint.jsonl';
+}
 
 function eventPayload(event){
   return {
@@ -56,12 +59,13 @@ function createEvent({sequence,type,recordedAt,record}){
 
 function createDurableSourceLineageStore({filePath,now=Date.now,fsImpl=fs}={}){
   const journalPath=validatePath(filePath);
+  const checkpointPath=checkpointPathFor(journalPath);
   if(typeof now!=='function')throw Error('LINEAGE_CLOCK_REQUIRED');
   if(!fsImpl||typeof fsImpl!=='object')throw Error('LINEAGE_FS_REQUIRED');
 
   // Only compact references and byte offsets stay resident. Canonical payloads remain on disk
-  // and are validated/read on demand. This prevents an append-only journal from consuming
-  // heap proportional to its full JSON payload size at every process restart.
+  // and are validated/read on demand. This prevents lineage persistence from consuming heap
+  // proportional to the full journal payload size at every process restart.
   const sourceIndexByRef=new Map();
   const outputIndexByRef=new Map();
   const sourceIdentityRefs=new Map();
@@ -70,6 +74,7 @@ function createDurableSourceLineageStore({filePath,now=Date.now,fsImpl=fs}={}){
   let sequence=0;
   let repairTailOffset=null;
   let needsTrailingSeparator=false;
+  let activeSuperseded=false;
 
   function currentTime(){
     const value=Number(now());
@@ -150,6 +155,12 @@ function createDurableSourceLineageStore({filePath,now=Date.now,fsImpl=fs}={}){
     try{
       fsImpl.mkdirSync(path.dirname(journalPath),{recursive:true});
       fd=fsImpl.openSync(journalPath,'a+');
+      if(activeSuperseded){
+        fsImpl.ftruncateSync(fd,0);
+        activeSuperseded=false;
+        repairTailOffset=null;
+        needsTrailingSeparator=false;
+      }
       if(repairTailOffset!==null){
         fsImpl.ftruncateSync(fd,repairTailOffset);
         repairTailOffset=null;
@@ -168,7 +179,7 @@ function createDurableSourceLineageStore({filePath,now=Date.now,fsImpl=fs}={}){
       sequence=event.sequence;
       return Object.freeze({
         event,
-        index:Object.freeze({offset,length:lineBuffer.length-1,sequence:event.sequence})
+        index:Object.freeze({filePath:journalPath,offset,length:lineBuffer.length-1,sequence:event.sequence})
       });
     }catch(error){
       if(fd!==null){try{fsImpl.closeSync(fd);}catch(_closeError){}}
@@ -205,11 +216,51 @@ function createDurableSourceLineageStore({filePath,now=Date.now,fsImpl=fs}={}){
     replayIndexedEvent(parsed,index);
   }
 
-  function replay(){
-    if(!fsImpl.existsSync(journalPath))return;
+  function firstSequence(targetPath){
+    if(!fsImpl.existsSync(targetPath)||Number(fsImpl.statSync(targetPath).size)===0)return null;
     let fd=null;
     try{
-      fd=fsImpl.openSync(journalPath,'r');
+      fd=fsImpl.openSync(targetPath,'r');
+      const chunk=Buffer.allocUnsafe(SCAN_CHUNK_BYTES);
+      const parts=[];
+      let total=0;
+      let position=0;
+      while(true){
+        const bytesRead=fsImpl.readSync(fd,chunk,0,chunk.length,position);
+        if(!Number.isInteger(bytesRead)||bytesRead<=0)break;
+        const newline=chunk.subarray(0,bytesRead).indexOf(0x0a);
+        if(newline>=0){
+          parts.push(Buffer.from(chunk.subarray(0,newline)));
+          total+=newline;
+          break;
+        }
+        parts.push(Buffer.from(chunk.subarray(0,bytesRead)));
+        total+=bytesRead;
+        position+=bytesRead;
+      }
+      if(!total)return null;
+      const raw=JSON.parse(Buffer.concat(parts,total).toString('utf8'));
+      return Number.isInteger(raw.sequence)?raw.sequence:null;
+    }catch(_error){throw Error('LINEAGE_JOURNAL_CORRUPT');}
+    finally{if(fd!==null){try{fsImpl.closeSync(fd)}catch(_closeError){}}}
+  }
+
+  function replayFile(targetPath,{active=false}={}){
+    if(!fsImpl.existsSync(targetPath)||Number(fsImpl.statSync(targetPath).size)===0)return;
+    if(active&&sequence>0){
+      const first=firstSequence(targetPath);
+      if(first===1){
+        // A durable checkpoint may have been committed immediately before process death,
+        // leaving the previous active generation physically present. The checkpoint is
+        // authoritative; the old generation is only truncated before the next append.
+        activeSuperseded=true;
+        return;
+      }
+      if(first!==sequence+1)throw Error('LINEAGE_JOURNAL_CORRUPT');
+    }
+    let fd=null;
+    try{
+      fd=fsImpl.openSync(targetPath,'r');
       const chunk=Buffer.allocUnsafe(SCAN_CHUNK_BYTES);
       let filePosition=0;
       let lineStart=0;
@@ -226,7 +277,7 @@ function createDurableSourceLineageStore({filePath,now=Date.now,fsImpl=fs}={}){
           const segment=chunk.subarray(segmentStart,i);
           const length=carryLength+segment.length;
           const line=carryLength?Buffer.concat([...carryParts,segment],length):segment;
-          if(length)parseCompleteLine(line,Object.freeze({offset:lineStart,length,sequence:sequence+1}));
+          if(length)parseCompleteLine(line,Object.freeze({filePath:targetPath,offset:lineStart,length,sequence:sequence+1}));
           carryParts=[];
           carryLength=0;
           lineStart=filePosition+i+1;
@@ -244,12 +295,13 @@ function createDurableSourceLineageStore({filePath,now=Date.now,fsImpl=fs}={}){
         const tail=carryParts.length===1?carryParts[0]:Buffer.concat(carryParts,carryLength);
         try{
           const parsed=JSON.parse(tail.toString('utf8'));
-          replayIndexedEvent(parsed,Object.freeze({offset:lineStart,length:carryLength,sequence:sequence+1}));
-          needsTrailingSeparator=true;
+          replayIndexedEvent(parsed,Object.freeze({filePath:targetPath,offset:lineStart,length:carryLength,sequence:sequence+1}));
+          if(active)needsTrailingSeparator=true;
         }catch(error){
           if(error?.message==='LINEAGE_JOURNAL_CORRUPT')throw error;
-          // Preserve historical torn-append semantics: ignore the incomplete fragment now,
-          // and truncate it durably before the next successful append.
+          if(!active)throw Error('LINEAGE_JOURNAL_CORRUPT');
+          // Preserve historical torn-append semantics for the mutable active journal only:
+          // ignore the incomplete fragment now, and truncate it durably before next append.
           repairTailOffset=lineStart;
         }
       }
@@ -264,7 +316,7 @@ function createDurableSourceLineageStore({filePath,now=Date.now,fsImpl=fs}={}){
   function readIndexedEvent(index,expectedType){
     let fd=null;
     try{
-      fd=fsImpl.openSync(journalPath,'r');
+      fd=fsImpl.openSync(index.filePath||journalPath,'r');
       const buffer=Buffer.allocUnsafe(index.length);
       let read=0;
       while(read<buffer.length){
@@ -366,7 +418,8 @@ function createDurableSourceLineageStore({filePath,now=Date.now,fsImpl=fs}={}){
     });
   }
 
-  replay();
+  replayFile(checkpointPath,{active:false});
+  replayFile(journalPath,{active:true});
 
   return Object.freeze({recordSource,recordOutput,source,output,traceOutput});
 }
