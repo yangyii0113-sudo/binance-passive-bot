@@ -7,7 +7,7 @@ const os=require('node:os');
 const path=require('node:path');
 const Lineage=require('../v12/data/source_lineage.js');
 const {createDurableSourceLineageStore}=require('../v12/staging/durable_source_lineage_store.js');
-const {auditLineageStorage}=require('../v12/staging/lineage_storage_maintenance.js');
+const {auditLineageStorage,compactLineageStorage}=require('../v12/staging/lineage_storage_maintenance.js');
 
 function tmpFile(){
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),'foxyya-lineage-maint-'));
@@ -66,6 +66,43 @@ test('lineage growth audit reports bounded metadata without canonical payloads',
     assert.equal(audit.filesystem.usedRatio,0.75);
     assert.equal(Object.prototype.hasOwnProperty.call(audit,'observations'),false);
     assert.equal(Object.isFrozen(audit),true);
+  }finally{
+    fs.rmSync(dir,{recursive:true,force:true});
+  }
+});
+
+test('bounded compaction retains the newest output dependency closure and replay trace',()=>{
+  const {dir,filePath}=tmpFile();
+  try{
+    let now=5000;
+    const store=createDurableSourceLineageStore({filePath,now:()=>now++});
+    const oldSource=sourceRecord({receivedAt:1000,datasetId:'TPEX:quote',value:460});
+    const oldOutput=outputRecord([oldSource],{asOf:1500});
+    const newSource=sourceRecord({receivedAt:3000,datasetId:'TPEX:quote',value:468});
+    const newOutput=outputRecord([newSource],{asOf:3500});
+    store.recordSource(oldSource);
+    store.recordOutput(oldOutput);
+    store.recordSource(newSource);
+    store.recordOutput(newOutput);
+
+    assert.equal(typeof compactLineageStorage,'function');
+    const rawLines=fs.readFileSync(filePath,'utf8').trim().split('\n');
+    const newestClosureBytes=rawLines.slice(-2).reduce((sum,line)=>sum+Buffer.byteLength(line,'utf8')+1,0);
+    const result=compactLineageStorage({
+      filePath,
+      now:()=>9000,
+      policy:{retainedTargetBytes:newestClosureBytes+32}
+    });
+    assert.equal(result.status,'COMPACTED');
+    assert.equal(result.after.eventCount,2);
+    assert.equal(result.checkpoint.retiredEventCount,2);
+
+    const restarted=createDurableSourceLineageStore({filePath,now:()=>10000});
+    assert.equal(restarted.traceOutput(oldOutput.lineageRef),null);
+    const trace=restarted.traceOutput(newOutput.lineageRef);
+    assert.equal(trace.output.lineageRef,newOutput.lineageRef);
+    assert.deepEqual(trace.sources,[newSource]);
+    assert.equal(trace.observations[0].observation.value,468);
   }finally{
     fs.rmSync(dir,{recursive:true,force:true});
   }
