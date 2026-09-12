@@ -26,24 +26,19 @@ function fixture(){
   return {dir,storageDir,filePath};
 }
 
-test('private backup helper stores a gzip copy and verifies original bytes plus sha256 without buffering whole file',async()=>{
+test('private durable backup helper stores a gzip copy and verifies original bytes plus sha256 without buffering whole file',async()=>{
   const {dir,storageDir,filePath}=fixture();
   const token='test-secret-token';
-  const server=http.createServer(createLineageBackupHandler({storageDir,token}));
+  const server=http.createServer(createLineageBackupHandler({storageDir,token,durableStorage:true}));
   const address=await listen(server);
   try{
     const original=fs.readFileSync(filePath);
-    const result=await backupLineageFileHttp({
-      filePath,
-      key:'legacy-before-compaction',
-      baseUrl:`http://127.0.0.1:${address.port}`,
-      token
-    });
+    const result=await backupLineageFileHttp({filePath,key:'legacy-before-compaction',baseUrl:`http://127.0.0.1:${address.port}`,token});
     assert.equal(result.status,'VERIFIED');
+    assert.equal(result.durableStorage,true);
     assert.equal(result.size,original.length);
     assert.equal(result.sha256,sha256(original));
-    assert.ok(result.compressedSize<original.length*0.25,'backup helper should materially compress repetitive lineage');
-
+    assert.ok(result.compressedSize<original.length*0.25);
     const gzPath=path.join(storageDir,'legacy-before-compaction.lineage.jsonl.gz');
     const metaPath=path.join(storageDir,'legacy-before-compaction.meta.json');
     assert.equal(fs.existsSync(gzPath),true);
@@ -53,17 +48,27 @@ test('private backup helper stores a gzip copy and verifies original bytes plus 
     assert.equal(meta.rawSize,original.length);
     assert.equal(meta.rawSha256,sha256(original));
     assert.equal(meta.status,'VERIFIED');
+    assert.equal(meta.durableStorage,true);
+  }finally{await close(server);fs.rmSync(dir,{recursive:true,force:true});}
+});
+
+test('ephemeral helper refuses backup writes and cannot satisfy verified client contract',async()=>{
+  const {dir,storageDir,filePath}=fixture();
+  const token='test-secret-token';
+  const server=http.createServer(createLineageBackupHandler({storageDir,token,durableStorage:false}));
+  const address=await listen(server);
+  try{
+    await assert.rejects(()=>backupLineageFileHttp({filePath,key:'ephemeral',baseUrl:`http://127.0.0.1:${address.port}`,token}),/LINEAGE_BACKUP_UPLOAD_FAILED/);
+    assert.equal(fs.existsSync(path.join(storageDir,'ephemeral.lineage.jsonl.gz')),false);
   }finally{await close(server);fs.rmSync(dir,{recursive:true,force:true});}
 });
 
 test('backup helper rejects unauthorized writes and leaves no final artifact',async()=>{
   const {dir,storageDir,filePath}=fixture();
-  const server=http.createServer(createLineageBackupHandler({storageDir,token:'right-token'}));
+  const server=http.createServer(createLineageBackupHandler({storageDir,token:'right-token',durableStorage:true}));
   const address=await listen(server);
   try{
-    await assert.rejects(()=>backupLineageFileHttp({
-      filePath,key:'unauthorized',baseUrl:`http://127.0.0.1:${address.port}`,token:'wrong-token'
-    }),/LINEAGE_BACKUP_UPLOAD_FAILED/);
+    await assert.rejects(()=>backupLineageFileHttp({filePath,key:'unauthorized',baseUrl:`http://127.0.0.1:${address.port}`,token:'wrong-token'}),/LINEAGE_BACKUP_UPLOAD_FAILED/);
     assert.equal(fs.existsSync(path.join(storageDir,'unauthorized.lineage.jsonl.gz')),false);
     assert.equal(fs.existsSync(path.join(storageDir,'unauthorized.meta.json')),false);
   }finally{await close(server);fs.rmSync(dir,{recursive:true,force:true});}
@@ -72,15 +77,12 @@ test('backup helper rejects unauthorized writes and leaves no final artifact',as
 test('receiver fails closed and removes temp artifacts when declared checksum does not match stream',async()=>{
   const {dir,storageDir,filePath}=fixture();
   const token='test-secret-token';
-  const server=http.createServer(createLineageBackupHandler({storageDir,token}));
+  const server=http.createServer(createLineageBackupHandler({storageDir,token,durableStorage:true}));
   const address=await listen(server);
   try{
     const body=fs.readFileSync(filePath);
     await new Promise((resolve,reject)=>{
-      const req=http.request({
-        hostname:'127.0.0.1',port:address.port,method:'PUT',path:'/v1/lineage-backups/bad-checksum',
-        headers:{authorization:`Bearer ${token}`,'content-length':String(body.length),'x-foxyya-raw-size':String(body.length),'x-foxyya-raw-sha256':'0'.repeat(64)}
-      },res=>{res.resume();res.on('end',()=>{try{assert.equal(res.statusCode,422);resolve();}catch(error){reject(error)}})});
+      const req=http.request({hostname:'127.0.0.1',port:address.port,method:'PUT',path:'/v1/lineage-backups/bad-checksum',headers:{authorization:`Bearer ${token}`,'content-length':String(body.length),'x-foxyya-raw-size':String(body.length),'x-foxyya-raw-sha256':'0'.repeat(64)}},res=>{res.resume();res.on('end',()=>{try{assert.equal(res.statusCode,422);resolve();}catch(error){reject(error)}})});
       req.once('error',reject);req.end(body);
     });
     assert.equal(fs.existsSync(path.join(storageDir,'bad-checksum.lineage.jsonl.gz')),false);
@@ -92,7 +94,7 @@ test('receiver fails closed and removes temp artifacts when declared checksum do
 test('backup helper HEAD metadata is authenticated and immutable',async()=>{
   const {dir,storageDir,filePath}=fixture();
   const token='test-secret-token';
-  const server=http.createServer(createLineageBackupHandler({storageDir,token}));
+  const server=http.createServer(createLineageBackupHandler({storageDir,token,durableStorage:true}));
   const address=await listen(server);
   try{
     await backupLineageFileHttp({filePath,key:'head-check',baseUrl:`http://127.0.0.1:${address.port}`,token});
