@@ -22,6 +22,7 @@ function seedLegacy(filePath){
 }
 function setup(){const dir=fs.mkdtempSync(path.join(os.tmpdir(),'foxyya-preflight-'));return {dir,filePath:path.join(dir,'foxyya-v12.lineage.jsonl'),scratch:fs.mkdtempSync(path.join(os.tmpdir(),'foxyya-preflight-scratch-'))};}
 const backupConfig=Object.freeze({endpoint:'https://example.invalid',region:'test-1',bucket:'backup',accessKeyId:'AKID',secretAccessKey:'SECRET'});
+const httpBackupConfig=Object.freeze({baseUrl:'http://backup-helper.railway.internal:8080',token:'shared-token'});
 
 test('large legacy migration refuses to mutate journal when verified backup config is missing',async()=>{
   const {dir,filePath,scratch}=setup();
@@ -46,7 +47,7 @@ test('failed or unverified bucket backup leaves legacy journal byte-identical',a
   }finally{fs.rmSync(dir,{recursive:true,force:true});fs.rmSync(scratch,{recursive:true,force:true});}
 });
 
-test('verified backup gates scratch compaction and preserves exact lineage trace',async()=>{
+test('verified bucket backup gates scratch compaction and preserves exact lineage trace',async()=>{
   const {dir,filePath,scratch}=setup();
   try{
     const {source,output}=seedLegacy(filePath);
@@ -62,11 +63,35 @@ test('verified backup gates scratch compaction and preserves exact lineage trace
     assert.equal(backupSawLegacy,true,'backup must happen before persistent journal replacement');
     assert.equal(prepared.migration.status,'COMPACTED');
     assert.equal(prepared.migration.backup.status,'VERIFIED');
+    assert.equal(prepared.migration.backupChannel,'S3');
     assert.equal(JSON.parse(fs.readFileSync(filePath,'utf8').split('\n')[0]).schema,'foxyya-lineage-frame/1');
     assert.ok(fs.statSync(filePath).size<before.size);
     assert.deepEqual(prepared.store.source(source.lineageRef),source);
     assert.deepEqual(prepared.store.output(output.lineageRef),output);
     assert.deepEqual(prepared.store.traceOutput(output.lineageRef).sources,[source]);
+  }finally{fs.rmSync(dir,{recursive:true,force:true});fs.rmSync(scratch,{recursive:true,force:true});}
+});
+
+test('verified private helper backup can gate the same scratch compaction without S3 bucket',async()=>{
+  const {dir,filePath,scratch}=setup();
+  try{
+    const {source,output}=seedLegacy(filePath);
+    const before=fs.statSync(filePath);
+    let received=null;
+    const prepared=await prepareDurableLineageStore({
+      filePath,now:()=>6000,compactThresholdBytes:1,scratchDir:scratch,httpBackupConfig,
+      backupLineageFileHttpImpl:async args=>{
+        received=args;
+        return {status:'VERIFIED',key:args.key,size:before.size,sha256:'c'.repeat(64),compressedSize:1234,etag:'"http-etag"'};
+      }
+    });
+    assert.equal(received.baseUrl,httpBackupConfig.baseUrl);
+    assert.equal(received.token,httpBackupConfig.token);
+    assert.equal(received.filePath,filePath);
+    assert.equal(prepared.migration.backupChannel,'HTTP_HELPER');
+    assert.equal(prepared.migration.backup.status,'VERIFIED');
+    assert.deepEqual(prepared.store.source(source.lineageRef),source);
+    assert.deepEqual(prepared.store.output(output.lineageRef),output);
   }finally{fs.rmSync(dir,{recursive:true,force:true});fs.rmSync(scratch,{recursive:true,force:true});}
 });
 
