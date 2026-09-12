@@ -86,11 +86,22 @@ function decodeStoredValue(raw){
   return event;
 }
 
-function createDurableSourceLineageStore({filePath,now=Date.now,fsImpl=fs,compactThresholdBytes=0}={}){
+function createDurableSourceLineageStore({
+  filePath,
+  now=Date.now,
+  fsImpl=fs,
+  compactThresholdBytes=0,
+  compactScratchDir=null,
+  externalBackupVerified=false
+}={}){
   const journalPath=validatePath(filePath);
   if(typeof now!=='function')throw Error('LINEAGE_CLOCK_REQUIRED');
   if(!fsImpl||typeof fsImpl!=='object')throw Error('LINEAGE_FS_REQUIRED');
   if(!Number.isInteger(compactThresholdBytes)||compactThresholdBytes<0)throw Error('LINEAGE_COMPACT_THRESHOLD_INVALID');
+  if(compactScratchDir!==null&&(typeof compactScratchDir!=='string'||!compactScratchDir.trim()))throw Error('LINEAGE_COMPACT_SCRATCH_INVALID');
+  if(typeof externalBackupVerified!=='boolean')throw Error('LINEAGE_BACKUP_STATE_INVALID');
+  const resolvedScratchDir=compactScratchDir===null?null:path.resolve(compactScratchDir.trim());
+  const journalDir=path.resolve(path.dirname(journalPath));
 
   // Only compact references and byte offsets stay resident. Canonical payloads remain on disk
   // and are validated/read on demand. This prevents an append-only journal from consuming
@@ -362,12 +373,15 @@ function createDurableSourceLineageStore({filePath,now=Date.now,fsImpl=fs,compac
 
   function compactLegacyJournal(){
     const indexes=[...sourceIndexByRef.values(),...outputIndexByRef.values()].sort((a,b)=>a.sequence-b.sequence);
-    const tempPath=journalPath+'.compact.tmp';
+    const scratchDir=resolvedScratchDir||journalDir;
+    const usesExternalScratch=scratchDir!==journalDir;
+    if(usesExternalScratch&&!externalBackupVerified)throw Error('LINEAGE_BACKUP_REQUIRED');
+    const tempPath=path.join(scratchDir,`${path.basename(journalPath,'.lineage.jsonl')}.compact-${process.pid}-${Date.now()}.lineage.jsonl`);
     let fd=null;
-    let renamed=false;
+    let replaced=false;
     try{
+      fsImpl.mkdirSync(scratchDir,{recursive:true});
       if(fsImpl.existsSync(tempPath))fsImpl.unlinkSync(tempPath);
-      fsImpl.mkdirSync(path.dirname(journalPath),{recursive:true});
       fd=fsImpl.openSync(tempPath,'wx');
       for(const index of indexes){
         const event=readStoredEvent(index);
@@ -376,14 +390,28 @@ function createDurableSourceLineageStore({filePath,now=Date.now,fsImpl=fs,compac
       fsImpl.fsyncSync(fd);
       fsImpl.closeSync(fd);
       fd=null;
-      fsImpl.renameSync(tempPath,journalPath);
-      renamed=true;
+
+      if(usesExternalScratch){
+        // Full scratch replay validates sequence, checksums, lineage identities, source/output
+        // references, and time ordering before the only persistent copy is replaced.
+        createDurableSourceLineageStore({filePath:tempPath,now,fsImpl,compactThresholdBytes:0});
+        fsImpl.copyFileSync(tempPath,journalPath);
+        let targetFd=null;
+        try{targetFd=fsImpl.openSync(journalPath,'r+');fsImpl.fsyncSync(targetFd);}
+        finally{if(targetFd!==null)fsImpl.closeSync(targetFd);}
+        replaced=true;
+        try{fsImpl.unlinkSync(tempPath);}catch(_unlinkError){}
+      }else{
+        fsImpl.renameSync(tempPath,journalPath);
+        replaced=true;
+      }
+
       resetIndexes();
       replay();
     }catch(error){
       if(fd!==null){try{fsImpl.closeSync(fd);}catch(_closeError){}}
-      if(!renamed){try{if(fsImpl.existsSync(tempPath))fsImpl.unlinkSync(tempPath);}catch(_unlinkError){}}
-      if(error?.message==='LINEAGE_JOURNAL_CORRUPT')throw error;
+      if(!replaced){try{if(fsImpl.existsSync(tempPath))fsImpl.unlinkSync(tempPath);}catch(_unlinkError){}}
+      if(error?.message==='LINEAGE_BACKUP_REQUIRED'||error?.message==='LINEAGE_JOURNAL_CORRUPT')throw error;
       throw Error('LINEAGE_COMPACTION_FAILED');
     }
   }
