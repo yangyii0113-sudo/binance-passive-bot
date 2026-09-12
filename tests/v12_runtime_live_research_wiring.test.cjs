@@ -56,16 +56,36 @@ function request(address,path){
   });
 }
 
-test('runtime config defaults to low-frequency official research refresh and rejects aggressive polling',()=>{
+test('runtime config defaults to low-frequency official research refresh and validates lineage storage policy',()=>{
   const cfg=Entry.runtimeConfig({});
   assert.equal(cfg.refreshSeconds,1800);
+  assert.equal(cfg.lineagePolicy.retainedTargetBytes,64*1024*1024);
+  assert.equal(cfg.lineagePolicy.activeRotationBytes,32*1024*1024);
+  assert.equal(cfg.lineagePolicy.softHighWaterRatio,0.8);
+  assert.equal(cfg.lineagePolicy.criticalHighWaterRatio,0.9);
+  assert.equal(cfg.researchOnly,true);
+  assert.equal(cfg.executionWrite,false);
   assert.throws(()=>Entry.runtimeConfig({FOXYYA_V12_REFRESH_SECONDS:'30'}),/REFRESH_SECONDS_INVALID/);
   assert.equal(Entry.runtimeConfig({FOXYYA_V12_REFRESH_SECONDS:'3600'}).refreshSeconds,3600);
+  const tuned=Entry.runtimeConfig({
+    FOXYYA_V12_LINEAGE_RETAINED_TARGET_BYTES:'1048576',
+    FOXYYA_V12_LINEAGE_ACTIVE_ROTATION_BYTES:'524288',
+    FOXYYA_V12_LINEAGE_COMPACTION_TRIGGER_BYTES:'2097152',
+    FOXYYA_V12_LINEAGE_SOFT_HIGH_WATER:'0.70',
+    FOXYYA_V12_LINEAGE_CRITICAL_HIGH_WATER:'0.85',
+    FOXYYA_V12_LINEAGE_RESERVE_BYTES:'131072'
+  });
+  assert.equal(tuned.lineagePolicy.retainedTargetBytes,1048576);
+  assert.equal(tuned.lineagePolicy.activeRotationBytes,524288);
+  assert.equal(tuned.lineagePolicy.softHighWaterRatio,0.70);
+  assert.equal(tuned.lineagePolicy.criticalHighWaterRatio,0.85);
+  assert.throws(()=>Entry.runtimeConfig({FOXYYA_V12_LINEAGE_SOFT_HIGH_WATER:'0.95',FOXYYA_V12_LINEAGE_CRITICAL_HIGH_WATER:'0.90'}),/LINEAGE_STORAGE_POLICY_INVALID/);
 });
 
-test('staging runtime shares one durable lineage store across bootstrap, Home, and trace API',async()=>{
+test('staging runtime shares one durable lineage store across bootstrap, maintenance, Home, and trace API',async()=>{
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),'foxyya-runtime-live-research-'));
   const lineageFilePath=path.join(dir,'runtime.lineage.jsonl');
+  const checkpointPath=lineageFilePath.replace('.lineage.jsonl','.lineage.checkpoint.jsonl');
   const table=fixtures();
   const calls=[];
   const timers=[];
@@ -73,7 +93,8 @@ test('staging runtime shares one durable lineage store across bootstrap, Home, a
   const fetchImpl=async(url,init)=>{calls.push({url,init});if(!table.has(url))throw Error('unexpected '+url);return table.get(url)};
   try{
     const runtime=await Entry.startFromEnvironment({
-      HOST:'127.0.0.1',PORT:'0',FOXYYA_V12_LINEAGE_PATH:lineageFilePath,FOXYYA_V12_REFRESH_SECONDS:'1800'
+      HOST:'127.0.0.1',PORT:'0',FOXYYA_V12_LINEAGE_PATH:lineageFilePath,FOXYYA_V12_REFRESH_SECONDS:'1800',
+      FOXYYA_V12_LINEAGE_ACTIVE_ROTATION_BYTES:'1'
     },{
       fetchImpl,
       clock:()=>nowMs,
@@ -87,6 +108,8 @@ test('staging runtime shares one durable lineage store across bootstrap, Home, a
       assert.equal(calls.length,16);
       assert.equal(timers.length,1);
       assert.equal(timers[0].ms,1800*1000);
+      assert.equal(fs.existsSync(checkpointPath),true,'post-refresh maintenance should rotate active lineage');
+      assert.equal(fs.statSync(lineageFilePath).size,0,'active generation should be reset after checkpoint');
 
       const homeRes=await request(runtime.address,'/v12/api/home');
       assert.equal(homeRes.status,200);
