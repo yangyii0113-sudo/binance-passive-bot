@@ -34,19 +34,15 @@ function fixtures(){
     [input.twAssets[0].flowEndpoint,response(200,twFlowPayload())],
     [input.twAssets[0].revenueEndpoint,response(200,[revenueRow()])],
     [input.twAssets[1].quoteEndpoint,response(200,[tpQuoteRow()])],
-    [input.twAssets[1].flowEndpoint,response(200,[tpFlowRow()])],
+    [input.twAssets[1].flowEndpoint,response(200,tpFlowRow())],
     [input.usAssets[0].sec.endpoint,response(200,secPayload())]
   ]);
   const blsValues={CUUR0000SA0:'326.5',LNS14000000:'4.2',CES0000000001:'159500'};
-  for(const item of input.regions.US.bls){
-    const seriesID=Object.keys(item.definitions)[0];
-    table.set(item.endpoint,response(200,blsPayload(seriesID,blsValues[seriesID])));
-  }
+  for(const item of input.regions.US.bls){const seriesID=Object.keys(item.definitions)[0];table.set(item.endpoint,response(200,blsPayload(seriesID,blsValues[seriesID])))}
   const ecbValues=['2.1','2.15','2.00'];
   input.regions.EU.ecb.forEach((item,index)=>table.set(item.endpoint,response(200,ecbPayload(ecbValues[index]))));
   return table;
 }
-
 function request(address,path){
   return new Promise((resolve,reject)=>{
     const req=http.request({host:address.address,port:address.port,path,method:'GET'},res=>{
@@ -56,30 +52,47 @@ function request(address,path){
   });
 }
 
-test('runtime config defaults to low-frequency official research refresh and rejects aggressive polling',()=>{
+test('runtime config defaults to low-frequency official research refresh and validates lineage storage policy',()=>{
   const cfg=Entry.runtimeConfig({});
   assert.equal(cfg.refreshSeconds,1800);
+  assert.equal(cfg.lineageCompactThresholdBytes,128*1024*1024);
+  assert.equal(cfg.lineagePolicy.retainedTargetBytes,64*1024*1024);
+  assert.equal(cfg.lineagePolicy.activeRotationBytes,32*1024*1024);
+  assert.equal(cfg.lineagePolicy.softHighWaterRatio,0.8);
+  assert.equal(cfg.lineagePolicy.criticalHighWaterRatio,0.9);
+  assert.equal(cfg.researchOnly,true);
+  assert.equal(cfg.executionWrite,false);
   assert.throws(()=>Entry.runtimeConfig({FOXYYA_V12_REFRESH_SECONDS:'30'}),/REFRESH_SECONDS_INVALID/);
   assert.equal(Entry.runtimeConfig({FOXYYA_V12_REFRESH_SECONDS:'3600'}).refreshSeconds,3600);
+  const tuned=Entry.runtimeConfig({
+    FOXYYA_V12_LINEAGE_RETAINED_TARGET_BYTES:'1048576',
+    FOXYYA_V12_LINEAGE_ACTIVE_ROTATION_BYTES:'524288',
+    FOXYYA_V12_LINEAGE_COMPACTION_TRIGGER_BYTES:'2097152',
+    FOXYYA_V12_LINEAGE_SOFT_HIGH_WATER:'0.70',
+    FOXYYA_V12_LINEAGE_CRITICAL_HIGH_WATER:'0.85',
+    FOXYYA_V12_LINEAGE_RESERVE_BYTES:'131072'
+  });
+  assert.equal(tuned.lineagePolicy.retainedTargetBytes,1048576);
+  assert.equal(tuned.lineagePolicy.activeRotationBytes,524288);
+  assert.equal(tuned.lineagePolicy.compactionTriggerBytes,2097152);
+  assert.equal(tuned.lineageCompactThresholdBytes,2097152);
+  assert.equal(tuned.lineagePolicy.softHighWaterRatio,0.70);
+  assert.equal(tuned.lineagePolicy.criticalHighWaterRatio,0.85);
+  assert.throws(()=>Entry.runtimeConfig({FOXYYA_V12_LINEAGE_SOFT_HIGH_WATER:'0.95',FOXYYA_V12_LINEAGE_CRITICAL_HIGH_WATER:'0.90'}),/LINEAGE_STORAGE_POLICY_INVALID/);
 });
 
-test('staging runtime shares one durable lineage store across bootstrap, Home, and trace API',async()=>{
+test('staging runtime shares one durable lineage store across bootstrap, maintenance, Home, and trace API',async()=>{
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),'foxyya-runtime-live-research-'));
   const lineageFilePath=path.join(dir,'runtime.lineage.jsonl');
+  const checkpointPath=lineageFilePath.replace('.lineage.jsonl','.lineage.checkpoint.jsonl');
   const table=fixtures();
-  const calls=[];
-  const timers=[];
-  const cleared=[];
+  const calls=[],timers=[],cleared=[];
   const fetchImpl=async(url,init)=>{calls.push({url,init});if(!table.has(url))throw Error('unexpected '+url);return table.get(url)};
   try{
-    const runtime=await Entry.startFromEnvironment({
-      HOST:'127.0.0.1',PORT:'0',FOXYYA_V12_LINEAGE_PATH:lineageFilePath,FOXYYA_V12_REFRESH_SECONDS:'1800'
-    },{
-      fetchImpl,
-      clock:()=>nowMs,
-      setIntervalImpl(fn,ms){const token={fn,ms};timers.push(token);return token},
-      clearIntervalImpl(token){cleared.push(token)},
-      onResearchError(error){throw error}
+    const runtime=await Entry.startFromEnvironment({HOST:'127.0.0.1',PORT:'0',FOXYYA_V12_LINEAGE_PATH:lineageFilePath,FOXYYA_V12_REFRESH_SECONDS:'1800',FOXYYA_V12_LINEAGE_ACTIVE_ROTATION_BYTES:'1'},{
+      fetchImpl,clock:()=>nowMs,
+      setIntervalImpl(fn,ms){const token={fn,ms};timers.push(token);return token},clearIntervalImpl(token){cleared.push(token)},
+      onResearchError(error){throw error},onLineageMaintenance(){}
     });
     try{
       const initial=await runtime.researchReady;
@@ -87,38 +100,28 @@ test('staging runtime shares one durable lineage store across bootstrap, Home, a
       assert.equal(calls.length,16);
       assert.equal(timers.length,1);
       assert.equal(timers[0].ms,1800*1000);
+      assert.equal(fs.existsSync(checkpointPath),true,'post-refresh maintenance should rotate active lineage');
+      assert.equal(fs.statSync(lineageFilePath).size,0,'active generation should be reset after checkpoint');
 
       const homeRes=await request(runtime.address,'/v12/api/home');
       assert.equal(homeRes.status,200);
       const home=JSON.parse(homeRes.body);
-      assert.equal(home.researchOnly,true);
-      assert.equal(home.executionWrite,false);
-      assert.equal(home.home.opportunities.TW.length,2);
-      assert.equal(home.home.opportunities.US.length,1);
-      assert.equal(home.home.opportunities.CRYPTO.length,0);
-      assert.equal(home.home.regions.find(x=>x.region==='US').facts.length,3);
-      assert.equal(home.home.regions.find(x=>x.region==='EU').facts.length,3);
+      assert.equal(home.researchOnly,true);assert.equal(home.executionWrite,false);
+      assert.equal(home.home.opportunities.TW.length,2);assert.equal(home.home.opportunities.US.length,1);assert.equal(home.home.opportunities.CRYPTO.length,0);
+      assert.equal(home.home.regions.find(x=>x.region==='US').facts.length,3);assert.equal(home.home.regions.find(x=>x.region==='EU').facts.length,3);
       const twRegion=home.home.regions.find(x=>x.region==='TW');
       assert.equal(twRegion.status,'AVAILABLE');
-      assert.ok(twRegion.facts.some(x=>x.field==='market.index.taiex.close'));
-      assert.ok(twRegion.facts.some(x=>x.field==='market.index.otc.close'));
+      assert.ok(twRegion.facts.some(x=>x.field==='market.index.taiex.close'));assert.ok(twRegion.facts.some(x=>x.field==='market.index.otc.close'));
       const twPulse=home.home.marketPulse.find(x=>x.market==='TW');
-      assert.equal(twPulse.status,'AVAILABLE');
-      assert.equal(twPulse.state,'BROAD_ADVANCE');
+      assert.equal(twPulse.status,'AVAILABLE');assert.equal(twPulse.state,'BROAD_ADVANCE');
 
       const lineageRef=home.home.opportunities.TW[0].lineageRef;
       const traceRes=await request(runtime.address,'/v12/api/lineage/output/'+lineageRef);
       assert.equal(traceRes.status,200);
       const trace=JSON.parse(traceRes.body);
-      assert.equal(trace.lineageRef,lineageRef);
-      assert.equal(trace.data.output.subjectId,home.home.opportunities.TW[0].instrumentId);
-      assert.ok(trace.data.sources.length>=2);
-      assert.ok(trace.data.observations.length>=2);
-      assert.equal(fs.existsSync(lineageFilePath),true);
-    }finally{
-      await runtime.close();
-      assert.deepEqual(cleared,timers);
-    }
+      assert.equal(trace.lineageRef,lineageRef);assert.equal(trace.data.output.subjectId,home.home.opportunities.TW[0].instrumentId);
+      assert.ok(trace.data.sources.length>=2);assert.ok(trace.data.observations.length>=2);assert.equal(fs.existsSync(lineageFilePath),true);
+    }finally{await runtime.close();assert.deepEqual(cleared,timers)}
   }finally{fs.rmSync(dir,{recursive:true,force:true})}
 });
 
@@ -127,23 +130,16 @@ test('provider network failures stay unavailable without taking down staging hea
   const lineageFilePath=path.join(dir,'runtime.lineage.jsonl');
   const errors=[];
   const runtime=await Entry.startFromEnvironment({HOST:'127.0.0.1',PORT:'0',FOXYYA_V12_LINEAGE_PATH:lineageFilePath},{
-    fetchImpl:async()=>{throw Error('NETWORK_DOWN')},
-    clock:()=>nowMs,
-    setIntervalImpl(){return 1},clearIntervalImpl(){},
-    onResearchError(error){errors.push(error)}
+    fetchImpl:async()=>{throw Error('NETWORK_DOWN')},clock:()=>nowMs,setIntervalImpl(){return 1},clearIntervalImpl(){},onResearchError(error){errors.push(error)},onLineageMaintenance(){}
   });
   try{
     const initial=await runtime.researchReady;
     assert.ok(initial,'provider failures are represented in result, not promoted to runtime exception');
-    assert.equal(errors.length,0);
-    assert.equal((await request(runtime.address,'/health')).status,200);
+    assert.equal(errors.length,0);assert.equal((await request(runtime.address,'/health')).status,200);
     const homeRes=await request(runtime.address,'/v12/api/home');
     assert.equal(homeRes.status,200,'provider UNAVAILABLE states should still publish an honest Home snapshot');
     const home=JSON.parse(homeRes.body);
-    assert.equal(home.home.opportunities.TW.length,0);
-    assert.equal(home.home.opportunities.US.length,0);
-    assert.equal(home.home.regions.find(x=>x.region==='US').status,'UNAVAILABLE');
-    assert.equal(home.home.regions.find(x=>x.region==='EU').status,'UNAVAILABLE');
-    assert.equal(home.home.regions.find(x=>x.region==='TW').status,'UNAVAILABLE');
+    assert.equal(home.home.opportunities.TW.length,0);assert.equal(home.home.opportunities.US.length,0);
+    assert.equal(home.home.regions.find(x=>x.region==='US').status,'UNAVAILABLE');assert.equal(home.home.regions.find(x=>x.region==='EU').status,'UNAVAILABLE');assert.equal(home.home.regions.find(x=>x.region==='TW').status,'UNAVAILABLE');
   }finally{await runtime.close();fs.rmSync(dir,{recursive:true,force:true})}
 });
