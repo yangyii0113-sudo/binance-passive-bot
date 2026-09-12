@@ -3,9 +3,12 @@
 const fs=require('node:fs');
 const path=require('node:path');
 const crypto=require('node:crypto');
+const zlib=require('node:zlib');
 const Lineage=require('../data/source_lineage.js');
 
 const EVENT_SCHEMA='foxyya-lineage-event/1';
+const FRAME_SCHEMA='foxyya-lineage-frame/1';
+const FRAME_ENCODING='deflate-raw-base64';
 const EVENT_TYPES=Object.freeze({
   SOURCE:'SOURCE_RECORDED',
   OUTPUT:'OUTPUT_RECORDED'
@@ -54,10 +57,40 @@ function createEvent({sequence,type,recordedAt,record}){
   return Object.freeze({...base,checksum:sha256(base)});
 }
 
-function createDurableSourceLineageStore({filePath,now=Date.now,fsImpl=fs}={}){
+function framePayload(frame){
+  return {
+    schema:frame.schema,
+    encoding:frame.encoding,
+    sequence:frame.sequence,
+    payload:frame.payload
+  };
+}
+
+function encodeFrame(event){
+  const payload=zlib.deflateRawSync(Buffer.from(JSON.stringify(event),'utf8'),{level:9}).toString('base64');
+  const base={schema:FRAME_SCHEMA,encoding:FRAME_ENCODING,sequence:event.sequence,payload};
+  return Object.freeze({...base,checksum:sha256(base)});
+}
+
+function decodeStoredValue(raw){
+  if(object(raw)&&raw.schema===EVENT_SCHEMA)return raw;
+  if(!object(raw)||raw.schema!==FRAME_SCHEMA||raw.encoding!==FRAME_ENCODING||!Number.isInteger(raw.sequence)||raw.sequence<=0||typeof raw.payload!=='string'||!raw.payload.length||typeof raw.checksum!=='string')throw Error('LINEAGE_JOURNAL_CORRUPT');
+  if(raw.checksum!==sha256(framePayload(raw)))throw Error('LINEAGE_JOURNAL_CORRUPT');
+  let inflated;
+  try{inflated=zlib.inflateRawSync(Buffer.from(raw.payload,'base64'));}
+  catch(_error){throw Error('LINEAGE_JOURNAL_CORRUPT');}
+  let event;
+  try{event=JSON.parse(inflated.toString('utf8'));}
+  catch(_error){throw Error('LINEAGE_JOURNAL_CORRUPT');}
+  if(!object(event)||event.schema!==EVENT_SCHEMA||event.sequence!==raw.sequence)throw Error('LINEAGE_JOURNAL_CORRUPT');
+  return event;
+}
+
+function createDurableSourceLineageStore({filePath,now=Date.now,fsImpl=fs,compactThresholdBytes=0}={}){
   const journalPath=validatePath(filePath);
   if(typeof now!=='function')throw Error('LINEAGE_CLOCK_REQUIRED');
   if(!fsImpl||typeof fsImpl!=='object')throw Error('LINEAGE_FS_REQUIRED');
+  if(!Number.isInteger(compactThresholdBytes)||compactThresholdBytes<0)throw Error('LINEAGE_COMPACT_THRESHOLD_INVALID');
 
   // Only compact references and byte offsets stay resident. Canonical payloads remain on disk
   // and are validated/read on demand. This prevents an append-only journal from consuming
@@ -70,6 +103,7 @@ function createDurableSourceLineageStore({filePath,now=Date.now,fsImpl=fs}={}){
   let sequence=0;
   let repairTailOffset=null;
   let needsTrailingSeparator=false;
+  let legacyEventCount=0;
 
   function currentTime(){
     const value=Number(now());
@@ -141,11 +175,13 @@ function createDurableSourceLineageStore({filePath,now=Date.now,fsImpl=fs}={}){
     }
   }
 
+  function frameLineBuffer(event){return Buffer.from(JSON.stringify(encodeFrame(event))+'\n','utf8');}
+
   function appendEvent(type,record,minimumRecordedAt){
     const recordedAt=currentTime();
     if(recordedAt<minimumRecordedAt)throw Error('RECORDED_AT_INVALID');
     const event=createEvent({sequence:sequence+1,type,recordedAt,record});
-    const lineBuffer=Buffer.from(JSON.stringify(event)+'\n','utf8');
+    const lineBuffer=frameLineBuffer(event);
     let fd=null;
     try{
       fsImpl.mkdirSync(path.dirname(journalPath),{recursive:true});
@@ -197,12 +233,20 @@ function createDurableSourceLineageStore({filePath,now=Date.now,fsImpl=fs}={}){
     sequence=raw.sequence;
   }
 
-  function parseCompleteLine(buffer,index){
-    if(!buffer.length||!buffer.toString('utf8').trim())return;
-    let parsed;
-    try{parsed=JSON.parse(buffer.toString('utf8'));}
+  function parseStoredLine(buffer,index){
+    if(!buffer.length||!buffer.toString('utf8').trim())return null;
+    let stored;
+    try{stored=JSON.parse(buffer.toString('utf8'));}
     catch(_error){throw Error('LINEAGE_JOURNAL_CORRUPT');}
-    replayIndexedEvent(parsed,index);
+    if(stored?.schema===EVENT_SCHEMA)legacyEventCount+=1;
+    const event=decodeStoredValue(stored);
+    validateRawEvent(event,index.sequence);
+    return event;
+  }
+
+  function parseCompleteLine(buffer,index){
+    const event=parseStoredLine(buffer,index);
+    if(event)replayIndexedEvent(event,index);
   }
 
   function replay(){
@@ -243,11 +287,15 @@ function createDurableSourceLineageStore({filePath,now=Date.now,fsImpl=fs}={}){
       if(carryLength){
         const tail=carryParts.length===1?carryParts[0]:Buffer.concat(carryParts,carryLength);
         try{
-          const parsed=JSON.parse(tail.toString('utf8'));
-          replayIndexedEvent(parsed,Object.freeze({offset:lineStart,length:carryLength,sequence:sequence+1}));
+          const event=parseStoredLine(tail,Object.freeze({offset:lineStart,length:carryLength,sequence:sequence+1}));
+          if(event)replayIndexedEvent(event,Object.freeze({offset:lineStart,length:carryLength,sequence:sequence+1}));
           needsTrailingSeparator=true;
         }catch(error){
-          if(error?.message==='LINEAGE_JOURNAL_CORRUPT')throw error;
+          if(error?.message==='LINEAGE_JOURNAL_CORRUPT'){
+            let parsed=null;
+            try{parsed=JSON.parse(tail.toString('utf8'));}catch(_parseError){}
+            if(parsed!==null)throw error;
+          }
           // Preserve historical torn-append semantics: ignore the incomplete fragment now,
           // and truncate it durably before the next successful append.
           repairTailOffset=lineStart;
@@ -261,7 +309,7 @@ function createDurableSourceLineageStore({filePath,now=Date.now,fsImpl=fs}={}){
     }
   }
 
-  function readIndexedEvent(index,expectedType){
+  function readStoredEvent(index){
     let fd=null;
     try{
       fd=fsImpl.openSync(journalPath,'r');
@@ -274,24 +322,78 @@ function createDurableSourceLineageStore({filePath,now=Date.now,fsImpl=fs}={}){
       }
       fsImpl.closeSync(fd);
       fd=null;
-      let raw;
-      try{raw=JSON.parse(buffer.toString('utf8'));}
+      let stored;
+      try{stored=JSON.parse(buffer.toString('utf8'));}
       catch(_error){throw Error('LINEAGE_JOURNAL_CORRUPT');}
-      validateRawEvent(raw,index.sequence);
-      if(raw.type!==expectedType)throw Error('LINEAGE_JOURNAL_CORRUPT');
-      if(expectedType===EVENT_TYPES.SOURCE){
-        const record=Lineage.validateSourceObservationLineage(raw.record);
-        if(record.receivedAt!==index.receivedAt)throw Error('LINEAGE_JOURNAL_CORRUPT');
-        return record;
-      }
-      const record=Lineage.validateResearchOutputLineage(raw.record);
-      if(record.asOf!==index.asOf)throw Error('LINEAGE_JOURNAL_CORRUPT');
-      return record;
+      const event=decodeStoredValue(stored);
+      validateRawEvent(event,index.sequence);
+      return event;
     }catch(error){
       if(fd!==null){try{fsImpl.closeSync(fd);}catch(_closeError){}}
       if(error?.message==='LINEAGE_JOURNAL_CORRUPT')throw error;
       throw Error('LINEAGE_JOURNAL_CORRUPT');
     }
+  }
+
+  function readIndexedEvent(index,expectedType){
+    const raw=readStoredEvent(index);
+    if(raw.type!==expectedType)throw Error('LINEAGE_JOURNAL_CORRUPT');
+    if(expectedType===EVENT_TYPES.SOURCE){
+      const record=Lineage.validateSourceObservationLineage(raw.record);
+      if(record.receivedAt!==index.receivedAt)throw Error('LINEAGE_JOURNAL_CORRUPT');
+      return record;
+    }
+    const record=Lineage.validateResearchOutputLineage(raw.record);
+    if(record.asOf!==index.asOf)throw Error('LINEAGE_JOURNAL_CORRUPT');
+    return record;
+  }
+
+  function resetIndexes(){
+    sourceIndexByRef.clear();
+    outputIndexByRef.clear();
+    sourceIdentityRefs.clear();
+    outputIdentityRefs.clear();
+    observationSourceRefs.clear();
+    sequence=0;
+    repairTailOffset=null;
+    needsTrailingSeparator=false;
+    legacyEventCount=0;
+  }
+
+  function compactLegacyJournal(){
+    const indexes=[...sourceIndexByRef.values(),...outputIndexByRef.values()].sort((a,b)=>a.sequence-b.sequence);
+    const tempPath=journalPath+'.compact.tmp';
+    let fd=null;
+    let renamed=false;
+    try{
+      if(fsImpl.existsSync(tempPath))fsImpl.unlinkSync(tempPath);
+      fsImpl.mkdirSync(path.dirname(journalPath),{recursive:true});
+      fd=fsImpl.openSync(tempPath,'wx');
+      for(const index of indexes){
+        const event=readStoredEvent(index);
+        writeAll(fd,frameLineBuffer(event));
+      }
+      fsImpl.fsyncSync(fd);
+      fsImpl.closeSync(fd);
+      fd=null;
+      fsImpl.renameSync(tempPath,journalPath);
+      renamed=true;
+      resetIndexes();
+      replay();
+    }catch(error){
+      if(fd!==null){try{fsImpl.closeSync(fd);}catch(_closeError){}}
+      if(!renamed){try{if(fsImpl.existsSync(tempPath))fsImpl.unlinkSync(tempPath);}catch(_unlinkError){}}
+      if(error?.message==='LINEAGE_JOURNAL_CORRUPT')throw error;
+      throw Error('LINEAGE_COMPACTION_FAILED');
+    }
+  }
+
+  function maybeCompactLegacyJournal(){
+    if(!compactThresholdBytes||!legacyEventCount||!fsImpl.existsSync(journalPath))return;
+    let size;
+    try{size=fsImpl.statSync(journalPath).size;}
+    catch(_error){throw Error('LINEAGE_COMPACTION_FAILED');}
+    if(size>=compactThresholdBytes)compactLegacyJournal();
   }
 
   function recordSource(value){
@@ -367,8 +469,9 @@ function createDurableSourceLineageStore({filePath,now=Date.now,fsImpl=fs}={}){
   }
 
   replay();
+  maybeCompactLegacyJournal();
 
   return Object.freeze({recordSource,recordOutput,source,output,traceOutput});
 }
 
-module.exports=Object.freeze({EVENT_SCHEMA,EVENT_TYPES,createDurableSourceLineageStore});
+module.exports=Object.freeze({EVENT_SCHEMA,FRAME_SCHEMA,FRAME_ENCODING,EVENT_TYPES,createDurableSourceLineageStore});
