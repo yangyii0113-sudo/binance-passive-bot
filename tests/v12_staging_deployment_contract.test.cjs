@@ -18,11 +18,13 @@ test('v12 staging has a dedicated Node image and never boots the Production pape
 
 test('staging runtime config is isolated, durable, and defaults to Railway-safe host and port',()=>{
   const Entry=require(entryPath);
-  assert.deepEqual(Object.keys(Entry).sort(),['runtimeConfig','startFromEnvironment']);
+  assert.deepEqual(Object.keys(Entry).sort(),['LINEAGE_COMPACT_THRESHOLD_BYTES','runtimeConfig','startFromEnvironment'].sort());
+  assert.equal(Entry.LINEAGE_COMPACT_THRESHOLD_BYTES,128*1024*1024);
   const cfg=Entry.runtimeConfig({});
   assert.equal(cfg.host,'0.0.0.0');
   assert.equal(cfg.port,8080);
   assert.equal(cfg.lineageFilePath,'/data/foxyya-v12.lineage.jsonl');
+  assert.equal(cfg.lineageCompactThresholdBytes,128*1024*1024);
   assert.equal(cfg.researchOnly,true);
   assert.equal(cfg.executionWrite,false);
 
@@ -30,6 +32,7 @@ test('staging runtime config is isolated, durable, and defaults to Railway-safe 
   assert.equal(custom.host,'127.0.0.1');
   assert.equal(custom.port,9000);
   assert.equal(custom.lineageFilePath,'/tmp/custom.lineage.jsonl');
+  assert.equal(custom.lineageCompactThresholdBytes,128*1024*1024);
 });
 
 test('staging runtime rejects invalid deployment configuration before binding a server',()=>{
