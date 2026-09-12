@@ -163,7 +163,7 @@ test('durable store traces a research output back to the exact persisted source 
   assert.equal(Object.isFrozen(trace.observations),true);
 });
 
-test('lineage survives restart with event schema sequence checksum and immutable replay',()=>{
+test('lineage survives restart with compressed frame sequence checksum and immutable replay',()=>{
   const {filePath}=tmpFile();
   const source=sourceRecord();
   const output=outputRecord(source);
@@ -173,7 +173,8 @@ test('lineage survives restart with event schema sequence checksum and immutable
 
   const persisted=lines(filePath).map(JSON.parse);
   assert.equal(persisted.length,2);
-  assert.equal(persisted[0].schema,'foxyya-lineage-event/1');
+  assert.equal(persisted[0].schema,'foxyya-lineage-frame/1');
+  assert.equal(persisted[0].encoding,'deflate-raw-base64');
   assert.equal(persisted[0].sequence,1);
   assert.equal(persisted[1].sequence,2);
   assert.match(persisted[0].checksum,/^[a-f0-9]{64}$/);
