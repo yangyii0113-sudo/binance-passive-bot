@@ -47,6 +47,13 @@ function tmp(name){
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),'foxyya-lineage-compress-'));
   return {dir,filePath:path.join(dir,name)};
 }
+function seedLegacy(filePath){
+  const {source,output}=fixtureRecords();
+  const first=legacyEvent({sequence:1,type:'SOURCE_RECORDED',recordedAt:5000,record:source});
+  const second=legacyEvent({sequence:2,type:'OUTPUT_RECORDED',recordedAt:5001,record:output});
+  fs.writeFileSync(filePath,JSON.stringify(first)+'\n'+JSON.stringify(second)+'\n','utf8');
+  return {source,output};
+}
 
 test('new durable lineage appends use compressed frames and remain restart-readable',()=>{
   const {dir,filePath}=tmp('compressed.lineage.jsonl');
@@ -74,10 +81,7 @@ test('new durable lineage appends use compressed frames and remain restart-reada
 test('legacy plain journal above compaction threshold is atomically rewritten as compressed frames without changing trace',()=>{
   const {dir,filePath}=tmp('legacy.lineage.jsonl');
   try{
-    const {source,output}=fixtureRecords();
-    const first=legacyEvent({sequence:1,type:'SOURCE_RECORDED',recordedAt:5000,record:source});
-    const second=legacyEvent({sequence:2,type:'OUTPUT_RECORDED',recordedAt:5001,record:output});
-    fs.writeFileSync(filePath,JSON.stringify(first)+'\n'+JSON.stringify(second)+'\n','utf8');
+    const {source,output}=seedLegacy(filePath);
     const before=fs.statSync(filePath).size;
     const store=createDurableSourceLineageStore({filePath,now:()=>6000,compactThresholdBytes:1});
     const after=fs.statSync(filePath).size;
@@ -94,4 +98,35 @@ test('legacy plain journal above compaction threshold is atomically rewritten as
     assert.deepEqual(trace.sources,[source]);
     assert.deepEqual(trace.observations[0].observation,source.observations[0]);
   }finally{fs.rmSync(dir,{recursive:true,force:true});}
+});
+
+test('scratch-directory compaction fails closed unless an external backup was verified',()=>{
+  const {dir,filePath}=tmp('scratch-required.lineage.jsonl');
+  const scratch=fs.mkdtempSync(path.join(os.tmpdir(),'foxyya-lineage-scratch-'));
+  try{
+    seedLegacy(filePath);
+    assert.throws(()=>createDurableSourceLineageStore({
+      filePath,now:()=>6000,compactThresholdBytes:1,compactScratchDir:scratch
+    }),/LINEAGE_BACKUP_REQUIRED/);
+    assert.equal(JSON.parse(fs.readFileSync(filePath,'utf8').split('\n')[0]).schema,'foxyya-lineage-event/1');
+  }finally{fs.rmSync(dir,{recursive:true,force:true});fs.rmSync(scratch,{recursive:true,force:true});}
+});
+
+test('verified-backup scratch compaction validates compressed scratch before replacing legacy journal',()=>{
+  const {dir,filePath}=tmp('scratch-verified.lineage.jsonl');
+  const scratch=fs.mkdtempSync(path.join(os.tmpdir(),'foxyya-lineage-scratch-ok-'));
+  try{
+    const {source,output}=seedLegacy(filePath);
+    const before=fs.statSync(filePath).size;
+    const store=createDurableSourceLineageStore({
+      filePath,now:()=>6000,compactThresholdBytes:1,compactScratchDir:scratch,externalBackupVerified:true
+    });
+    const after=fs.statSync(filePath).size;
+    assert.ok(after<before*0.25);
+    assert.equal(JSON.parse(fs.readFileSync(filePath,'utf8').split('\n')[0]).schema,'foxyya-lineage-frame/1');
+    assert.deepEqual(store.source(source.lineageRef),source);
+    assert.deepEqual(store.output(output.lineageRef),output);
+    assert.deepEqual(store.traceOutput(output.lineageRef).sources,[source]);
+    assert.deepEqual(fs.readdirSync(scratch),[],'validated scratch artifact must be cleaned after replacement');
+  }finally{fs.rmSync(dir,{recursive:true,force:true});fs.rmSync(scratch,{recursive:true,force:true});}
 });
