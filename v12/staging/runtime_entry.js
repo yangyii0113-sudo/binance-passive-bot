@@ -8,6 +8,8 @@ const {createForwardResearchTracker}=require('./forward_research_tracker.js');
 const {createLiveResearchBootstrap}=require('./live_research_bootstrap.js');
 const {createExecutionReadBridge}=require('./execution_read_bridge.js');
 
+const LINEAGE_COMPACT_THRESHOLD_BYTES=128*1024*1024;
+
 function runtimeConfig(env=process.env){
   const host=typeof env.HOST==='string'&&env.HOST.trim()?env.HOST.trim():'0.0.0.0';
   const rawPort=env.PORT===undefined||env.PORT===null||String(env.PORT).trim()===''?'8080':String(env.PORT).trim();
@@ -40,6 +42,7 @@ function runtimeConfig(env=process.env){
     host,
     port,
     lineageFilePath,
+    lineageCompactThresholdBytes:LINEAGE_COMPACT_THRESHOLD_BYTES,
     forwardResearchFilePath,
     refreshSeconds,
     researchOnly:true,
@@ -60,7 +63,11 @@ async function startFromEnvironment(env=process.env,dependencies={}){
   if(typeof setIntervalImpl!=='function'||typeof clearIntervalImpl!=='function')throw Error('TIMER_REQUIRED');
   if(typeof onResearchError!=='function')throw Error('RESEARCH_ERROR_HANDLER_REQUIRED');
 
-  const lineageStore=createDurableSourceLineageStore({filePath:config.lineageFilePath,now:clock});
+  const lineageStore=createDurableSourceLineageStore({
+    filePath:config.lineageFilePath,
+    now:clock,
+    compactThresholdBytes:config.lineageCompactThresholdBytes
+  });
   const forwardResearchStore=dependencies.forwardResearchStore||createDurableForwardResearchStore({filePath:config.forwardResearchFilePath,now:clock});
   const forwardResearchTracker=dependencies.forwardResearchTracker||createForwardResearchTracker({store:forwardResearchStore});
 
@@ -157,4 +164,4 @@ if(require.main===module){
   });
 }
 
-module.exports=Object.freeze({runtimeConfig,startFromEnvironment});
+module.exports=Object.freeze({LINEAGE_COMPACT_THRESHOLD_BYTES,runtimeConfig,startFromEnvironment});
