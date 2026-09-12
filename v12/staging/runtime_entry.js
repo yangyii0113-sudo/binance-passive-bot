@@ -16,6 +16,10 @@ const BACKUP_ENV=Object.freeze({
   accessKeyId:'FOXYYA_V12_BACKUP_ACCESS_KEY_ID',
   secretAccessKey:'FOXYYA_V12_BACKUP_SECRET_ACCESS_KEY'
 });
+const HTTP_BACKUP_ENV=Object.freeze({
+  baseUrl:'FOXYYA_V12_BACKUP_HTTP_URL',
+  token:'FOXYYA_V12_BACKUP_HTTP_TOKEN'
+});
 
 function runtimeConfig(env=process.env){
   const host=typeof env.HOST==='string'&&env.HOST.trim()?env.HOST.trim():'0.0.0.0';
@@ -57,18 +61,20 @@ function runtimeConfig(env=process.env){
   });
 }
 
-function backupConfigFromEnv(env){
+function allOrNoneConfig(env,mapping){
   const values={};
   let present=0;
-  for(const [key,name] of Object.entries(BACKUP_ENV)){
+  for(const [key,name] of Object.entries(mapping)){
     const value=typeof env[name]==='string'?env[name].trim():'';
     values[key]=value;
     if(value)present+=1;
   }
   if(present===0)return null;
-  if(present!==Object.keys(BACKUP_ENV).length)throw Error('LINEAGE_BACKUP_CONFIG_INVALID');
+  if(present!==Object.keys(mapping).length)throw Error('LINEAGE_BACKUP_CONFIG_INVALID');
   return Object.freeze(values);
 }
+function backupConfigFromEnv(env){return allOrNoneConfig(env,BACKUP_ENV);}
+function httpBackupConfigFromEnv(env){return allOrNoneConfig(env,HTTP_BACKUP_ENV);}
 
 async function startFromEnvironment(env=process.env,dependencies={}){
   const config=runtimeConfig(env);
@@ -91,32 +97,23 @@ async function startFromEnvironment(env=process.env,dependencies={}){
     compactThresholdBytes:config.lineageCompactThresholdBytes,
     scratchDir:dependencies.lineageScratchDir||'/tmp',
     backupConfig:backupConfigFromEnv(env),
-    backupLineageFileImpl:dependencies.backupLineageFileImpl
+    httpBackupConfig:httpBackupConfigFromEnv(env),
+    backupLineageFileImpl:dependencies.backupLineageFileImpl,
+    backupLineageFileHttpImpl:dependencies.backupLineageFileHttpImpl
   });
   const lineageStore=preparedLineage.store;
   const lineageMigration=preparedLineage.migration;
   const forwardResearchStore=dependencies.forwardResearchStore||createDurableForwardResearchStore({filePath:config.forwardResearchFilePath,now:clock});
   const forwardResearchTracker=dependencies.forwardResearchTracker||createForwardResearchTracker({store:forwardResearchStore});
 
-  const serverRuntime=await startStagingPreviewServer({
-    host:config.host,
-    port:config.port,
-    lineageStore,
-    forwardResearchTracker
-  });
+  const serverRuntime=await startStagingPreviewServer({host:config.host,port:config.port,lineageStore,forwardResearchTracker});
 
   const hasInjectedBridge=Object.prototype.hasOwnProperty.call(dependencies,'executionBridge');
   const executionBridge=hasInjectedBridge
     ?dependencies.executionBridge
     :(dependencies.fetchImpl===undefined?createExecutionReadBridge({fetchImpl}):null);
 
-  const bootstrap=createLiveResearchBootstrap({
-    fetchImpl,
-    clock,
-    lineageStore,
-    publishHome:serverRuntime.app.publishHome,
-    executionBridge
-  });
+  const bootstrap=createLiveResearchBootstrap({fetchImpl,clock,lineageStore,publishHome:serverRuntime.app.publishHome,executionBridge});
 
   let running=false;
   let closed=false;
@@ -139,15 +136,8 @@ async function startFromEnvironment(env=process.env,dependencies={}){
   }
 
   return Object.freeze({
-    app:serverRuntime.app,
-    server:serverRuntime.server,
-    address:serverRuntime.address,
-    lineageStore,
-    lineageMigration,
-    forwardResearchStore,
-    forwardResearchTracker,
-    researchReady,
-    close
+    app:serverRuntime.app,server:serverRuntime.server,address:serverRuntime.address,lineageStore,lineageMigration,
+    forwardResearchStore,forwardResearchTracker,researchReady,close
   });
 }
 
@@ -160,15 +150,13 @@ if(require.main===module){
       console.log('FOXYYA v12 lineage migration completed',JSON.stringify({
         originalBytes:runtime.lineageMigration.originalBytes,
         compactedBytes:runtime.lineageMigration.compactedBytes,
+        backupChannel:runtime.lineageMigration.backupChannel,
         backupKey:runtime.lineageMigration.backup?.key,
         backupSha256:runtime.lineageMigration.backup?.sha256
       }));
     }
     runtime.researchReady.then(result=>{
-      if(!result){
-        console.log('FOXYYA v12 initial research bootstrap unavailable');
-        return;
-      }
+      if(!result){console.log('FOXYYA v12 initial research bootstrap unavailable');return;}
       const published=result.orchestration?.published;
       const home=published?.home;
       console.log('FOXYYA v12 initial research bootstrap published',JSON.stringify({
@@ -178,26 +166,14 @@ if(require.main===module){
         eventCount:Array.isArray(home?.events)?home.events.length:0,
         twForwardSamples:published?.researchPerformance?.tw?.summary?.sampleCount??0,
         usForwardStatus:published?.researchPerformance?.us?.status||'UNAVAILABLE',
-        researchOnly:result.researchOnly===true,
-        executionWrite:result.executionWrite===true
+        researchOnly:result.researchOnly===true,executionWrite:result.executionWrite===true
       }));
     });
 
     let closing=false;
-    const shutdown=()=>{
-      if(closing)return;
-      closing=true;
-      runtime.close().then(()=>process.exit(0)).catch(error=>{
-        console.error('FOXYYA v12 staging shutdown failed:',error?.message||error);
-        process.exit(1);
-      });
-    };
-    process.once('SIGTERM',shutdown);
-    process.once('SIGINT',shutdown);
-  }).catch(error=>{
-    console.error('FOXYYA v12 staging failed to start:',error?.message||error);
-    process.exit(1);
-  });
+    const shutdown=()=>{if(closing)return;closing=true;runtime.close().then(()=>process.exit(0)).catch(error=>{console.error('FOXYYA v12 staging shutdown failed:',error?.message||error);process.exit(1);});};
+    process.once('SIGTERM',shutdown);process.once('SIGINT',shutdown);
+  }).catch(error=>{console.error('FOXYYA v12 staging failed to start:',error?.message||error);process.exit(1);});
 }
 
 module.exports=Object.freeze({LINEAGE_COMPACT_THRESHOLD_BYTES,runtimeConfig,startFromEnvironment});
