@@ -20,25 +20,28 @@ test('backup helper has a dedicated Node image and never includes execution runt
   assert.doesNotMatch(text,/service\.py|run_forward_paper\.py|foxyya_v2_paper\.sqlite|REAL_ORDER_LOCK/);
 });
 
-test('backup helper runtime requires explicit token and keeps storage on its own mount',()=>{
+test('backup helper runtime requires explicit token and durable storage declaration',()=>{
   assert.deepEqual(Object.keys(Runtime).sort(),['runtimeConfig','startBackupRuntime'].sort());
   assert.throws(()=>Runtime.runtimeConfig({}),/LINEAGE_BACKUP_TOKEN_REQUIRED/);
-  const cfg=Runtime.runtimeConfig({FOXYYA_V12_BACKUP_TOKEN:'secret',PORT:'0'});
+  assert.throws(()=>Runtime.runtimeConfig({FOXYYA_V12_BACKUP_TOKEN:'secret'}),/LINEAGE_BACKUP_DURABLE_REQUIRED/);
+  const cfg=Runtime.runtimeConfig({FOXYYA_V12_BACKUP_TOKEN:'secret',FOXYYA_V12_BACKUP_DURABLE:'true',PORT:'0'});
   assert.equal(cfg.host,'0.0.0.0');
   assert.equal(cfg.port,0);
   assert.equal(cfg.storageDir,'/backup');
   assert.equal(cfg.token,'secret');
+  assert.equal(cfg.durableStorage,true);
   assert.equal(cfg.researchOnly,true);
   assert.equal(cfg.executionWrite,false);
 });
 
 test('backup helper exposes health but no research or execution API',async()=>{
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),'foxyya-backup-runtime-'));
-  const runtime=await Runtime.startBackupRuntime({HOST:'127.0.0.1',PORT:'0',FOXYYA_V12_BACKUP_TOKEN:'secret',FOXYYA_V12_BACKUP_STORAGE_DIR:dir});
+  const runtime=await Runtime.startBackupRuntime({HOST:'127.0.0.1',PORT:'0',FOXYYA_V12_BACKUP_TOKEN:'secret',FOXYYA_V12_BACKUP_STORAGE_DIR:dir,FOXYYA_V12_BACKUP_DURABLE:'true'});
   try{
     const health=await get(runtime.address.port,'/health');
     assert.equal(health.status,200);
     assert.match(health.body,/"service":"foxyya-v12-lineage-backup"/);
+    assert.match(health.body,/"durableStorage":true/);
     const home=await get(runtime.address.port,'/v12/api/home');
     assert.equal(home.status,404);
     const order=await get(runtime.address.port,'/api/order');
