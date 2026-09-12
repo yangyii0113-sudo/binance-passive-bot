@@ -6,10 +6,8 @@ const fs=require('node:fs');
 const os=require('node:os');
 const path=require('node:path');
 const Lineage=require('../v12/data/source_lineage.js');
-const {
-  createDurableSourceLineageStore,
-  auditLineageStorage
-}=require('../v12/staging/durable_source_lineage_store.js');
+const {createDurableSourceLineageStore}=require('../v12/staging/durable_source_lineage_store.js');
+const {auditLineageStorage}=require('../v12/staging/lineage_storage_maintenance.js');
 
 function tmpFile(){
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),'foxyya-lineage-maint-'));
