@@ -308,12 +308,20 @@ function readCheckpointLedger(filePath,fsImpl){
   try{text=fsImpl.readFileSync(filePath,'utf8')}catch(_error){throw Error('LINEAGE_CHECKPOINT_AUDIT_CORRUPT')}
   const records=[];
   let previous=null;
+  let first=true;
   for(const line of text.split(/\r?\n/).filter(Boolean)){
     let record;
     try{record=JSON.parse(line)}catch(_error){throw Error('LINEAGE_CHECKPOINT_AUDIT_CORRUPT')}
     if(!object(record)||record.schema!==CHECKPOINT_SCHEMA||typeof record.checksum!=='string'||record.checksum!==checkpointChecksum(record))throw Error('LINEAGE_CHECKPOINT_AUDIT_CORRUPT');
-    if(record.previousCheckpointDigest!==previous)throw Error('LINEAGE_CHECKPOINT_AUDIT_CORRUPT');
-    records.push(record);previous=record.checksum;
+    const link=record.previousCheckpointDigest;
+    if(first){
+      if(link!==null&&(typeof link!=='string'||!link))throw Error('LINEAGE_CHECKPOINT_AUDIT_CORRUPT');
+      first=false;
+    }else if(link!==previous){
+      throw Error('LINEAGE_CHECKPOINT_AUDIT_CORRUPT');
+    }
+    records.push(record);
+    previous=record.checksum;
   }
   return records;
 }
