@@ -5,8 +5,15 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const os=require('node:os');
 const path=require('node:path');
+const crypto=require('node:crypto');
 const Lineage=require('../v12/data/source_lineage.js');
 const {createDurableSourceLineageStore}=require('../v12/staging/durable_source_lineage_store.js');
+
+function incompressibleFixtureText(){
+  const chunks=[];
+  for(let i=0;i<4096;i++)chunks.push(crypto.createHash('sha256').update(String(i)).digest('hex'));
+  return chunks.join('');
+}
 
 function fixture(filePath){
   const store=createDurableSourceLineageStore({filePath,now:()=>5000});
@@ -14,7 +21,7 @@ function fixture(filePath){
     schemaVersion:'foxyya-observation/1',
     instrumentId:'NASDAQ:NVDA',market:'US',field:'fundamental.revenue',value:30000000000,
     unit:'USD',currency:'USD',observedAt:1000,receivedAt:1100,
-    source:'SEC:'+('x'.repeat(90000)),status:'SNAPSHOT',confidence:1
+    source:'SEC:'+incompressibleFixtureText(),status:'SNAPSHOT',confidence:1
   });
   const source=Lineage.createSourceObservationLineage({
     sourceId:'sec-edgar',datasetId:'SEC:companyfacts',subjectId:'NASDAQ:NVDA',
@@ -37,7 +44,7 @@ test('durable lineage replay never reads the whole journal into one UTF-8 string
   const filePath=path.join(dir,'bounded.lineage.jsonl');
   try{
     const seeded=fixture(filePath);
-    assert.ok(fs.statSync(filePath).size>65536,'fixture must span multiple scan chunks');
+    assert.ok(fs.statSync(filePath).size>65536,'fixture must span multiple scan chunks even after compression');
     let wholeFileReads=0;
     const fsImpl=Object.create(fs);
     fsImpl.readFileSync=function(){wholeFileReads++;throw Error('WHOLE_FILE_READ_FORBIDDEN');};
