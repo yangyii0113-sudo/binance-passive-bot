@@ -83,7 +83,7 @@ test('official source bindings expose TPEx quote flow and monthly revenue with e
   assert.equal(revenue.data.reportPeriod,'2026-08');
   assert.equal(revenue.data.observations.find(x=>x.field==='fundamental.revenue.yoy_pct').source,'TPEX:mopsfin_t187ap05_O');
 
-  assert.deepEqual(Object.keys(bindings).sort(),['blsSeries','ecbSeries','secCompanyFact','tpexDailyQuote','tpexInstitutional','tpexMonthlyRevenue','twseDailyQuote','twseInstitutional','twseMonthlyRevenue']);
+  assert.deepEqual(Object.keys(bindings).sort(),['blsSeries','cftcTffEquityIndex','ecbSeries','secCompanyFact','tpexDailyQuote','tpexInstitutional','tpexMonthlyRevenue','twseDailyQuote','twseInstitutional','twseMonthlyRevenue']);
 });
 
 test('TPEx quote flow and monthly revenue travel end-to-end through the same TW research semantics without identity conversion',async()=>{
