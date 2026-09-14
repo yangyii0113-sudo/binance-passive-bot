@@ -36,6 +36,7 @@ function coverageSummary(markets){
       directionReadiness:row.directionReadiness||'NOT_READY',
       researchReadiness:row.researchReadiness||'NOT_READY',
       rankingEligibility:row.rankingEligibility||'NOT_ELIGIBLE',
+      availableCapabilities:Object.freeze(Array.isArray(row.availableCapabilities)?[...row.availableCapabilities]:[]),
       missingCapabilities:Object.freeze(Array.isArray(row.missingCapabilities)?[...row.missingCapabilities]:[]),
       blockers:Object.freeze((Array.isArray(row.blockers)?row.blockers:[]).map(item=>Object.freeze({
         type:item?.type||'UNKNOWN',
@@ -45,6 +46,19 @@ function coverageSummary(markets){
     });
   }
   return Object.freeze(summary);
+}
+
+function providerSummary(home){
+  const datasets=Array.isArray(home?.providerDiagnostics?.datasets)?home.providerDiagnostics.datasets:[];
+  const cftc=datasets.find(row=>row?.sourceId==='cftc-cot'&&row?.datasetId==='CFTC:TFF:gpe5-46if:EQUITY_INDEX')||null;
+  return Object.freeze({
+    cftc:cftc?Object.freeze({
+      status:typeof cftc.status==='string'?cftc.status:'UNKNOWN',
+      reason:cftc.reason??null,
+      observedAt:typeof cftc.observedAt==='number'&&Number.isFinite(cftc.observedAt)?cftc.observedAt:null,
+      receivedAt:typeof cftc.receivedAt==='number'&&Number.isFinite(cftc.receivedAt)?cftc.receivedAt:null
+    }):null
+  });
 }
 
 async function runMarketCoverageLiveProbe({host='127.0.0.1',port,timeoutMs=5000,httpImpl=http}={}){
@@ -69,6 +83,7 @@ async function runMarketCoverageLiveProbe({host='127.0.0.1',port,timeoutMs=5000,
     if(!['READY','PARTIAL','BLOCKED','UNAVAILABLE'].includes(row.coverageStatus))throw Error('MARKET_COVERAGE_LIVE_PROBE_STATUS_INVALID');
   }
   const marketSummary=coverageSummary(coverage.markets);
+  const liveProviderSummary=providerSummary(home);
 
   const preview=await requestText({host:host.trim(),port,path:'/v12-preview/',timeoutMs,httpImpl,accept:'text/html'});
   if(preview.statusCode!==200)throw Error('MARKET_COVERAGE_LIVE_PROBE_PREVIEW_UNAVAILABLE');
@@ -91,6 +106,7 @@ async function runMarketCoverageLiveProbe({host='127.0.0.1',port,timeoutMs=5000,
     marketCount:marketKeys.length,
     markets:Object.freeze([...marketKeys]),
     marketSummary,
+    providerSummary:liveProviderSummary,
     previewStatus:preview.statusCode,
     coverageCssStatus:css.statusCode,
     rendererStatus:renderer.statusCode,
