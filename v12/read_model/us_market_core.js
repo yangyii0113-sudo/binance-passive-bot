@@ -7,7 +7,7 @@ function validateNasdaq(value,nowMs){
   if(value===undefined||value===null)return null;
   if(!object(value)||value.schemaVersion!=='foxyya-us-nasdaq-market-snapshot/1'||value.market!=='US'||value.scope!=='NASDAQ_LISTED_US'||value.venue!=='NASDAQ')throw Error('US_MARKET_INPUT_INVALID');
   if(value.researchOnly!==true||value.executionWrite!==false||value.realtime!==false||value.fullMarketBreadthAvailable!==false)throw Error('US_MARKET_INPUT_INVALID');
-  if(value.licenseStatus!=='REVIEW_REQUIRED'||value.redistributionStatus!=='NOT_CLEARED'||value.publicDisplayAllowed!==false)throw Error('US_MARKET_LICENSE_INVALID');
+  if(value.licenseStatus!=='LICENSE_REQUIRED'||value.redistributionStatus!=='NOT_CLEARED'||value.publicDisplayAllowed!==false)throw Error('US_MARKET_LICENSE_INVALID');
   if(!finite(value.asOf)||value.asOf<0||value.asOf>nowMs)throw Error('US_MARKET_INPUT_INVALID');
   if(!object(value.indices?.composite)||!object(value.indices?.nasdaq100)||!object(value.breadth)||!Array.isArray(value.sectors))throw Error('US_MARKET_INPUT_INVALID');
   for(const index of [value.indices.composite,value.indices.nasdaq100])if(!finite(index.close)||!finite(index.changePct))throw Error('US_MARKET_INPUT_INVALID');
@@ -51,7 +51,7 @@ function buildUSMarketCore(input={}){
     market:'US',status,state,confidence:confidenceFor(state,nasdaq),asOf:nasdaq?.asOf??nowMs,
     marketScope:nasdaq?'NASDAQ_LISTED_US':'UNAVAILABLE',latency:nasdaq?'EOD':'UNAVAILABLE',realtime:false,
     directionCoverage:'PARTIAL',fullMarketState:'UNAVAILABLE',fullMarketBreadthAvailable:false,
-    licenseStatus:'REVIEW_REQUIRED',redistributionStatus:'NOT_CLEARED',publicDisplayAllowed:false,
+    licenseStatus:'LICENSE_REQUIRED',redistributionStatus:'NOT_CLEARED',publicDisplayAllowed:false,
     missingSources:Object.freeze(missingSources),
     data:nasdaq?Object.freeze({indices:nasdaq.indices,breadth:nasdaq.breadth,sectors:nasdaq.sectors,liquidity:nasdaq.liquidity}):null,
     researchOnly:true,executionWrite:false
