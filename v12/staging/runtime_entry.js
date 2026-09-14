@@ -7,6 +7,7 @@ const {createDurableForwardResearchStore}=require('./durable_forward_research_st
 const {createForwardResearchTracker}=require('./forward_research_tracker.js');
 const {createLiveResearchBootstrap}=require('./live_research_bootstrap.js');
 const {createExecutionReadBridge}=require('./execution_read_bridge.js');
+const {runLineageLiveTraceProbe}=require('./lineage_live_trace_probe.js');
 
 const LINEAGE_COMPACT_THRESHOLD_BYTES=128*1024*1024;
 const BACKUP_ENV=Object.freeze({
@@ -146,8 +147,9 @@ if(require.main===module){
     const address=runtime.address;
     console.log(`FOXYYA v12 staging listening on ${address.address}:${address.port}`);
     console.log('FOXYYA v12 staging mode: RESEARCH_ONLY=true EXECUTION_WRITE=false');
-    if(runtime.lineageMigration?.status==='COMPACTED'){
+    if(runtime.lineageMigration?.status==='COMPACTED'||runtime.lineageMigration?.status==='SALVAGED_COMPACTED'){
       console.log('FOXYYA v12 lineage migration completed',JSON.stringify({
+        status:runtime.lineageMigration.status,
         originalBytes:runtime.lineageMigration.originalBytes,
         compactedBytes:runtime.lineageMigration.compactedBytes,
         backupChannel:runtime.lineageMigration.backupChannel,
@@ -156,7 +158,7 @@ if(require.main===module){
       }));
     }
     runtime.researchReady.then(result=>{
-      if(!result){console.log('FOXYYA v12 initial research bootstrap unavailable');return;}
+      if(!result){console.log('FOXYYA v12 initial research bootstrap unavailable');return null;}
       const published=result.orchestration?.published;
       const home=published?.home;
       console.log('FOXYYA v12 initial research bootstrap published',JSON.stringify({
@@ -168,6 +170,9 @@ if(require.main===module){
         usForwardStatus:published?.researchPerformance?.us?.status||'UNAVAILABLE',
         researchOnly:result.researchOnly===true,executionWrite:result.executionWrite===true
       }));
+      return runLineageLiveTraceProbe({host:'127.0.0.1',port:address.port,timeoutMs:10000})
+        .then(probe=>console.log('FOXYYA v12 live lineage trace probe passed',JSON.stringify(probe)))
+        .catch(error=>console.error('FOXYYA v12 live lineage trace probe failed:',error?.message||error));
     });
 
     let closing=false;
