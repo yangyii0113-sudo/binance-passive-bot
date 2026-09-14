@@ -63,6 +63,7 @@ function datasetCapabilities(row){
   const id=typeof row?.datasetId==='string'?row.datasetId:'';
   const out=new Set();
   if(id==='TWSE:STOCK_DAY_ALL'||id==='TPEX:tpex_mainboard_daily_close_quotes')out.add('QUOTE');
+  if(id==='TWELVEDATA:QUOTE:US_DEFAULT')out.add('QUOTE');
   if(id==='TWSE:T86'||id==='TPEX:tpex_3insti_daily_trading')out.add('INSTITUTIONAL_FLOW');
   if(id==='TWSE:t187ap05_L'||id==='TPEX:mopsfin_t187ap05_O'||id==='SEC:companyfacts')out.add('FUNDAMENTAL');
   if(id==='TWSE:MI_INDEX'){out.add('INDEX');out.add('MARKET_BREADTH');out.add('SECTOR_ROTATION');}
@@ -209,8 +210,6 @@ function buildMarket({market,asOf,catalog,providerDiagnostics,home,cryptoExecuti
     }
   }
 
-  // Runtime diagnostics are authoritative over stale derived instrument cards when no
-  // independent successful dataset proves the same capability in the current snapshot.
   for(const [cap,failedSourceIds] of failedCaps){
     const hasAvailableDataset=datasetRows.some(row=>row.status==='AVAILABLE'&&datasetCapabilities(row).has(cap));
     if(!hasAvailableDataset&&(cap==='QUOTE'||cap==='INSTITUTIONAL_FLOW'))available.delete(cap);
