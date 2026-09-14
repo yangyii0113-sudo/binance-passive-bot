@@ -40,3 +40,11 @@ test('staging runtime rejects invalid deployment configuration before binding a 
   assert.throws(()=>Entry.runtimeConfig({PORT:'not-a-port'}),/PORT_INVALID/);
   assert.throws(()=>Entry.runtimeConfig({FOXYYA_V12_LINEAGE_PATH:'/data/not-lineage.txt'}),/LINEAGE_JOURNAL_PATH_INVALID/);
 });
+test('each Research Staging service selects a dedicated Railway config instead of the root Production config',()=>{
+  for(const [file,docker,health] of [['v12/staging/railway.toml','v12/staging/Dockerfile','/ready'],['v12/staging/lineage-backup.railway.toml','v12/staging/LineageBackup.Dockerfile','/health']]){
+    const config=fs.readFileSync(file,'utf8');
+    assert.ok(config.includes(`dockerfilePath = "${docker}"`));
+    assert.ok(config.includes(`healthcheckPath = "${health}"`));
+    assert.doesNotMatch(config,/dockerfilePath = "Dockerfile"/);
+  }
+});

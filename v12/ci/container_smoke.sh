@@ -15,8 +15,11 @@ cleanup() {
 }
 trap cleanup EXIT
 
-docker build -f v12/staging/Dockerfile -t "${tag}:staging" .
-docker build -f v12/staging/LineageBackup.Dockerfile -t "${tag}:helper" .
+# Build from each service's selected Railway config; never silently use root railway.toml.
+staging_docker=$(python -c 'import tomllib; c=tomllib.load(open("v12/staging/railway.toml","rb")); assert c["build"]["builder"]=="DOCKERFILE"; assert c["deploy"]["healthcheckPath"]=="/ready"; print(c["build"]["dockerfilePath"])')
+helper_docker=$(python -c 'import tomllib; c=tomllib.load(open("v12/staging/lineage-backup.railway.toml","rb")); assert c["build"]["builder"]=="DOCKERFILE"; assert c["deploy"]["healthcheckPath"]=="/health"; print(c["build"]["dockerfilePath"])')
+docker build -f "$staging_docker" -t "${tag}:staging" .
+docker build -f "$helper_docker" -t "${tag}:helper" .
 docker volume create "$data" >/dev/null
 docker volume create "$backup" >/dev/null
 start_staging() {
