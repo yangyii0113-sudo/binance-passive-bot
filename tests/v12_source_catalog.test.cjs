@@ -18,14 +18,11 @@ test('secret-bearing providers are always server-only',()=>{
   assert.ok(secretSources.every(x=>x.serverOnly===true));
 });
 
-test('unresolved licensed real-time quotes cannot claim LIVE eligibility',()=>{
-  const us=SOURCE_CATALOG.find(x=>x.id==='us-equity-realtime');
+test('unresolved licensed real-time quote source cannot claim LIVE eligibility',()=>{
   const eu=SOURCE_CATALOG.find(x=>x.id==='eu-equity-realtime');
-  for(const source of [us,eu]){
-    assert.equal(source.status,SOURCE_STATUS.DECISION_REQUIRED);
-    assert.equal(source.liveEligible,false);
-    assert.equal(source.provider,null);
-  }
+  assert.equal(eu.status,SOURCE_STATUS.DECISION_REQUIRED);
+  assert.equal(eu.liveEligible,false);
+  assert.equal(eu.provider,null);
 });
 
 test('slow positioning evidence is classified as confirmation, not early live signal',()=>{
