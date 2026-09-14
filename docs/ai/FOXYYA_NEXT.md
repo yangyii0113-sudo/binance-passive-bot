@@ -8,61 +8,55 @@ Do not resume Market Data Coverage Gate or UI feature work until this P0 is clos
 
 ### Current facts
 
-- Primary lineage journal was approximately 444 MB on a 500 MB Railway volume.
+- Primary lineage journal is 444,055,552 bytes on a 500 MB Railway volume.
 - A second persistent helper volume is live at `/backup`.
-- The full legacy lineage has been durably backed up and compressed to about 3.97 MB with metadata; no temp transfer artifacts remain.
-- Backup helper deployment is healthy and explicitly reports `DURABLE_STORAGE=true RESEARCH_ONLY=true EXECUTION_WRITE=false`.
-- Main staging migration attempted backup-gated compaction but failed closed with `LINEAGE_JOURNAL_CORRUPT` before replacement.
+- The full legacy lineage has been durably backed up and compressed to 3,972,235 bytes with metadata; no temp transfer artifacts remain.
+- Backup helper deployment is healthy and reports `DURABLE_STORAGE=true RESEARCH_ONLY=true EXECUTION_WRITE=false`.
+- Main staging migration previously failed closed with `LINEAGE_JOURNAL_CORRUPT` before replacement.
+- Conservative salvage implementation and salvage-gated migration preflight are now GREEN.
+- Code commit `008a479aef47e9bbdd27099842e698c9faeb6790` passed complete v12 Node contracts, existing JavaScript regressions, Python regression, and Production safety gate in CI run `34815486804`.
 - The original persistent lineage has not been intentionally deleted.
-- Current code head `267cf813...` is an expected RED TDD commit defining conservative salvage behavior. Do not deploy it yet.
 
 ## Exact next steps
 
-1. Finish `lineage_salvage` implementation against the RED contract.
-   - Accept an incomplete trailing torn write only when it cannot be a complete valid event.
-   - Accept a partial append followed by exactly one checksum-valid retry for the expected sequence.
-   - Reject sequence gaps.
-   - Reject two conflicting checksum-valid events for the same sequence.
-   - Reject checksum-invalid or lineage-reference-invalid candidates.
+1. Deploy the GREEN salvage build only to `foxyya-v12-staging`.
+   - Source-trigger may run the wrong Production Python image; if it does, treat as invalid.
+   - Capture the target snapshot, then use native Railway redeploy.
+   - Valid deployment must use Node/v12 runtime, not `foxyya_runtime_backend/service.py`.
 
-2. Salvage must write only to scratch storage first.
-   - Never rewrite `/data/foxyya-v12.lineage.jsonl` before scratch validation.
-   - The already verified external backup is a mandatory precondition.
+2. Observe actual salvage migration logs.
+   - Backup must remain VERIFIED.
+   - Salvage must operate on scratch first.
+   - If corruption is ambiguous or unrecoverable, fail closed and keep persistent source unchanged.
+   - If salvage succeeds, expect migration status `SALVAGED_COMPACTED`.
 
-3. Validate salvaged scratch journal with the normal durable lineage store.
-   - Full sequence replay.
-   - Source/output identity checks.
-   - Observation/source reference checks.
-   - Time-order checks.
-   - Representative `traceOutput()` parity.
-
-4. Convert validated salvage output into compressed lineage frames.
-   - Verify restart-read parity.
-   - Verify the compacted file is materially smaller than the legacy journal.
-
-5. Only after all validation passes, atomically/carefully replace the persistent journal and fsync it.
-
-6. Run complete CI.
-   Required GREEN gates:
-   - All `tests/v12_*.test.cjs`.
-   - Existing runtime JavaScript regressions.
-   - Python regressions.
-   - Production safety-string gate.
-
-7. Deploy only to `foxyya-v12-staging`.
-   - Source-trigger may run the wrong Production Python image; if it does, treat as invalid and use native redeploy on the correct snapshot.
-   - Verify Node/v12 runtime, `/health`, `RESEARCH_ONLY=true`, `EXECUTION_WRITE=false`.
-
-8. Runtime acceptance after recovery.
+3. Validate recovered persistent journal.
    - No `LINEAGE_JOURNAL_CORRUPT`.
-   - No `DURABLE_WRITE_FAILED`.
+   - Storage kind is compressed frames.
+   - Full restart replay succeeds.
+   - Source/output identity checks succeed.
+   - Observation/source reference checks succeed.
+   - Time-order checks succeed.
+   - Representative `traceOutput()` works.
+
+4. Confirm disk recovery.
+   - `/data/foxyya-v12.lineage.jsonl` must be materially smaller than 444 MB.
+   - Backup helper copy remains available independently on `/backup`.
+   - No direct lineage deletion.
+
+5. Validate service recovery.
+   - `/health` passes.
+   - `RESEARCH_ONLY=true`.
+   - `EXECUTION_WRITE=false`.
    - Home API refresh succeeds.
    - TW/US/Crypto research publication remains valid.
-   - Lineage read/trace endpoint works for representative current outputs.
-   - Disk usage is materially below the previous critical high-water state.
+   - No `DURABLE_WRITE_FAILED`.
 
-9. Observe at least 3 refresh cycles before declaring P0 closed.
-   - Prefer normal 30-minute production-like cadence for final acceptance; short controlled validation may be used first, but does not replace final 3-cycle observation.
+6. Observe at least 3 refresh cycles before declaring P0 closed.
+   - Prefer normal 30-minute cadence for final acceptance.
+   - Controlled short validation can be used first but does not replace final three-cycle observation.
+
+7. At each material checkpoint update `FOXYYA_STATE.json` and this file.
 
 ## After P0 closes
 
