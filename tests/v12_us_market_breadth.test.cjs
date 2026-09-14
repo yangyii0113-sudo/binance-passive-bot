@@ -13,18 +13,18 @@ const text=[
   '9/9/2026 0:00:00,25500.00,7350.00,23575.00,23600.00,23150.00,25600.00,25150.00,12240.00,4646.00,15150.00,13130.00,7878.00,505.00,5858.00,22220.00,64000000.00,8000000000.00,500000000000.00,43500000000.00,3300.00,1500.00,220.00'
 ].join('\n');
 
-test('Nasdaq Trader daily market source is discoverable but license-gated and cannot activate live',()=>{
+test('Nasdaq Trader daily market source is discoverable but explicitly license-gated and cannot activate live',()=>{
   const source=Catalog.SOURCE_CATALOG.find(x=>x.id==='nasdaq-trader-daily');
   assert.ok(source);
   assert.equal(source.authority,'OFFICIAL');
-  assert.equal(source.status,Catalog.SOURCE_STATUS.REVIEW_REQUIRED);
+  assert.equal(source.status,Catalog.SOURCE_STATUS.LICENSE_REQUIRED);
   assert.equal(source.liveEligible,false);
   assert.equal(source.secretRequired,false);
   assert.equal(source.latencyClass,'EOD');
   assert.ok(source.capabilities.includes('INDEX'));
   assert.ok(source.capabilities.includes('MARKET_BREADTH'));
   const readiness=Gate.evaluateSource('nasdaq-trader-daily');
-  assert.equal(readiness.readiness,Gate.READINESS.REVIEW_REQUIRED);
+  assert.equal(readiness.readiness,Gate.READINESS.LICENSE_REQUIRED);
   assert.equal(readiness.canActivate,false);
 });
 
@@ -38,7 +38,7 @@ test('Nasdaq official YTD text normalizes latest completed row with prior-day re
   assert.equal(result.latency,'EOD');
   assert.equal(result.realtime,false);
   assert.equal(result.fullMarketBreadthAvailable,false);
-  assert.equal(result.licenseStatus,'REVIEW_REQUIRED');
+  assert.equal(result.licenseStatus,'LICENSE_REQUIRED');
   assert.equal(result.redistributionStatus,'NOT_CLEARED');
   assert.equal(result.indices.composite.close,23575);
   assert.ok(Math.abs(result.indices.composite.changePct-2.5)<1e-12);
