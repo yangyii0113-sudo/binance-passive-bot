@@ -8,110 +8,103 @@ P0 remains closed. Storage recovery, three refresh cycles, compressed lineage re
 
 ## Market Data Coverage Gate — LIVE_GREEN
 
-The latest Coverage Gate build is live and accepted on v12 Research Staging.
+Latest verified staging checkpoint:
 
-### Latest accepted deployment
-
-- Code commit: `6d631bbbb75489ee305f738389731a9f54a37f0f` (`feat(v12): expose live coverage blocker summary`).
-- Full CI run `34845358891`: SUCCESS.
-- Source-trigger deployment `8c48d81d-e635-4336-a515-c2082bcd5138` captured the correct commit but ran the wrong Production Python / Execution V2 image and was rejected as INVALID.
-- Native redeploy on the captured snapshot: `aa6f4827-ddd9-4a63-b5e9-3bd266940086`, status SUCCESS.
-- Accepted runtime is Node/v12 with:
-  - `RESEARCH_ONLY=true`,
-  - `EXECUTION_WRITE=false`,
-  - `/health` passed 1/1.
-
-### Live acceptance evidence
-
-- Initial bootstrap:
-  - Crypto opportunities: 350,
-  - TW opportunities: 1,
+- Code head before continuity docs: `2eb21456e6243ce02c6fb0d7fa97e8e396e72493`.
+- Full CI run `34848606637`: SUCCESS.
+- Accepted Railway deployment: `4413e607-5792-49d3-a3b1-9c90df4224b9`, status SUCCESS.
+- Accepted runtime is Node/v12 with `RESEARCH_ONLY=true` and `EXECUTION_WRITE=false`.
+- `/health` passed 1/1.
+- Initial bootstrap published:
+  - Crypto opportunities: 346,
+  - TW opportunities: 2,
   - US opportunities: 1,
   - events: 40,
   - TW forward samples: 5,
   - US forward status: `WAITING_LEGAL_DATA_SOURCE`.
-- Live lineage trace probe passed:
-  - Home 200,
-  - Trace 200,
-  - representative lineage ref `out_1809ef626b9803d6db3dadbdc6989858c6166006e3c2d395543d99b4f3f0f51f`,
-  - sourceCount 1,
-  - observationCount 47,
-  - `researchOnly=true`,
-  - `executionWrite=false`.
-- Live Market Coverage probe passed:
-  - `/v12/api/home` 200,
-  - `marketCoverage.schemaVersion=foxyya-market-coverage/1`,
-  - exactly seven markets: CRYPTO / US / TW / CN_HK / JP / KR / EU,
-  - Preview HTML 200,
-  - `coverage.css` 200,
-  - `market_coverage_renderer.js` 200,
-  - responsive/mobile CSS detected.
-- Live market state summary:
-  - CRYPTO: READY,
-  - TW: READY,
-  - US: BLOCKED — missing INDEX / MARKET_BREADTH / QUOTE / VOLATILITY_CONTEXT; licensing/provider decisions required,
-  - CN_HK: BLOCKED — data-product/licensing plus INDEX / MARKET_BREADTH implementation gaps,
-  - JP: BLOCKED — API key / entitlement plus INDEX / MARKET_BREADTH gaps,
-  - KR: BLOCKED — API key / entitlement for INDEX / MARKET_BREADTH / QUOTE,
-  - EU: BLOCKED with PARTIAL direction evidence — INDEX / MARKET_BREADTH still missing.
-- Current staging disk usage remains healthy at about 0.056 GB after storage recovery.
-- v12 branch scope continues to report Production release authorized: false. This deployment workflow targeted only v12 Research Staging.
+- Live lineage trace probe passed: Home 200 / Trace 200 / sourceCount 2 / observationCount 12.
+- Live Coverage probe passed: seven markets, preview/assets 200, mobile CSS present, read-only safety flags preserved.
 
-## Current priority: Provider Coverage Expansion
+### Current live coverage truth
 
-Goal: improve real, legally usable data coverage behind the Coverage Gate without fabricating readiness or bypassing credentials, entitlements, licensing, or commercial data requirements.
+- CRYPTO: READY.
+- TW: READY.
+- US: BLOCKED.
+  - missing: INDEX, MARKET_BREADTH, QUOTE, VOLATILITY_CONTEXT.
+  - blockers:
+    - Nasdaq Trader daily INDEX: LICENSE_REVIEW_REQUIRED,
+    - Nasdaq Trader daily MARKET_BREADTH: LICENSE_REVIEW_REQUIRED,
+    - US realtime quote: PROVIDER_DECISION_REQUIRED,
+    - US volatility/options context: PROVIDER_DECISION_REQUIRED.
+- CN_HK: BLOCKED.
+- JP: BLOCKED.
+- KR: BLOCKED.
+- EU: BLOCKED with PARTIAL direction evidence.
 
-### Recommended implementation order
+## Provider Coverage Expansion — IN PROGRESS
 
-1. **US market coverage first** — highest decision value and currently the largest functional gap.
-   - INDEX
-   - MARKET_BREADTH
-   - QUOTE
-   - VOLATILITY_CONTEXT
-   - Resolve `LICENSE_REVIEW_REQUIRED` vs `PROVIDER_DECISION_REQUIRED` before activating any source.
-2. **EU market coverage**
-   - INDEX
-   - MARKET_BREADTH
-   - preserve macro-only evidence as PARTIAL until broad-market evidence exists.
-3. **JP / KR source activation**
-   - only after API key / entitlement requirements are satisfied,
-   - never bypass provider plans or licensing.
-4. **CN_HK**
-   - treat HKEX data-product / licensing requirements as external blockers,
-   - implement INDEX / MARKET_BREADTH only through approved sources.
-5. Re-evaluate TW and Crypto only for evidence-density / reliability improvements; both are already Coverage READY.
+### Completed first expansion: CFTC positioning
 
-### Engineering rules for every provider addition
+CFTC TFF public reporting is now part of the official read-only research pipeline:
 
-1. RED contract first.
-2. Minimal GREEN implementation.
-3. Provider diagnostics evidence.
-4. Coverage Gate status/readiness verification.
-5. No scraping to bypass licensed market-data restrictions.
-6. Preserve blocker distinctions:
-   - runtime/provider failure,
-   - missing implementation,
-   - API-key requirement,
-   - entitlement requirement,
-   - licensing/data-product requirement,
-   - provider decision required.
-7. Keep all provider data research-only:
-   - `RESEARCH_ONLY=true`,
-   - `EXECUTION_WRITE=false`,
-   - no execution authority.
-8. Full v12 Node + existing JavaScript + Python + Production safety regression before deployment.
-9. Deploy only to v12 Research Staging.
-10. Reject any source-trigger deployment that runs the wrong Production Python image; after the intended snapshot is captured, use native redeploy and re-run the live probes.
+- provider: `cftc-cot`,
+- dataset: `CFTC:TFF:gpe5-46if:EQUITY_INDEX`,
+- source: CFTC public reporting,
+- role: confirmation / positioning context only,
+- latency: weekly,
+- provider diagnostics + regional US facts + lineage are covered,
+- no credential or secret is required,
+- no execution authority is granted.
 
-## After Provider Coverage Expansion
+Important: CFTC positioning does **not** grant US INDEX, MARKET_BREADTH, QUOTE, or VOLATILITY_CONTEXT. US coverage must remain BLOCKED until those capabilities have independent approved evidence.
 
-1. Home decision-readiness UX refinement.
-2. Direction eligibility integration into research surfaces.
-3. Continue forward validation and research-quality measurement.
-4. Reassess data coverage priorities from measured user value and provider reliability.
+## Current priority: US INDEX + MARKET_BREADTH source resolution
+
+Goal: close the highest-value US direction-readiness gap without bypassing licensing or inventing market state.
+
+### Exact next actions
+
+1. Re-verify current official Nasdaq Trader daily-market source terms and availability using authoritative current sources.
+2. Decide one of these outcomes explicitly:
+   - APPROVED_PUBLIC_USE — source can be activated under documented terms,
+   - LICENSE_REQUIRED — keep Coverage BLOCKED and record the exact external requirement,
+   - UNSUITABLE — remove it from candidate readiness and select another official/approved provider.
+3. Do not treat a public webpage as redistribution permission by default.
+4. If Nasdaq Trader is approved for the intended server-side research use:
+   - write RED contracts for INDEX + MARKET_BREADTH binding/runtime semantics,
+   - use the existing `nasdaq_daily_market_adapter.js` only after confirming its dataset assumptions against the actual official payload,
+   - minimal GREEN wiring into the regional US context,
+   - preserve original observation/report times and source lineage,
+   - verify Coverage changes only from actual capabilities delivered.
+5. If Nasdaq Trader remains license-blocked:
+   - keep `LICENSE_REVIEW_REQUIRED`,
+   - investigate another official/legal source for INDEX + MARKET_BREADTH,
+   - prefer zero-secret public official feeds before commercial feeds,
+   - never scrape around licensing restrictions.
+6. QUOTE and VOLATILITY_CONTEXT remain separate provider decisions; do not conflate them with daily direction coverage.
+
+### Engineering rules
+
+- RED contract first for every code capability change.
+- Minimal GREEN implementation.
+- Provider diagnostics + lineage evidence required.
+- `RESEARCH_ONLY=true`, `EXECUTION_WRITE=false` always.
+- Production `PAPER_ONLY=true` / `REAL_ORDER_LOCK=true` unchanged.
+- Full v12 Node + existing JS + Python + Production safety regression before deployment.
+- Deploy only to v12 Research Staging.
+- Reject Railway source-trigger deployments that run the Production Python image even if the commit SHA is correct; use native redeploy only after the intended snapshot has been captured.
+
+## After US INDEX + MARKET_BREADTH
+
+1. US QUOTE provider decision.
+2. US VOLATILITY_CONTEXT provider decision.
+3. EU INDEX + MARKET_BREADTH.
+4. JP / KR activation after key and entitlement requirements are satisfied.
+5. CN_HK approved data-product path.
+6. Home decision-readiness UX refinement and direction eligibility integration.
 
 ## Handoff rule
 
 At every material checkpoint, update `FOXYYA_STATE.json` and this file.
 
-When the conversation becomes materially long, do not wait for context exhaustion. Proactively checkpoint GitHub / Railway truth and prepare a compact fresh-chat continuation instruction.
+When the conversation becomes materially long, proactively checkpoint GitHub / Railway truth and prepare a compact fresh-chat continuation instruction before context exhaustion.
