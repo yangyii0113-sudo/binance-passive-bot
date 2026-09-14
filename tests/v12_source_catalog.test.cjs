@@ -72,6 +72,6 @@ test('Taiwan monthly revenue discovery includes both listed and OTC official sou
 
 test('source status vocabulary is explicit and stable',()=>{
   assert.deepEqual(Object.keys(SOURCE_STATUS).sort(),[
-    'ADOPTED','DECISION_REQUIRED','EXISTING_CORE','KEY_REQUIRED','REVIEW_REQUIRED'
+    'ADOPTED','DECISION_REQUIRED','EXISTING_CORE','KEY_REQUIRED','LICENSE_REQUIRED','REVIEW_REQUIRED'
   ]);
 });
