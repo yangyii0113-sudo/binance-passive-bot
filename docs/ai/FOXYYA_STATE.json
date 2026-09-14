@@ -1,15 +1,14 @@
 {
   "schema": "foxyya-ai-continuity-state/1",
-  "updatedAt": "2026-09-14T14:00:00+08:00",
+  "updatedAt": "2026-09-14T14:58:00+08:00",
   "resumeInstruction": "接續 FOXYYA，先讀 docs/ai/FOXYYA_STATE.json、docs/ai/FOXYYA_NEXT.md、docs/ai/FOXYYA_CONTEXT.md，重新驗證 GitHub/Railway 後直接執行。",
   "repository": {
     "fullName": "yangyii0113-sudo/binance-passive-bot",
     "branch": "v12-platform-completion-20260910",
-    "activeWorkCodeHead": "267cf8135db9c6824ef6659eb10b21f3ddd3c11d",
-    "activeWorkMessage": "test(v12): define conservative lineage salvage contract",
-    "lastFullyGreenCodeCommit": "fe15c2a3dbf6d55166488ec4fdf0406f16370e7d",
-    "lastFullyGreenCiRunId": 34689949818,
-    "continuityContextCommit": "1cba97470d8f0ccae6034dd0874716c8172e5c0a"
+    "activeWorkCodeHead": "008a479aef47e9bbdd27099842e698c9faeb6790",
+    "activeWorkMessage": "fix(v12): salvage verified corrupt lineage before compaction",
+    "lastFullyGreenCodeCommit": "008a479aef47e9bbdd27099842e698c9faeb6790",
+    "lastFullyGreenCiRunId": 34815486804
   },
   "safety": {
     "productionPaperOnly": true,
@@ -28,9 +27,9 @@
       "primaryVolumeId": "232327ea-aabf-419a-b174-e689fca24d9d",
       "primaryVolumeMount": "/data",
       "primaryVolumeSizeMB": 500,
-      "latestMigrationDeploymentId": "9515b1d2-d69d-45af-8b97-84cfe4141cb5",
-      "latestMigrationDeploymentStatus": "FAILED",
-      "latestFailure": "LINEAGE_JOURNAL_CORRUPT",
+      "lastAttemptedMigrationDeploymentId": "9515b1d2-d69d-45af-8b97-84cfe4141cb5",
+      "lastAttemptedMigrationStatus": "FAILED",
+      "lastFailure": "LINEAGE_JOURNAL_CORRUPT",
       "previousStableDeploymentCommit": "c71556e1b3545eb864b30f93b7025e49a84f1efb"
     },
     "backupHelper": {
@@ -47,16 +46,18 @@
     }
   },
   "p0StorageRecovery": {
-    "status": "SALVAGE_TDD_RED",
+    "status": "SALVAGE_GREEN_READY_TO_DEPLOY",
     "originalLineageBytes": 444055552,
     "backupVerified": true,
     "backupArtifact": "foxyya-v12-444055552-1789365503749.lineage.jsonl.gz",
     "backupCompressedBytes": 3972235,
     "backupMeta": "foxyya-v12-444055552-1789365503749.meta.json",
     "backupTmpArtifactsRemaining": false,
-    "compressionImplementation": "GREEN_BEFORE_SALVAGE",
+    "compressionImplementation": "GREEN",
+    "salvageImplementation": "GREEN",
+    "preflightSalvageIntegration": "GREEN",
     "legacyCompactionThresholdBytes": 134217728,
-    "currentBlocker": "Legacy lineage replay detects corruption before compaction; likely torn write from prior disk-full DURABLE_WRITE_FAILED events.",
+    "currentBlocker": "No code blocker. Deploy green salvage build to v12 Research Staging and validate real 444 MB lineage recovery.",
     "salvagePolicy": {
       "allowTrailingIncompleteTail": true,
       "allowPartialAppendFollowedBySingleValidSameSequenceRetry": true,
@@ -68,11 +69,10 @@
     }
   },
   "currentCi": {
-    "head": "267cf8135db9c6824ef6659eb10b21f3ddd3c11d",
-    "runId": 34812762590,
-    "conclusion": "failure",
-    "phase": "EXPECTED_RED",
-    "reason": "Conservative lineage salvage contract was added before implementation. Do not deploy this RED head."
+    "head": "008a479aef47e9bbdd27099842e698c9faeb6790",
+    "runId": 34815486804,
+    "conclusion": "success",
+    "phase": "GREEN"
   },
   "completedCapabilities": [
     "Durable lineage + trace API",
@@ -80,6 +80,8 @@
     "Backup-gated legacy compaction",
     "Persistent private backup helper",
     "Verified 444 MB lineage backup",
+    "Conservative legacy lineage salvage",
+    "Salvage-gated migration preflight",
     "Taiwan session-date fallback",
     "Forward research validation",
     "News impact scoring",
