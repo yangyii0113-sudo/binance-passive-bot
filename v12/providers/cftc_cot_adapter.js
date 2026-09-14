@@ -4,10 +4,19 @@ const descriptor=Object.freeze({id:'cftc-cot-official',sourceLabel:'CFTC Commitm
 const SOURCE='CFTC:TFF:gpe5-46if',EVIDENCE_ROLE='CONFIRMATION',LATENCY_CLASS='WEEKLY';
 function numeric(v){if(v===null||v===undefined)return null;if(typeof v==='string'&&!v.trim())return null;const n=Number(String(v).replace(/,/g,''));return Number.isFinite(n)?n:null;}
 function dateOnly(v){const s=String(v??'');const m=s.match(/^(\d{4})-(\d{2})-(\d{2})/);if(!m)throw Error('REPORT_DATE_INVALID');const iso=`${m[1]}-${m[2]}-${m[3]}`;const d=new Date(`${iso}T00:00:00Z`);if(d.getUTCFullYear()!==+m[1]||d.getUTCMonth()+1!==+m[2]||d.getUTCDate()!==+m[3])throw Error('REPORT_DATE_INVALID');return iso;}
+function canonicalContractToken(code){
+ let out='';
+ for(const ch of code){
+  if(/^[A-Za-z0-9.-]$/.test(ch)){out+=ch;continue;}
+  out+=`_x${Buffer.from(ch,'utf8').toString('hex')}_`;
+ }
+ if(!out)throw Error('CONTRACT_CODE_REQUIRED');
+ return out;
+}
 function obs(entityId,field,value,receivedAt){return N.makeContextObservation({entityId,scope:'GLOBAL',field,value,unit:'CONTRACT',observedAt:receivedAt,receivedAt,source:SOURCE,status:value===null?'UNAVAILABLE':'SNAPSHOT',confidence:value===null?0:1});}
 function normalizeTffRow(row,{receivedAt}){
  if(!row||typeof row!=='object')throw Error('ROW_REQUIRED');if(!Number.isFinite(receivedAt)||receivedAt<0)throw Error('RECEIVED_AT_INVALID');
- const reportDate=dateOnly(row.report_date_as_yyyy_mm_dd),code=String(row.cftc_contract_market_code??'').trim();if(!code)throw Error('CONTRACT_CODE_REQUIRED');const entityId=`CFTC:TFF:${code}`;
+ const reportDate=dateOnly(row.report_date_as_yyyy_mm_dd),code=String(row.cftc_contract_market_code??'').trim();if(!code)throw Error('CONTRACT_CODE_REQUIRED');const entityId=`CFTC:TFF:${canonicalContractToken(code)}`;
  const values={openInterest:numeric(row.open_interest_all),assetLong:numeric(row.asset_mgr_positions_long),assetShort:numeric(row.asset_mgr_positions_short),assetSpread:numeric(row.asset_mgr_positions_spread),levLong:numeric(row.lev_money_positions_long),levShort:numeric(row.lev_money_positions_short),levSpread:numeric(row.lev_money_positions_spread),dealerLong:numeric(row.dealer_positions_long_all),dealerShort:numeric(row.dealer_positions_short_all)};
  const net=(a,b)=>a===null||b===null?null:a-b;
  const defs=[['positioning.cot.open_interest',values.openInterest],['positioning.cot.asset_manager.long',values.assetLong],['positioning.cot.asset_manager.short',values.assetShort],['positioning.cot.asset_manager.spread',values.assetSpread],['positioning.cot.asset_manager.net',net(values.assetLong,values.assetShort)],['positioning.cot.leveraged_money.long',values.levLong],['positioning.cot.leveraged_money.short',values.levShort],['positioning.cot.leveraged_money.spread',values.levSpread],['positioning.cot.leveraged_money.net',net(values.levLong,values.levShort)],['positioning.cot.dealer.long',values.dealerLong],['positioning.cot.dealer.short',values.dealerShort],['positioning.cot.dealer.net',net(values.dealerLong,values.dealerShort)]];
