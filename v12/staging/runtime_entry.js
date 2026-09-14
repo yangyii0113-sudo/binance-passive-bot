@@ -8,6 +8,7 @@ const {createForwardResearchTracker}=require('./forward_research_tracker.js');
 const {createLiveResearchBootstrap}=require('./live_research_bootstrap.js');
 const {createExecutionReadBridge}=require('./execution_read_bridge.js');
 const {runLineageLiveTraceProbe}=require('./lineage_live_trace_probe.js');
+const {runMarketCoverageLiveProbe}=require('./market_coverage_live_probe.js');
 
 const LINEAGE_COMPACT_THRESHOLD_BYTES=128*1024*1024;
 const BACKUP_ENV=Object.freeze({
@@ -76,6 +77,19 @@ function allOrNoneConfig(env,mapping){
 }
 function backupConfigFromEnv(env){return allOrNoneConfig(env,BACKUP_ENV);}
 function httpBackupConfigFromEnv(env){return allOrNoneConfig(env,HTTP_BACKUP_ENV);}
+
+async function runStartupProbes(runtime,{runLineageProbeImpl=runLineageLiveTraceProbe,runCoverageProbeImpl=runMarketCoverageLiveProbe,logImpl=console.log}={}){
+  const port=runtime?.address?.port;
+  if(!Number.isInteger(port)||port<1||port>65535)throw Error('STARTUP_PROBE_PORT_INVALID');
+  if(typeof runLineageProbeImpl!=='function'||typeof runCoverageProbeImpl!=='function')throw Error('STARTUP_PROBE_IMPL_REQUIRED');
+  if(typeof logImpl!=='function')throw Error('STARTUP_PROBE_LOG_REQUIRED');
+  const options=Object.freeze({host:'127.0.0.1',port,timeoutMs:10000});
+  const lineage=await runLineageProbeImpl(options);
+  logImpl('FOXYYA v12 live lineage trace probe passed',JSON.stringify(lineage));
+  const coverage=await runCoverageProbeImpl(options);
+  logImpl('FOXYYA v12 live market coverage probe passed',JSON.stringify(coverage));
+  return Object.freeze({lineage,coverage});
+}
 
 async function startFromEnvironment(env=process.env,dependencies={}){
   const config=runtimeConfig(env);
@@ -157,8 +171,8 @@ if(require.main===module){
         backupSha256:runtime.lineageMigration.backup?.sha256
       }));
     }
-    runtime.researchReady.then(result=>{
-      if(!result){console.log('FOXYYA v12 initial research bootstrap unavailable');return null;}
+    runtime.researchReady.then(async result=>{
+      if(!result){throw Error('INITIAL_RESEARCH_BOOTSTRAP_UNAVAILABLE');}
       const published=result.orchestration?.published;
       const home=published?.home;
       console.log('FOXYYA v12 initial research bootstrap published',JSON.stringify({
@@ -170,9 +184,10 @@ if(require.main===module){
         usForwardStatus:published?.researchPerformance?.us?.status||'UNAVAILABLE',
         researchOnly:result.researchOnly===true,executionWrite:result.executionWrite===true
       }));
-      return runLineageLiveTraceProbe({host:'127.0.0.1',port:address.port,timeoutMs:10000})
-        .then(probe=>console.log('FOXYYA v12 live lineage trace probe passed',JSON.stringify(probe)))
-        .catch(error=>console.error('FOXYYA v12 live lineage trace probe failed:',error?.message||error));
+      return runStartupProbes(runtime);
+    }).catch(error=>{
+      console.error('FOXYYA v12 startup validation failed:',error?.message||error);
+      runtime.close().then(()=>process.exit(1)).catch(()=>process.exit(1));
     });
 
     let closing=false;
@@ -181,4 +196,4 @@ if(require.main===module){
   }).catch(error=>{console.error('FOXYYA v12 staging failed to start:',error?.message||error);process.exit(1);});
 }
 
-module.exports=Object.freeze({LINEAGE_COMPACT_THRESHOLD_BYTES,runtimeConfig,startFromEnvironment});
+module.exports=Object.freeze({LINEAGE_COMPACT_THRESHOLD_BYTES,runtimeConfig,runStartupProbes,startFromEnvironment});
