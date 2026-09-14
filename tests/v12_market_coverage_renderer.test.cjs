@@ -5,6 +5,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
 const Renderer=require('../v12/ui/market_coverage_renderer.js');
+const {decoratePreviewIndex}=require('../v12/staging/preview_app.js');
 
 const asOf=Date.parse('2026-09-14T10:30:00Z');
 const marketOrder=['CRYPTO','US','TW','CN_HK','JP','KR','EU'];
@@ -95,13 +96,16 @@ test('coverage renderer translates capability names instead of exposing only bac
   }
 });
 
-test('coverage browser module installs an optional Home target before app render and static page loads the module',()=>{
+test('coverage browser module installs a Home target and preview server injects the required assets',()=>{
   const moduleText=fs.readFileSync(path.join(__dirname,'../v12/ui/market_coverage_renderer.js'),'utf8');
-  const index=fs.readFileSync(path.join(__dirname,'../v12/ui/index.html'),'utf8');
-  assert.match(moduleText,/data-home-content["']?,?["']?market-coverage|market-coverage/);
+  assert.match(moduleText,/market-coverage/);
   assert.match(moduleText,/市場資料覆蓋載入中/);
-  assert.match(index,/market_coverage_renderer\.js/);
-  assert.match(index,/coverage\.css/);
+  const base='<html><head><link rel="stylesheet" href="styles.css"></head><body><script src="home_renderer.js"></script><script src="home_dom.js"></script><script src="../staging/read_client.js"></script><script src="app.js"></script></body></html>';
+  const decorated=decoratePreviewIndex(base);
+  assert.match(decorated,/coverage\.css/);
+  assert.match(decorated,/market_coverage_renderer\.js/);
+  assert.ok(decorated.indexOf('home_dom.js')<decorated.indexOf('market_coverage_renderer.js'));
+  assert.ok(decorated.indexOf('market_coverage_renderer.js')<decorated.indexOf('app.js'));
 });
 
 test('coverage panel has responsive grid styles for desktop and mobile',()=>{
