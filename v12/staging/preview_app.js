@@ -74,7 +74,7 @@ function readMethod(req,res){
   return null;
 }
 
-function createStagingPreviewApp({lineageStore,forwardResearchTracker}={}){
+function createStagingPreviewApp({lineageStore,forwardResearchTracker,readiness}={}){
   const homeService=createStagingHomeService({lineageStore,forwardResearchTracker});
 
   function publishHome(input={}){
@@ -84,6 +84,13 @@ function createStagingPreviewApp({lineageStore,forwardResearchTracker}={}){
   function handler(req,res){
     const url=new URL(req.url||'/','http://staging.local');
     const pathname=url.pathname;
+
+    if(pathname==='/ready'){
+      const method=readMethod(req,res);
+      if(!method)return;
+      const state=readiness?readiness.snapshot():{status:'STARTING',ready:false,researchOnly:true,executionWrite:false};
+      return sendJson(res,state.ready?200:503,state,{head:method==='HEAD'});
+    }
 
     if(pathname==='/health'){
       const method=readMethod(req,res);

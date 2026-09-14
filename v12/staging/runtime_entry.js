@@ -9,6 +9,8 @@ const {createLiveResearchBootstrap}=require('./live_research_bootstrap.js');
 const {createExecutionReadBridge}=require('./execution_read_bridge.js');
 const {runStartupProbes}=require('./runtime_startup_probes.js');
 
+const {createRuntimeReadiness}=require('./runtime_readiness.js');
+
 const LINEAGE_COMPACT_THRESHOLD_BYTES=128*1024*1024;
 const BACKUP_ENV=Object.freeze({
   bucket:'FOXYYA_V12_BACKUP_BUCKET',
@@ -107,27 +109,40 @@ async function startFromEnvironment(env=process.env,dependencies={}){
   const forwardResearchStore=dependencies.forwardResearchStore||createDurableForwardResearchStore({filePath:config.forwardResearchFilePath,now:clock});
   const forwardResearchTracker=dependencies.forwardResearchTracker||createForwardResearchTracker({store:forwardResearchStore});
 
-  const serverRuntime=await startStagingPreviewServer({host:config.host,port:config.port,lineageStore,forwardResearchTracker});
+  const readiness=createRuntimeReadiness({clock,refreshSeconds:config.refreshSeconds,buildRevision:env.RAILWAY_GIT_COMMIT_SHA||env.FOXYYA_V12_BUILD_REV||null});
+  const onResearchEvent=dependencies.onResearchEvent||((event)=>console.log('FOXYYA v12 refresh',JSON.stringify(event)));
+  const serverRuntime=await startStagingPreviewServer({host:config.host,port:config.port,lineageStore,forwardResearchTracker,readiness});
 
   const hasInjectedBridge=Object.prototype.hasOwnProperty.call(dependencies,'executionBridge');
   const executionBridge=hasInjectedBridge
     ?dependencies.executionBridge
     :(dependencies.fetchImpl===undefined?createExecutionReadBridge({fetchImpl}):null);
 
-  const bootstrap=createLiveResearchBootstrap({fetchImpl,clock,lineageStore,publishHome:serverRuntime.app.publishHome,executionBridge});
+  const bootstrap=(dependencies.createBootstrapImpl||createLiveResearchBootstrap)({fetchImpl,clock,lineageStore,publishHome:serverRuntime.app.publishHome,executionBridge});
 
   let running=false;
   let closed=false;
   async function refreshResearch(){
     if(closed||running)return null;
     running=true;
-    try{return await bootstrap.runOnce()}
-    catch(error){onResearchError(error);return null}
+    readiness.start();
+    try{
+      const result=await bootstrap.runOnce();
+      if(result?.researchOnly!==true||result?.executionWrite!==false)throw Error('RESEARCH_PUBLICATION_INVALID');
+      readiness.succeed(result?.orchestration?.published?.asOf);
+      onResearchEvent({event:'research_refresh_succeeded',...readiness.snapshot()});
+      return result;
+    }
+    catch(error){
+      readiness.fail(error);
+      onResearchEvent({event:'research_refresh_failed',...readiness.snapshot()});
+      onResearchError(error);return null;
+    }
     finally{running=false}
   }
 
   const researchReady=refreshResearch();
-  const refreshTimer=setIntervalImpl(()=>{void refreshResearch()},config.refreshSeconds*1000);
+  const refreshTimer=setIntervalImpl(()=>refreshResearch(),config.refreshSeconds*1000);
 
   async function close(){
     if(closed)return;
@@ -138,7 +153,7 @@ async function startFromEnvironment(env=process.env,dependencies={}){
 
   return Object.freeze({
     app:serverRuntime.app,server:serverRuntime.server,address:serverRuntime.address,lineageStore,lineageMigration,
-    forwardResearchStore,forwardResearchTracker,researchReady,close
+    forwardResearchStore,forwardResearchTracker,researchReady,close,validateStartup:readiness.validateStartup
   });
 }
 
@@ -170,7 +185,9 @@ if(require.main===module){
         usForwardStatus:published?.researchPerformance?.us?.status||'UNAVAILABLE',
         researchOnly:result.researchOnly===true,executionWrite:result.executionWrite===true
       }));
-      return runStartupProbes(runtime);
+      const probes=await runStartupProbes(runtime);
+      runtime.validateStartup();
+      return probes;
     }).catch(error=>{
       console.error('FOXYYA v12 startup validation failed:',error?.message||error);
       runtime.close().then(()=>process.exit(1)).catch(()=>process.exit(1));

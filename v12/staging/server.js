@@ -23,7 +23,7 @@ function resolveLineageStore({lineageFilePath,lineageStore}={}){
   return createDurableSourceLineageStore({filePath:lineageFilePath});
 }
 
-function startStagingPreviewServer({host='127.0.0.1',port=0,lineageFilePath,lineageStore,forwardResearchTracker}={}){
+function startStagingPreviewServer({host='127.0.0.1',port=0,lineageFilePath,lineageStore,forwardResearchTracker,readiness}={}){
   return new Promise((resolve,reject)=>{
     let validHost,validPort,durableLineage;
     try{
@@ -35,7 +35,7 @@ function startStagingPreviewServer({host='127.0.0.1',port=0,lineageFilePath,line
       return;
     }
 
-    const app=createStagingPreviewApp({lineageStore:durableLineage,forwardResearchTracker});
+    const app=createStagingPreviewApp({lineageStore:durableLineage,forwardResearchTracker,readiness});
     const server=http.createServer(app.handler);
 
     const onError=error=>{

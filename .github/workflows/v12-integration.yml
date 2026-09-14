@@ -91,3 +91,6 @@ jobs:
           grep -q 'REAL_ORDER_LOCK=true' Dockerfile
           grep -q 'PAPER_ONLY' service.py
           grep -q 'real_orders.*False\|real_orders.*false' runtime_view.py
+
+      - name: Build and boot isolated Staging and backup containers
+        run: bash v12/ci/container_smoke.sh
