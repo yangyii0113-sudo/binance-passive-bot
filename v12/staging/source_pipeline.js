@@ -1,8 +1,10 @@
 'use strict';
 
 const {createPublicSourceLoader}=require('./public_source_loader.js');
+const {createCredentialedSourceLoader}=require('./credentialed_source_loader.js');
 const {createOfficialSourceBindings}=require('./official_source_binding.js');
 const {createTaiwanMarketSourceBindings}=require('./tw_market_source_binding.js');
+const {createTwelveDataSourceBindings}=require('./twelve_data_source_binding.js');
 const {prepareTaiwanMarketPlan,loadTaiwanMarket}=require('./tw_market_source_runtime.js');
 const {createStagingDataOrchestrator}=require('./data_orchestrator.js');
 const EvidencePolicy=require('../early_trend/evidence_policy.js');
@@ -42,6 +44,20 @@ function validateLineageStore(value){
     if(typeof value[method]!=='function')throw Error('LINEAGE_STORE_INVALID');
   }
   return value;
+}
+
+function validateSecretReader(value){
+  if(value===undefined||value===null)return null;
+  if(typeof value!=='function')throw Error('SECRET_READER_INVALID');
+  return value;
+}
+
+function hasCredential(readSecret,sourceId){
+  if(!readSecret)return false;
+  try{
+    const value=readSecret(sourceId);
+    return typeof value==='string'&&value.trim().length>0;
+  }catch(_error){return false;}
 }
 
 function makeLoader(sourceId,endpoint,fetchImpl,clock,governance,usedProviderIds){
@@ -162,15 +178,16 @@ function createRunLineageContext({store,publishHome}){
   return Object.freeze({remember,publish});
 }
 
-function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,researchHistory,providerGovernance,lineageStore}={}){
+function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,researchHistory,providerGovernance,lineageStore,readSecret}={}){
   if(typeof fetchImpl!=='function')throw Error('FETCH_REQUIRED');
   if(typeof clock!=='function')throw Error('CLOCK_REQUIRED');
   if(typeof publishHome!=='function')throw Error('PUBLISH_HOME_REQUIRED');
   const history=validateResearchHistory(researchHistory);
   const providerRuntime=validateProviderGovernance(providerGovernance);
   const lineage=validateLineageStore(lineageStore);
+  const secretReader=validateSecretReader(readSecret);
 
-  const bindings=Object.freeze({...createOfficialSourceBindings(),...createTaiwanMarketSourceBindings()});
+  const bindings=Object.freeze({...createOfficialSourceBindings(),...createTaiwanMarketSourceBindings(),...createTwelveDataSourceBindings()});
 
   function preflight(input,datasetReads){
     function bind(name,options){
@@ -212,18 +229,12 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,resea
       const binding=exchange==='TWSE'
         ?bind('twseDailyQuote',{loader,symbol:item.symbol})
         :bind('tpexDailyQuote',{loader,symbol:item.symbol});
-      return Object.freeze({
-        exchange,
-        symbol:String(item.symbol||''),
-        binding
-      });
+      return Object.freeze({exchange,symbol:String(item.symbol||''),binding});
     });
 
     const twAssets=arrayConfig(input.twAssets,'TW_ASSETS').map(item=>{
       if(!object(item))throw Error('TW_ASSET_CONFIG_INVALID');
-      if(history&&(item.previousRevenue!==undefined||item.institutionalSessions!==undefined)){
-        throw Error('RESEARCH_HISTORY_OVERRIDE_FORBIDDEN');
-      }
+      if(history&&(item.previousRevenue!==undefined||item.institutionalSessions!==undefined))throw Error('RESEARCH_HISTORY_OVERRIDE_FORBIDDEN');
       const policy=assertTWPolicy(item.policy);
       const exchange=taiwanExchange(item.exchange);
       let quoteBinding;
@@ -250,27 +261,23 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,resea
         }
       }
 
-      return Object.freeze({
-        exchange,
-        config:item,
-        policy,
-        quoteBinding,
-        flowBinding,
-        revenueBinding
-      });
+      return Object.freeze({exchange,config:item,policy,quoteBinding,flowBinding,revenueBinding});
     });
 
     const usAssets=arrayConfig(input.usAssets,'US_ASSETS').map(item=>{
       if(!object(item)||!object(item.sec))throw Error('US_ASSET_CONFIG_INVALID');
       const loader=loaderFor('sec-edgar',item.sec.endpoint);
-      const binding=bind('secCompanyFact',{
-        loader,
-        instrument:item.instrument,
-        taxonomy:item.sec.taxonomy,
-        concept:item.sec.concept,
-        unit:item.sec.unit
-      });
-      return Object.freeze({config:item,binding});
+      const binding=bind('secCompanyFact',{loader,instrument:item.instrument,taxonomy:item.sec.taxonomy,concept:item.sec.concept,unit:item.sec.unit});
+      let quoteBinding=null;
+      if(item.quote!==undefined){
+        if(!object(item.quote)||typeof item.quote.endpoint!=='string'||!item.quote.endpoint)throw Error('US_QUOTE_CONFIG_INVALID');
+        if(hasCredential(secretReader,'twelve-data-us-quote')){
+          usedProviderIds.add('twelve-data-us-quote');
+          const quoteLoader=createCredentialedSourceLoader({sourceId:'twelve-data-us-quote',endpoint:item.quote.endpoint,fetchImpl,readSecret:secretReader,clock});
+          quoteBinding=bind('twelveDataQuote',{loader:quoteLoader,instrument:item.instrument});
+        }
+      }
+      return Object.freeze({config:item,binding,quoteBinding});
     });
 
     const regions={};
@@ -297,21 +304,13 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,resea
       regions[region]=Object.freeze(sources);
     }
 
-    return Object.freeze({
-      twMarket,
-      twQuotes:Object.freeze(twQuotes),
-      twAssets:Object.freeze(twAssets),
-      usAssets:Object.freeze(usAssets),
-      regions:Object.freeze(regions),
-      providerIds:Object.freeze([...usedProviderIds].sort())
-    });
+    return Object.freeze({twMarket,twQuotes:Object.freeze(twQuotes),twAssets:Object.freeze(twAssets),usAssets:Object.freeze(usAssets),regions:Object.freeze(regions),providerIds:Object.freeze([...usedProviderIds].sort())});
   }
 
   function twLoader(item,historyWrites,lineageContext){
     return async()=>{
       const quote=await item.quoteBinding.load();
       if(quote.status==='UNAVAILABLE')return readonlyEnvelope('UNAVAILABLE',null,'QUOTE_'+quote.reason);
-
       const instrumentId=quote.data?.instrument?.instrumentId;
       if(typeof instrumentId!=='string'||!instrumentId)throw Error('TW_INSTRUMENT_ID_INVALID');
       if(lineageContext)lineageContext.remember('TW_RESEARCH',instrumentId,quote,instrumentId);
@@ -338,21 +337,11 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,resea
         previousRevenue=cfg.previousRevenue||null;
       }
 
-      if(history){
-        historyWrites.push(Object.freeze({
-          session:Object.freeze({quote:quote.data,flow:flow.data}),
-          revenue:currentRevenue,
-          meta:historyMeta(item)
-        }));
-      }
+      if(history)historyWrites.push(Object.freeze({session:Object.freeze({quote:quote.data,flow:flow.data}),revenue:currentRevenue,meta:historyMeta(item)}));
 
       return readonlyEnvelope('AVAILABLE',Object.freeze({
-        policy:item.policy,
-        currentQuote:quote.data,
-        currentFlow:flow.data,
-        institutionalSessions:Object.freeze([...institutionalSessions]),
-        currentRevenue,
-        previousRevenue,
+        policy:item.policy,currentQuote:quote.data,currentFlow:flow.data,
+        institutionalSessions:Object.freeze([...institutionalSessions]),currentRevenue,previousRevenue,
         researchEvidence:Object.freeze(Array.isArray(cfg.researchEvidence)?[...cfg.researchEvidence]:[])
       }));
     };
@@ -366,13 +355,21 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,resea
       const instrumentId=cfg.instrument?.instrumentId;
       if(typeof instrumentId!=='string'||!instrumentId)throw Error('US_INSTRUMENT_ID_INVALID');
       if(lineageContext)lineageContext.remember('US_RESEARCH',instrumentId,source,instrumentId);
+
+      let liveQuote=false;
+      if(item.quoteBinding){
+        const quote=await item.quoteBinding.load();
+        liveQuote=quote.status==='AVAILABLE';
+        if(liveQuote&&lineageContext)lineageContext.remember('US_RESEARCH',instrumentId,quote,instrumentId);
+      }
+
       return readonlyEnvelope('AVAILABLE',Object.freeze({
         instrument:cfg.instrument,
         fundamentalFacts:Object.freeze([source.data]),
         researchEvidence:Object.freeze(Array.isArray(cfg.researchEvidence)?[...cfg.researchEvidence]:[]),
         earlyEvidence:Object.freeze(Array.isArray(cfg.earlyEvidence)?[...cfg.earlyEvidence]:[]),
         earnings:cfg.earnings||null,
-        realtimeQuoteAvailable:cfg.realtimeQuoteAvailable===true,
+        realtimeQuoteAvailable:item.quoteBinding?liveQuote:cfg.realtimeQuoteAvailable===true,
         consensusAvailable:cfg.consensusAvailable===true,
         optionsAvailable:cfg.optionsAvailable===true
       }));
@@ -390,19 +387,11 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,resea
         }
       }
       if(!available.length)return readonlyEnvelope('UNAVAILABLE',null,'ALL_SOURCES_UNAVAILABLE');
-
       const observations=[];
       for(const data of available)observations.push(...collectObservations(data));
       return readonlyEnvelope('AVAILABLE',Object.freeze({
-        observations:Object.freeze(observations),
-        facts:Object.freeze(available.flatMap(regionalFacts)),
-        events:Object.freeze([]),
-        evidence:Object.freeze([]),
-        expectations:Object.freeze([]),
-        scenarios:Object.freeze([]),
-        rotation:Object.freeze([]),
-        catalysts:Object.freeze([]),
-        risks:Object.freeze([])
+        observations:Object.freeze(observations),facts:Object.freeze(available.flatMap(regionalFacts)),
+        events:Object.freeze([]),evidence:Object.freeze([]),expectations:Object.freeze([]),scenarios:Object.freeze([]),rotation:Object.freeze([]),catalysts:Object.freeze([]),risks:Object.freeze([])
       }));
     };
   }
@@ -444,14 +433,11 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,resea
     if(twMarket)pulses.TW=twMarket.pulse;
 
     const orchestration=await orchestrator.run({
-      nowMs:input.nowMs,
-      crypto:input.crypto,
+      nowMs:input.nowMs,crypto:input.crypto,
       twAssets:plan.twAssets.map(item=>twLoader(item,historyWrites,lineageContext)),
       usAssets:plan.usAssets.map(item=>usLoader(item,lineageContext)),
-      regions:regionLoaders,
-      pulses,
-      todayFocus:Array.isArray(input.todayFocus)?input.todayFocus:[],
-      events:Array.isArray(input.events)?input.events:[]
+      regions:regionLoaders,pulses,
+      todayFocus:Array.isArray(input.todayFocus)?input.todayFocus:[],events:Array.isArray(input.events)?input.events:[]
     });
 
     if(history){
@@ -462,14 +448,10 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,resea
     }
 
     return Object.freeze({
-      schemaVersion:'foxyya-staging-source-pipeline-result/1',
-      asOf:orchestration.asOf,
+      schemaVersion:'foxyya-staging-source-pipeline-result/1',asOf:orchestration.asOf,
       sources:Object.freeze({TWSE:Object.freeze(marketSources.TWSE),TPEX:Object.freeze(marketSources.TPEX)}),
-      taiwanMarket:twMarket?.core||null,
-      providerHealth:providerHealth(plan.providerIds),
-      orchestration,
-      researchOnly:true,
-      executionWrite:false
+      taiwanMarket:twMarket?.core||null,providerHealth:providerHealth(plan.providerIds),orchestration,
+      researchOnly:true,executionWrite:false
     });
   }
 
