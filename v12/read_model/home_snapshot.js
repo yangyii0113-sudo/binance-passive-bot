@@ -5,6 +5,7 @@ const Home=require('../ui/home_model.js');
 const Regional=require('../intelligence/regional_engine.js');
 const CryptoResults=require('../results/crypto_results.js');
 const Ranking=require('../research/ranking.js');
+const MarketCoverage=require('./market_coverage.js');
 
 const finite=x=>typeof x==='number'&&Number.isFinite(x);
 const object=x=>x&&typeof x==='object'&&!Array.isArray(x);
@@ -143,13 +144,24 @@ function buildHomeReadModel(input={}){
     events
   });
 
+  const providerDiagnostics=input.providerDiagnostics||null;
+  const marketCoverage=MarketCoverage.buildMarketCoverage({
+    asOf:input.asOf,
+    sourceCatalog:input.sourceCatalog,
+    providerDiagnostics,
+    home,
+    cryptoExecution:crypto,
+    researchPerformance:input.researchPerformance||null
+  });
+
   return Object.freeze({
     schemaVersion:'foxyya-home-read-model/1',
     asOf:input.asOf,
     home,
     cryptoExecution:crypto,
     cryptoResults:crypto?CryptoResults.projectCryptoResults(crypto):null,
-    providerDiagnostics:input.providerDiagnostics||null,
+    providerDiagnostics,
+    marketCoverage,
     researchOnly:true,
     executionWrite:false
   });
