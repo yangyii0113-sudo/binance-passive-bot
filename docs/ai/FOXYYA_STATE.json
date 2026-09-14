@@ -1,6 +1,6 @@
 {
   "schema": "foxyya-ai-continuity-state/1",
-  "updatedAt": "2026-09-14T20:42:19+08:00",
+  "updatedAt": "2026-09-14T20:54:30+08:00",
   "resumeInstruction": "接續 FOXYYA，先讀 docs/ai/FOXYYA_STATE.json、docs/ai/FOXYYA_NEXT.md、docs/ai/FOXYYA_CONTEXT.md，重新驗證 GitHub/Railway 後直接執行。",
   "repository": {
     "fullName": "yangyii0113-sudo/binance-passive-bot",
@@ -12,9 +12,10 @@
     "coverageUiCommit": "5b5ddeb6cb4ec99103de46e51984f4a241865503",
     "coverageLiveProbeCommit": "fdff8175c218fe7cccde05f37c63e6ee18e337f2",
     "coverageStartupProbeCommit": "ea6c896ab08405cb8023f5a0a2867f3fda3bc8f3",
-    "lastFullyGreenCodeCommit": "ea6c896ab08405cb8023f5a0a2867f3fda3bc8f3",
-    "lastFullyGreenCiRunId": 34844303400,
-    "deployedSnapshotCommit": "ea6c896ab08405cb8023f5a0a2867f3fda3bc8f3"
+    "coverageBlockerSummaryCommit": "6d631bbbb75489ee305f738389731a9f54a37f0f",
+    "lastFullyGreenCodeCommit": "6d631bbbb75489ee305f738389731a9f54a37f0f",
+    "lastFullyGreenCiRunId": 34845358891,
+    "deployedSnapshotCommit": "6d631bbbb75489ee305f738389731a9f54a37f0f"
   },
   "safety": {
     "productionPaperOnly": true,
@@ -22,7 +23,8 @@
     "researchOnly": true,
     "executionWrite": false,
     "noFakeData": true,
-    "noDirectLineageDeletion": true
+    "noDirectLineageDeletion": true,
+    "productionReleaseAuthorizedByV12Branch": false
   },
   "railway": {
     "projectId": "573d6f88-4b27-44a2-9b41-8ba9b85ed47c",
@@ -33,18 +35,19 @@
       "primaryVolumeId": "232327ea-aabf-419a-b174-e689fca24d9d",
       "primaryVolumeMount": "/data",
       "primaryVolumeSizeMB": 500,
-      "acceptedDeploymentId": "6b59a3a7-758a-494a-909f-1e2043e6f279",
+      "acceptedDeploymentId": "aa6f4827-ddd9-4a63-b5e9-3bd266940086",
       "acceptedDeploymentStatus": "SUCCESS",
-      "deployedCommit": "ea6c896ab08405cb8023f5a0a2867f3fda3bc8f3",
-      "invalidSourceDeploymentId": "e79fdee4-2090-405a-80b4-66b4d8805b52",
+      "deployedCommit": "6d631bbbb75489ee305f738389731a9f54a37f0f",
+      "invalidSourceDeploymentId": "8c48d81d-e635-4336-a515-c2082bcd5138",
       "invalidSourceDeploymentReason": "WRONG_PRODUCTION_PYTHON_IMAGE",
       "runtime": "NODE_V12",
       "researchOnly": true,
       "executionWrite": false,
+      "diskUsageGbCurrent": 0.05632,
       "latestBootstrap": {
-        "publishedAtUtc": "2026-09-14T12:40:31.896071909Z",
+        "publishedAtUtc": "2026-09-14T12:54:01.754409025Z",
         "cryptoOpportunities": 350,
-        "twOpportunities": 2,
+        "twOpportunities": 1,
         "usOpportunities": 1,
         "eventCount": 40,
         "twForwardSamples": 5,
@@ -90,7 +93,7 @@
     "liveProbe": "PASSED",
     "deployment": "SUCCESS",
     "liveValidation": {
-      "deploymentId": "6b59a3a7-758a-494a-909f-1e2043e6f279",
+      "deploymentId": "aa6f4827-ddd9-4a63-b5e9-3bd266940086",
       "homeStatus": 200,
       "marketCount": 7,
       "previewStatus": 200,
@@ -99,11 +102,22 @@
       "mobileCss": true,
       "lineageHomeStatus": 200,
       "lineageTraceStatus": 200,
+      "lineageSourceCount": 1,
+      "lineageObservationCount": 47,
       "storageErrorLogs": 0,
       "researchOnly": true,
       "executionWrite": false
     },
-    "productionExecutionMutation": "NONE",
+    "liveMarketSummary": {
+      "CRYPTO": "READY",
+      "TW": "READY",
+      "US": "BLOCKED",
+      "CN_HK": "BLOCKED",
+      "JP": "BLOCKED",
+      "KR": "BLOCKED",
+      "EU": "BLOCKED_WITH_PARTIAL_DIRECTION_EVIDENCE"
+    },
+    "productionExecutionMutation": "NONE_BY_THIS_WORKFLOW",
     "currentBlocker": null
   },
   "activePriority": {
@@ -111,8 +125,8 @@
     "status": "READY_TO_IMPLEMENT"
   },
   "currentCi": {
-    "codeHead": "ea6c896ab08405cb8023f5a0a2867f3fda3bc8f3",
-    "runId": 34844303400,
+    "codeHead": "6d631bbbb75489ee305f738389731a9f54a37f0f",
+    "runId": 34845358891,
     "conclusion": "success",
     "phase": "GREEN"
   },
