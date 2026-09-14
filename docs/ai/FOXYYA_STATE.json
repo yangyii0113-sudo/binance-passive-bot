@@ -1,21 +1,17 @@
 {
   "schema": "foxyya-ai-continuity-state/1",
-  "updatedAt": "2026-09-14T21:25:00+08:00",
+  "updatedAt": "2026-09-14T21:54:39+08:00",
   "resumeInstruction": "接續 FOXYYA，先讀 docs/ai/FOXYYA_STATE.json、docs/ai/FOXYYA_NEXT.md、docs/ai/FOXYYA_CONTEXT.md，重新驗證 GitHub/Railway 後直接執行。",
   "repository": {
     "fullName": "yangyii0113-sudo/binance-passive-bot",
     "branch": "v12-platform-completion-20260910",
     "storageRecoveryCodeCommit": "008a479aef47e9bbdd27099842e698c9faeb6790",
-    "liveTraceProbeCodeCommit": "44bd80de4410b5d682b5fb257a52ca3f2e941f12",
-    "coverageBackendCommit": "76428e4d2b5b52fc375fb18df329983fa4593962",
-    "coverageHomeProjectionCommit": "b6f11707fd019cd02463e3602c7d3cdff46aa06e",
-    "coverageUiCommit": "5b5ddeb6cb4ec99103de46e51984f4a241865503",
-    "coverageLiveProbeCommit": "fdff8175c218fe7cccde05f37c63e6ee18e337f2",
-    "coverageStartupProbeCommit": "ea6c896ab08405cb8023f5a0a2867f3fda3bc8f3",
     "coverageBlockerSummaryCommit": "6d631bbbb75489ee305f738389731a9f54a37f0f",
-    "lastFullyGreenCodeCommit": "2eb21456e6243ce02c6fb0d7fa97e8e396e72493",
-    "lastFullyGreenCiRunId": 34848606637,
-    "deployedSnapshotCommit": "2eb21456e6243ce02c6fb0d7fa97e8e396e72493"
+    "nasdaqLicenseRequiredCommit": "658037982ef75400fa3acdb23fc22c11765af88b",
+    "cftcCanonicalEntityFixCommit": "219fba96509b24e2d2bbbc397acab3dea440ae50",
+    "lastFullyGreenCodeCommit": "219fba96509b24e2d2bbbc397acab3dea440ae50",
+    "lastFullyGreenCiRunId": 34851744968,
+    "deployedSnapshotCommit": "219fba96509b24e2d2bbbc397acab3dea440ae50"
   },
   "safety": {
     "productionPaperOnly": true,
@@ -35,17 +31,16 @@
       "primaryVolumeId": "232327ea-aabf-419a-b174-e689fca24d9d",
       "primaryVolumeMount": "/data",
       "primaryVolumeSizeMB": 500,
-      "acceptedDeploymentId": "4413e607-5792-49d3-a3b1-9c90df4224b9",
+      "acceptedDeploymentId": "b817a331-a457-41f0-b548-ac856f9892db",
       "acceptedDeploymentStatus": "SUCCESS",
-      "deployedCommit": "2eb21456e6243ce02c6fb0d7fa97e8e396e72493",
-      "invalidSourceDeploymentId": "0a89fe83-09c1-4b67-9668-1656325fd212",
+      "deployedCommit": "219fba96509b24e2d2bbbc397acab3dea440ae50",
+      "invalidSourceDeploymentId": "c15d69b7-18fe-48b4-8460-14a314cd3921",
       "invalidSourceDeploymentReason": "WRONG_PRODUCTION_PYTHON_IMAGE",
       "runtime": "NODE_V12",
       "researchOnly": true,
       "executionWrite": false,
-      "diskUsageGbLastVerified": 0.05632,
       "latestBootstrap": {
-        "publishedAtUtc": "2026-09-14T13:23:34.954980200Z",
+        "publishedAtUtc": "2026-09-14T13:53:44.603380466Z",
         "cryptoOpportunities": 346,
         "twOpportunities": 2,
         "usOpportunities": 1,
@@ -74,7 +69,6 @@
     "lineageBytesAfterThreeCycles": 6329972,
     "reductionPercentApprox": 98.6,
     "backupVerified": true,
-    "backupCompressedBytes": 3972235,
     "threeCycleMonitoring": "PASSED",
     "liveTraceApiRoundTrip": "PASSED",
     "currentBlocker": null
@@ -83,11 +77,8 @@
     "status": "LIVE_GREEN",
     "schemaVersion": "foxyya-market-coverage/1",
     "markets": ["CRYPTO", "US", "TW", "CN_HK", "JP", "KR", "EU"],
-    "coverageStates": ["READY", "PARTIAL", "BLOCKED", "UNAVAILABLE"],
-    "liveProbe": "PASSED",
-    "deployment": "SUCCESS",
     "liveValidation": {
-      "deploymentId": "4413e607-5792-49d3-a3b1-9c90df4224b9",
+      "deploymentId": "b817a331-a457-41f0-b548-ac856f9892db",
       "homeStatus": 200,
       "marketCount": 7,
       "previewStatus": 200,
@@ -96,8 +87,8 @@
       "mobileCss": true,
       "lineageHomeStatus": 200,
       "lineageTraceStatus": 200,
-      "lineageSourceCount": 2,
-      "lineageObservationCount": 12,
+      "lineageSourceCount": 3,
+      "lineageObservationCount": 20,
       "researchOnly": true,
       "executionWrite": false
     },
@@ -110,8 +101,8 @@
       "KR": "BLOCKED",
       "EU": "BLOCKED_WITH_PARTIAL_DIRECTION_EVIDENCE"
     },
-    "productionExecutionMutation": "NONE_BY_THIS_WORKFLOW",
-    "currentBlocker": null
+    "storageErrorLogs": 0,
+    "productionExecutionMutation": "NONE_BY_THIS_WORKFLOW"
   },
   "providerCoverageExpansion": {
     "status": "IN_PROGRESS",
@@ -119,27 +110,43 @@
       "status": "LIVE_GREEN",
       "providerId": "cftc-cot",
       "datasetId": "CFTC:TFF:gpe5-46if:EQUITY_INDEX",
+      "liveProviderStatus": "AVAILABLE",
+      "liveReason": null,
+      "availableCapability": "FUTURES_POSITIONING",
       "capabilityRole": "CONFIRMATION_ONLY",
       "latency": "WEEKLY",
+      "canonicalEntityFix": "INVALID_CFTC_PLUS_CODES_ESCAPED_PROVIDER_SIDE",
       "changesUSCoverageReadiness": false
+    },
+    "usIndexBreadthResolution": {
+      "status": "EXTERNAL_LICENSE_REQUIRED",
+      "sourceId": "nasdaq-trader-daily",
+      "capabilities": ["INDEX", "MARKET_BREADTH"],
+      "coverageBlocker": "LICENSE_REQUIRED",
+      "activationAllowed": false,
+      "publicDownloadDoesNotEqualServerSideUsePermission": true
     },
     "usRemainingMissingCapabilities": ["INDEX", "MARKET_BREADTH", "QUOTE", "VOLATILITY_CONTEXT"],
     "usCurrentBlockers": [
-      "LICENSE_REVIEW_REQUIRED:nasdaq-trader-daily:INDEX",
-      "LICENSE_REVIEW_REQUIRED:nasdaq-trader-daily:MARKET_BREADTH",
+      "LICENSE_REQUIRED:nasdaq-trader-daily:INDEX",
+      "LICENSE_REQUIRED:nasdaq-trader-daily:MARKET_BREADTH",
       "PROVIDER_DECISION_REQUIRED:us-equity-realtime:QUOTE",
       "PROVIDER_DECISION_REQUIRED:us-options-analytics:VOLATILITY_CONTEXT"
     ]
   },
   "activePriority": {
-    "name": "US_INDEX_MARKET_BREADTH_SOURCE_RESOLUTION",
-    "status": "IN_PROGRESS"
+    "name": "US_QUOTE_PROVIDER_DECISION",
+    "status": "READY_TO_RESEARCH"
   },
   "currentCi": {
-    "codeHead": "2eb21456e6243ce02c6fb0d7fa97e8e396e72493",
-    "runId": 34848606637,
+    "codeHead": "219fba96509b24e2d2bbbc397acab3dea440ae50",
+    "runId": 34851744968,
     "conclusion": "success",
-    "phase": "GREEN"
+    "v12Tests": "716/716",
+    "existingJsRegressions": "16/16",
+    "pythonRegression": "PASS",
+    "productionSafetyGate": "PASS",
+    "phase": "LIVE_GREEN"
   },
   "continuity": {
     "proactiveChatHandoff": true,
