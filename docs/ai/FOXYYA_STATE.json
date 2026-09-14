@@ -1,6 +1,6 @@
 {
   "schema": "foxyya-ai-continuity-state/1",
-  "updatedAt": "2026-09-14T20:54:30+08:00",
+  "updatedAt": "2026-09-14T21:25:00+08:00",
   "resumeInstruction": "接續 FOXYYA，先讀 docs/ai/FOXYYA_STATE.json、docs/ai/FOXYYA_NEXT.md、docs/ai/FOXYYA_CONTEXT.md，重新驗證 GitHub/Railway 後直接執行。",
   "repository": {
     "fullName": "yangyii0113-sudo/binance-passive-bot",
@@ -13,9 +13,9 @@
     "coverageLiveProbeCommit": "fdff8175c218fe7cccde05f37c63e6ee18e337f2",
     "coverageStartupProbeCommit": "ea6c896ab08405cb8023f5a0a2867f3fda3bc8f3",
     "coverageBlockerSummaryCommit": "6d631bbbb75489ee305f738389731a9f54a37f0f",
-    "lastFullyGreenCodeCommit": "6d631bbbb75489ee305f738389731a9f54a37f0f",
-    "lastFullyGreenCiRunId": 34845358891,
-    "deployedSnapshotCommit": "6d631bbbb75489ee305f738389731a9f54a37f0f"
+    "lastFullyGreenCodeCommit": "2eb21456e6243ce02c6fb0d7fa97e8e396e72493",
+    "lastFullyGreenCiRunId": 34848606637,
+    "deployedSnapshotCommit": "2eb21456e6243ce02c6fb0d7fa97e8e396e72493"
   },
   "safety": {
     "productionPaperOnly": true,
@@ -35,19 +35,19 @@
       "primaryVolumeId": "232327ea-aabf-419a-b174-e689fca24d9d",
       "primaryVolumeMount": "/data",
       "primaryVolumeSizeMB": 500,
-      "acceptedDeploymentId": "aa6f4827-ddd9-4a63-b5e9-3bd266940086",
+      "acceptedDeploymentId": "4413e607-5792-49d3-a3b1-9c90df4224b9",
       "acceptedDeploymentStatus": "SUCCESS",
-      "deployedCommit": "6d631bbbb75489ee305f738389731a9f54a37f0f",
-      "invalidSourceDeploymentId": "8c48d81d-e635-4336-a515-c2082bcd5138",
+      "deployedCommit": "2eb21456e6243ce02c6fb0d7fa97e8e396e72493",
+      "invalidSourceDeploymentId": "0a89fe83-09c1-4b67-9668-1656325fd212",
       "invalidSourceDeploymentReason": "WRONG_PRODUCTION_PYTHON_IMAGE",
       "runtime": "NODE_V12",
       "researchOnly": true,
       "executionWrite": false,
-      "diskUsageGbCurrent": 0.05632,
+      "diskUsageGbLastVerified": 0.05632,
       "latestBootstrap": {
-        "publishedAtUtc": "2026-09-14T12:54:01.754409025Z",
-        "cryptoOpportunities": 350,
-        "twOpportunities": 1,
+        "publishedAtUtc": "2026-09-14T13:23:34.954980200Z",
+        "cryptoOpportunities": 346,
+        "twOpportunities": 2,
         "usOpportunities": 1,
         "eventCount": 40,
         "twForwardSamples": 5,
@@ -84,16 +84,10 @@
     "schemaVersion": "foxyya-market-coverage/1",
     "markets": ["CRYPTO", "US", "TW", "CN_HK", "JP", "KR", "EU"],
     "coverageStates": ["READY", "PARTIAL", "BLOCKED", "UNAVAILABLE"],
-    "backendBuilder": "GREEN",
-    "homeReadModelProjection": "GREEN",
-    "homeViewModelProjection": "GREEN",
-    "uiCoveragePanel": "GREEN",
-    "responsiveCoverageCss": "GREEN",
-    "previewAssetInjection": "GREEN",
     "liveProbe": "PASSED",
     "deployment": "SUCCESS",
     "liveValidation": {
-      "deploymentId": "aa6f4827-ddd9-4a63-b5e9-3bd266940086",
+      "deploymentId": "4413e607-5792-49d3-a3b1-9c90df4224b9",
       "homeStatus": 200,
       "marketCount": 7,
       "previewStatus": 200,
@@ -102,9 +96,8 @@
       "mobileCss": true,
       "lineageHomeStatus": 200,
       "lineageTraceStatus": 200,
-      "lineageSourceCount": 1,
-      "lineageObservationCount": 47,
-      "storageErrorLogs": 0,
+      "lineageSourceCount": 2,
+      "lineageObservationCount": 12,
       "researchOnly": true,
       "executionWrite": false
     },
@@ -120,13 +113,31 @@
     "productionExecutionMutation": "NONE_BY_THIS_WORKFLOW",
     "currentBlocker": null
   },
+  "providerCoverageExpansion": {
+    "status": "IN_PROGRESS",
+    "cftcPositioning": {
+      "status": "LIVE_GREEN",
+      "providerId": "cftc-cot",
+      "datasetId": "CFTC:TFF:gpe5-46if:EQUITY_INDEX",
+      "capabilityRole": "CONFIRMATION_ONLY",
+      "latency": "WEEKLY",
+      "changesUSCoverageReadiness": false
+    },
+    "usRemainingMissingCapabilities": ["INDEX", "MARKET_BREADTH", "QUOTE", "VOLATILITY_CONTEXT"],
+    "usCurrentBlockers": [
+      "LICENSE_REVIEW_REQUIRED:nasdaq-trader-daily:INDEX",
+      "LICENSE_REVIEW_REQUIRED:nasdaq-trader-daily:MARKET_BREADTH",
+      "PROVIDER_DECISION_REQUIRED:us-equity-realtime:QUOTE",
+      "PROVIDER_DECISION_REQUIRED:us-options-analytics:VOLATILITY_CONTEXT"
+    ]
+  },
   "activePriority": {
-    "name": "PROVIDER_COVERAGE_EXPANSION",
-    "status": "READY_TO_IMPLEMENT"
+    "name": "US_INDEX_MARKET_BREADTH_SOURCE_RESOLUTION",
+    "status": "IN_PROGRESS"
   },
   "currentCi": {
-    "codeHead": "6d631bbbb75489ee305f738389731a9f54a37f0f",
-    "runId": 34845358891,
+    "codeHead": "2eb21456e6243ce02c6fb0d7fa97e8e396e72493",
+    "runId": 34848606637,
     "conclusion": "success",
     "phase": "GREEN"
   },
