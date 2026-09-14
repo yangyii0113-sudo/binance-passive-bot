@@ -47,6 +47,7 @@ function normalizedCatalogCapabilities(source){
     if(raw==='MARKET_BREADTH'||raw==='MARKET_STATISTICS')out.add('MARKET_BREADTH');
     if(raw==='SECTOR_INDEX')out.add('SECTOR_ROTATION');
     if(raw==='INSTITUTIONAL_FLOW')out.add('INSTITUTIONAL_FLOW');
+    if(raw==='FUTURES_POSITIONING')out.add('FUTURES_POSITIONING');
     if(['FILINGS','XBRL','FORM4','BENEFICIAL_OWNERSHIP','CORPORATE_OPEN_DATA','MONTHLY_REVENUE','FINANCIAL_DISCLOSURE','CORPORATE_DISCLOSURE','FINANCIALS'].includes(raw))out.add('FUNDAMENTAL');
     if(['CPI','EMPLOYMENT','MACRO_SERIES','FED_POLICY','FED_SPEECH','FED_RELEASE','RATES_CONTEXT','RATES','FX','EU_MACRO'].includes(raw))out.add('MACRO');
     if(['FUNDING','OPEN_INTEREST','DERIVATIVES_CONTEXT','OPTIONS_FLOW','IV','SKEW','TERM_STRUCTURE'].includes(raw))out.add('DERIVATIVES_CONTEXT');
@@ -66,6 +67,7 @@ function datasetCapabilities(row){
   if(id==='TWSE:MI_INDEX'){out.add('INDEX');out.add('MARKET_BREADTH');out.add('SECTOR_ROTATION');}
   if(id==='TPEX:tpex_mainborad_highlight'){out.add('INDEX');out.add('MARKET_BREADTH');}
   if(id==='TPEX:tpex_trading_volume_ratio')out.add('SECTOR_ROTATION');
+  if(id==='CFTC:TFF:gpe5-46if:EQUITY_INDEX')out.add('FUTURES_POSITIONING');
   if(id.startsWith('BLS:')||id.startsWith('ECB:'))out.add('MACRO');
   return out;
 }
