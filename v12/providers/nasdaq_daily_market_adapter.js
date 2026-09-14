@@ -119,7 +119,7 @@ function normalizeYearToDateText(text,{receivedAt}={}){
     schemaVersion:'foxyya-us-nasdaq-market-snapshot/1',
     market:'US',scope:'NASDAQ_LISTED_US',venue:'NASDAQ',tradeDate:current.tradeDate,asOf:receivedAt,receivedAt,
     latency:'EOD',realtime:false,fullMarketBreadthAvailable:false,
-    licenseStatus:'REVIEW_REQUIRED',redistributionStatus:'NOT_CLEARED',publicDisplayAllowed:false,
+    licenseStatus:'LICENSE_REQUIRED',redistributionStatus:'NOT_CLEARED',publicDisplayAllowed:false,
     indices:Object.freeze({composite,nasdaq100}),breadth,sectors,liquidity,
     observations:Object.freeze(observations),source:SOURCE,knowledgeTime:'RECEIVED_AT',
     researchOnly:true,executionWrite:false
