@@ -15,6 +15,7 @@ function isAllowed(p){
   if(ALLOWED_EXACT.has(p))return true;
   if(p.startsWith('docs/architecture/'))return true;
   if(p.startsWith('docs/superpowers/'))return true;
+  if(p.startsWith('docs/ai/'))return true;
   if(/^tests\/v12_[^/]+$/.test(p))return true;
   if(p.startsWith('v12/'))return true;
   return false;
