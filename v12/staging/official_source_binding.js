@@ -5,6 +5,7 @@ const TPEX=require('../providers/tpex_adapter.js');
 const SEC=require('../providers/sec_edgar_adapter.js');
 const BLS=require('../providers/bls_adapter.js');
 const ECB=require('../providers/ecb_adapter.js');
+const CFTC=require('../providers/cftc_cot_adapter.js');
 
 const ASSET_SCHEMA='foxyya-observation/1';
 const CONTEXT_SCHEMA='foxyya-context-observation/1';
@@ -24,7 +25,8 @@ const META=Object.freeze({
   tpexDailyQuote:frozenLineageMeta({sourceId:'tpex-openapi',datasetId:'TPEX:tpex_mainboard_daily_close_quotes',bindingId:'tpex-daily-quote',bindingVersion:'foxyya-binding/tpex-daily-quote/1',adapterId:'tpex-official',adapterVersion:'foxyya-adapter/tpex/1',canonicalSchemaVersion:ASSET_SCHEMA}),
   tpexInstitutional:frozenLineageMeta({sourceId:'tpex-openapi',datasetId:'TPEX:tpex_3insti_daily_trading',bindingId:'tpex-institutional',bindingVersion:'foxyya-binding/tpex-institutional/1',adapterId:'tpex-official',adapterVersion:'foxyya-adapter/tpex/1',canonicalSchemaVersion:ASSET_SCHEMA}),
   tpexMonthlyRevenue:frozenLineageMeta({sourceId:'tpex-openapi',datasetId:'TPEX:mopsfin_t187ap05_O',bindingId:'tpex-monthly-revenue',bindingVersion:'foxyya-binding/tpex-monthly-revenue/1',adapterId:'tpex-official',adapterVersion:'foxyya-adapter/tpex/1',canonicalSchemaVersion:ASSET_SCHEMA}),
-  secCompanyFact:frozenLineageMeta({sourceId:'sec-edgar',datasetId:'SEC:companyfacts',bindingId:'sec-company-fact',bindingVersion:'foxyya-binding/sec-company-fact/1',adapterId:'sec-edgar-official',adapterVersion:'foxyya-adapter/sec-edgar/1',canonicalSchemaVersion:ASSET_SCHEMA})
+  secCompanyFact:frozenLineageMeta({sourceId:'sec-edgar',datasetId:'SEC:companyfacts',bindingId:'sec-company-fact',bindingVersion:'foxyya-binding/sec-company-fact/1',adapterId:'sec-edgar-official',adapterVersion:'foxyya-adapter/sec-edgar/1',canonicalSchemaVersion:ASSET_SCHEMA}),
+  cftcTffEquityIndex:frozenLineageMeta({sourceId:'cftc-cot',datasetId:'CFTC:TFF:gpe5-46if:EQUITY_INDEX',bindingId:'cftc-tff-equity-index',bindingVersion:'foxyya-binding/cftc-tff-equity-index/1',adapterId:'cftc-cot-official',adapterVersion:'foxyya-adapter/cftc-cot/1',canonicalSchemaVersion:CONTEXT_SCHEMA})
 });
 
 function blsMeta(definitions){
@@ -256,6 +258,41 @@ function ecbSeries({loader,definition}={}){
   });
 }
 
+function cftcEquityIndexRow(row){
+  if(!row||typeof row!=='object'||Array.isArray(row))return false;
+  const text=[row.market_and_exchange_names,row.contract_market_name,row.commodity_name].map(value=>String(value??'').toUpperCase()).join(' ');
+  return /S&P\s*500|NASDAQ[-\s]*100|RUSSELL\s*(?:1000|2000|3000)|DOW\s+JONES|DJIA/.test(text);
+}
+
+function cftcTffEquityIndex({loader}={}){
+  const meta=META.cftcTffEquityIndex;
+  return Object.freeze({
+    lineageMeta:meta,
+    async load(){
+      const envelope=await loadExpected(loader,meta.sourceId);
+      if(envelope.status==='UNAVAILABLE')return unavailable(meta.sourceId,envelope.reason,envelope,meta);
+      if(!Array.isArray(envelope.data))throw Error('CFTC_TFF_PAYLOAD_REQUIRED');
+      const candidates=envelope.data.filter(cftcEquityIndexRow);
+      if(!candidates.length)return unavailable(meta.sourceId,'ENTITY_NOT_FOUND',envelope,meta);
+      const dated=candidates.map(row=>Object.freeze({row,date:CFTC.dateOnly(row.report_date_as_yyyy_mm_dd)}));
+      const latestDate=dated.map(item=>item.date).sort().at(-1);
+      const latest=dated.filter(item=>item.date===latestDate).map(item=>CFTC.normalizeTffRow(item.row,{receivedAt:envelope.receivedAt}));
+      if(!latest.length)return unavailable(meta.sourceId,'ENTITY_NOT_FOUND',envelope,meta);
+      const data=Object.freeze({
+        schemaVersion:'foxyya-cftc-tff-equity-index/1',
+        market:'US',
+        reportDate:latestDate,
+        asOf:envelope.receivedAt,
+        series:Object.freeze(latest),
+        source:CFTC.SOURCE,
+        researchOnly:true,
+        executionWrite:false
+      });
+      return available(meta.sourceId,envelope,data,meta);
+    }
+  });
+}
+
 function createOfficialSourceBindings(){
   return Object.freeze({
     twseDailyQuote,
@@ -266,7 +303,8 @@ function createOfficialSourceBindings(){
     tpexMonthlyRevenue,
     secCompanyFact,
     blsSeries,
-    ecbSeries
+    ecbSeries,
+    cftcTffEquityIndex
   });
 }
 
