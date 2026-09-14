@@ -112,6 +112,12 @@
     });
   }
 
+  function marketCoverageView(value){
+    if(value===undefined||value===null)return null;
+    if(!object(value)||value.schemaVersion!=='foxyya-market-coverage/1'||!object(value.markets)||value.researchOnly!==true||value.executionWrite!==false)throw Error('MARKET_COVERAGE_READ_ONLY_REQUIRED');
+    return value;
+  }
+
   function eventPriority(row){return finite(row?.impactScore)?row.impactScore:(EVENT_PRIORITY[String(row?.impact||'UNAVAILABLE').toUpperCase()]??0);}
 
   function focusDisplayRow(row){
@@ -159,8 +165,9 @@
     const news=freezeList(events.filter(row=>row.kind==='NEWS'));
     const todayFocus=focusRows(home.todayFocus,events);
     const researchPerformance=researchPerformanceView(read.researchPerformance,read.asOf);
+    const marketCoverage=marketCoverageView(read.marketCoverage);
 
-    return Object.freeze({schemaVersion:'foxyya-home-view-model/1',asOf:read.asOf,providerDiagnostics:read.providerDiagnostics||null,regions,marketPulse,earlyTrend,opportunities,events,calendar,news,todayFocus,positions:positionsView(read.cryptoExecution),tradingResults:tradingResultsView(read.cryptoResults),researchPerformance,researchOnly:true,executionWrite:false});
+    return Object.freeze({schemaVersion:'foxyya-home-view-model/1',asOf:read.asOf,providerDiagnostics:read.providerDiagnostics||null,marketCoverage,regions,marketPulse,earlyTrend,opportunities,events,calendar,news,todayFocus,positions:positionsView(read.cryptoExecution),tradingResults:tradingResultsView(read.cryptoResults),researchPerformance,researchOnly:true,executionWrite:false});
   }
 
   return Object.freeze({REGION_ORDER,MARKET_ORDER,buildHomeViewModel});
