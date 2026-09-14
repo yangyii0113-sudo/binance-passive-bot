@@ -4,89 +4,111 @@ Updated: 2026-09-14
 
 ## P0 Storage Recovery — CLOSED
 
-P0 is formally closed.
+P0 remains closed. Storage recovery, three refresh cycles, compressed lineage replay and live localhost lineage trace all passed.
 
-Acceptance evidence:
-
-- Recovery deployment `2ec68098-082e-41ba-b462-68ff981caf0b` succeeded.
-- Live Trace probe deployment `bbbe2467-ab6f-4986-ab39-c9c444cb59a1` succeeded.
-- Correct Node/v12 runtime is live with `RESEARCH_ONLY=true EXECUTION_WRITE=false`.
-- Legacy lineage recovered from 444,055,552 bytes to 6,096,213 bytes and remained controlled at 6,329,972 bytes after three normal refresh cycles.
-- Three-cycle growth was 233,759 bytes total, approximately 77,920 bytes per cycle.
-- No post-recovery `DURABLE_WRITE_FAILED`, `LINEAGE_JOURNAL_CORRUPT`, or refresh-failure logs were observed during the three-cycle acceptance window.
-- Independent durable backup remains on `/backup` as the 3,972,235-byte gzip plus metadata.
-- Live localhost HTTP round-trip passed: `/v12/api/home` returned 200, a current output lineageRef was extracted, `/v12/api/lineage/output/{ref}` returned 200, source/observation trace resolved, and `researchOnly=true executionWrite=false` remained intact.
-- Live representative lineage ref: `out_0834cfbeaf89c3144e2f9647cbe629eacc3ea71b866f3849e3ac9ed2374642f9`.
-- Full CI for live-trace probe commit `44bd80de4410b5d682b5fb257a52ca3f2e941f12` passed Node v12 contracts, JavaScript regressions, Python regression, and Production safety gate.
-
-## Current priority: Market Data Coverage Gate
+## Current priority: Market Data Coverage Gate — deployment validation
 
 Source spec:
 
 `docs/superpowers/specs/2026-09-12-foxyya-v12-market-data-coverage-gate-design.md`
 
-### Implementation order
+### GREEN implementation completed
 
-1. Implement the backend Coverage Gate as the single source of truth for seven markets:
+1. Backend Coverage Gate is the single source of truth for seven markets:
    - CRYPTO
    - US
    - TW
-   - CN-HK
+   - CN_HK
    - JP
    - KR
    - EU
 
-2. Each market must expose a deterministic coverage status:
+2. Deterministic coverage states are implemented:
    - `READY`
    - `PARTIAL`
    - `BLOCKED`
    - `UNAVAILABLE`
 
-3. Each market record must explain:
-   - whether broad market direction is eligible,
-   - whether instrument-level research is available,
-   - whether research ranking is eligible,
-   - which required inputs are present,
-   - which inputs are missing,
-   - why missing inputs are unavailable (provider failure, credential, entitlement, licensing, or not implemented),
-   - timestamp / freshness information where relevant.
+3. Each market record exposes:
+   - coverage status,
+   - activation state,
+   - direction readiness,
+   - instrument research readiness,
+   - research ranking eligibility,
+   - available capabilities,
+   - missing capabilities,
+   - normalized blockers,
+   - approved source projections,
+   - freshness,
+   - evidence counts,
+   - `researchOnly=true`,
+   - `executionWrite=false`.
 
-4. Do not infer broad-market readiness from isolated instrument research.
-   - TW 2330/6488 research must not imply Taiwan breadth is complete.
-   - SEC/BLS or NVDA research must not imply US broad market direction is complete.
+4. Guard semantics are GREEN:
+   - isolated TW instrument research does not imply TW broad-market readiness,
+   - SEC/BLS/NVDA research does not imply US broad-market direction readiness,
+   - EU macro-only data does not imply EU broad-market readiness,
+   - JP/KR credential or entitlement gaps are `BLOCKED`,
+   - CN-HK licensing/data-product gaps are `BLOCKED`,
+   - unknown datasets cannot grant normalized capabilities,
+   - one provider failure only degrades the mapped capability.
 
-5. TDD first.
-   - Add backend contracts before implementation.
-   - Prove `READY/PARTIAL/BLOCKED/UNAVAILABLE` semantics.
-   - Prove no fake data and no execution write path.
-   - Prove coverage records are deterministic and immutable/read-only.
-
-6. Wire Coverage Gate into Home read model only after backend truth is GREEN.
-
-7. Then add a Chinese-first Home coverage panel showing:
+5. Home backend publishes `marketCoverage`.
+6. Home View Model preserves backend coverage without browser-side recomputation.
+7. Chinese-first Coverage panel is GREEN:
    - market,
    - coverage state,
    - direction eligibility,
    - research availability,
    - ranking eligibility,
-   - primary missing inputs / blocking reason.
+   - translated available/missing capabilities,
+   - backend blocker reasons.
+8. Coverage UI is modular and responsive:
+   - `v12/ui/market_coverage_renderer.js`
+   - `v12/ui/coverage.css`
+   - staging preview server injects these assets into served preview HTML without rewriting the large static index file.
+9. Full CI for commit `5b5ddeb6cb4ec99103de46e51984f4a241865503` passed all v12 Node contracts, existing JavaScript regressions, Python regression, and Production safety gate in run `34830322740`.
 
-8. Full validation before deployment:
-   - all `tests/v12_*.test.cjs`,
-   - existing runtime JavaScript regressions,
-   - Python regression,
-   - Production safety-string gate.
+### Exact next steps
 
-9. Deploy only to v12 Research Staging.
-   - Source-trigger wrong-image deployments remain invalid.
-   - Use native redeploy after the intended snapshot is captured.
-   - Verify Node/v12 runtime and `RESEARCH_ONLY=true EXECUTION_WRITE=false`.
+1. Deploy the Coverage Gate build only to `foxyya-v12-staging`.
+   - Refresh the target source snapshot.
+   - If Railway source-trigger runs the wrong Production Python image, invalidate it and use native redeploy on the captured snapshot.
 
-## After Coverage Gate
+2. Verify valid v12 runtime:
+   - Node/v12 runtime,
+   - `/health` passes,
+   - `RESEARCH_ONLY=true`,
+   - `EXECUTION_WRITE=false`,
+   - no `foxyya_runtime_backend/service.py` in the accepted deployment.
+
+3. Validate live Coverage backend:
+   - `/v12/api/home` contains `marketCoverage.schemaVersion=foxyya-market-coverage/1`,
+   - exactly seven markets exist,
+   - no writable/execution field is enabled,
+   - market states match live evidence and external gates.
+
+4. Validate live Preview assets:
+   - served preview HTML loads `coverage.css`,
+   - served preview HTML loads `market_coverage_renderer.js` after `home_dom.js` and before `app.js`,
+   - the Home page creates the Coverage target,
+   - renderer produces seven Chinese market coverage cards,
+   - mobile CSS is available.
+
+5. Confirm existing runtime behavior remains healthy:
+   - bootstrap publishes normally,
+   - live lineage trace probe passes,
+   - no storage regression,
+   - no `DURABLE_WRITE_FAILED`,
+   - no `LINEAGE_JOURNAL_CORRUPT`.
+
+6. After live validation passes, update `FOXYYA_STATE.json` and this file to mark Market Data Coverage Gate `LIVE_GREEN`.
+
+## After Coverage Gate is live
 
 1. Provider coverage expansion by market.
-2. Home decision-readiness UX.
-3. Direction eligibility integration.
+2. Home decision-readiness UX refinement.
+3. Direction eligibility integration into research surfaces.
 4. JP/KR/CN-HK source activation as credentials/licensing allow.
 5. Continue forward validation and research-quality measurement.
 
