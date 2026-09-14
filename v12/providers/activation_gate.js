@@ -6,6 +6,7 @@ const READINESS=Object.freeze({
   CREDENTIAL_REQUIRED:'CREDENTIAL_REQUIRED',
   ENTITLEMENT_REQUIRED:'ENTITLEMENT_REQUIRED',
   REVIEW_REQUIRED:'REVIEW_REQUIRED',
+  LICENSE_REQUIRED:'LICENSE_REQUIRED',
   DECISION_REQUIRED:'DECISION_REQUIRED',
   SOURCE_UNKNOWN:'SOURCE_UNKNOWN',
 });
@@ -19,6 +20,7 @@ function evaluateSource(sourceId,context={}){
   const source=SOURCE_CATALOG.find(x=>x.id===sourceId);
   if(!source)return result(null,READINESS.SOURCE_UNKNOWN,false);
   if(source.status===SOURCE_STATUS.DECISION_REQUIRED)return result(source,READINESS.DECISION_REQUIRED,false);
+  if(source.status===SOURCE_STATUS.LICENSE_REQUIRED)return result(source,READINESS.LICENSE_REQUIRED,false);
   if(source.status===SOURCE_STATUS.REVIEW_REQUIRED)return result(source,READINESS.REVIEW_REQUIRED,false);
   if(source.status===SOURCE_STATUS.KEY_REQUIRED){
     if(!has(context.credentialSources,source.id))return result(source,READINESS.CREDENTIAL_REQUIRED,false);
