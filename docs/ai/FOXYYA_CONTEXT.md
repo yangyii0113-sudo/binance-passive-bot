@@ -63,6 +63,18 @@ After every material checkpoint (code GREEN, deployment, new blocker, migration,
 1. `FOXYYA_STATE.json` — machine-readable current truth.
 2. `FOXYYA_NEXT.md` — the exact next engineering actions and acceptance gates.
 
+When the conversation becomes materially long, proactively checkpoint the current GitHub/Railway truth before context exhaustion. Prepare a compact fresh-chat continuation instruction containing at least:
+
+- repository and active branch,
+- latest fully GREEN code commit and CI run,
+- accepted Railway deployment and any invalid deployment that must not be reused,
+- current safety invariants,
+- completed checkpoint,
+- current blocker if any,
+- exact next engineering action.
+
+If a fresh conversation is needed, tell the user to open a new chat and paste the prepared continuation instruction. The workflow cannot programmatically create a new ChatGPT conversation, so project continuity must never depend on the current chat remaining available.
+
 Only update this Context file when a stable invariant, architecture rule, Railway quirk, or operating rule changes.
 
-A new chat should not require pasting a long handoff. The user should only need the one-line resume instruction above.
+A new chat should not require pasting a long handoff. The user should normally need only the one-line resume instruction above because the repository continuity files contain the project state.
