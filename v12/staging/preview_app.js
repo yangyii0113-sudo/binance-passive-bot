@@ -5,15 +5,18 @@ const path=require('node:path');
 const {createStagingHomeService}=require('./home_service.js');
 
 const UI_DIR=path.resolve(__dirname,'../ui');
+const INDEX_ROUTES=new Set(['/v12-preview/','/v12-preview/index.html']);
 const STATIC_ROUTES=Object.freeze({
   '/v12-preview/':Object.freeze({file:path.join(UI_DIR,'index.html'),type:'text/html; charset=utf-8'}),
   '/v12-preview/index.html':Object.freeze({file:path.join(UI_DIR,'index.html'),type:'text/html; charset=utf-8'}),
   '/v12-preview/styles.css':Object.freeze({file:path.join(UI_DIR,'styles.css'),type:'text/css; charset=utf-8'}),
+  '/v12-preview/coverage.css':Object.freeze({file:path.join(UI_DIR,'coverage.css'),type:'text/css; charset=utf-8'}),
   '/v12-preview/routes.js':Object.freeze({file:path.join(UI_DIR,'routes.js'),type:'application/javascript; charset=utf-8'}),
   '/v12-preview/home_model.js':Object.freeze({file:path.join(UI_DIR,'home_model.js'),type:'application/javascript; charset=utf-8'}),
   '/v12-preview/home_view_model.js':Object.freeze({file:path.join(UI_DIR,'home_view_model.js'),type:'application/javascript; charset=utf-8'}),
   '/v12-preview/home_renderer.js':Object.freeze({file:path.join(UI_DIR,'home_renderer.js'),type:'application/javascript; charset=utf-8'}),
   '/v12-preview/home_dom.js':Object.freeze({file:path.join(UI_DIR,'home_dom.js'),type:'application/javascript; charset=utf-8'}),
+  '/v12-preview/market_coverage_renderer.js':Object.freeze({file:path.join(UI_DIR,'market_coverage_renderer.js'),type:'application/javascript; charset=utf-8'}),
   '/v12-preview/product_renderer.js':Object.freeze({file:path.join(UI_DIR,'product_renderer.js'),type:'application/javascript; charset=utf-8'}),
   '/v12-preview/lineage_evidence.js':Object.freeze({file:path.join(UI_DIR,'lineage_evidence.js'),type:'application/javascript; charset=utf-8'}),
   '/v12-preview/app.js':Object.freeze({file:path.join(UI_DIR,'app.js'),type:'application/javascript; charset=utf-8'}),
@@ -25,6 +28,22 @@ const HEALTH=Object.freeze({
   researchOnly:true,
   executionWrite:false
 });
+
+function decoratePreviewIndex(html){
+  if(typeof html!=='string')throw Error('PREVIEW_INDEX_REQUIRED');
+  let out=html;
+  if(!out.includes('coverage.css')){
+    const stylesheet='<link rel="stylesheet" href="styles.css">';
+    if(!out.includes(stylesheet))throw Error('PREVIEW_STYLES_ANCHOR_MISSING');
+    out=out.replace(stylesheet,stylesheet+'\n  <link rel="stylesheet" href="coverage.css">');
+  }
+  if(!out.includes('market_coverage_renderer.js')){
+    const anchor='<script src="home_dom.js"></script>';
+    if(!out.includes(anchor))throw Error('PREVIEW_RENDER_ANCHOR_MISSING');
+    out=out.replace(anchor,anchor+'\n<script src="market_coverage_renderer.js"></script>');
+  }
+  return out;
+}
 
 function sendText(res,status,body){
   const data=Buffer.from(body,'utf8');
@@ -82,6 +101,10 @@ function createStagingPreviewApp({lineageStore,forwardResearchTracker}={}){
 
     let body;
     try{body=fs.readFileSync(asset.file)}catch(_error){return sendText(res,404,'NOT_FOUND')}
+    if(INDEX_ROUTES.has(pathname)){
+      try{body=Buffer.from(decoratePreviewIndex(body.toString('utf8')),'utf8')}
+      catch(_error){return sendText(res,500,'PREVIEW_INDEX_INVALID')}
+    }
 
     res.statusCode=200;
     res.setHeader('Content-Type',asset.type);
@@ -95,4 +118,4 @@ function createStagingPreviewApp({lineageStore,forwardResearchTracker}={}){
   return Object.freeze({publishHome,handler});
 }
 
-module.exports=Object.freeze({createStagingPreviewApp});
+module.exports=Object.freeze({decoratePreviewIndex,createStagingPreviewApp});
