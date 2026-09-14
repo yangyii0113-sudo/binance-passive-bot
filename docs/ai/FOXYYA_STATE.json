@@ -1,6 +1,6 @@
 {
   "schema": "foxyya-ai-continuity-state/1",
-  "updatedAt": "2026-09-14T17:42:00+08:00",
+  "updatedAt": "2026-09-14T17:55:00+08:00",
   "resumeInstruction": "接續 FOXYYA，先讀 docs/ai/FOXYYA_STATE.json、docs/ai/FOXYYA_NEXT.md、docs/ai/FOXYYA_CONTEXT.md，重新驗證 GitHub/Railway 後直接執行。",
   "repository": {
     "fullName": "yangyii0113-sudo/binance-passive-bot",
@@ -9,8 +9,9 @@
     "liveTraceProbeCodeCommit": "44bd80de4410b5d682b5fb257a52ca3f2e941f12",
     "coverageBackendCommit": "76428e4d2b5b52fc375fb18df329983fa4593962",
     "coverageHomeProjectionCommit": "b6f11707fd019cd02463e3602c7d3cdff46aa06e",
-    "lastFullyGreenCodeCommit": "b6f11707fd019cd02463e3602c7d3cdff46aa06e",
-    "lastFullyGreenCiRunId": 34829130220,
+    "coverageUiCommit": "5b5ddeb6cb4ec99103de46e51984f4a241865503",
+    "lastFullyGreenCodeCommit": "5b5ddeb6cb4ec99103de46e51984f4a241865503",
+    "lastFullyGreenCiRunId": 34830322740,
     "deployedSnapshotCommit": "44bd80de4410b5d682b5fb257a52ca3f2e941f12"
   },
   "safety": {
@@ -62,25 +63,27 @@
     "currentBlocker": null
   },
   "marketDataCoverageGate": {
-    "status": "BACKEND_AND_HOME_GREEN_UI_PENDING",
+    "status": "GREEN_READY_TO_DEPLOY",
     "schemaVersion": "foxyya-market-coverage/1",
     "markets": ["CRYPTO","US","TW","CN_HK","JP","KR","EU"],
     "coverageStates": ["READY","PARTIAL","BLOCKED","UNAVAILABLE"],
     "backendBuilder": "GREEN",
     "homeReadModelProjection": "GREEN",
     "homeViewModelProjection": "GREEN",
-    "uiCoveragePanel": "PENDING",
+    "uiCoveragePanel": "GREEN",
+    "responsiveCoverageCss": "GREEN",
+    "previewAssetInjection": "GREEN",
     "deployment": "PENDING",
     "productionExecutionMutation": "NONE"
   },
   "activePriority": {
-    "name": "MARKET_DATA_COVERAGE_GATE_UI_AND_DEPLOYMENT",
+    "name": "MARKET_DATA_COVERAGE_GATE_DEPLOYMENT_AND_LIVE_VALIDATION",
     "spec": "docs/superpowers/specs/2026-09-12-foxyya-v12-market-data-coverage-gate-design.md",
     "status": "IN_PROGRESS"
   },
   "currentCi": {
-    "codeHead": "b6f11707fd019cd02463e3602c7d3cdff46aa06e",
-    "runId": 34829130220,
+    "codeHead": "5b5ddeb6cb4ec99103de46e51984f4a241865503",
+    "runId": 34830322740,
     "conclusion": "success",
     "phase": "GREEN"
   }
