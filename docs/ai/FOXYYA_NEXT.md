@@ -2,50 +2,93 @@
 
 Updated: 2026-09-14
 
-## Current priority: P0 Storage Recovery — final live-trace gate
+## P0 Storage Recovery — CLOSED
 
-Do not resume Market Data Coverage Gate or UI feature work until this P0 is formally closed.
+P0 is formally closed.
 
-### Recovery and three-cycle monitoring verified
+Acceptance evidence:
 
-- Native recovery deployment `2ec68098-082e-41ba-b462-68ff981caf0b` is SUCCESS.
-- Correct Node/v12 runtime remains live with `RESEARCH_ONLY=true EXECUTION_WRITE=false`.
-- Initial research bootstrap published successfully at `2026-09-14T07:01:29Z`: Crypto 354 / TW 1 / US 1 / Events 40 / TW Forward Samples 4.
-- `/data/foxyya-v12.lineage.jsonl` recovered from 444,055,552 bytes to 6,096,213 bytes.
-- After three normal 1800-second refresh cadences, lineage is 6,329,972 bytes with mtime `2026-09-14T08:31:36Z`.
-- Three-cycle lineage growth is only 233,759 bytes total, approximately 77,920 bytes per cycle and approximately 3.83% relative to the recovered file size.
-- Current Railway disk usage is approximately 0.055386 GB versus the previous peak approximately 0.495378 GB.
-- Post-recovery log searches show zero `DURABLE_WRITE_FAILED`, zero `LINEAGE_JOURNAL_CORRUPT`, and zero `FOXYYA v12 research refresh failed` entries.
-- Home publication advancement is accepted from runtime-path evidence: every successful scheduled `refreshResearch()` calls the source pipeline, which publishes Home with `publishAsOf >= nowMs`; the journal advanced through the third cadence with no refresh-failure log.
-- Independent persistent backup remains intact at `/backup/foxyya-v12-444055552-1789365503749.lineage.jsonl.gz` (3,972,235 bytes) plus its 350-byte metadata file.
-- Persistent journal remains compressed `foxyyya-lineage-frame/1` / `deflate-raw-base64` with canonical restart/trace tests GREEN.
-- Production Execution V2 was not modified.
+- Recovery deployment `2ec68098-082e-41ba-b462-68ff981caf0b` succeeded.
+- Live Trace probe deployment `bbbe2467-ab6f-4986-ab39-c9c444cb59a1` succeeded.
+- Correct Node/v12 runtime is live with `RESEARCH_ONLY=true EXECUTION_WRITE=false`.
+- Legacy lineage recovered from 444,055,552 bytes to 6,096,213 bytes and remained controlled at 6,329,972 bytes after three normal refresh cycles.
+- Three-cycle growth was 233,759 bytes total, approximately 77,920 bytes per cycle.
+- No post-recovery `DURABLE_WRITE_FAILED`, `LINEAGE_JOURNAL_CORRUPT`, or refresh-failure logs were observed during the three-cycle acceptance window.
+- Independent durable backup remains on `/backup` as the 3,972,235-byte gzip plus metadata.
+- Live localhost HTTP round-trip passed: `/v12/api/home` returned 200, a current output lineageRef was extracted, `/v12/api/lineage/output/{ref}` returned 200, source/observation trace resolved, and `researchOnly=true executionWrite=false` remained intact.
+- Live representative lineage ref: `out_0834cfbeaf89c3144e2f9647cbe629eacc3ea71b866f3849e3ac9ed2374642f9`.
+- Full CI for live-trace probe commit `44bd80de4410b5d682b5fb257a52ca3f2e941f12` passed Node v12 contracts, JavaScript regressions, Python regression, and Production safety gate.
 
-## Exact remaining P0 gate
+## Current priority: Market Data Coverage Gate
 
-1. Complete one representative live Lineage Trace API round-trip.
-   - Choose a current `out_<64hex>` lineageRef from `/v12/api/home`.
-   - GET `/v12/api/lineage/output/{ref}`.
-   - Verify the response resolves the output plus its source/observation trace.
-   - Verify `researchOnly=true` and `executionWrite=false`.
-   - Current connector/network policy cannot directly fetch the Railway public endpoint; this is the only remaining verification-access blocker, not a detected runtime/storage error.
+Source spec:
 
-2. Once the live trace round-trip passes:
-   - Update `FOXYYA_STATE.json` to `P0_CLOSED`.
-   - Update this file to move the active priority to `docs/superpowers/specs/2026-09-12-foxyya-v12-market-data-coverage-gate-design.md`.
-   - Preserve all safety invariants: Production `PAPER_ONLY=true`, `REAL_ORDER_LOCK=true`; Research Staging `RESEARCH_ONLY=true`, `EXECUTION_WRITE=false`.
+`docs/superpowers/specs/2026-09-12-foxyya-v12-market-data-coverage-gate-design.md`
 
-## After P0 closes
+### Implementation order
 
-Resume `docs/superpowers/specs/2026-09-12-foxyya-v12-market-data-coverage-gate-design.md`.
+1. Implement the backend Coverage Gate as the single source of truth for seven markets:
+   - CRYPTO
+   - US
+   - TW
+   - CN-HK
+   - JP
+   - KR
+   - EU
 
-Implementation order:
+2. Each market must expose a deterministic coverage status:
+   - `READY`
+   - `PARTIAL`
+   - `BLOCKED`
+   - `UNAVAILABLE`
 
-1. Market Data Coverage Gate backend truth.
-2. Provider coverage / missing-input reasons per market.
-3. Home coverage panel.
-4. Direction eligibility gates.
-5. Continue JP/KR/CN-HK source activation when credentials/licensing allow.
+3. Each market record must explain:
+   - whether broad market direction is eligible,
+   - whether instrument-level research is available,
+   - whether research ranking is eligible,
+   - which required inputs are present,
+   - which inputs are missing,
+   - why missing inputs are unavailable (provider failure, credential, entitlement, licensing, or not implemented),
+   - timestamp / freshness information where relevant.
+
+4. Do not infer broad-market readiness from isolated instrument research.
+   - TW 2330/6488 research must not imply Taiwan breadth is complete.
+   - SEC/BLS or NVDA research must not imply US broad market direction is complete.
+
+5. TDD first.
+   - Add backend contracts before implementation.
+   - Prove `READY/PARTIAL/BLOCKED/UNAVAILABLE` semantics.
+   - Prove no fake data and no execution write path.
+   - Prove coverage records are deterministic and immutable/read-only.
+
+6. Wire Coverage Gate into Home read model only after backend truth is GREEN.
+
+7. Then add a Chinese-first Home coverage panel showing:
+   - market,
+   - coverage state,
+   - direction eligibility,
+   - research availability,
+   - ranking eligibility,
+   - primary missing inputs / blocking reason.
+
+8. Full validation before deployment:
+   - all `tests/v12_*.test.cjs`,
+   - existing runtime JavaScript regressions,
+   - Python regression,
+   - Production safety-string gate.
+
+9. Deploy only to v12 Research Staging.
+   - Source-trigger wrong-image deployments remain invalid.
+   - Use native redeploy after the intended snapshot is captured.
+   - Verify Node/v12 runtime and `RESEARCH_ONLY=true EXECUTION_WRITE=false`.
+
+## After Coverage Gate
+
+1. Provider coverage expansion by market.
+2. Home decision-readiness UX.
+3. Direction eligibility integration.
+4. JP/KR/CN-HK source activation as credentials/licensing allow.
+5. Continue forward validation and research-quality measurement.
 
 ## Handoff rule
 
