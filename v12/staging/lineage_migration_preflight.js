@@ -4,6 +4,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 const {backupLineageFile}=require('./lineage_bucket_backup.js');
 const {backupLineageFileHttp}=require('./lineage_http_backup.js');
+const {salvageLegacyJournal}=require('./lineage_legacy_salvage.js');
 const {createDurableSourceLineageStore,EVENT_SCHEMA,FRAME_SCHEMA}=require('./durable_source_lineage_store.js');
 
 function nonEmpty(value){return typeof value==='string'&&value.trim().length>0;}
@@ -36,6 +37,7 @@ function httpBackupKey(filePath,stat){
   return `${name}-${stat.size}-${Math.floor(stat.mtimeMs)}`.slice(0,160);
 }
 function statFingerprint(stat){return `${stat.size}:${stat.mtimeMs}`;}
+function fsyncPath(filePath,fsImpl){let fd=null;try{fd=fsImpl.openSync(filePath,'r+');fsImpl.fsyncSync(fd);}finally{if(fd!==null)fsImpl.closeSync(fd);}}
 
 async function prepareDurableLineageStore({
   filePath,
@@ -47,9 +49,10 @@ async function prepareDurableLineageStore({
   httpBackupConfig=null,
   backupLineageFileImpl=backupLineageFile,
   backupLineageFileHttpImpl=backupLineageFileHttp,
+  salvageLegacyJournalImpl=salvageLegacyJournal,
   createStoreImpl=createDurableSourceLineageStore
 }={}){
-  if(!nonEmpty(filePath)||typeof now!=='function'||!fsImpl||typeof fsImpl!=='object'||typeof backupLineageFileImpl!=='function'||typeof backupLineageFileHttpImpl!=='function'||typeof createStoreImpl!=='function')throw Error('LINEAGE_MIGRATION_CONFIG_INVALID');
+  if(!nonEmpty(filePath)||typeof now!=='function'||!fsImpl||typeof fsImpl!=='object'||typeof backupLineageFileImpl!=='function'||typeof backupLineageFileHttpImpl!=='function'||typeof salvageLegacyJournalImpl!=='function'||typeof createStoreImpl!=='function')throw Error('LINEAGE_MIGRATION_CONFIG_INVALID');
   if(!Number.isInteger(compactThresholdBytes)||compactThresholdBytes<0)throw Error('LINEAGE_COMPACT_THRESHOLD_INVALID');
   const exists=fsImpl.existsSync(filePath);
   const before=exists?fsImpl.statSync(filePath):null;
@@ -84,18 +87,72 @@ async function prepareDurableLineageStore({
     throw Error('LINEAGE_BACKUP_REQUIRED');
   }
 
-  const after=fsImpl.statSync(filePath);
-  if(statFingerprint(after)!==statFingerprint(before))throw Error('LINEAGE_BACKUP_SOURCE_CHANGED');
+  const afterBackup=fsImpl.statSync(filePath);
+  if(statFingerprint(afterBackup)!==statFingerprint(before))throw Error('LINEAGE_BACKUP_SOURCE_CHANGED');
 
-  const store=createStoreImpl({
-    filePath,now,fsImpl,compactThresholdBytes,compactScratchDir:scratchDir,externalBackupVerified:true
+  try{
+    const store=createStoreImpl({
+      filePath,now,fsImpl,compactThresholdBytes,compactScratchDir:scratchDir,externalBackupVerified:true
+    });
+    return Object.freeze({
+      store,
+      migration:Object.freeze({
+        status:'COMPACTED',storageKind:'COMPRESSED',originalBytes:before.size,
+        compactedBytes:fsImpl.statSync(filePath).size,backupChannel,
+        backup:Object.freeze({...backup})
+      })
+    });
+  }catch(error){
+    if(error?.message!=='LINEAGE_JOURNAL_CORRUPT')throw error;
+  }
+
+  // A verified external backup exists and canonical replay found corruption. Salvage is
+  // therefore allowed, but only onto scratch. The persistent journal remains byte-identical
+  // until the salvaged scratch journal has passed canonical replay and compressed restart-read.
+  const salvage=salvageLegacyJournalImpl({
+    filePath,scratchDir,externalBackupVerified:true,now,fsImpl
   });
+  const beforeReplace=fsImpl.statSync(filePath);
+  if(statFingerprint(beforeReplace)!==statFingerprint(before))throw Error('LINEAGE_SALVAGE_SOURCE_CHANGED');
+
+  let finalStore;
+  let scratchRemoved=false;
+  try{
+    // Compact the already validated salvaged legacy journal in its scratch filesystem.
+    createStoreImpl({filePath:salvage.scratchFilePath,now,fsImpl,compactThresholdBytes:1});
+    if(storageKind(salvage.scratchFilePath,fsImpl)!=='COMPRESSED')throw Error('LINEAGE_SALVAGE_COMPACTION_FAILED');
+
+    // Restart-read the compressed scratch before touching persistent storage.
+    createStoreImpl({filePath:salvage.scratchFilePath,now,fsImpl,compactThresholdBytes:0});
+    const finalFingerprint=fsImpl.statSync(filePath);
+    if(statFingerprint(finalFingerprint)!==statFingerprint(before))throw Error('LINEAGE_SALVAGE_SOURCE_CHANGED');
+
+    // Cross-filesystem rename is not available from /tmp to /data. Because the independent
+    // verified backup is already durable, copy the fully validated compacted scratch image,
+    // fsync it, then canonical-replay the persistent result before returning a live store.
+    fsImpl.copyFileSync(salvage.scratchFilePath,filePath);
+    fsyncPath(filePath,fsImpl);
+    finalStore=createStoreImpl({filePath,now,fsImpl,compactThresholdBytes:0});
+    try{fsImpl.unlinkSync(salvage.scratchFilePath);scratchRemoved=true;}catch(_error){}
+  }catch(error){
+    if(error?.message&&/^LINEAGE_/.test(error.message))throw error;
+    throw Error('LINEAGE_SALVAGE_REPLACE_FAILED');
+  }
+
   return Object.freeze({
-    store,
+    store:finalStore,
     migration:Object.freeze({
-      status:'COMPACTED',storageKind:'COMPRESSED',originalBytes:before.size,
+      status:'SALVAGED_COMPACTED',storageKind:'COMPRESSED',originalBytes:before.size,
       compactedBytes:fsImpl.statSync(filePath).size,backupChannel,
-      backup:Object.freeze({...backup})
+      backup:Object.freeze({...backup}),
+      salvage:Object.freeze({
+        eventCount:salvage.eventCount,
+        recoveredCorruptLines:salvage.recoveredCorruptLines,
+        droppedTailBytes:salvage.droppedTailBytes,
+        originalBytes:salvage.originalBytes,
+        salvagedBytes:salvage.salvagedBytes,
+        scratchRemoved
+      })
     })
   });
 }
