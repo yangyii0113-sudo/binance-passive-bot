@@ -3,7 +3,7 @@
 const {SOURCE_CATALOG,SOURCE_STATUS}=require('../providers/source_catalog.js');
 
 const MARKETS=Object.freeze(['CRYPTO','US','TW','CN_HK','JP','KR','EU']);
-const EXTERNAL_BLOCKERS=new Set(['API_KEY_REQUIRED','ENTITLEMENT_REQUIRED','LICENSE_REVIEW_REQUIRED','DATA_PRODUCT_REQUIRED','PROVIDER_DECISION_REQUIRED']);
+const EXTERNAL_BLOCKERS=new Set(['API_KEY_REQUIRED','ENTITLEMENT_REQUIRED','LICENSE_REVIEW_REQUIRED','LICENSE_REQUIRED','DATA_PRODUCT_REQUIRED','PROVIDER_DECISION_REQUIRED']);
 const BLOCKER_LABELS=Object.freeze({
   CODE_BUG:'程式錯誤',
   PROVIDER_UNAVAILABLE:'Provider 本輪失敗',
@@ -11,6 +11,7 @@ const BLOCKER_LABELS=Object.freeze({
   API_KEY_REQUIRED:'需要 API 金鑰',
   ENTITLEMENT_REQUIRED:'需要資料方案權限',
   LICENSE_REVIEW_REQUIRED:'授權審查中',
+  LICENSE_REQUIRED:'需要資料授權',
   DATA_PRODUCT_REQUIRED:'需要資料產品',
   PROVIDER_DECISION_REQUIRED:'需要確認資料供應方案',
   DATA_STALE:'資料已過期',
@@ -133,6 +134,8 @@ function externalBlockersForSource(source,capability){
   if(source?.status===SOURCE_STATUS.KEY_REQUIRED){
     out.push(blocker('API_KEY_REQUIRED',capability,source.id,'SOURCE_ACTIVATION_REQUIRES_API_KEY'));
     if(source.entitlementRequired===true)out.push(blocker('ENTITLEMENT_REQUIRED',capability,source.id,'SOURCE_ACTIVATION_REQUIRES_ENTITLEMENT'));
+  }else if(source?.status===SOURCE_STATUS.LICENSE_REQUIRED){
+    out.push(blocker('LICENSE_REQUIRED',capability,source.id,'SOURCE_LICENSE_REQUIRED_FOR_SERVER_SIDE_RESEARCH'));
   }else if(source?.status===SOURCE_STATUS.REVIEW_REQUIRED){
     if(source.accessClass==='PRODUCT_DEPENDENT')out.push(blocker('DATA_PRODUCT_REQUIRED',capability,source.id,'COMMERCIAL_DATA_PRODUCT_REQUIRED'));
     out.push(blocker('LICENSE_REVIEW_REQUIRED',capability,source.id,'SOURCE_REQUIRES_LICENSE_REVIEW'));
@@ -156,7 +159,7 @@ function activationState(profile,catalog,market){
     return required.some(cap=>caps.has(cap));
   });
   const active=relevant.filter(source=>source.status===SOURCE_STATUS.ADOPTED||source.status===SOURCE_STATUS.EXISTING_CORE);
-  const blocked=relevant.filter(source=>source.status===SOURCE_STATUS.KEY_REQUIRED||source.status===SOURCE_STATUS.REVIEW_REQUIRED||source.status===SOURCE_STATUS.DECISION_REQUIRED);
+  const blocked=relevant.filter(source=>source.status===SOURCE_STATUS.KEY_REQUIRED||source.status===SOURCE_STATUS.REVIEW_REQUIRED||source.status===SOURCE_STATUS.LICENSE_REQUIRED||source.status===SOURCE_STATUS.DECISION_REQUIRED);
   if(active.length&&blocked.length)return 'PARTIAL';
   if(active.length)return 'ACTIVE';
   if(blocked.length)return 'BLOCKED';
