@@ -27,6 +27,26 @@ function requestText({host,port,path,timeoutMs,httpImpl=http,accept='*/*'}){
   });
 }
 
+function coverageSummary(markets){
+  const summary={};
+  for(const market of MARKETS){
+    const row=markets[market];
+    summary[market]=Object.freeze({
+      coverageStatus:row.coverageStatus,
+      directionReadiness:row.directionReadiness||'NOT_READY',
+      researchReadiness:row.researchReadiness||'NOT_READY',
+      rankingEligibility:row.rankingEligibility||'NOT_ELIGIBLE',
+      missingCapabilities:Object.freeze(Array.isArray(row.missingCapabilities)?[...row.missingCapabilities]:[]),
+      blockers:Object.freeze((Array.isArray(row.blockers)?row.blockers:[]).map(item=>Object.freeze({
+        type:item?.type||'UNKNOWN',
+        capability:item?.capability||null,
+        sourceId:item?.sourceId||null
+      })))
+    });
+  }
+  return Object.freeze(summary);
+}
+
 async function runMarketCoverageLiveProbe({host='127.0.0.1',port,timeoutMs=5000,httpImpl=http}={}){
   if(typeof host!=='string'||!host.trim())throw Error('MARKET_COVERAGE_LIVE_PROBE_HOST_INVALID');
   if(!Number.isInteger(port)||port<1||port>65535)throw Error('MARKET_COVERAGE_LIVE_PROBE_PORT_INVALID');
@@ -48,6 +68,7 @@ async function runMarketCoverageLiveProbe({host='127.0.0.1',port,timeoutMs=5000,
     if(!row||row.market!==market||row.researchOnly!==true||row.executionWrite!==false)throw Error('MARKET_COVERAGE_LIVE_PROBE_READ_ONLY_REQUIRED');
     if(!['READY','PARTIAL','BLOCKED','UNAVAILABLE'].includes(row.coverageStatus))throw Error('MARKET_COVERAGE_LIVE_PROBE_STATUS_INVALID');
   }
+  const marketSummary=coverageSummary(coverage.markets);
 
   const preview=await requestText({host:host.trim(),port,path:'/v12-preview/',timeoutMs,httpImpl,accept:'text/html'});
   if(preview.statusCode!==200)throw Error('MARKET_COVERAGE_LIVE_PROBE_PREVIEW_UNAVAILABLE');
@@ -69,6 +90,7 @@ async function runMarketCoverageLiveProbe({host='127.0.0.1',port,timeoutMs=5000,
     homeStatus:homeResponse.statusCode,
     marketCount:marketKeys.length,
     markets:Object.freeze([...marketKeys]),
+    marketSummary,
     previewStatus:preview.statusCode,
     coverageCssStatus:css.statusCode,
     rendererStatus:renderer.statusCode,
