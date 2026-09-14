@@ -1,0 +1,91 @@
+{
+  "schema": "foxyya-ai-continuity-state/1",
+  "updatedAt": "2026-09-14T14:00:00+08:00",
+  "resumeInstruction": "接續 FOXYYA，先讀 docs/ai/FOXYYA_STATE.json、docs/ai/FOXYYA_NEXT.md、docs/ai/FOXYYA_CONTEXT.md，重新驗證 GitHub/Railway 後直接執行。",
+  "repository": {
+    "fullName": "yangyii0113-sudo/binance-passive-bot",
+    "branch": "v12-platform-completion-20260910",
+    "activeWorkCodeHead": "267cf8135db9c6824ef6659eb10b21f3ddd3c11d",
+    "activeWorkMessage": "test(v12): define conservative lineage salvage contract",
+    "lastFullyGreenCodeCommit": "fe15c2a3dbf6d55166488ec4fdf0406f16370e7d",
+    "lastFullyGreenCiRunId": 34689949818,
+    "continuityContextCommit": "1cba97470d8f0ccae6034dd0874716c8172e5c0a"
+  },
+  "safety": {
+    "productionPaperOnly": true,
+    "realOrderLockRequired": true,
+    "researchOnly": true,
+    "executionWrite": false,
+    "noFakeData": true,
+    "noDirectLineageDeletion": true
+  },
+  "railway": {
+    "projectId": "573d6f88-4b27-44a2-9b41-8ba9b85ed47c",
+    "environmentId": "1d57bf50-2365-4d6e-86e1-89a773a30bbc",
+    "researchStaging": {
+      "serviceId": "01d2c000-5a1d-4443-a80e-4d110a9d84a4",
+      "serviceName": "foxyya-v12-staging",
+      "primaryVolumeId": "232327ea-aabf-419a-b174-e689fca24d9d",
+      "primaryVolumeMount": "/data",
+      "primaryVolumeSizeMB": 500,
+      "latestMigrationDeploymentId": "9515b1d2-d69d-45af-8b97-84cfe4141cb5",
+      "latestMigrationDeploymentStatus": "FAILED",
+      "latestFailure": "LINEAGE_JOURNAL_CORRUPT",
+      "previousStableDeploymentCommit": "c71556e1b3545eb864b30f93b7025e49a84f1efb"
+    },
+    "backupHelper": {
+      "serviceId": "a6bf4e86-6d6d-4ad6-aaa6-14ff257b928a",
+      "serviceName": "foxyya-v12-lineage-backup-helper",
+      "deploymentId": "0dd04796-cdf9-4844-9783-396a97d1340f",
+      "deploymentStatus": "SUCCESS",
+      "volumeId": "03a28b93-873a-4b54-9984-2cd5046835e2",
+      "volumeMount": "/backup",
+      "volumeSizeMB": 500,
+      "durableStorage": true,
+      "researchOnly": true,
+      "executionWrite": false
+    }
+  },
+  "p0StorageRecovery": {
+    "status": "SALVAGE_TDD_RED",
+    "originalLineageBytes": 444055552,
+    "backupVerified": true,
+    "backupArtifact": "foxyya-v12-444055552-1789365503749.lineage.jsonl.gz",
+    "backupCompressedBytes": 3972235,
+    "backupMeta": "foxyya-v12-444055552-1789365503749.meta.json",
+    "backupTmpArtifactsRemaining": false,
+    "compressionImplementation": "GREEN_BEFORE_SALVAGE",
+    "legacyCompactionThresholdBytes": 134217728,
+    "currentBlocker": "Legacy lineage replay detects corruption before compaction; likely torn write from prior disk-full DURABLE_WRITE_FAILED events.",
+    "salvagePolicy": {
+      "allowTrailingIncompleteTail": true,
+      "allowPartialAppendFollowedBySingleValidSameSequenceRetry": true,
+      "rejectSequenceGap": true,
+      "rejectMultipleConflictingValidCandidatesForSameSequence": true,
+      "rejectChecksumMismatch": true,
+      "requireFullReplayAfterSalvage": true,
+      "requireVerifiedExternalBackupBeforeMutation": true
+    }
+  },
+  "currentCi": {
+    "head": "267cf8135db9c6824ef6659eb10b21f3ddd3c11d",
+    "runId": 34812762590,
+    "conclusion": "failure",
+    "phase": "EXPECTED_RED",
+    "reason": "Conservative lineage salvage contract was added before implementation. Do not deploy this RED head."
+  },
+  "completedCapabilities": [
+    "Durable lineage + trace API",
+    "Compressed lineage frame format",
+    "Backup-gated legacy compaction",
+    "Persistent private backup helper",
+    "Verified 444 MB lineage backup",
+    "Taiwan session-date fallback",
+    "Forward research validation",
+    "News impact scoring",
+    "Research ranking",
+    "Crypto regime router",
+    "TW/US market intelligence foundations",
+    "JP/KR/CN-HK provider gates"
+  ]
+}
