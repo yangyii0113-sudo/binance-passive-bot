@@ -7,8 +7,7 @@ const {createDurableForwardResearchStore}=require('./durable_forward_research_st
 const {createForwardResearchTracker}=require('./forward_research_tracker.js');
 const {createLiveResearchBootstrap}=require('./live_research_bootstrap.js');
 const {createExecutionReadBridge}=require('./execution_read_bridge.js');
-const {runLineageLiveTraceProbe}=require('./lineage_live_trace_probe.js');
-const {runMarketCoverageLiveProbe}=require('./market_coverage_live_probe.js');
+const {runStartupProbes}=require('./runtime_startup_probes.js');
 
 const LINEAGE_COMPACT_THRESHOLD_BYTES=128*1024*1024;
 const BACKUP_ENV=Object.freeze({
@@ -77,19 +76,6 @@ function allOrNoneConfig(env,mapping){
 }
 function backupConfigFromEnv(env){return allOrNoneConfig(env,BACKUP_ENV);}
 function httpBackupConfigFromEnv(env){return allOrNoneConfig(env,HTTP_BACKUP_ENV);}
-
-async function runStartupProbes(runtime,{runLineageProbeImpl=runLineageLiveTraceProbe,runCoverageProbeImpl=runMarketCoverageLiveProbe,logImpl=console.log}={}){
-  const port=runtime?.address?.port;
-  if(!Number.isInteger(port)||port<1||port>65535)throw Error('STARTUP_PROBE_PORT_INVALID');
-  if(typeof runLineageProbeImpl!=='function'||typeof runCoverageProbeImpl!=='function')throw Error('STARTUP_PROBE_IMPL_REQUIRED');
-  if(typeof logImpl!=='function')throw Error('STARTUP_PROBE_LOG_REQUIRED');
-  const options=Object.freeze({host:'127.0.0.1',port,timeoutMs:10000});
-  const lineage=await runLineageProbeImpl(options);
-  logImpl('FOXYYA v12 live lineage trace probe passed',JSON.stringify(lineage));
-  const coverage=await runCoverageProbeImpl(options);
-  logImpl('FOXYYA v12 live market coverage probe passed',JSON.stringify(coverage));
-  return Object.freeze({lineage,coverage});
-}
 
 async function startFromEnvironment(env=process.env,dependencies={}){
   const config=runtimeConfig(env);
@@ -196,4 +182,4 @@ if(require.main===module){
   }).catch(error=>{console.error('FOXYYA v12 staging failed to start:',error?.message||error);process.exit(1);});
 }
 
-module.exports=Object.freeze({LINEAGE_COMPACT_THRESHOLD_BYTES,runtimeConfig,runStartupProbes,startFromEnvironment});
+module.exports=Object.freeze({LINEAGE_COMPACT_THRESHOLD_BYTES,runtimeConfig,startFromEnvironment});
