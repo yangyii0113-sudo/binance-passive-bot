@@ -119,6 +119,12 @@ function ecbSource(seriesKey,entityId,field,unit='PCT'){
   });
 }
 
+function cftcSource(){
+  return Object.freeze({
+    endpoint:'https://publicreporting.cftc.gov/resource/gpe5-46if.json?$limit=250&$order=report_date_as_yyyy_mm_dd%20DESC'
+  });
+}
+
 function buildBootstrapInput(nowMs){
   if(!finite(nowMs)||nowMs<0)throw Error('NOW_INVALID');
   const tradeDate=taipeiTradeDate(nowMs);
@@ -178,7 +184,8 @@ function buildBootstrapInput(nowMs){
           blsSource('CUUR0000SA0','MACRO:US:CPI','inflation.cpi_index','INDEX'),
           blsSource('LNS14000000','MACRO:US:UNEMPLOYMENT','labor.unemployment_rate','PCT'),
           blsSource('CES0000000001','MACRO:US:PAYROLL','employment.nonfarm_payroll','THOUSANDS')
-        ])
+        ]),
+        cftc:Object.freeze([cftcSource()])
       }),
       EU:Object.freeze({
         ecb:Object.freeze([
