@@ -25,6 +25,7 @@ function marketCoverage(){
       directionReadiness:'PARTIAL',
       researchReadiness:'READY',
       rankingEligibility:market==='TW'?'ELIGIBLE':'NOT_ELIGIBLE',
+      availableCapabilities:[],
       missingCapabilities:['INDEX'],
       blockers:[{type:'LICENSE_REVIEW_REQUIRED',capability:'INDEX',sourceId:'example-source'}],
       researchOnly:true,
@@ -91,6 +92,7 @@ test('live coverage probe exposes deterministic per-market readiness and blocker
       directionReadiness:'PARTIAL',
       researchReadiness:'READY',
       rankingEligibility:'ELIGIBLE',
+      availableCapabilities:[],
       missingCapabilities:['INDEX'],
       blockers:[{type:'LICENSE_REVIEW_REQUIRED',capability:'INDEX',sourceId:'example-source'}]
     });
