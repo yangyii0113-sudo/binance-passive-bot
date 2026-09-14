@@ -289,6 +289,11 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,resea
         const loader=loaderFor('ecb-data',item.endpoint);
         sources.push(bind('ecbSeries',{loader,definition:item.definition}));
       }
+      for(const item of arrayConfig(value.cftc,'REGION_CFTC')){
+        if(!object(item)||typeof item.endpoint!=='string'||!item.endpoint)throw Error('REGION_CFTC_CONFIG_INVALID');
+        const loader=loaderFor('cftc-cot',item.endpoint);
+        sources.push(bind('cftcTffEquityIndex',{loader,subjectId:'REGION:'+region}));
+      }
       regions[region]=Object.freeze(sources);
     }
 
