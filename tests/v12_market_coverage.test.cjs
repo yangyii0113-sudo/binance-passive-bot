@@ -93,7 +93,7 @@ test('TW becomes READY only when backend market pulse proves complete direction 
   for(const cap of ['INDEX','MARKET_BREADTH','SECTOR_ROTATION','QUOTE','INSTITUTIONAL_FLOW'])assert.ok(row.availableCapabilities.includes(cap));
 });
 
-test('US SEC and BLS evidence remains BLOCKED for broad direction while licensed/reviewed breadth and volatility inputs are missing',()=>{
+test('US SEC and BLS evidence remains BLOCKED and Nasdaq daily market data is an explicit license blocker',()=>{
   let home=emptyHome();
   home=opportunities(home,'US',[Object.freeze({market:'US',instrumentId:'NASDAQ:NVDA',researchOnly:true,executionWrite:false})]);
   home=region(home,'US',{status:'AVAILABLE',bias:'NEUTRAL',asOf:NOW-1000,facts:Object.freeze([{field:'inflation.cpi_index',value:1}])});
@@ -107,7 +107,12 @@ test('US SEC and BLS evidence remains BLOCKED for broad direction while licensed
   assert.ok(row.availableCapabilities.includes('FUNDAMENTAL'));
   assert.ok(row.availableCapabilities.includes('MACRO'));
   for(const cap of ['INDEX','MARKET_BREADTH','VOLATILITY_CONTEXT'])assert.ok(row.missingCapabilities.includes(cap));
-  assert.ok(row.blockers.some(x=>['LICENSE_REVIEW_REQUIRED','PROVIDER_DECISION_REQUIRED'].includes(x.type)));
+  for(const capability of ['INDEX','MARKET_BREADTH']){
+    const license=row.blockers.find(x=>x.type==='LICENSE_REQUIRED'&&x.capability===capability&&x.sourceId==='nasdaq-trader-daily');
+    assert.ok(license,'Nasdaq daily market data must remain blocked until an explicit license permits FOXYYA server-side research use');
+    assert.equal(license.externalActionRequired,true);
+  }
+  assert.equal(row.sources.find(x=>x.sourceId==='nasdaq-trader-daily').status,'LICENSE_REQUIRED');
 });
 
 test('EU macro-only evidence cannot become direction READY and external equity source decision keeps coverage BLOCKED',()=>{
