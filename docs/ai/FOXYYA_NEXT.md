@@ -1,93 +1,117 @@
 # FOXYYA v12 — Next Engineering Actions
 
-Updated: 2026-09-14
+Updated: 2026-09-15 09:42 +08:00
 
-## P0 Storage Recovery — CLOSED
+## Research Staging — LIVE_ACCEPTED
 
-P0 remains closed. No accepted deployment in this checkpoint reports `DURABLE_WRITE_FAILED`, `LINEAGE_JOURNAL_CORRUPT`, or research refresh failure.
+The current accepted Research Staging checkpoint has passed the runtime acceptance gate.
 
-## Latest accepted Research Staging checkpoint
-
-- Fully GREEN code commit: `219fba96509b24e2d2bbbc397acab3dea440ae50`.
-- CI run: `34851744968` — SUCCESS.
-  - v12 Node: 716 / 716 passed.
+- Product commit: `c547909ad9baea7cbdd13416b82976b86b5b685a`.
+- GitHub Actions: `34872550419` — SUCCESS.
+  - v12 Node: 730 / 730 passed.
   - existing JavaScript regressions: 16 / 16 passed.
-  - Python regression: PASS.
+  - Python regression: 1 / 1 PASS.
   - Production safety gate: PASS.
-  - v12 branch Production release authorized: false.
-- Source-trigger deployment `c15d69b7-18fe-48b4-8460-14a314cd3921` captured the correct commit but ran the wrong Production Python / Execution V2 image and is INVALID.
-- Accepted native redeploy: `b817a331-a457-41f0-b548-ac856f9892db`, SUCCESS.
-- Accepted runtime is Node/v12 with `RESEARCH_ONLY=true`, `EXECUTION_WRITE=false`; healthcheck passed.
-- Initial bootstrap published normally: Crypto 346, TW 2, US 1, events 40, TW forward samples 5, US forward status `WAITING_LEGAL_DATA_SOURCE`.
-- Live lineage probe: Home 200 / Trace 200 / sourceCount 3 / observationCount 20.
-- Live Coverage probe: seven markets, preview/CSS/renderer 200, mobile CSS present, read-only safety flags preserved.
+  - isolated Staging + backup container smoke/default-CMD/persistent restart checks: PASS.
+  - Production release authorized: false.
+- Accepted Railway deployment: `4798edd3-7ef6-4dbb-93ce-adb6331aa036`, SUCCESS.
+- Runtime: Node/v12, `RESEARCH_ONLY=true`, `EXECUTION_WRITE=false`.
+- Healthcheck: `/ready`.
+- Same deployment observed from bootstrap through scheduled refreshes:
+  - `successfulCycles`: 18,
+  - `failedCycles`: 0,
+  - `consecutiveSuccesses`: 18,
+  - `lastFailureAt`: null,
+  - publication timestamps increased continuously.
+- This exceeds the required bootstrap + 3 scheduled refresh acceptance gate.
+- 12-hour resource check remains healthy: memory current ~0.040 GB / 1.0 GB limit, max ~0.125 GB; disk current ~0.05895 GB on the 500 MB `/data` volume.
+- P0 storage recovery remains CLOSED.
 
-## Provider Coverage Expansion — CFTC POSITIONING LIVE_GREEN
+## Railway legacy Config-as-Code precedence — OPEN PLATFORM BLOCKER
 
-The live CFTC failure `CONTEXT_OBSERVATION_INVALID` was traced to official CFTC consolidated contract codes such as `13874+`. Raw provider codes were previously inserted directly into canonical `entityId`, whose contract correctly forbids `+`.
+Current service dashboard configuration is correct:
 
-TDD fix:
+- Dockerfile path: `v12/staging/Dockerfile`.
+- healthcheck path: `/ready`.
+- `/data` volume remains attached.
 
-1. RED commit `5a2abda2def5f3c606ba17becf02b3d0c3bb0275` added a real plus-suffixed CFTC fixture.
-   - 716 tests: 715 pass / 1 expected fail.
-   - exact failure: `CONTEXT_OBSERVATION_INVALID:ENTITY_ID_INVALID`.
-2. GREEN commit `219fba96509b24e2d2bbbc397acab3dea440ae50` escapes only provider-code characters that are illegal in canonical entity IDs.
-   - raw `contractCode` remains unchanged for provenance,
-   - existing safe codes keep their existing entity token,
-   - global entity-ID rules were not relaxed.
-3. Live accepted deployment proves:
-   - CFTC provider status: `AVAILABLE`,
-   - dataset: `CFTC:TFF:gpe5-46if:EQUITY_INDEX`,
-   - US `availableCapabilities` contains `FUTURES_POSITIONING`,
-   - CFTC remains weekly confirmation-only evidence,
-   - US readiness remains BLOCKED.
+However, prior source-trigger deployments proved the root `railway.toml` can still override Staging and build the Production Python image. Therefore:
 
-## US INDEX + MARKET_BREADTH — EXTERNAL_LICENSE_REQUIRED
+1. Do not claim the platform-level issue is permanently fixed.
+2. For every future source release, accept only a deployment whose build/runtime prove Node 22/v12 and whose `/ready.buildRevision` equals the tested commit.
+3. A native redeploy is allowed only after confirming the captured snapshot is the intended fully-green commit.
+4. Permanent repair requires an authenticated, service-scoped Railway CLI migration for `foxyya-v12-staging` only.
+5. Never run an unscoped project migration, never use `--delete-files`, and never modify the Production Execution V2 Dockerfile/service as part of v12 work.
 
-Nasdaq Trader daily files are now represented as `LICENSE_REQUIRED`, not `LICENSE_REVIEW_REQUIRED`.
+## Provider Coverage Expansion
 
-Live US blockers:
+### CFTC positioning — LIVE_GREEN
+
+- `cftc-cot` is AVAILABLE live.
+- Dataset: `CFTC:TFF:gpe5-46if:EQUITY_INDEX`.
+- Capability: `FUTURES_POSITIONING`.
+- Weekly confirmation-only evidence.
+- Does not grant US direction readiness.
+
+### US QUOTE — IMPLEMENTED, CREDENTIAL-GATED
+
+Twelve Data has already been selected and wired as `twelve-data-us-quote`.
+
+- Server-only credential path implemented.
+- Missing key performs zero provider requests.
+- API key is not placed in URLs or public diagnostics.
+- Quote semantics remain limited-venue / non-NBBO.
+- A quote does not grant INDEX or MARKET_BREADTH and does not make US direction READY.
+- Live Staging currently has no Twelve Data key, so live Coverage correctly reports:
+  - `API_KEY_REQUIRED:QUOTE:twelve-data-us-quote`.
+
+Do not fabricate or infer a key. Live activation can occur only after a real Staging credential is supplied through the approved secret path.
+
+### US INDEX + MARKET_BREADTH — EXTERNAL_LICENSE_REQUIRED
 
 - `LICENSE_REQUIRED:INDEX:nasdaq-trader-daily`
 - `LICENSE_REQUIRED:MARKET_BREADTH:nasdaq-trader-daily`
-- `PROVIDER_DECISION_REQUIRED:QUOTE:us-equity-realtime`
+
+Public download availability is not sufficient permission for FOXYYA automated server-side use. Keep both fail-closed until a valid licensed data-product path exists.
+
+### US VOLATILITY_CONTEXT — CURRENT ENGINEERING PRIORITY AFTER PLATFORM CONFIG BLOCKER
+
+Current live blocker:
+
 - `PROVIDER_DECISION_REQUIRED:VOLATILITY_CONTEXT:us-options-analytics`
 
-Do not activate Nasdaq Trader merely because files are publicly downloadable. Current authoritative terms/policies do not establish permission for FOXYYA automated server-side use. Cboe / NYSE / SIP research likewise indicates market-data licensing is a real external boundary; do not substitute volume for breadth and do not scrape around licensing.
+Next provider work:
 
-## Current priority: US QUOTE PROVIDER DECISION
+1. Research current legally usable US volatility/options context sources using authoritative terms, non-display/server-side use rights, API availability, latency, Taiwan access and predictable pricing.
+2. Classify candidates as `APPROVED_PUBLIC_USE`, `COMMERCIAL_LICENSE_AVAILABLE`, `API_KEY_REQUIRED`, `ENTITLEMENT_REQUIRED`, or `UNSUITABLE`.
+3. Do not equate VIX-like public display pages with reusable automated data rights.
+4. Select a provider only when the permission boundary is explicit.
+5. Write RED contracts before implementation.
+6. Required semantics: provider timestamp preserved, receive time separate, stale/delayed state honest, no execution authority, no automatic US direction promotion from a single volatility source.
+7. Full v12 + JS + Python + Production safety regression before Staging deployment.
 
-Goal: select a legally usable US quote path without weakening the Coverage Gate or conflating quote access with full-market direction readiness.
+## Live US Coverage truth
 
-### Exact next actions
+US remains intentionally BLOCKED / research PARTIAL with these missing capabilities:
 
-1. Research current US quote providers and official/licensed distribution paths using authoritative current terms, pricing, latency, redistribution/non-display constraints, API availability, and Taiwan-access feasibility.
-2. Classify candidates into:
-   - APPROVED_PUBLIC_USE,
-   - COMMERCIAL_LICENSE_AVAILABLE,
-   - API_KEY_REQUIRED,
-   - ENTITLEMENT_REQUIRED,
-   - UNSUITABLE.
-3. Prefer a provider that supports server-side research API use with explicit terms and predictable cost; do not prioritize nominally free access if licensing is ambiguous.
-4. Keep `us-equity-realtime` `PROVIDER_DECISION_REQUIRED` until a provider is explicitly selected.
-5. After provider selection, write RED contracts before implementation. Required canonical semantics:
-   - provider timestamp / observation timestamp preserved,
-   - receive time separate from market time,
-   - stale or delayed quotes labelled honestly,
-   - no quote source may grant INDEX or MARKET_BREADTH by itself,
-   - research-only / no execution authority.
-6. Full v12 + JS + Python + Production safety regression before any staging deployment.
-7. Deploy only to v12 Research Staging and reject source-trigger deployments that run the Production Python image.
+- INDEX — license required.
+- MARKET_BREADTH — license required.
+- QUOTE — Twelve Data API key required.
+- VOLATILITY_CONTEXT — provider decision required.
+
+Available US research capabilities include FUNDAMENTAL, FUTURES_POSITIONING, MACRO and NEWS. Do not promote direction readiness until the Coverage Gate requirements are actually satisfied.
 
 ## Subsequent priorities
 
-1. US VOLATILITY_CONTEXT provider decision.
-2. Revisit US INDEX + MARKET_BREADTH only when a valid license/data-product path is available.
-3. EU INDEX + MARKET_BREADTH.
-4. JP / KR activation after key + entitlement requirements are satisfied.
-5. CN_HK approved data-product path.
-6. Home decision-readiness UX refinement and direction eligibility integration.
+1. Resolve Railway Staging Config-as-Code migration when authenticated CLI access is available.
+2. US VOLATILITY_CONTEXT provider decision and TDD implementation.
+3. Activate Twelve Data QUOTE only when a real Staging API key is provided.
+4. Revisit US INDEX + MARKET_BREADTH only with a valid license/data-product path.
+5. EU INDEX + MARKET_BREADTH.
+6. JP / KR activation after key + entitlement requirements are satisfied.
+7. CN_HK approved data-product path.
+8. Home decision-readiness UX refinement and direction eligibility integration.
 
 ## Handoff rule
 
-At every material checkpoint, update `FOXYYA_STATE.json` and this file. When the conversation becomes materially long, proactively checkpoint GitHub/Railway truth and prepare a compact fresh-chat continuation instruction before context exhaustion.
+At every material checkpoint, update `FOXYYA_STATE.json` and this file. Revalidate GitHub and Railway truth before execution. Branch HEAD, CI success, dashboard config and Railway deployment health are separate facts and must never be conflated.
