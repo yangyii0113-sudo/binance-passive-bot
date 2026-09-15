@@ -1,17 +1,26 @@
 {
   "schema": "foxyya-ai-continuity-state/1",
-  "updatedAt": "2026-09-15T16:08:47+08:00",
+  "updatedAt": "2026-09-15T16:40:42+08:00",
   "resumeInstruction": "接續 FOXYYA，先讀 docs/ai/FOXYYA_STATE.json、docs/ai/FOXYYA_NEXT.md、docs/ai/FOXYYA_CONTEXT.md，重新驗證 GitHub/Railway 後直接執行；Production Execution V2 不得修改。",
   "repository": {
     "fullName": "yangyii0113-sudo/binance-passive-bot",
     "branch": "v12-platform-completion-20260910",
-    "branchHeadAtCheckpoint": "efde7c4201a5cc80300120ec811f11a64e00c54b",
+    "branchHeadAtCheckpoint": "93ec3895ab8cda90f446de22cff60f777cd421e3",
+    "implementationPlanCommit": "4acd5e2b206d64530210ea1e0ae03eb13619c77d",
     "euProviderSplitGreenCommit": "d659c8947524f8bb20139f7be36121d55316acfc",
-    "cnHkProviderSplitRedCommit": "865eca29aade49aa680db5954240567cb6de1ace",
-    "cnHkProviderSplitCodeCommit": "4f2ccf6619e31c40147b3aa7421cd337305041dc",
     "cnHkProviderSplitGreenCommit": "efde7c4201a5cc80300120ec811f11a64e00c54b",
-    "lastFullyGreenCodeCommit": "efde7c4201a5cc80300120ec811f11a64e00c54b",
-    "lastFullyGreenCiRunId": 34944945541,
+    "jpProviderSplitRedCommit": "ecda825007a64ec64373c0f5edd05a0324358d9a",
+    "jpProviderSplitGreenCommit": "80d22cb8f08888e21d8871e632d6c1c0e97fb02a",
+    "euBreadthAdapterGreenCommit": "dbf4e84bb80e8c31fb0fa54c8623b8e7cb59d470",
+    "euBreadthLoaderGreenCommit": "42b6ddd4192b0c2da578ec040b5ee4ebfc9350cc",
+    "euBreadthBindingGreenCommit": "85851464eb61735e53f523c177c894a87d379862",
+    "euBreadthPipelineRedCommit": "77295c3ab42a67850599e9a33047a3b0d7c0f993",
+    "euBreadthPipelineWiringCommit": "ce94a5e62a214290a01969b0a91caab7cd4ddcbc",
+    "euBreadthCoverageCommit": "45ff2536e15c2d424b4a67e21cffcf945a69ca44",
+    "homeReadinessRedCommit": "bb2394bfdaa2d6173bec898302ed939603278c6e",
+    "homeReadinessGreenCommit": "93ec3895ab8cda90f446de22cff60f777cd421e3",
+    "lastFullyGreenCodeCommit": "93ec3895ab8cda90f446de22cff60f777cd421e3",
+    "lastFullyGreenCiRunId": 34948123788,
     "deployedSnapshotCommit": "dc56501497bf1095ad0509678889197fe6762f44"
   },
   "safety": {
@@ -48,7 +57,8 @@
       "attempts": 3,
       "lastError": "You have used all your available resources",
       "conditionWatchEnabled": true,
-      "conditionWatchCadence": "HOURLY"
+      "conditionWatchCadence": "HOURLY",
+      "nextReleaseCandidate": "93ec3895ab8cda90f446de22cff60f777cd421e3"
     },
     "legacyConfigPrecedence": {
       "status": "CAC_DEPRECATED_MIGRATION_REQUIRED",
@@ -59,7 +69,7 @@
       "migrationMustStartReadOnly": true,
       "cliRequired": true,
       "railwayAgentCanExecuteCli": false,
-      "safeWorkaround": "Accept only deployments whose build/runtime prove node:22-alpine and /ready build revision equals the tested product commit."
+      "safeWorkaround": "Accept only deployments whose build/runtime prove v12/staging/Dockerfile + node:22-alpine and /ready build revision equals the tested product commit."
     }
   },
   "p0StorageRecovery": {
@@ -69,110 +79,82 @@
     "liveTraceApiRoundTrip": "PASSED"
   },
   "marketDataCoverageGate": {
-    "status": "LIVE_GREEN",
+    "status": "LIVE_GREEN_ON_ACCEPTED_OLD_STAGING",
     "schemaVersion": "foxyya-market-coverage/1",
     "markets": ["CRYPTO", "US", "TW", "CN_HK", "JP", "KR", "EU"],
-    "liveMarketSummary": {
-      "CRYPTO": "READY",
-      "TW": "READY",
-      "US": "BLOCKED_RESEARCH_PARTIAL",
-      "CN_HK": "BLOCKED",
-      "JP": "BLOCKED",
-      "KR": "BLOCKED",
-      "EU": "BLOCKED_WITH_PARTIAL_DIRECTION_EVIDENCE"
-    },
+    "latestCodeOnlyCoverageTruthValidatedByContainerSmoke": true,
     "productionExecutionMutation": "NONE_BY_THIS_WORKFLOW"
   },
   "providerCoverageExpansion": {
-    "status": "IN_PROGRESS",
-    "cftcPositioning": {
-      "status": "LIVE_GREEN",
-      "providerId": "cftc-cot",
-      "availableCapability": "FUTURES_POSITIONING",
-      "capabilityRole": "CONFIRMATION_ONLY"
+    "status": "CODE_ONLY_GOVERNANCE_AND_FAIL_CLOSED_PATHS_COMPLETE_EXTERNAL_ACTIVATIONS_PENDING",
+    "us": {
+      "cftcPositioning": "LIVE_GREEN_CONFIRMATION_ONLY",
+      "indexBreadth": "LICENSE_REQUIRED:nasdaq-trader-daily",
+      "quote": "API_KEY_REQUIRED:twelve-data-us-quote",
+      "volatility": "API_KEY_REQUIRED+ENTITLEMENT_REQUIRED:twelve-data-us-volatility"
     },
-    "usQuote": {
-      "status": "IMPLEMENTED_CREDENTIAL_GATED",
-      "providerId": "twelve-data-us-quote",
-      "liveActivation": false
+    "eu": {
+      "index": "LICENSE_REQUIRED:cboe-europe-index",
+      "breadthProvider": "twelve-data-eu-breadth",
+      "breadthStatus": "IMPLEMENTED_ADAPTER_LOADER_BINDING_PIPELINE_FAIL_CLOSED",
+      "breadthCanonicalDataset": "TWELVEDATA:BREADTH:EU",
+      "breadthCanonicalEntity": "MARKET:EU:BREADTH:CBOE_EUROPE",
+      "breadthMarketScope": "PAN_EUROPE_CBOE_EQUITIES",
+      "breadthActivation": "API_KEY_REQUIRED+ENTITLEMENT_REQUIRED",
+      "zeroNetworkWithoutCredentialAndEntitlement": true,
+      "defaultStagingLiveActivation": false
     },
-    "usVolatilityContext": {
-      "status": "IMPLEMENTED_CREDENTIAL_AND_ENTITLEMENT_GATED_LIVE_FAIL_CLOSED",
-      "providerId": "twelve-data-us-volatility",
-      "liveActivation": false
-    },
-    "usIndexBreadthResolution": {
-      "status": "EXTERNAL_LICENSE_REQUIRED",
-      "sourceId": "nasdaq-trader-daily",
-      "capabilities": ["INDEX", "MARKET_BREADTH"]
-    },
-    "euIndexBreadthProviderSplit": {
-      "status": "CODE_GREEN_AWAITING_LIVE_DEPLOYMENT",
-      "indexSource": "cboe-europe-index",
-      "breadthSource": "twelve-data-eu-breadth",
-      "readinessPromotion": "NONE"
-    },
-    "cnHkProviderResolution": {
-      "status": "CODE_GREEN_AWAITING_LIVE_DEPLOYMENT",
+    "cnHk": {
+      "status": "CODE_GREEN_FAIL_CLOSED",
       "genericSourceRetired": "hkex-marketplace",
       "sources": ["hkex-eod-summary", "hkex-omd-index", "sse-market-data", "szse-ssic-market-data"],
-      "readinessPromotion": "NONE",
       "liveNetworkLoadersAdded": false
     },
-    "jpProviderResolution": {
-      "status": "RESEARCH_RESOLVED_READY_FOR_BOUNDED_DESIGN",
-      "individualResearchSource": "jpx-jquants",
-      "individualResearchBoundary": "J-Quants API is individual-oriented; J-Quants Pro is corporate API/SFTP. Do not assume the existing individual API licence is valid for corporate use.",
-      "directionRecommendedSourceId": "tse-market-information",
-      "provider": "Tokyo Stock Exchange Market Information",
-      "capabilities": ["INDEX", "MARKET_BREADTH"],
-      "classification": ["LICENSE_REQUIRED"],
-      "evidence": "Official TSE market information contains JPX indices including TOPIX and periodic statistic data including number of issues rising/declining.",
-      "fifteenMinuteApiRejectedForDirection": true,
-      "fifteenMinuteApiReason": "15-minute Last Sales API explicitly excludes Index and Statistics.",
-      "readinessPromotion": "NONE",
-      "liveNetworkLoaderRecommendedNow": false,
-      "recommendedNextCodeStep": "Add a fail-closed tse-market-information catalog source for JP INDEX + MARKET_BREADTH and replace JP NOT_IMPLEMENTED direction blockers with LICENSE_REQUIRED; keep jpx-jquants research key/entitlement blockers separate."
+    "jp": {
+      "status": "CODE_GREEN_FAIL_CLOSED",
+      "researchSource": "jpx-jquants",
+      "directionSource": "tse-market-information",
+      "directionCapabilities": ["INDEX", "MARKET_BREADTH"],
+      "directionActivation": "LICENSE_REQUIRED",
+      "liveNetworkLoaderAdded": false
     },
-    "krProviderResolution": {
-      "status": "PROVIDER_GOVERNANCE_ALREADY_ALIGNED_EXTERNAL_ACTIVATION_BLOCKED",
-      "sourceId": "krx-openapi",
-      "provider": "KRX Data Marketplace Open API",
-      "authenticationKeyRequired": true,
-      "serviceUseApplicationRequired": true,
-      "administratorApprovalRequired": true,
-      "catalogGate": ["API_KEY_REQUIRED", "ENTITLEMENT_REQUIRED"],
-      "officialApiCoverage": ["KRX/KOSPI/KOSDAQ index daily data", "KOSPI/KOSDAQ/KONEX stock daily trading data"],
-      "newProviderSplitNeeded": false,
-      "liveActivation": false,
-      "note": "KRX real-time/professional market data distribution is a separate contracted path through KRX/Koscom; do not infer real-time rights from Open API."
+    "kr": {
+      "status": "NO_PRODUCTION_CHANGE_REQUIRED_EXISTING_GOVERNANCE_ALIGNED",
+      "source": "krx-openapi",
+      "activation": "API_KEY_REQUIRED+ENTITLEMENT_REQUIRED",
+      "capabilitiesNormalized": ["QUOTE", "INDEX", "MARKET_BREADTH"]
+    }
+  },
+  "homeDecisionReadiness": {
+    "status": "CODE_GREEN",
+    "backendCoveragePreservedByReference": true,
+    "decisionReadinessProjection": true,
+    "rankingGuard": {
+      "NOT_ELIGIBLE": "research rows remain inspectable but ranking metadata is cleared and rows are excluded from rankResearch",
+      "LIMITED": "allowed in human-review ranking",
+      "ELIGIBLE": "allowed in human-review ranking",
+      "legacySnapshotWithoutCoverage": "preserves prior ranking behavior"
     }
   },
   "currentCi": {
-    "codeHead": "efde7c4201a5cc80300120ec811f11a64e00c54b",
-    "runId": 34944945541,
+    "codeHead": "93ec3895ab8cda90f446de22cff60f777cd421e3",
+    "runId": 34948123788,
     "conclusion": "success",
-    "v12Tests": "752/752",
+    "v12Tests": "772/772",
     "existingJsRegressions": "16/16",
     "pythonRegression": "1/1 PASS",
     "productionSafetyGate": "PASS",
     "containerSmoke": "PASS",
+    "containerSmokeRuntime": "node:22-alpine / RESEARCH_ONLY=true / EXECUTION_WRITE=false",
     "productionReleaseAuthorized": false,
-    "phase": "MULTI_REGION_PROVIDER_GOVERNANCE_CODE_GREEN_DEPLOYMENT_EXTERNALLY_BLOCKED"
+    "phase": "CODE_ONLY_PROVIDER_GOVERNANCE_COMPLETION_GREEN_LIVE_DEPLOYMENT_EXTERNALLY_BLOCKED"
   },
   "activePriority": {
-    "name": "EU_PROVIDER_SPLIT_RESEARCH_STAGING_DEPLOYMENT",
-    "status": "CONDITION_WATCH_ACTIVE_EXTERNAL_RESOURCE_BLOCKED"
+    "name": "LATEST_GREEN_RESEARCH_STAGING_DEPLOYMENT",
+    "status": "CONDITION_WATCH_ACTIVE_EXTERNAL_RESOURCE_BLOCKED",
+    "targetCommit": "93ec3895ab8cda90f446de22cff60f777cd421e3"
   },
   "secondaryPriority": {
-    "name": "JP_INDEX_MARKET_BREADTH_PROVIDER_SPLIT",
-    "status": "BOUNDED_DESIGN_READY_FOR_APPROVAL"
-  },
-  "tertiaryPriority": {
-    "name": "CN_HK_PROVIDER_SPLIT",
-    "status": "CODE_GREEN_AWAITING_DEPLOYMENT_CAPACITY"
-  },
-  "quaternaryPriority": {
     "name": "RAILWAY_STAGING_IAC_MIGRATION_REAL_CLI_PREVIEW",
     "status": "REQUIRES_LOCAL_OR_CI_RAILWAY_CLI_AUTH"
   },
@@ -180,14 +162,15 @@
     "RAILWAY_DEPLOYMENT_RESOURCE_OR_AGENT_ALLOCATION_BLOCKS_NEW_STAGING_RELEASES",
     "RAILWAY_STAGING_CAC_DEPRECATED_REQUIRES_REAL_CLI_MIGRATION_PLAN",
     "US_PROVIDER_LICENSES_AND_CREDENTIALS",
-    "EU_PROVIDER_LICENSES_AND_CREDENTIALS",
+    "EU_CBOE_INDEX_LICENSE",
+    "EU_TWELVE_DATA_KEY_AND_CBOE_EUROPE_ENTITLEMENT",
     "CN_HK_LICENSED_DATA_PRODUCTS",
-    "JP_TSE_MARKET_INFORMATION_LICENSE",
+    "JP_TSE_MARKET_INFORMATION_LICENSE_AND_JQUANTS_PLAN",
     "KR_KRX_OPENAPI_KEY_AND_SERVICE_APPROVAL"
   ],
   "continuity": {
     "proactiveChatHandoff": true,
-    "conditionWatchForEuDeploy": true,
+    "conditionWatchForLatestGreenDeploy": true,
     "rule": "At every material checkpoint, update FOXYYA_STATE.json and FOXYYA_NEXT.md. Revalidate GitHub and Railway truth before execution; never infer deployment health from branch HEAD, CI, dashboard config, agent predictions, or source metadata alone."
   }
 }
