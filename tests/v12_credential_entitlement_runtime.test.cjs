@@ -109,8 +109,8 @@ test('FINRA credentialed public source requires credential but not entitlement',
 });
 
 test('review and decision required sources stay blocked before any credential or entitlement lookup',()=>{
-  const h=runtime({secrets:{'hkex-marketplace':'secret','us-consensus-revisions':'secret'},entitlements:{'hkex-marketplace':true,'us-consensus-revisions':true}});
-  const review=h.runtime.evaluate('hkex-marketplace');
+  const h=runtime({secrets:{'hkex-eod-summary':'secret','us-consensus-revisions':'secret'},entitlements:{'hkex-eod-summary':true,'us-consensus-revisions':true}});
+  const review=h.runtime.evaluate('hkex-eod-summary');
   const decision=h.runtime.evaluate('us-consensus-revisions');
   assert.equal(review.access,'BLOCKED');
   assert.equal(review.reason,'SOURCE_REVIEW_REQUIRED');
