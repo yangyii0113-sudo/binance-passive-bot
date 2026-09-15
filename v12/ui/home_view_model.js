@@ -118,6 +118,23 @@
     return value;
   }
 
+  function decisionReadinessView(coverage){
+    if(!coverage)return null;
+    const out={};
+    for(const [market,row] of Object.entries(coverage.markets)){
+      if(!object(row))continue;
+      out[market]=Object.freeze({
+        coverageStatus:text(row.coverageStatus)?row.coverageStatus:'UNAVAILABLE',
+        directionReadiness:text(row.directionReadiness)?row.directionReadiness:'NOT_READY',
+        researchReadiness:text(row.researchReadiness)?row.researchReadiness:'NOT_READY',
+        rankingEligibility:text(row.rankingEligibility)?row.rankingEligibility:'NOT_ELIGIBLE',
+        missingCapabilities:Object.freeze(Array.isArray(row.missingCapabilities)?[...row.missingCapabilities]:[]),
+        blockers:Object.freeze(Array.isArray(row.blockers)?[...row.blockers]:[])
+      });
+    }
+    return Object.freeze(out);
+  }
+
   function eventPriority(row){return finite(row?.impactScore)?row.impactScore:(EVENT_PRIORITY[String(row?.impact||'UNAVAILABLE').toUpperCase()]??0);}
 
   function focusDisplayRow(row){
@@ -138,15 +155,31 @@
     return freezeList(unique);
   }
 
-  function ensureResearchRanking(usRows,twRows,events,asOf){
+  function marketRankingEligibility(coverage,market){
+    const value=coverage?.markets?.[market]?.rankingEligibility;
+    return text(value)?value:null;
+  }
+
+  function clearRanking(row){
+    return Object.freeze({...row,rank:null,researchScore:null,priority:'',rankingReasons:Object.freeze([]),rankingComponents:Object.freeze({}),rankingPurpose:'',catalystEventId:null});
+  }
+
+  function ensureResearchRanking(usRows,twRows,events,asOf,coverage){
     const all=[...usRows,...twRows];
-    const alreadyRanked=all.length&&all.every(row=>Number.isInteger(row.rank)&&row.rank>0&&finite(row.researchScore)&&text(row.priority));
-    let ranked=all;
-    if(!alreadyRanked&&Ranking&&typeof Ranking.rankResearch==='function'){
-      ranked=Ranking.rankResearch(all,events,asOf).map(item=>Object.freeze({...item.source,rank:item.rank,researchScore:item.researchScore,priority:item.priority,rankingReasons:item.reasons,rankingComponents:item.components,rankingPurpose:item.rankingPurpose,catalystEventId:item.catalystEventId}));
+    const eligible=[];
+    const ineligible=[];
+    for(const row of all){
+      if(marketRankingEligibility(coverage,row.market)==='NOT_ELIGIBLE')ineligible.push(clearRanking(row));
+      else eligible.push(row);
     }
+    const alreadyRanked=eligible.length&&eligible.every(row=>Number.isInteger(row.rank)&&row.rank>0&&finite(row.researchScore)&&text(row.priority));
+    let ranked=eligible;
+    if(!alreadyRanked&&Ranking&&typeof Ranking.rankResearch==='function'){
+      ranked=Ranking.rankResearch(eligible,events,asOf).map(item=>Object.freeze({...item.source,rank:item.rank,researchScore:item.researchScore,priority:item.priority,rankingReasons:item.reasons,rankingComponents:item.components,rankingPurpose:item.rankingPurpose,catalystEventId:item.catalystEventId}));
+    }
+    const combined=[...ranked,...ineligible];
     const byRank=(a,b)=>(a.rank??Number.MAX_SAFE_INTEGER)-(b.rank??Number.MAX_SAFE_INTEGER)||String(a.instrumentId).localeCompare(String(b.instrumentId));
-    return Object.freeze({US:freezeList(ranked.filter(row=>row.market==='US').sort(byRank)),TW:freezeList(ranked.filter(row=>row.market==='TW').sort(byRank))});
+    return Object.freeze({US:freezeList(combined.filter(row=>row.market==='US').sort(byRank)),TW:freezeList(combined.filter(row=>row.market==='TW').sort(byRank))});
   }
 
   function buildHomeViewModel(input){
@@ -157,17 +190,18 @@
     const marketPulse=freezeList(MARKET_ORDER.map(market=>pulseRow(market,Array.isArray(home.marketPulse)?home.marketPulse:[])));
     const earlyTrend=freezeList((Array.isArray(home.earlyTrend)?home.earlyTrend:[]).map(earlyTrendRow));
     const events=freezeList((Array.isArray(home.events)?home.events:[]).map(eventRow));
+    const marketCoverage=marketCoverageView(read.marketCoverage);
+    const decisionReadiness=decisionReadinessView(marketCoverage);
     const rawUs=(Array.isArray(opportunitySource.US)?opportunitySource.US:[]).map(row=>equityOpportunity('US',row));
     const rawTw=(Array.isArray(opportunitySource.TW)?opportunitySource.TW:[]).map(row=>equityOpportunity('TW',row));
-    const ranked=ensureResearchRanking(rawUs,rawTw,events,read.asOf);
+    const ranked=ensureResearchRanking(rawUs,rawTw,events,read.asOf,marketCoverage);
     const opportunities=Object.freeze({CRYPTO:freezeList((Array.isArray(opportunitySource.CRYPTO)?opportunitySource.CRYPTO:[]).map(cryptoOpportunity)),US:ranked.US,TW:ranked.TW});
     const calendar=freezeList(events.filter(row=>row.kind==='CALENDAR'));
     const news=freezeList(events.filter(row=>row.kind==='NEWS'));
     const todayFocus=focusRows(home.todayFocus,events);
     const researchPerformance=researchPerformanceView(read.researchPerformance,read.asOf);
-    const marketCoverage=marketCoverageView(read.marketCoverage);
 
-    return Object.freeze({schemaVersion:'foxyya-home-view-model/1',asOf:read.asOf,providerDiagnostics:read.providerDiagnostics||null,marketCoverage,regions,marketPulse,earlyTrend,opportunities,events,calendar,news,todayFocus,positions:positionsView(read.cryptoExecution),tradingResults:tradingResultsView(read.cryptoResults),researchPerformance,researchOnly:true,executionWrite:false});
+    return Object.freeze({schemaVersion:'foxyya-home-view-model/1',asOf:read.asOf,providerDiagnostics:read.providerDiagnostics||null,marketCoverage,decisionReadiness,regions,marketPulse,earlyTrend,opportunities,events,calendar,news,todayFocus,positions:positionsView(read.cryptoExecution),tradingResults:tradingResultsView(read.cryptoResults),researchPerformance,researchOnly:true,executionWrite:false});
   }
 
   return Object.freeze({REGION_ORDER,MARKET_ORDER,buildHomeViewModel});
