@@ -1,17 +1,22 @@
 {
   "schema": "foxyya-ai-continuity-state/1",
-  "updatedAt": "2026-09-15T09:42:00+08:00",
+  "updatedAt": "2026-09-15T10:20:00+08:00",
   "resumeInstruction": "接續 FOXYYA，先讀 docs/ai/FOXYYA_STATE.json、docs/ai/FOXYYA_NEXT.md、docs/ai/FOXYYA_CONTEXT.md，重新驗證 GitHub/Railway 後直接執行；Production Execution V2 不得修改。",
   "repository": {
     "fullName": "yangyii0113-sudo/binance-passive-bot",
     "branch": "v12-platform-completion-20260910",
-    "branchHead": "e0cfa2726cfd3220c5eb770e0a52343a4faccd79",
+    "branchHeadBeforeContinuity": "dc56501497bf1095ad0509678889197fe6762f44",
     "storageRecoveryCodeCommit": "008a479aef47e9bbdd27099842e698c9faeb6790",
     "nasdaqLicenseRequiredCommit": "658037982ef75400fa3acdb23fc22c11765af88b",
     "cftcCanonicalEntityFixCommit": "219fba96509b24e2d2bbbc397acab3dea440ae50",
-    "lastFullyGreenCodeCommit": "c547909ad9baea7cbdd13416b82976b86b5b685a",
-    "lastFullyGreenCiRunId": 34872550419,
-    "deployedSnapshotCommit": "c547909ad9baea7cbdd13416b82976b86b5b685a"
+    "usVolatilityProviderDecisionCommit": "360768ac3bb0ee077bdeb2ab02da03a918fc98ed",
+    "usVolatilityAdapterCommit": "d4c93a1d848a0d8d96c2878d9e20ed9cb931e988",
+    "usVolatilityEntitlementLoaderCommit": "23cc45fa62741178b531e22e509acb722acaf7fe",
+    "usVolatilityBindingCommit": "5f2e55c7a414c47a9cbf15826a8413c828e55f2a",
+    "usVolatilityPipelineCommit": "6fff2b8cb29eadf527ee2a45e6f4b90220b59389",
+    "lastFullyGreenCodeCommit": "dc56501497bf1095ad0509678889197fe6762f44",
+    "lastFullyGreenCiRunId": 34920432253,
+    "deployedSnapshotCommit": "dc56501497bf1095ad0509678889197fe6762f44"
   },
   "safety": {
     "productionPaperOnly": true,
@@ -29,9 +34,9 @@
     "researchStaging": {
       "serviceId": "01d2c000-5a1d-4443-a80e-4d110a9d84a4",
       "serviceName": "foxyya-v12-staging",
-      "acceptedDeploymentId": "4798edd3-7ef6-4dbb-93ce-adb6331aa036",
+      "acceptedDeploymentId": "6cedb435-a175-4cb8-85bd-ffa1b70a5fd3",
       "acceptedDeploymentStatus": "SUCCESS",
-      "deployedCommit": "c547909ad9baea7cbdd13416b82976b86b5b685a",
+      "deployedCommit": "dc56501497bf1095ad0509678889197fe6762f44",
       "runtime": "NODE_V12",
       "researchOnly": true,
       "executionWrite": false,
@@ -41,34 +46,35 @@
       "primaryVolumeMount": "/data",
       "primaryVolumeSizeMB": 500,
       "latestBootstrap": {
-        "publishedAtUtc": "2026-09-14T17:11:36.396882681Z",
-        "cryptoOpportunities": 350,
+        "publishedAtUtc": "2026-09-15T02:20:15.420935706Z",
+        "cryptoOpportunities": 342,
         "twOpportunities": 2,
         "usOpportunities": 1,
         "eventCount": 40,
-        "twForwardSamples": 5,
+        "twForwardSamples": 6,
         "usForwardStatus": "WAITING_LEGAL_DATA_SOURCE"
       },
-      "readinessAcceptance": {
-        "status": "LIVE_ACCEPTED",
-        "requiredScheduledCycles": 3,
-        "successfulCyclesObserved": 18,
-        "failedCyclesObserved": 0,
-        "consecutiveSuccesses": 18,
+      "liveValidation": {
+        "buildRevision": "dc56501497bf1095ad0509678889197fe6762f44",
+        "successfulCycles": 1,
+        "failedCycles": 0,
         "lastFailureAt": null,
         "lastErrorCode": null,
-        "lastPublishedAt": 1789436501934,
-        "lastSuccessAt": 1789436502167,
-        "publicationTimestampsIncreasing": true,
-        "sameDeployment": true
+        "homeStatus": 200,
+        "lineageTraceStatus": 200,
+        "lineageSourceCount": 3,
+        "lineageObservationCount": 112,
+        "coverageProbe": "PASSED",
+        "marketCount": 7,
+        "storageErrorLogs": 0,
+        "status": "LIVE_GREEN_INITIAL_CYCLE"
       },
-      "resourceHealth12h": {
-        "cpuCurrent": 0.004451313333333333,
-        "memoryCurrentGB": 0.04004864,
+      "resourceHealth": {
+        "cpuCurrent": 0.038034,
+        "memoryCurrentGB": 0.048283648,
         "memoryLimitGB": 0.99999744,
-        "memoryMaxGB": 0.124860416,
-        "diskCurrentGB": 0.058949632,
-        "diskMaxGB": 0.058949632,
+        "memoryMaxGBLastHour": 0.119959552,
+        "diskCurrentGB": 0.059154432,
         "status": "HEALTHY"
       }
     },
@@ -86,8 +92,8 @@
     },
     "legacyConfigPrecedence": {
       "status": "OPEN_PLATFORM_BLOCKER",
-      "detail": "Root railway.toml has previously overridden source-trigger Staging builds to the Production Python Dockerfile. Current service dashboard fields are correct, but permanent Config-as-Code migration is not verified.",
-      "safeWorkaround": "Accept only deployments whose build/runtime prove node:22-alpine and /ready.buildRevision equals the tested commit; native redeploy may be used only after validating the captured snapshot.",
+      "latestProof": "Source deployment 936b7ba1-4544-451e-9aa5-d212ccb940e3 captured dc565014 but built python:3.12-slim and was rejected; native redeploy 6cedb435 reused the same snapshot with v12/staging/Dockerfile and node:22-alpine and was accepted.",
+      "safeWorkaround": "Accept only deployments whose build/runtime prove node:22-alpine and /ready build revision equals the tested commit; native redeploy only after validating the captured source snapshot.",
       "permanentFix": "Authenticated Railway CLI scoped migration for foxyya-v12-staging only; no unscoped migration and no root config deletion."
     }
   },
@@ -106,17 +112,10 @@
     "schemaVersion": "foxyya-market-coverage/1",
     "markets": ["CRYPTO", "US", "TW", "CN_HK", "JP", "KR", "EU"],
     "liveValidation": {
-      "deploymentId": "4798edd3-7ef6-4dbb-93ce-adb6331aa036",
+      "deploymentId": "6cedb435-a175-4cb8-85bd-ffa1b70a5fd3",
       "homeStatus": 200,
       "marketCount": 7,
-      "previewStatus": 200,
-      "coverageCssStatus": 200,
-      "rendererStatus": 200,
-      "mobileCss": true,
-      "lineageHomeStatus": 200,
       "lineageTraceStatus": 200,
-      "lineageSourceCount": 3,
-      "lineageObservationCount": 112,
       "researchOnly": true,
       "executionWrite": false
     },
@@ -154,6 +153,24 @@
       "liveActivation": false,
       "reason": "NO_STAGING_API_KEY_CONFIGURED"
     },
+    "usVolatilityContext": {
+      "status": "IMPLEMENTED_CREDENTIAL_AND_ENTITLEMENT_GATED_LIVE_FAIL_CLOSED",
+      "providerId": "twelve-data-us-volatility",
+      "provider": "Twelve Data Global Indices API",
+      "capability": "VOLATILITY_CONTEXT",
+      "canonicalDatasetId": "TWELVEDATA:VOLATILITY:US",
+      "canonicalEntityPattern": "INDEX:US:VOLATILITY:<symbol>",
+      "serverOnlyCredential": true,
+      "entitlementRequired": true,
+      "adapterImplemented": true,
+      "bindingImplemented": true,
+      "runtimePipelineWiringImplemented": true,
+      "liveActivation": false,
+      "liveBlockers": ["API_KEY_REQUIRED", "ENTITLEMENT_REQUIRED"],
+      "zeroNetworkWithoutCredentialAndEntitlement": true,
+      "liveProviderDatasetObserved": false,
+      "reason": "NO_VERIFIED_STAGING_KEY_AND_ENTITLEMENT"
+    },
     "usIndexBreadthResolution": {
       "status": "EXTERNAL_LICENSE_REQUIRED",
       "sourceId": "nasdaq-trader-daily",
@@ -166,29 +183,32 @@
       "LICENSE_REQUIRED:nasdaq-trader-daily:INDEX",
       "LICENSE_REQUIRED:nasdaq-trader-daily:MARKET_BREADTH",
       "API_KEY_REQUIRED:twelve-data-us-quote:QUOTE",
-      "PROVIDER_DECISION_REQUIRED:us-options-analytics:VOLATILITY_CONTEXT"
+      "API_KEY_REQUIRED:twelve-data-us-volatility:VOLATILITY_CONTEXT",
+      "ENTITLEMENT_REQUIRED:twelve-data-us-volatility:VOLATILITY_CONTEXT"
     ]
   },
   "currentCi": {
-    "codeHead": "c547909ad9baea7cbdd13416b82976b86b5b685a",
-    "runId": 34872550419,
+    "codeHead": "dc56501497bf1095ad0509678889197fe6762f44",
+    "runId": 34920432253,
     "conclusion": "success",
-    "v12Tests": "730/730",
-    "existingJsRegressions": "16/16",
-    "pythonRegression": "1/1 PASS",
+    "v12Tests": "748/748",
+    "existingJsRegressions": "PASS",
+    "pythonRegression": "PASS",
     "productionSafetyGate": "PASS",
     "containerSmoke": "PASS",
     "productionReleaseAuthorized": false,
-    "phase": "LIVE_ACCEPTED"
+    "phase": "LIVE_GREEN_FAIL_CLOSED"
   },
   "activePriority": {
-    "name": "RAILWAY_STAGING_LEGACY_CONFIG_MIGRATION",
-    "status": "EXTERNAL_CLI_AUTH_REQUIRED"
-  },
-  "secondaryPriority": {
-    "name": "US_VOLATILITY_CONTEXT_PROVIDER_DECISION",
+    "name": "EU_INDEX_MARKET_BREADTH_PROVIDER_DECISION",
     "status": "READY_TO_RESEARCH"
   },
+  "externalActivationBlockers": [
+    "RAILWAY_STAGING_LEGACY_CONFIG_MIGRATION_REQUIRES_AUTHENTICATED_CLI",
+    "US_QUOTE_REQUIRES_REAL_TWELVE_DATA_STAGING_KEY",
+    "US_VOLATILITY_REQUIRES_REAL_TWELVE_DATA_STAGING_KEY_AND_ENTITLEMENT",
+    "US_INDEX_AND_BREADTH_REQUIRE_VALID_LICENSED_DATA_PATH"
+  ],
   "continuity": {
     "proactiveChatHandoff": true,
     "rule": "At every material checkpoint, update FOXYYA_STATE.json and FOXYYA_NEXT.md. Revalidate GitHub and Railway truth before execution; never infer deployment health from branch HEAD or CI alone."
