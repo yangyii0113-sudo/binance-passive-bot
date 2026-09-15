@@ -1,12 +1,12 @@
 {
   "schema": "foxyya-ai-continuity-state/1",
-  "updatedAt": "2026-09-15T15:51:18+08:00",
+  "updatedAt": "2026-09-15T15:55:00+08:00",
   "resumeInstruction": "接續 FOXYYA，先讀 docs/ai/FOXYYA_STATE.json、docs/ai/FOXYYA_NEXT.md、docs/ai/FOXYYA_CONTEXT.md，重新驗證 GitHub/Railway 後直接執行；Production Execution V2 不得修改。",
   "repository": {
     "fullName": "yangyii0113-sudo/binance-passive-bot",
     "branch": "v12-platform-completion-20260910",
     "branchHeadBeforeContinuity": "d659c8947524f8bb20139f7be36121d55316acfc",
-    "branchHeadAtCheckpoint": "07a7279741717efee3d11cff5872407d32d92313",
+    "branchHeadAtCheckpoint": "4e73ecaee4c554e4d4baec8844f3354797709900",
     "storageRecoveryCodeCommit": "008a479aef47e9bbdd27099842e698c9faeb6790",
     "nasdaqLicenseRequiredCommit": "658037982ef75400fa3acdb23fc22c11765af88b",
     "cftcCanonicalEntityFixCommit": "219fba96509b24e2d2bbbc397acab3dea440ae50",
@@ -218,6 +218,47 @@
       },
       "readinessPromotion": "NONE",
       "liveApiWiring": "NONE_IN_THIS_STEP"
+    },
+    "cnHkProviderResolution": {
+      "status": "RESEARCH_RESOLVED_READY_FOR_BOUNDED_CODE_DESIGN",
+      "readinessPromotion": "NONE",
+      "scrapingAllowed": false,
+      "hkHistoricalPrice": {
+        "recommendedSourceId": "hkex-eod-summary",
+        "provider": "HKEX Data Marketplace End of Day / End of Session Summary",
+        "capability": "HISTORICAL_PRICE",
+        "classification": ["DATA_PRODUCT_REQUIRED", "LICENSE_REQUIRED"],
+        "delivery": ["S3", "SFTP", "DIRECT_DOWNLOAD_OR_EMAIL_PRODUCT_DEPENDENT"],
+        "marketScope": "HKEX_MAIN_BOARD_GEM"
+      },
+      "hkAndChinaIndex": {
+        "recommendedSourceId": "hkex-omd-index",
+        "provider": "HKEX OMD Index Datafeed",
+        "capability": "INDEX",
+        "classification": ["LICENSE_REQUIRED"],
+        "thirdPartyIndexLicenceRequired": true,
+        "examples": ["Hang Seng family", "CSI family", "SSE Composite family"]
+      },
+      "mainlandShanghai": {
+        "recommendedSourceId": "sse-market-data",
+        "provider": "Shanghai Stock Exchange official market data interfaces",
+        "capabilities": ["INDEX", "MARKET_BREADTH"],
+        "classification": ["LICENSE_REVIEW_REQUIRED", "DATA_PRODUCT_REQUIRED"],
+        "publicWebPageNotAnApprovedServerFeed": true
+      },
+      "mainlandShenzhen": {
+        "recommendedSourceId": "szse-ssic-market-data",
+        "provider": "Shenzhen Securities Information Co. / SZSE Market Data Services",
+        "capabilities": ["INDEX", "MARKET_BREADTH"],
+        "classification": ["LICENSE_REQUIRED", "DATA_PRODUCT_REQUIRED"],
+        "ssicExclusiveDistributionRole": true,
+        "publicWebPageNotAnApprovedServerFeed": true
+      },
+      "stockConnect": {
+        "role": "CONFIRMATION_ONLY",
+        "canSubstituteMarketBreadth": false
+      },
+      "recommendedNextCodeStep": "Split generic hkex-marketplace into capability-specific fail-closed catalog sources and replace CN_HK NOT_IMPLEMENTED direction blockers with explicit license/data-product blockers; do not add live network loaders yet."
     }
   },
   "currentCi": {
@@ -237,12 +278,12 @@
     "status": "CONDITION_WATCH_ACTIVE_EXTERNAL_RESOURCE_BLOCKED"
   },
   "secondaryPriority": {
-    "name": "RAILWAY_STAGING_IAC_MIGRATION_REAL_CLI_PREVIEW",
-    "status": "REQUIRES_LOCAL_OR_CI_RAILWAY_CLI_AUTH"
+    "name": "CN_HK_PROVIDER_SPLIT_BOUNDED_CODE_DESIGN",
+    "status": "RESEARCH_COMPLETE_READY_FOR_TDD_AFTER_DESIGN_APPROVAL"
   },
   "tertiaryPriority": {
-    "name": "EU_BREADTH_CREDENTIAL_ENTITLEMENT_WIRING",
-    "status": "WAIT_UNTIL_PROVIDER_SPLIT_LIVE_ACCEPTED"
+    "name": "RAILWAY_STAGING_IAC_MIGRATION_REAL_CLI_PREVIEW",
+    "status": "REQUIRES_LOCAL_OR_CI_RAILWAY_CLI_AUTH"
   },
   "externalActivationBlockers": [
     "RAILWAY_DEPLOYMENT_RESOURCE_OR_AGENT_ALLOCATION_BLOCKS_EU_SPLIT_DEPLOYMENT",
@@ -251,7 +292,10 @@
     "US_VOLATILITY_REQUIRES_REAL_TWELVE_DATA_STAGING_KEY_AND_ENTITLEMENT",
     "US_INDEX_AND_BREADTH_REQUIRE_VALID_LICENSED_DATA_PATH",
     "EU_INDEX_REQUIRES_CBOE_LICENSE",
-    "EU_BREADTH_REQUIRES_TWELVE_DATA_KEY_AND_CBOE_EUROPE_ENTITLEMENT"
+    "EU_BREADTH_REQUIRES_TWELVE_DATA_KEY_AND_CBOE_EUROPE_ENTITLEMENT",
+    "CN_HK_HISTORICAL_PRICE_REQUIRES_HKEX_DATA_PRODUCT_LICENSE",
+    "CN_HK_INDEX_REQUIRES_INDEX_DATA_LICENSE",
+    "CN_HK_MAINLAND_BREADTH_REQUIRES_SSE_SZSE_AUTHORIZED_DATA_PATH"
   ],
   "continuity": {
     "proactiveChatHandoff": true,
