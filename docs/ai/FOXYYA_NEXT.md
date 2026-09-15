@@ -1,6 +1,6 @@
 # FOXYYA v12 — Next Engineering Actions
 
-Updated: 2026-09-15 15:39 +08:00
+Updated: 2026-09-15 15:51 +08:00
 
 ## Research Staging — current accepted live checkpoint
 
@@ -11,127 +11,89 @@ The currently accepted live Research Staging deployment remains unchanged and he
 - Runtime: Node/v12, `RESEARCH_ONLY=true`, `EXECUTION_WRITE=false`.
 - Healthcheck: `/ready`.
 - Production Execution V2 was not modified.
+- Current Staging resource usage is low: ~0.040 GB RAM / 1 GB limit, disk ~0.060 GB; backup helper RAM ~0.018 GB. The current deploy blocker is not a FOXYYA runtime memory/disk saturation problem.
 
-Do not claim the EU provider split is live yet. The new code is fully green but Railway has not created a deployment for it because the workspace resource quota is exhausted.
+## EU INDEX + MARKET_BREADTH provider split — CODE GREEN / LIVE DEPLOYMENT PENDING
 
-## EU INDEX + MARKET_BREADTH provider split — CODE GREEN / DEPLOYMENT BLOCKED
+Exact fully-green product commit:
 
-Approved provider split is implemented in code and fully tested.
-
-### Exact release candidate
-
-- Green commit: `d659c8947524f8bb20139f7be36121d55316acfc`.
-- GitHub Actions run: `34942196866` — SUCCESS.
-- v12 Node tests: 750 / 750 passed.
-- existing JavaScript regressions: 16 / 16 passed.
-- Python regression: 1 / 1 PASS.
+- `d659c8947524f8bb20139f7be36121d55316acfc`
+- GitHub Actions run `34942196866` — SUCCESS.
+- v12 Node: 750 / 750 PASS.
+- existing JavaScript regressions: 16 / 16 PASS.
+- Python regression: PASS.
 - Production safety gate: PASS.
-- isolated Staging + backup container smoke: PASS.
+- Staging + backup container smoke: PASS.
 - Production release authorized: false.
 
-### TDD evidence
+EU catalog/Coverage truth in the green code:
 
-RED commit:
+- `cboe-europe-index` → EU `INDEX` → `LICENSE_REQUIRED`, `liveEligible=false`, pan-European index scope.
+- `twelve-data-eu-breadth` → EU `MARKET_BREADTH` → `KEY_REQUIRED`, server-only credential, entitlement required, `liveEligible=false`, Cboe Europe pan-European equity scope.
+- Generic `eu-equity-realtime` is retired.
+- This step does not make any live EU provider request and does not promote EU readiness.
 
-- `c3be271cd295f9a3bce09640e615999e5947b804`
-- 750 tests / 748 passed / 2 expected failures.
-- Both failures were only the new EU provider-decision expectations.
-
-GREEN provider implementation:
-
-- `4074e16758f9f7f19aaf4556fcc1b5afb2d3141c`
-- Retired generic `eu-equity-realtime`.
-- Added `cboe-europe-index` for EU `INDEX`.
-- Added `twelve-data-eu-breadth` for EU `MARKET_BREADTH`.
-
-Four stale tests still referred to the retired generic source. They were updated without weakening access control or safety semantics, producing final green commit `d659c894...`.
-
-### New EU source truth
-
-`cboe-europe-index`:
-
-- Provider: Cboe Europe Indices / Cboe Global Indices Feed.
-- Capability: `INDEX`.
-- Market: EU.
-- Status: `LICENSE_REQUIRED`.
-- `liveEligible=false`.
-- Market scope: `PAN_EUROPE_INDEX`.
-- No credential can bypass the licensing gate.
-
-`twelve-data-eu-breadth`:
-
-- Provider: Twelve Data × Cboe Europe Equities.
-- Capability: `MARKET_BREADTH`.
-- Market: EU.
-- Status: `KEY_REQUIRED`.
-- server-only credential required.
-- Cboe Europe entitlement required.
-- `liveEligible=false` until a verified provider path exists.
-- Market scope: `PAN_EUROPE_CBOE_EQUITIES`.
-
-This step adds only catalog/Coverage blocker semantics. It does NOT add live EU provider requests and does NOT promote EU readiness.
-
-### Expected live EU Coverage after deployment
-
-EU must remain:
+Expected live EU Coverage after deployment remains fail-closed:
 
 - `coverageStatus=BLOCKED`
 - `directionReadiness=PARTIAL`
 - `researchReadiness=NOT_READY`
 - `rankingEligibility=NOT_ELIGIBLE`
-- available capability includes `MACRO`
-- missing capabilities: `INDEX`, `MARKET_BREADTH`
+- `MACRO` available
+- missing `INDEX`, `MARKET_BREADTH`
+- blocker `LICENSE_REQUIRED:INDEX:cboe-europe-index`
+- blocker `API_KEY_REQUIRED:MARKET_BREADTH:twelve-data-eu-breadth`
+- blocker `ENTITLEMENT_REQUIRED:MARKET_BREADTH:twelve-data-eu-breadth`
+- no `PROVIDER_DECISION_REQUIRED` blocker for EU breadth.
 
-Expected blockers:
+## Current deploy blocker — external Railway deployment resource/agent limit
 
-- `LICENSE_REQUIRED:INDEX:cboe-europe-index`
-- `API_KEY_REQUIRED:MARKET_BREADTH:twelve-data-eu-breadth`
-- `ENTITLEMENT_REQUIRED:MARKET_BREADTH:twelve-data-eu-breadth`
-
-There must be no `PROVIDER_DECISION_REQUIRED` blocker remaining for EU breadth.
-
-## Current deployment blocker — Railway workspace resource quota
-
-Attempts to deploy exact commit `d659c894...` on the existing `foxyya-v12-staging` service were rejected before a deployment was created with:
+Three exact deployment attempts for `d659c894...` were rejected before a deployment ID was created with:
 
 `You have used all your available resources`
 
-This occurred twice. Stop retrying until the Railway workspace quota/capacity clears.
+Do not classify this as application OOM, storage high-water, or GitHub CI failure. Current live workloads remain SUCCESS and resource usage is low. Railway documentation also states that exhausted billing credits stop workloads; that is not the currently observed state. Treat the precise account-side cause as an external Railway deployment resource/agent allocation blocker unless dashboard billing/plan data proves otherwise.
 
-Important distinctions:
+An hourly condition watch is enabled. While the blocker remains, it must not spam deployment retries or notifications. When deployment capacity is available, it should attempt the exact green commit once and run the full live acceptance below.
 
-- This is not a GitHub CI failure.
-- This is not an application runtime failure.
-- This is not the known Python-image Config-as-Code bug because no new source deployment was created.
-- The currently accepted deployment `6cedb435...` remains live and healthy.
-- No Production Execution V2 change occurred.
+## Exact live acceptance once deployment capacity returns
 
-### Exact next deployment action once quota clears
+1. Revalidate branch ancestry. Continuity/docs commits may be newer, but product code must still equal `d659c894...` or a newly fully-green descendant.
+2. Target the existing `foxyya-v12-staging` service only; do not create a new service.
+3. Inspect source-trigger build logs before acceptance.
+4. If it uses root Production `python:3.12-slim`, reject the deployment as INVALID. After confirming the captured source snapshot is the intended green code, perform at most one native redeploy of that snapshot.
+5. Accepted build must prove `v12/staging/Dockerfile` + `node:22-alpine`.
+6. Verify `/ready`, `RESEARCH_ONLY=true`, `EXECUTION_WRITE=false`.
+7. Wait for initial bootstrap, lineage trace probe and seven-market Coverage probe.
+8. Verify the exact EU blockers listed above.
+9. Confirm zero `DURABLE_WRITE_FAILED`, zero `LINEAGE_JOURNAL_CORRUPT`, and zero research refresh failures.
+10. Only then mark the EU provider split `LIVE_GREEN` and update continuity.
 
-1. Revalidate branch ancestry and confirm the release candidate is still the latest fully-green descendant. If only continuity/docs commits are newer, `d659c894...` product code remains valid.
-2. Trigger a source snapshot for the existing `foxyya-v12-staging` service only.
-3. Require captured product code to contain `d659c894...` or a fully-green descendant with no later product changes.
-4. Inspect build logs before acceptance.
-5. If source-trigger builds `python:3.12-slim`, reject it as INVALID. Only after confirming the captured snapshot is the intended green commit, perform exactly one native redeploy so service-level `v12/staging/Dockerfile` is honored.
-6. Accepted build must prove `v12/staging/Dockerfile` + `node:22-alpine`.
-7. Verify `/ready`, `RESEARCH_ONLY=true`, `EXECUTION_WRITE=false`.
-8. Wait for initial bootstrap, lineage trace probe and seven-market Coverage probe.
-9. Verify EU blocker truth exactly as listed above.
-10. Search accepted-deployment logs for zero `DURABLE_WRITE_FAILED`, zero `LINEAGE_JOURNAL_CORRUPT`, and zero research refresh failures.
-11. Only then change EU provider split status to `LIVE_GREEN`.
+## Railway Config-as-Code precedence — migration path corrected
 
-## Railway legacy Config-as-Code precedence — OPEN PLATFORM BLOCKER
+Railway's current official documentation states that `railway.json` / `railway.toml` Config as Code is deprecated and existing legacy services stop reading it on 2026-12-01. Legacy CaC still overrides dashboard values during deploy today.
 
-The existing source-trigger precedence bug remains separate from the current workspace quota blocker.
+This matches FOXYYA's known conflict:
 
-Rules:
+- root `railway.toml` points to Production `Dockerfile`, `/health`, restart `ALWAYS`.
+- `v12/staging/railway.toml` points to `v12/staging/Dockerfile`, `/ready`, `ON_FAILURE`.
+- A previous correct source snapshot built the root Production Python image, proving the precedence risk is real.
 
-1. Never accept source deployment metadata alone.
-2. Require exact tested product code + Node 22/v12 build + `/ready` runtime evidence.
-3. Native redeploy only after validating the captured source snapshot.
-4. Permanent repair requires authenticated Railway CLI migration scoped only to `foxyya-v12-staging`.
-5. Never run an unscoped project migration or `--delete-files`.
-6. Do not modify Production Execution V2.
+Do not attempt to set the legacy Railway config-file path again; Railway now rejects that operation as deprecated.
+
+Correct migration target:
+
+- `.railway/railway.ts` using Railway Infrastructure as Code.
+- Railway CLI 5.42.1 or newer.
+- Single-service migration command: `railway config migrate --service foxyya-v12-staging` without `--apply` first.
+- Official docs state a single-service migrate writes a named `partial` export.
+- Follow with `railway config plan` and review the exact plan before apply.
+- Do not use `--delete-files` during first migration.
+- Do not delete root `railway.toml` or modify Production Execution V2 as part of a Staging-only migration.
+- Railway agent cannot actually execute the CLI or access a repo checkout; any predicted `railway.json` migration output from the agent is invalid evidence and must not be used.
+- The repository currently has no `.railway/` directory.
+
+Authoritative IaC SDK schema confirms low-level service build configuration supports `build.dockerfilePath`, but no hand-written migration should be applied until a real CLI `migrate/plan` confirms existing variables and the `/data` volume will be preserved without destructive changes.
 
 ## US Provider Coverage — parked external activations
 
@@ -146,17 +108,16 @@ CFTC `FUTURES_POSITIONING` remains LIVE_GREEN as weekly confirmation-only eviden
 
 ## After EU split live acceptance
 
-Do not start these before the provider split is live-accepted unless the Railway quota remains externally blocked for an extended period and a separate code-only task is deliberately chosen.
-
 Recommended order:
 
-1. EU breadth adapter + credential/entitlement-gated loader/binding/runtime wiring, following the same fail-closed pattern used for US Twelve Data sources.
-2. EU INDEX stays license-blocked until a valid Cboe data license exists.
-3. JP / KR activation after real key + entitlement requirements are available.
-4. CN_HK approved data-product path.
-5. Home decision-readiness UX refinement and direction eligibility integration.
-6. Activate US credential-gated providers only with real credentials/entitlements and independent live verification.
+1. EU breadth adapter + credential/entitlement-gated loader/binding/runtime wiring using the same fail-closed pattern as US Twelve Data sources.
+2. EU INDEX remains license-blocked until a valid Cboe license exists.
+3. Railway IaC migration may proceed only from a real CLI `migrate` + `plan` review, preferably with a project token scoped only to Research Staging if moved into GitHub Actions.
+4. JP / KR activation after real key + entitlement requirements are available.
+5. CN_HK approved data-product path.
+6. Home decision-readiness UX refinement and direction eligibility integration.
+7. Activate US credential-gated providers only with real credentials/entitlements and independent live verification.
 
 ## Handoff rule
 
-At every material checkpoint, update `FOXYYA_STATE.json` and this file. When the conversation becomes materially long, proactively checkpoint GitHub/Railway truth and prepare a fresh-chat continuation instruction before context exhaustion. Never conflate branch HEAD, CI success, Railway build metadata, deployment health, and live provider availability.
+At every material checkpoint, update `FOXYYA_STATE.json` and this file. When the conversation becomes materially long, proactively checkpoint GitHub/Railway truth and prepare a fresh-chat continuation instruction before context exhaustion. Never conflate branch HEAD, CI success, Railway build metadata, deployment health, provider availability, or an agent prediction with live evidence.
