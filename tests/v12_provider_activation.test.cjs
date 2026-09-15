@@ -29,7 +29,7 @@ test('review-required source cannot be activated by credential presence',()=>{
 });
 
 test('decision-required source stays blocked until catalog decision is changed',()=>{
-  const r=evaluateSource('eu-equity-realtime',{credentialSources:['eu-equity-realtime'],entitledSources:['eu-equity-realtime']});
+  const r=evaluateSource('us-consensus-revisions',{credentialSources:['us-consensus-revisions'],entitledSources:['us-consensus-revisions']});
   assert.equal(r.readiness,READINESS.DECISION_REQUIRED);
   assert.equal(r.canActivate,false);
   assert.equal(r.liveEligible,false);
