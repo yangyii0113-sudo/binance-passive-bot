@@ -3,7 +3,8 @@
 const {evaluateSource}=require('../providers/activation_gate.js');
 
 const CREDENTIALED_SOURCE_ORIGINS=Object.freeze({
-  'twelve-data-us-quote':'https://api.twelvedata.com'
+  'twelve-data-us-quote':'https://api.twelvedata.com',
+  'twelve-data-us-volatility':'https://api.twelvedata.com'
 });
 const SENSITIVE_QUERY_KEYS=new Set(['apikey','api_key','token','authorization','key','secret','access_token']);
 
@@ -25,7 +26,7 @@ function parseEndpoint(sourceId,endpoint){
   if(url.protocol!=='https:'||url.username||url.password)throw Error('SOURCE_ENDPOINT_FORBIDDEN');
   const origin=CREDENTIALED_SOURCE_ORIGINS[sourceId];
   if(!origin||url.origin!==origin)throw Error('SOURCE_ENDPOINT_FORBIDDEN');
-  if(sourceId==='twelve-data-us-quote'&&url.pathname!=='/quote')throw Error('SOURCE_ENDPOINT_FORBIDDEN');
+  if((sourceId==='twelve-data-us-quote'||sourceId==='twelve-data-us-volatility')&&url.pathname!=='/quote')throw Error('SOURCE_ENDPOINT_FORBIDDEN');
   for(const key of url.searchParams.keys())if(SENSITIVE_QUERY_KEYS.has(String(key).toLowerCase()))throw Error('SOURCE_SECRET_IN_URL_FORBIDDEN');
   return url;
 }
@@ -35,11 +36,16 @@ function readCredential(readSecret,sourceId){
   if(typeof value!=='string'||!value.trim())return {ok:false,reason:'CREDENTIAL_REQUIRED',secret:null};
   return {ok:true,reason:'READY',secret:value.trim()};
 }
+function hasEntitlement(readEntitlement,sourceId){
+  if(typeof readEntitlement!=='function')return false;
+  try{return readEntitlement(sourceId)===true;}catch(_error){return false;}
+}
 
-function createCredentialedSourceLoader({sourceId,endpoint,fetchImpl,readSecret,clock=Date.now}={}){
+function createCredentialedSourceLoader({sourceId,endpoint,fetchImpl,readSecret,readEntitlement,clock=Date.now}={}){
   if(typeof sourceId!=='string'||!sourceId)throw Error('SOURCE_ID_REQUIRED');
   if(typeof fetchImpl!=='function')throw Error('FETCH_REQUIRED');
   if(typeof readSecret!=='function')throw Error('SECRET_READER_REQUIRED');
+  if(readEntitlement!==undefined&&readEntitlement!==null&&typeof readEntitlement!=='function')throw Error('ENTITLEMENT_READER_INVALID');
   if(typeof clock!=='function')throw Error('CLOCK_REQUIRED');
   const url=parseEndpoint(sourceId,endpoint);
 
@@ -50,7 +56,12 @@ function createCredentialedSourceLoader({sourceId,endpoint,fetchImpl,readSecret,
 
     const credential=readCredential(readSecret,sourceId);
     if(!credential.ok)return unavailable(sourceId,credential.reason);
-    const ready=evaluateSource(sourceId,{credentialSources:[sourceId]});
+
+    let ready=evaluateSource(sourceId,{credentialSources:[sourceId]});
+    if(ready.readiness==='ENTITLEMENT_REQUIRED'){
+      if(!hasEntitlement(readEntitlement,sourceId))return unavailable(sourceId,'ENTITLEMENT_REQUIRED');
+      ready=evaluateSource(sourceId,{credentialSources:[sourceId],entitledSources:[sourceId]});
+    }
     if(ready.canActivate!==true)return unavailable(sourceId,ready.readiness);
 
     const fetchStartedAt=safeClock(clock);
