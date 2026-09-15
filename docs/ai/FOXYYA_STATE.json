@@ -1,11 +1,11 @@
 {
   "schema": "foxyya-ai-continuity-state/1",
-  "updatedAt": "2026-09-15T10:20:00+08:00",
+  "updatedAt": "2026-09-15T15:39:15+08:00",
   "resumeInstruction": "接續 FOXYYA，先讀 docs/ai/FOXYYA_STATE.json、docs/ai/FOXYYA_NEXT.md、docs/ai/FOXYYA_CONTEXT.md，重新驗證 GitHub/Railway 後直接執行；Production Execution V2 不得修改。",
   "repository": {
     "fullName": "yangyii0113-sudo/binance-passive-bot",
     "branch": "v12-platform-completion-20260910",
-    "branchHeadBeforeContinuity": "dc56501497bf1095ad0509678889197fe6762f44",
+    "branchHeadBeforeContinuity": "d659c8947524f8bb20139f7be36121d55316acfc",
     "storageRecoveryCodeCommit": "008a479aef47e9bbdd27099842e698c9faeb6790",
     "nasdaqLicenseRequiredCommit": "658037982ef75400fa3acdb23fc22c11765af88b",
     "cftcCanonicalEntityFixCommit": "219fba96509b24e2d2bbbc397acab3dea440ae50",
@@ -14,8 +14,11 @@
     "usVolatilityEntitlementLoaderCommit": "23cc45fa62741178b531e22e509acb722acaf7fe",
     "usVolatilityBindingCommit": "5f2e55c7a414c47a9cbf15826a8413c828e55f2a",
     "usVolatilityPipelineCommit": "6fff2b8cb29eadf527ee2a45e6f4b90220b59389",
-    "lastFullyGreenCodeCommit": "dc56501497bf1095ad0509678889197fe6762f44",
-    "lastFullyGreenCiRunId": 34920432253,
+    "euProviderSplitRedCommit": "c3be271cd295f9a3bce09640e615999e5947b804",
+    "euProviderSplitCodeCommit": "4074e16758f9f7f19aaf4556fcc1b5afb2d3141c",
+    "euProviderSplitGreenCommit": "d659c8947524f8bb20139f7be36121d55316acfc",
+    "lastFullyGreenCodeCommit": "d659c8947524f8bb20139f7be36121d55316acfc",
+    "lastFullyGreenCiRunId": 34942196866,
     "deployedSnapshotCommit": "dc56501497bf1095ad0509678889197fe6762f44"
   },
   "safety": {
@@ -70,13 +73,27 @@
         "status": "LIVE_GREEN_INITIAL_CYCLE"
       },
       "resourceHealth": {
-        "cpuCurrent": 0.038034,
         "memoryCurrentGB": 0.048283648,
         "memoryLimitGB": 0.99999744,
-        "memoryMaxGBLastHour": 0.119959552,
         "diskCurrentGB": 0.059154432,
         "status": "HEALTHY"
       }
+    },
+    "euProviderSplitDeployment": {
+      "targetCommit": "d659c8947524f8bb20139f7be36121d55316acfc",
+      "ciRunId": 34942196866,
+      "status": "GREEN_READY_TO_DEPLOY_EXTERNAL_RESOURCE_BLOCKED",
+      "deploymentCreated": false,
+      "attempts": 2,
+      "lastError": "You have used all your available resources",
+      "classification": "RAILWAY_WORKSPACE_RESOURCE_QUOTA",
+      "liveAcceptedVersionUnchanged": true,
+      "retryPolicy": "Do not retry repeatedly. Retry exact commit only after Railway workspace resource quota clears.",
+      "expectedLiveEuBlockers": [
+        "LICENSE_REQUIRED:cboe-europe-index:INDEX",
+        "API_KEY_REQUIRED:twelve-data-eu-breadth:MARKET_BREADTH",
+        "ENTITLEMENT_REQUIRED:twelve-data-eu-breadth:MARKET_BREADTH"
+      ]
     },
     "backupHelper": {
       "serviceId": "a6bf4e86-6d6d-4ad6-aaa6-14ff257b928a",
@@ -136,78 +153,80 @@
       "status": "LIVE_GREEN",
       "providerId": "cftc-cot",
       "datasetId": "CFTC:TFF:gpe5-46if:EQUITY_INDEX",
-      "liveProviderStatus": "AVAILABLE",
       "availableCapability": "FUTURES_POSITIONING",
-      "capabilityRole": "CONFIRMATION_ONLY",
-      "latency": "WEEKLY",
-      "changesUSCoverageReadiness": false
+      "capabilityRole": "CONFIRMATION_ONLY"
     },
     "usQuote": {
       "status": "IMPLEMENTED_CREDENTIAL_GATED",
       "providerId": "twelve-data-us-quote",
       "coverageBlocker": "API_KEY_REQUIRED",
-      "serverOnlyCredential": true,
-      "limitedVenue": true,
-      "nbbo": false,
-      "runtimeWiringImplemented": true,
-      "liveActivation": false,
-      "reason": "NO_STAGING_API_KEY_CONFIGURED"
+      "liveActivation": false
     },
     "usVolatilityContext": {
       "status": "IMPLEMENTED_CREDENTIAL_AND_ENTITLEMENT_GATED_LIVE_FAIL_CLOSED",
       "providerId": "twelve-data-us-volatility",
-      "provider": "Twelve Data Global Indices API",
       "capability": "VOLATILITY_CONTEXT",
-      "canonicalDatasetId": "TWELVEDATA:VOLATILITY:US",
-      "canonicalEntityPattern": "INDEX:US:VOLATILITY:<symbol>",
-      "serverOnlyCredential": true,
-      "entitlementRequired": true,
-      "adapterImplemented": true,
-      "bindingImplemented": true,
-      "runtimePipelineWiringImplemented": true,
       "liveActivation": false,
-      "liveBlockers": ["API_KEY_REQUIRED", "ENTITLEMENT_REQUIRED"],
-      "zeroNetworkWithoutCredentialAndEntitlement": true,
-      "liveProviderDatasetObserved": false,
-      "reason": "NO_VERIFIED_STAGING_KEY_AND_ENTITLEMENT"
+      "liveBlockers": ["API_KEY_REQUIRED", "ENTITLEMENT_REQUIRED"]
     },
     "usIndexBreadthResolution": {
       "status": "EXTERNAL_LICENSE_REQUIRED",
       "sourceId": "nasdaq-trader-daily",
-      "capabilities": ["INDEX", "MARKET_BREADTH"],
-      "coverageBlocker": "LICENSE_REQUIRED",
-      "activationAllowed": false
+      "capabilities": ["INDEX", "MARKET_BREADTH"]
     },
-    "usRemainingMissingCapabilities": ["INDEX", "MARKET_BREADTH", "QUOTE", "VOLATILITY_CONTEXT"],
-    "usCurrentBlockers": [
-      "LICENSE_REQUIRED:nasdaq-trader-daily:INDEX",
-      "LICENSE_REQUIRED:nasdaq-trader-daily:MARKET_BREADTH",
-      "API_KEY_REQUIRED:twelve-data-us-quote:QUOTE",
-      "API_KEY_REQUIRED:twelve-data-us-volatility:VOLATILITY_CONTEXT",
-      "ENTITLEMENT_REQUIRED:twelve-data-us-volatility:VOLATILITY_CONTEXT"
-    ]
+    "euIndexBreadthProviderSplit": {
+      "status": "CODE_GREEN_AWAITING_LIVE_DEPLOYMENT",
+      "genericSourceRetired": "eu-equity-realtime",
+      "index": {
+        "sourceId": "cboe-europe-index",
+        "provider": "Cboe Europe Indices / Cboe Global Indices Feed",
+        "capability": "INDEX",
+        "status": "LICENSE_REQUIRED",
+        "liveEligible": false,
+        "marketScope": "PAN_EUROPE_INDEX"
+      },
+      "breadth": {
+        "sourceId": "twelve-data-eu-breadth",
+        "provider": "Twelve Data × Cboe Europe Equities",
+        "capability": "MARKET_BREADTH",
+        "status": "KEY_REQUIRED",
+        "secretRequired": true,
+        "entitlementRequired": true,
+        "liveEligible": false,
+        "marketScope": "PAN_EUROPE_CBOE_EQUITIES"
+      },
+      "readinessPromotion": "NONE",
+      "liveApiWiring": "NONE_IN_THIS_STEP"
+    }
   },
   "currentCi": {
-    "codeHead": "dc56501497bf1095ad0509678889197fe6762f44",
-    "runId": 34920432253,
+    "codeHead": "d659c8947524f8bb20139f7be36121d55316acfc",
+    "runId": 34942196866,
     "conclusion": "success",
-    "v12Tests": "748/748",
-    "existingJsRegressions": "PASS",
-    "pythonRegression": "PASS",
+    "v12Tests": "750/750",
+    "existingJsRegressions": "16/16",
+    "pythonRegression": "1/1 PASS",
     "productionSafetyGate": "PASS",
     "containerSmoke": "PASS",
     "productionReleaseAuthorized": false,
-    "phase": "LIVE_GREEN_FAIL_CLOSED"
+    "phase": "GREEN_READY_TO_DEPLOY_EXTERNAL_RESOURCE_BLOCKED"
   },
   "activePriority": {
-    "name": "EU_INDEX_MARKET_BREADTH_PROVIDER_DECISION",
-    "status": "READY_TO_RESEARCH"
+    "name": "EU_PROVIDER_SPLIT_RESEARCH_STAGING_DEPLOYMENT",
+    "status": "EXTERNAL_RESOURCE_BLOCKED"
+  },
+  "secondaryPriority": {
+    "name": "EU_BREADTH_CREDENTIAL_ENTITLEMENT_WIRING",
+    "status": "WAIT_UNTIL_PROVIDER_SPLIT_LIVE_ACCEPTED"
   },
   "externalActivationBlockers": [
+    "RAILWAY_WORKSPACE_RESOURCE_QUOTA_BLOCKS_EU_SPLIT_DEPLOYMENT",
     "RAILWAY_STAGING_LEGACY_CONFIG_MIGRATION_REQUIRES_AUTHENTICATED_CLI",
     "US_QUOTE_REQUIRES_REAL_TWELVE_DATA_STAGING_KEY",
     "US_VOLATILITY_REQUIRES_REAL_TWELVE_DATA_STAGING_KEY_AND_ENTITLEMENT",
-    "US_INDEX_AND_BREADTH_REQUIRE_VALID_LICENSED_DATA_PATH"
+    "US_INDEX_AND_BREADTH_REQUIRE_VALID_LICENSED_DATA_PATH",
+    "EU_INDEX_REQUIRES_CBOE_LICENSE",
+    "EU_BREADTH_REQUIRES_TWELVE_DATA_KEY_AND_CBOE_EUROPE_ENTITLEMENT"
   ],
   "continuity": {
     "proactiveChatHandoff": true,
