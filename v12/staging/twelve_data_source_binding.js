@@ -2,6 +2,7 @@
 
 const Quote=require('../providers/twelve_data_quote_adapter.js');
 const Volatility=require('../providers/twelve_data_volatility_adapter.js');
+const EuBreadth=require('../providers/twelve_data_eu_breadth_adapter.js');
 
 const META=Object.freeze({
   sourceId:'twelve-data-us-quote',
@@ -21,6 +22,17 @@ const VOLATILITY_META=Object.freeze({
   bindingVersion:'foxyya-binding/twelve-data-us-volatility/1',
   adapterId:'twelve-data-us-volatility',
   adapterVersion:'foxyya-adapter/twelve-data-us-volatility/1',
+  canonicalSchemaVersion:'foxyya-context-observation/1',
+  researchOnly:true,
+  executionWrite:false
+});
+const EU_BREADTH_META=Object.freeze({
+  sourceId:'twelve-data-eu-breadth',
+  datasetId:'TWELVEDATA:BREADTH:EU',
+  bindingId:'twelve-data-eu-breadth',
+  bindingVersion:'foxyya-binding/twelve-data-eu-breadth/1',
+  adapterId:'twelve-data-eu-breadth',
+  adapterVersion:'foxyya-adapter/twelve-data-eu-breadth/1',
   canonicalSchemaVersion:'foxyya-context-observation/1',
   researchOnly:true,
   executionWrite:false
@@ -75,6 +87,18 @@ function twelveDataVolatility({loader,expectedSymbol}={}){
   });
 }
 
-function createTwelveDataSourceBindings(){return Object.freeze({twelveDataQuote,twelveDataVolatility});}
+function twelveDataEuBreadth({loader}={}){
+  return Object.freeze({
+    lineageMeta:EU_BREADTH_META,
+    async load(){
+      const envelope=validateEnvelope(await validateLoader(loader).load(),EU_BREADTH_META);
+      if(envelope.status==='UNAVAILABLE')return unavailable(EU_BREADTH_META,envelope.reason,envelope);
+      const data=EuBreadth.normalizeBreadth(envelope.data,{receivedAt:envelope.receivedAt,marketScope:EuBreadth.MARKET_SCOPE});
+      return available(EU_BREADTH_META,envelope,data);
+    }
+  });
+}
 
-module.exports=Object.freeze({META,VOLATILITY_META,twelveDataQuote,twelveDataVolatility,createTwelveDataSourceBindings});
+function createTwelveDataSourceBindings(){return Object.freeze({twelveDataQuote,twelveDataVolatility,twelveDataEuBreadth});}
+
+module.exports=Object.freeze({META,VOLATILITY_META,EU_BREADTH_META,twelveDataQuote,twelveDataVolatility,twelveDataEuBreadth,createTwelveDataSourceBindings});
