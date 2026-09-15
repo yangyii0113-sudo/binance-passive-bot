@@ -332,6 +332,22 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,resea
       }
     }
 
+    if(input.euBreadth!==undefined){
+      const config=input.euBreadth;
+      if(!object(config)||typeof config.endpoint!=='string'||!config.endpoint)throw Error('EU_BREADTH_CONFIG_INVALID');
+      if(hasCredential(secretReader,'twelve-data-eu-breadth')&&hasEntitlement(entitlementReader,'twelve-data-eu-breadth')){
+        usedProviderIds.add('twelve-data-eu-breadth');
+        const loader=createCredentialedSourceLoader({
+          sourceId:'twelve-data-eu-breadth',endpoint:config.endpoint,fetchImpl,
+          readSecret:secretReader,readEntitlement:entitlementReader,clock
+        });
+        const binding=bind('twelveDataEuBreadth',{loader,subjectId:'REGION:EU'});
+        const euSources=regions.EU?[...regions.EU]:[];
+        euSources.push(binding);
+        regions.EU=Object.freeze(euSources);
+      }
+    }
+
     return Object.freeze({twMarket,twQuotes:Object.freeze(twQuotes),twAssets:Object.freeze(twAssets),usAssets:Object.freeze(usAssets),regions:Object.freeze(regions),providerIds:Object.freeze([...usedProviderIds].sort())});
   }
 
