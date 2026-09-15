@@ -1,117 +1,152 @@
 # FOXYYA v12 — Next Engineering Actions
 
-Updated: 2026-09-15 09:42 +08:00
+Updated: 2026-09-15 10:20 +08:00
 
-## Research Staging — LIVE_ACCEPTED
+## Research Staging — current accepted checkpoint
 
-The current accepted Research Staging checkpoint has passed the runtime acceptance gate.
-
-- Product commit: `c547909ad9baea7cbdd13416b82976b86b5b685a`.
-- GitHub Actions: `34872550419` — SUCCESS.
-  - v12 Node: 730 / 730 passed.
-  - existing JavaScript regressions: 16 / 16 passed.
-  - Python regression: 1 / 1 PASS.
+- Fully-green product commit: `dc56501497bf1095ad0509678889197fe6762f44`.
+- GitHub Actions: `34920432253` — SUCCESS.
+  - v12 Node contracts/integration: 748 / 748 passed.
+  - existing JavaScript regressions: PASS.
+  - Python regression: PASS.
   - Production safety gate: PASS.
-  - isolated Staging + backup container smoke/default-CMD/persistent restart checks: PASS.
+  - isolated Staging + backup container smoke: PASS.
   - Production release authorized: false.
-- Accepted Railway deployment: `4798edd3-7ef6-4dbb-93ce-adb6331aa036`, SUCCESS.
-- Runtime: Node/v12, `RESEARCH_ONLY=true`, `EXECUTION_WRITE=false`.
-- Healthcheck: `/ready`.
-- Same deployment observed from bootstrap through scheduled refreshes:
-  - `successfulCycles`: 18,
-  - `failedCycles`: 0,
-  - `consecutiveSuccesses`: 18,
-  - `lastFailureAt`: null,
-  - publication timestamps increased continuously.
-- This exceeds the required bootstrap + 3 scheduled refresh acceptance gate.
-- 12-hour resource check remains healthy: memory current ~0.040 GB / 1.0 GB limit, max ~0.125 GB; disk current ~0.05895 GB on the 500 MB `/data` volume.
-- P0 storage recovery remains CLOSED.
+- Source-trigger deployment `936b7ba1-4544-451e-9aa5-d212ccb940e3` captured the correct commit but built the root Production Python image (`python:3.12-slim`) and is INVALID/REMOVED.
+- Accepted native redeploy: `6cedb435-a175-4cb8-85bd-ffa1b70a5fd3`, SUCCESS.
+- Accepted build uses `v12/staging/Dockerfile` and `node:22-alpine`.
+- Runtime: `RESEARCH_ONLY=true`, `EXECUTION_WRITE=false`.
+- Initial research refresh succeeded with buildRevision `dc565014...`, failedCycles 0, lastFailureAt null.
+- Initial bootstrap: Crypto 342, TW 2, US 1, events 40, TW forward samples 6.
+- Live lineage trace: Home 200 / Trace 200 / sourceCount 3 / observationCount 112.
+- Live Coverage probe: PASSED, seven markets.
+- No `DURABLE_WRITE_FAILED`, `LINEAGE_JOURNAL_CORRUPT`, or research refresh failure on the accepted deployment.
+- Current resource check: memory ~0.048 GB / 1 GB; disk ~0.05915 GB on the 500 MB `/data` volume.
+
+## P0 Storage Recovery — CLOSED
+
+P0 remains closed. Do not reopen it unless durable write, lineage corruption, uncontrolled growth, backup loss, or storage high-water evidence reappears.
 
 ## Railway legacy Config-as-Code precedence — OPEN PLATFORM BLOCKER
 
-Current service dashboard configuration is correct:
+The issue is still reproducible: a source-trigger deployment for the correct commit again built the root Production Python Dockerfile. The safe native redeploy of the captured snapshot built the intended Node image.
 
-- Dockerfile path: `v12/staging/Dockerfile`.
-- healthcheck path: `/ready`.
-- `/data` volume remains attached.
+Rules remain:
 
-However, prior source-trigger deployments proved the root `railway.toml` can still override Staging and build the Production Python image. Therefore:
+1. Never accept source deployment metadata alone.
+2. Require exact tested commit + Node 22/v12 build + `/ready` runtime evidence.
+3. Native redeploy only after validating the captured source snapshot.
+4. Permanent fix requires authenticated Railway CLI migration scoped ONLY to `foxyya-v12-staging`.
+5. Never run an unscoped project migration or `--delete-files`.
+6. Do not modify Production Execution V2 as part of v12 migration work.
 
-1. Do not claim the platform-level issue is permanently fixed.
-2. For every future source release, accept only a deployment whose build/runtime prove Node 22/v12 and whose `/ready.buildRevision` equals the tested commit.
-3. A native redeploy is allowed only after confirming the captured snapshot is the intended fully-green commit.
-4. Permanent repair requires an authenticated, service-scoped Railway CLI migration for `foxyya-v12-staging` only.
-5. Never run an unscoped project migration, never use `--delete-files`, and never modify the Production Execution V2 Dockerfile/service as part of v12 work.
+## US Provider Coverage
 
-## Provider Coverage Expansion
+### CFTC POSITIONING — LIVE_GREEN
 
-### CFTC positioning — LIVE_GREEN
+- Provider `cftc-cot` is live AVAILABLE.
+- Dataset `CFTC:TFF:gpe5-46if:EQUITY_INDEX`.
+- Capability `FUTURES_POSITIONING`.
+- Weekly confirmation-only evidence; it does not grant direction readiness.
 
-- `cftc-cot` is AVAILABLE live.
-- Dataset: `CFTC:TFF:gpe5-46if:EQUITY_INDEX`.
-- Capability: `FUTURES_POSITIONING`.
-- Weekly confirmation-only evidence.
-- Does not grant US direction readiness.
+### US QUOTE — IMPLEMENTED / CREDENTIAL-GATED / NOT LIVE ACTIVATED
 
-### US QUOTE — IMPLEMENTED, CREDENTIAL-GATED
-
-Twelve Data has already been selected and wired as `twelve-data-us-quote`.
-
+- Provider: `twelve-data-us-quote`.
 - Server-only credential path implemented.
-- Missing key performs zero provider requests.
-- API key is not placed in URLs or public diagnostics.
-- Quote semantics remain limited-venue / non-NBBO.
-- A quote does not grant INDEX or MARKET_BREADTH and does not make US direction READY.
-- Live Staging currently has no Twelve Data key, so live Coverage correctly reports:
-  - `API_KEY_REQUIRED:QUOTE:twelve-data-us-quote`.
+- Missing key causes zero provider requests.
+- Secret is never placed in URL/public diagnostics.
+- Limited-venue / non-NBBO semantics preserved.
+- Live blocker: `API_KEY_REQUIRED:QUOTE:twelve-data-us-quote`.
 
-Do not fabricate or infer a key. Live activation can occur only after a real Staging credential is supplied through the approved secret path.
+Do not fabricate a key. Activation requires a real Staging credential.
+
+### US VOLATILITY_CONTEXT — IMPLEMENTED / KEY + ENTITLEMENT GATED / LIVE FAIL-CLOSED
+
+Provider selection and implementation are complete through the Research Staging pipeline:
+
+- Provider ID: `twelve-data-us-volatility`.
+- Provider: Twelve Data Global Indices API.
+- Role: minimal VIX-like market volatility context, not full options analytics.
+- Catalog status: credential + entitlement required; not live-eligible until verified.
+- Canonical dataset: `TWELVEDATA:VOLATILITY:US`.
+- Canonical entity pattern: `INDEX:US:VOLATILITY:<symbol>`.
+- Adapter preserves provider observation time separately from receive time.
+- Server-only credential loader:
+  - no key => zero network requests,
+  - key but no entitlement => zero network requests,
+  - key + entitlement => permitted read-only request path,
+  - secret never appears in URL/result/log lineage surfaces.
+- Canonical binding and source-pipeline wiring are implemented and fully tested.
+- Accepted live Staging currently has no configured key/verified entitlement, therefore it performs no volatility provider request and honestly reports:
+  - `API_KEY_REQUIRED:VOLATILITY_CONTEXT:twelve-data-us-volatility`
+  - `ENTITLEMENT_REQUIRED:VOLATILITY_CONTEXT:twelve-data-us-volatility`
+- US remains `BLOCKED`, direction `NOT_READY`; no fake `VOLATILITY_CONTEXT` is published.
+
+Do NOT mark this source `LIVE_GREEN` or AVAILABLE until a real Staging key, plan entitlement, exact VIX-like symbol support and a successful live canonical dataset are verified.
 
 ### US INDEX + MARKET_BREADTH — EXTERNAL_LICENSE_REQUIRED
 
 - `LICENSE_REQUIRED:INDEX:nasdaq-trader-daily`
 - `LICENSE_REQUIRED:MARKET_BREADTH:nasdaq-trader-daily`
 
-Public download availability is not sufficient permission for FOXYYA automated server-side use. Keep both fail-closed until a valid licensed data-product path exists.
+Do not scrape or reinterpret public downloads as server-side usage permission.
 
-### US VOLATILITY_CONTEXT — CURRENT ENGINEERING PRIORITY AFTER PLATFORM CONFIG BLOCKER
+## Current live US Coverage truth
 
-Current live blocker:
+Available research capabilities:
 
-- `PROVIDER_DECISION_REQUIRED:VOLATILITY_CONTEXT:us-options-analytics`
+- FUNDAMENTAL
+- FUTURES_POSITIONING
+- MACRO
+- NEWS
 
-Next provider work:
+Missing / blocked:
 
-1. Research current legally usable US volatility/options context sources using authoritative terms, non-display/server-side use rights, API availability, latency, Taiwan access and predictable pricing.
-2. Classify candidates as `APPROVED_PUBLIC_USE`, `COMMERCIAL_LICENSE_AVAILABLE`, `API_KEY_REQUIRED`, `ENTITLEMENT_REQUIRED`, or `UNSUITABLE`.
-3. Do not equate VIX-like public display pages with reusable automated data rights.
-4. Select a provider only when the permission boundary is explicit.
-5. Write RED contracts before implementation.
-6. Required semantics: provider timestamp preserved, receive time separate, stale/delayed state honest, no execution authority, no automatic US direction promotion from a single volatility source.
-7. Full v12 + JS + Python + Production safety regression before Staging deployment.
+- INDEX — licensed data path required.
+- MARKET_BREADTH — licensed data path required.
+- QUOTE — real Twelve Data Staging key required.
+- VOLATILITY_CONTEXT — real Twelve Data key + entitlement verification required.
 
-## Live US Coverage truth
+US must remain BLOCKED until the Coverage Gate requirements are actually met.
 
-US remains intentionally BLOCKED / research PARTIAL with these missing capabilities:
+## Current engineering priority: EU INDEX + MARKET_BREADTH provider decision
 
-- INDEX — license required.
-- MARKET_BREADTH — license required.
-- QUOTE — Twelve Data API key required.
-- VOLATILITY_CONTEXT — provider decision required.
+US engineering paths that can proceed without external credentials/licenses are now exhausted. Move to the next region rather than weakening US gates.
 
-Available US research capabilities include FUNDAMENTAL, FUTURES_POSITIONING, MACRO and NEWS. Do not promote direction readiness until the Coverage Gate requirements are actually satisfied.
+Exact next actions:
+
+1. Research authoritative/current EU equity index and breadth data providers and official/licensed distribution paths.
+2. Separate INDEX from MARKET_BREADTH; do not assume one provider legally or technically covers both.
+3. For each candidate verify:
+   - server-side/non-display research rights,
+   - API/download mechanism,
+   - exchange/index licensing constraints,
+   - latency,
+   - coverage breadth,
+   - historical/live availability,
+   - Taiwan access feasibility,
+   - predictable cost.
+4. Classify each candidate as `APPROVED_PUBLIC_USE`, `COMMERCIAL_LICENSE_AVAILABLE`, `API_KEY_REQUIRED`, `ENTITLEMENT_REQUIRED`, `LICENSE_REQUIRED`, or `UNSUITABLE`.
+5. Prefer explicit licensed/API contracts over scraping or ambiguous public pages.
+6. After provider selection, write RED contracts before any production code.
+7. No EU provider may affect Production Execution V2 or gain execution authority.
+8. Full v12 + JS + Python + Production safety + container smoke before any Research Staging deployment.
+
+## External blockers parked for activation
+
+- Railway Config-as-Code permanent migration requires authenticated scoped CLI access.
+- US QUOTE requires a real Twelve Data Staging key.
+- US VOLATILITY_CONTEXT requires real Twelve Data key + entitlement/symbol verification.
+- US INDEX/MARKET_BREADTH require a valid licensed market-data path.
 
 ## Subsequent priorities
 
-1. Resolve Railway Staging Config-as-Code migration when authenticated CLI access is available.
-2. US VOLATILITY_CONTEXT provider decision and TDD implementation.
-3. Activate Twelve Data QUOTE only when a real Staging API key is provided.
-4. Revisit US INDEX + MARKET_BREADTH only with a valid license/data-product path.
-5. EU INDEX + MARKET_BREADTH.
-6. JP / KR activation after key + entitlement requirements are satisfied.
-7. CN_HK approved data-product path.
-8. Home decision-readiness UX refinement and direction eligibility integration.
+1. EU INDEX + MARKET_BREADTH provider decision and TDD implementation.
+2. JP / KR activation after key + entitlement requirements are satisfied.
+3. CN_HK approved data-product path.
+4. Home decision-readiness UX refinement and direction eligibility integration.
+5. Activate US credential-gated providers only when real credentials/entitlements are supplied and independently verified.
 
 ## Handoff rule
 
-At every material checkpoint, update `FOXYYA_STATE.json` and this file. Revalidate GitHub and Railway truth before execution. Branch HEAD, CI success, dashboard config and Railway deployment health are separate facts and must never be conflated.
+At every material checkpoint, update `FOXYYA_STATE.json` and this file. When the conversation becomes materially long, proactively checkpoint GitHub/Railway truth and prepare a fresh-chat continuation instruction before context exhaustion. Never conflate branch HEAD, CI success, Railway build metadata, deployment health, and live provider availability.
