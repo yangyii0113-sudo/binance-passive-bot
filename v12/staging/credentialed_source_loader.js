@@ -4,8 +4,10 @@ const {evaluateSource}=require('../providers/activation_gate.js');
 
 const CREDENTIALED_SOURCE_ORIGINS=Object.freeze({
   'twelve-data-us-quote':'https://api.twelvedata.com',
-  'twelve-data-us-volatility':'https://api.twelvedata.com'
+  'twelve-data-us-volatility':'https://api.twelvedata.com',
+  'twelve-data-eu-breadth':'https://api.twelvedata.com'
 });
+const TWELVE_DATA_QUOTE_SOURCES=new Set(['twelve-data-us-quote','twelve-data-us-volatility','twelve-data-eu-breadth']);
 const SENSITIVE_QUERY_KEYS=new Set(['apikey','api_key','token','authorization','key','secret','access_token']);
 
 function unavailable(sourceId,reason,{fetchStartedAt=null,receivedAt=null}={}){
@@ -26,7 +28,7 @@ function parseEndpoint(sourceId,endpoint){
   if(url.protocol!=='https:'||url.username||url.password)throw Error('SOURCE_ENDPOINT_FORBIDDEN');
   const origin=CREDENTIALED_SOURCE_ORIGINS[sourceId];
   if(!origin||url.origin!==origin)throw Error('SOURCE_ENDPOINT_FORBIDDEN');
-  if((sourceId==='twelve-data-us-quote'||sourceId==='twelve-data-us-volatility')&&url.pathname!=='/quote')throw Error('SOURCE_ENDPOINT_FORBIDDEN');
+  if(TWELVE_DATA_QUOTE_SOURCES.has(sourceId)&&url.pathname!=='/quote')throw Error('SOURCE_ENDPOINT_FORBIDDEN');
   for(const key of url.searchParams.keys())if(SENSITIVE_QUERY_KEYS.has(String(key).toLowerCase()))throw Error('SOURCE_SECRET_IN_URL_FORBIDDEN');
   return url;
 }
