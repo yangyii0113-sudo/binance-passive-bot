@@ -1,21 +1,11 @@
 {
   "schema": "foxyya-ai-continuity-state/1",
-  "updatedAt": "2026-09-15T16:05:14+08:00",
+  "updatedAt": "2026-09-15T16:08:47+08:00",
   "resumeInstruction": "接續 FOXYYA，先讀 docs/ai/FOXYYA_STATE.json、docs/ai/FOXYYA_NEXT.md、docs/ai/FOXYYA_CONTEXT.md，重新驗證 GitHub/Railway 後直接執行；Production Execution V2 不得修改。",
   "repository": {
     "fullName": "yangyii0113-sudo/binance-passive-bot",
     "branch": "v12-platform-completion-20260910",
     "branchHeadAtCheckpoint": "efde7c4201a5cc80300120ec811f11a64e00c54b",
-    "storageRecoveryCodeCommit": "008a479aef47e9bbdd27099842e698c9faeb6790",
-    "nasdaqLicenseRequiredCommit": "658037982ef75400fa3acdb23fc22c11765af88b",
-    "cftcCanonicalEntityFixCommit": "219fba96509b24e2d2bbbc397acab3dea440ae50",
-    "usVolatilityProviderDecisionCommit": "360768ac3bb0ee077bdeb2ab02da03a918fc98ed",
-    "usVolatilityAdapterCommit": "d4c93a1d848a0d8d96c2878d9e20ed9cb931e988",
-    "usVolatilityEntitlementLoaderCommit": "23cc45fa62741178b531e22e509acb722acaf7fe",
-    "usVolatilityBindingCommit": "5f2e55c7a414c47a9cbf15826a8413c828e55f2a",
-    "usVolatilityPipelineCommit": "6fff2b8cb29eadf527ee2a45e6f4b90220b59389",
-    "euProviderSplitRedCommit": "c3be271cd295f9a3bce09640e615999e5947b804",
-    "euProviderSplitCodeCommit": "4074e16758f9f7f19aaf4556fcc1b5afb2d3141c",
     "euProviderSplitGreenCommit": "d659c8947524f8bb20139f7be36121d55316acfc",
     "cnHkProviderSplitRedCommit": "865eca29aade49aa680db5954240567cb6de1ace",
     "cnHkProviderSplitCodeCommit": "4f2ccf6619e31c40147b3aa7421cd337305041dc",
@@ -51,114 +41,37 @@
       "primaryVolumeId": "232327ea-aabf-419a-b174-e689fca24d9d",
       "primaryVolumeMount": "/data",
       "primaryVolumeSizeMB": 500,
-      "latestBootstrap": {
-        "publishedAtUtc": "2026-09-15T02:20:15.420935706Z",
-        "cryptoOpportunities": 342,
-        "twOpportunities": 2,
-        "usOpportunities": 1,
-        "eventCount": 40,
-        "twForwardSamples": 6,
-        "usForwardStatus": "WAITING_LEGAL_DATA_SOURCE"
-      },
-      "liveValidation": {
-        "buildRevision": "dc56501497bf1095ad0509678889197fe6762f44",
-        "successfulCycles": 1,
-        "failedCycles": 0,
-        "lastFailureAt": null,
-        "lastErrorCode": null,
-        "homeStatus": 200,
-        "lineageTraceStatus": 200,
-        "lineageSourceCount": 3,
-        "lineageObservationCount": 112,
-        "coverageProbe": "PASSED",
-        "marketCount": 7,
-        "storageErrorLogs": 0,
-        "status": "LIVE_GREEN_INITIAL_CYCLE"
-      },
-      "resourceHealth": {
-        "stagingMemoryCurrentGB": 0.039845888,
-        "stagingMemoryLimitGB": 0.99999744,
-        "stagingMemoryMax6hGB": 0.213164032,
-        "stagingDiskCurrentGB": 0.060235776,
-        "backupMemoryCurrentGB": 0.017977344,
-        "backupDiskCurrentGB": 0.036724736,
-        "runtimeCapacitySaturated": false,
-        "status": "HEALTHY"
-      }
+      "runtimeCapacitySaturated": false
     },
-    "euProviderSplitDeployment": {
-      "targetCommit": "d659c8947524f8bb20139f7be36121d55316acfc",
-      "ciRunId": 34942196866,
-      "status": "GREEN_READY_TO_DEPLOY_EXTERNAL_RESOURCE_BLOCKED",
-      "deploymentCreated": false,
+    "newDeploymentCapacity": {
+      "status": "EXTERNAL_RESOURCE_BLOCKED",
       "attempts": 3,
       "lastError": "You have used all your available resources",
-      "classification": "RAILWAY_DEPLOYMENT_RESOURCE_OR_AGENT_ALLOCATION_BLOCKER",
-      "runtimeResourceSaturationRuledOut": true,
-      "billingCreditExhaustionNotProven": true,
-      "liveAcceptedVersionUnchanged": true,
       "conditionWatchEnabled": true,
-      "conditionWatchCadence": "HOURLY",
-      "retryPolicy": "Do not retry while blocked. When capacity is available, attempt the exact green commit once and run full live acceptance.",
-      "expectedLiveEuBlockers": [
-        "LICENSE_REQUIRED:cboe-europe-index:INDEX",
-        "API_KEY_REQUIRED:twelve-data-eu-breadth:MARKET_BREADTH",
-        "ENTITLEMENT_REQUIRED:twelve-data-eu-breadth:MARKET_BREADTH"
-      ]
-    },
-    "backupHelper": {
-      "serviceId": "a6bf4e86-6d6d-4ad6-aaa6-14ff257b928a",
-      "serviceName": "foxyya-v12-lineage-backup-helper",
-      "deploymentId": "0dd04796-cdf9-4844-9783-396a97d1340f",
-      "deploymentStatus": "SUCCESS",
-      "volumeId": "03a28b93-873a-4b54-9984-2cd5046835e2",
-      "volumeMount": "/backup",
-      "volumeSizeMB": 500,
-      "durableStorage": true,
-      "researchOnly": true,
-      "executionWrite": false
+      "conditionWatchCadence": "HOURLY"
     },
     "legacyConfigPrecedence": {
       "status": "CAC_DEPRECATED_MIGRATION_REQUIRED",
-      "latestProof": "Source deployment 936b7ba1-4544-451e-9aa5-d212ccb940e3 captured dc565014 but built python:3.12-slim and was rejected; native redeploy 6cedb435 reused the same snapshot with v12/staging/Dockerfile and node:22-alpine and was accepted.",
       "rootConfig": "railway.toml -> Production Dockerfile, /health, ALWAYS restart",
       "stagingConfig": "v12/staging/railway.toml -> v12/staging/Dockerfile, /ready, ON_FAILURE",
-      "officialRailwayStatus": "railway.toml/railway.json Config as Code is deprecated; existing legacy services stop reading it on 2026-12-01",
       "officialMigrationTarget": ".railway/railway.ts",
       "migrationCommand": "railway config migrate --service foxyya-v12-staging",
       "migrationMustStartReadOnly": true,
-      "singleServiceMigrationUsesNamedPartial": true,
       "cliRequired": true,
-      "minimumCliForCurrentIaC": "5.42.1",
       "railwayAgentCanExecuteCli": false,
-      "repoHasRailwayDirectory": false,
-      "doNotTrustPredictedRailwayJsonFromAgent": true,
-      "safeWorkaround": "Accept only deployments whose build/runtime prove node:22-alpine and /ready build revision equals the tested product commit; native redeploy only after validating the captured source snapshot.",
-      "permanentFix": "Run a real scoped CLI migrate + plan for foxyya-v12-staging, review for zero destructive changes, then apply. Do not use --delete-files on first migration and do not modify Production Execution V2."
+      "safeWorkaround": "Accept only deployments whose build/runtime prove node:22-alpine and /ready build revision equals the tested product commit."
     }
   },
   "p0StorageRecovery": {
     "status": "P0_CLOSED",
-    "originalLineageBytes": 444055552,
-    "recoveredLineageBytes": 6096213,
-    "reductionPercentApprox": 98.6,
     "backupVerified": true,
     "threeCycleMonitoring": "PASSED",
-    "liveTraceApiRoundTrip": "PASSED",
-    "currentBlocker": null
+    "liveTraceApiRoundTrip": "PASSED"
   },
   "marketDataCoverageGate": {
     "status": "LIVE_GREEN",
     "schemaVersion": "foxyya-market-coverage/1",
     "markets": ["CRYPTO", "US", "TW", "CN_HK", "JP", "KR", "EU"],
-    "liveValidation": {
-      "deploymentId": "6cedb435-a175-4cb8-85bd-ffa1b70a5fd3",
-      "homeStatus": 200,
-      "marketCount": 7,
-      "lineageTraceStatus": 200,
-      "researchOnly": true,
-      "executionWrite": false
-    },
     "liveMarketSummary": {
       "CRYPTO": "READY",
       "TW": "READY",
@@ -175,22 +88,18 @@
     "cftcPositioning": {
       "status": "LIVE_GREEN",
       "providerId": "cftc-cot",
-      "datasetId": "CFTC:TFF:gpe5-46if:EQUITY_INDEX",
       "availableCapability": "FUTURES_POSITIONING",
       "capabilityRole": "CONFIRMATION_ONLY"
     },
     "usQuote": {
       "status": "IMPLEMENTED_CREDENTIAL_GATED",
       "providerId": "twelve-data-us-quote",
-      "coverageBlocker": "API_KEY_REQUIRED",
       "liveActivation": false
     },
     "usVolatilityContext": {
       "status": "IMPLEMENTED_CREDENTIAL_AND_ENTITLEMENT_GATED_LIVE_FAIL_CLOSED",
       "providerId": "twelve-data-us-volatility",
-      "capability": "VOLATILITY_CONTEXT",
-      "liveActivation": false,
-      "liveBlockers": ["API_KEY_REQUIRED", "ENTITLEMENT_REQUIRED"]
+      "liveActivation": false
     },
     "usIndexBreadthResolution": {
       "status": "EXTERNAL_LICENSE_REQUIRED",
@@ -199,65 +108,44 @@
     },
     "euIndexBreadthProviderSplit": {
       "status": "CODE_GREEN_AWAITING_LIVE_DEPLOYMENT",
-      "genericSourceRetired": "eu-equity-realtime",
-      "index": {
-        "sourceId": "cboe-europe-index",
-        "provider": "Cboe Europe Indices / Cboe Global Indices Feed",
-        "capability": "INDEX",
-        "status": "LICENSE_REQUIRED",
-        "liveEligible": false,
-        "marketScope": "PAN_EUROPE_INDEX"
-      },
-      "breadth": {
-        "sourceId": "twelve-data-eu-breadth",
-        "provider": "Twelve Data × Cboe Europe Equities",
-        "capability": "MARKET_BREADTH",
-        "status": "KEY_REQUIRED",
-        "secretRequired": true,
-        "entitlementRequired": true,
-        "liveEligible": false,
-        "marketScope": "PAN_EUROPE_CBOE_EQUITIES"
-      },
-      "readinessPromotion": "NONE",
-      "liveApiWiring": "NONE_IN_THIS_STEP"
+      "indexSource": "cboe-europe-index",
+      "breadthSource": "twelve-data-eu-breadth",
+      "readinessPromotion": "NONE"
     },
     "cnHkProviderResolution": {
       "status": "CODE_GREEN_AWAITING_LIVE_DEPLOYMENT",
-      "readinessPromotion": "NONE",
-      "scrapingAllowed": false,
       "genericSourceRetired": "hkex-marketplace",
-      "historicalPrice": {
-        "sourceId": "hkex-eod-summary",
-        "provider": "HKEX Data Marketplace End of Day / End of Session Summary",
-        "capability": "HISTORICAL_PRICE",
-        "catalogStatus": "REVIEW_REQUIRED",
-        "accessClass": "PRODUCT_DEPENDENT",
-        "expectedBlockers": ["DATA_PRODUCT_REQUIRED", "LICENSE_REVIEW_REQUIRED"],
-        "marketScope": "HKEX_MAIN_BOARD_GEM"
-      },
-      "index": {
-        "sourceId": "hkex-omd-index",
-        "provider": "HKEX OMD Index Datafeed",
-        "capability": "INDEX",
-        "catalogStatus": "LICENSE_REQUIRED",
-        "expectedBlocker": "LICENSE_REQUIRED"
-      },
-      "sseDirection": {
-        "sourceId": "sse-market-data",
-        "capabilities": ["INDEX", "MARKET_BREADTH"],
-        "catalogStatus": "REVIEW_REQUIRED",
-        "accessClass": "PRODUCT_DEPENDENT",
-        "expectedBlockers": ["DATA_PRODUCT_REQUIRED", "LICENSE_REVIEW_REQUIRED"]
-      },
-      "szseDirection": {
-        "sourceId": "szse-ssic-market-data",
-        "capabilities": ["INDEX", "MARKET_BREADTH"],
-        "catalogStatus": "REVIEW_REQUIRED",
-        "accessClass": "PRODUCT_DEPENDENT",
-        "expectedBlockers": ["DATA_PRODUCT_REQUIRED", "LICENSE_REVIEW_REQUIRED"]
-      },
-      "stockConnectRole": "CONFIRMATION_ONLY",
+      "sources": ["hkex-eod-summary", "hkex-omd-index", "sse-market-data", "szse-ssic-market-data"],
+      "readinessPromotion": "NONE",
       "liveNetworkLoadersAdded": false
+    },
+    "jpProviderResolution": {
+      "status": "RESEARCH_RESOLVED_READY_FOR_BOUNDED_DESIGN",
+      "individualResearchSource": "jpx-jquants",
+      "individualResearchBoundary": "J-Quants API is individual-oriented; J-Quants Pro is corporate API/SFTP. Do not assume the existing individual API licence is valid for corporate use.",
+      "directionRecommendedSourceId": "tse-market-information",
+      "provider": "Tokyo Stock Exchange Market Information",
+      "capabilities": ["INDEX", "MARKET_BREADTH"],
+      "classification": ["LICENSE_REQUIRED"],
+      "evidence": "Official TSE market information contains JPX indices including TOPIX and periodic statistic data including number of issues rising/declining.",
+      "fifteenMinuteApiRejectedForDirection": true,
+      "fifteenMinuteApiReason": "15-minute Last Sales API explicitly excludes Index and Statistics.",
+      "readinessPromotion": "NONE",
+      "liveNetworkLoaderRecommendedNow": false,
+      "recommendedNextCodeStep": "Add a fail-closed tse-market-information catalog source for JP INDEX + MARKET_BREADTH and replace JP NOT_IMPLEMENTED direction blockers with LICENSE_REQUIRED; keep jpx-jquants research key/entitlement blockers separate."
+    },
+    "krProviderResolution": {
+      "status": "PROVIDER_GOVERNANCE_ALREADY_ALIGNED_EXTERNAL_ACTIVATION_BLOCKED",
+      "sourceId": "krx-openapi",
+      "provider": "KRX Data Marketplace Open API",
+      "authenticationKeyRequired": true,
+      "serviceUseApplicationRequired": true,
+      "administratorApprovalRequired": true,
+      "catalogGate": ["API_KEY_REQUIRED", "ENTITLEMENT_REQUIRED"],
+      "officialApiCoverage": ["KRX/KOSPI/KOSDAQ index daily data", "KOSPI/KOSDAQ/KONEX stock daily trading data"],
+      "newProviderSplitNeeded": false,
+      "liveActivation": false,
+      "note": "KRX real-time/professional market data distribution is a separate contracted path through KRX/Koscom; do not infer real-time rights from Open API."
     }
   },
   "currentCi": {
@@ -277,12 +165,12 @@
     "status": "CONDITION_WATCH_ACTIVE_EXTERNAL_RESOURCE_BLOCKED"
   },
   "secondaryPriority": {
-    "name": "CN_HK_PROVIDER_SPLIT",
-    "status": "CODE_GREEN_AWAITING_DEPLOYMENT_CAPACITY"
+    "name": "JP_INDEX_MARKET_BREADTH_PROVIDER_SPLIT",
+    "status": "BOUNDED_DESIGN_READY_FOR_APPROVAL"
   },
   "tertiaryPriority": {
-    "name": "JP_INDEX_MARKET_BREADTH_PROVIDER_RESOLUTION",
-    "status": "READY_TO_RESEARCH"
+    "name": "CN_HK_PROVIDER_SPLIT",
+    "status": "CODE_GREEN_AWAITING_DEPLOYMENT_CAPACITY"
   },
   "quaternaryPriority": {
     "name": "RAILWAY_STAGING_IAC_MIGRATION_REAL_CLI_PREVIEW",
@@ -291,14 +179,11 @@
   "externalActivationBlockers": [
     "RAILWAY_DEPLOYMENT_RESOURCE_OR_AGENT_ALLOCATION_BLOCKS_NEW_STAGING_RELEASES",
     "RAILWAY_STAGING_CAC_DEPRECATED_REQUIRES_REAL_CLI_MIGRATION_PLAN",
-    "US_QUOTE_REQUIRES_REAL_TWELVE_DATA_STAGING_KEY",
-    "US_VOLATILITY_REQUIRES_REAL_TWELVE_DATA_STAGING_KEY_AND_ENTITLEMENT",
-    "US_INDEX_AND_BREADTH_REQUIRE_VALID_LICENSED_DATA_PATH",
-    "EU_INDEX_REQUIRES_CBOE_LICENSE",
-    "EU_BREADTH_REQUIRES_TWELVE_DATA_KEY_AND_CBOE_EUROPE_ENTITLEMENT",
-    "CN_HK_HISTORICAL_PRICE_REQUIRES_HKEX_DATA_PRODUCT_LICENSE",
-    "CN_HK_INDEX_REQUIRES_INDEX_DATA_LICENSE",
-    "CN_HK_MAINLAND_BREADTH_REQUIRES_SSE_SZSE_AUTHORIZED_DATA_PATH"
+    "US_PROVIDER_LICENSES_AND_CREDENTIALS",
+    "EU_PROVIDER_LICENSES_AND_CREDENTIALS",
+    "CN_HK_LICENSED_DATA_PRODUCTS",
+    "JP_TSE_MARKET_INFORMATION_LICENSE",
+    "KR_KRX_OPENAPI_KEY_AND_SERVICE_APPROVAL"
   ],
   "continuity": {
     "proactiveChatHandoff": true,
