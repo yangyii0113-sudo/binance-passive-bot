@@ -65,6 +65,7 @@ function datasetCapabilities(row){
   if(id==='TWSE:STOCK_DAY_ALL'||id==='TPEX:tpex_mainboard_daily_close_quotes')out.add('QUOTE');
   if(id==='TWELVEDATA:QUOTE:US_DEFAULT')out.add('QUOTE');
   if(id==='TWELVEDATA:VOLATILITY:US')out.add('VOLATILITY_CONTEXT');
+  if(id==='TWELVEDATA:BREADTH:EU')out.add('MARKET_BREADTH');
   if(id==='TWSE:T86'||id==='TPEX:tpex_3insti_daily_trading')out.add('INSTITUTIONAL_FLOW');
   if(id==='TWSE:t187ap05_L'||id==='TPEX:mopsfin_t187ap05_O'||id==='SEC:companyfacts')out.add('FUNDAMENTAL');
   if(id==='TWSE:MI_INDEX'){out.add('INDEX');out.add('MARKET_BREADTH');out.add('SECTOR_ROTATION');}
