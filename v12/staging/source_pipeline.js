@@ -52,12 +52,23 @@ function validateSecretReader(value){
   return value;
 }
 
+function validateEntitlementReader(value){
+  if(value===undefined||value===null)return null;
+  if(typeof value!=='function')throw Error('ENTITLEMENT_READER_INVALID');
+  return value;
+}
+
 function hasCredential(readSecret,sourceId){
   if(!readSecret)return false;
   try{
     const value=readSecret(sourceId);
     return typeof value==='string'&&value.trim().length>0;
   }catch(_error){return false;}
+}
+
+function hasEntitlement(readEntitlement,sourceId){
+  if(!readEntitlement)return false;
+  try{return readEntitlement(sourceId)===true;}catch(_error){return false;}
 }
 
 function makeLoader(sourceId,endpoint,fetchImpl,clock,governance,usedProviderIds){
@@ -178,7 +189,7 @@ function createRunLineageContext({store,publishHome}){
   return Object.freeze({remember,publish});
 }
 
-function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,researchHistory,providerGovernance,lineageStore,readSecret}={}){
+function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,researchHistory,providerGovernance,lineageStore,readSecret,readEntitlement}={}){
   if(typeof fetchImpl!=='function')throw Error('FETCH_REQUIRED');
   if(typeof clock!=='function')throw Error('CLOCK_REQUIRED');
   if(typeof publishHome!=='function')throw Error('PUBLISH_HOME_REQUIRED');
@@ -186,6 +197,7 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,resea
   const providerRuntime=validateProviderGovernance(providerGovernance);
   const lineage=validateLineageStore(lineageStore);
   const secretReader=validateSecretReader(readSecret);
+  const entitlementReader=validateEntitlementReader(readEntitlement);
 
   const bindings=Object.freeze({...createOfficialSourceBindings(),...createTaiwanMarketSourceBindings(),...createTwelveDataSourceBindings()});
 
@@ -209,7 +221,7 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,resea
         const observedTimes=observations.map(item=>item?.observedAt).filter(finite);
         datasetReads.push(Object.freeze({
           sourceId:envelope.sourceId,datasetId:envelope.lineageMeta.datasetId,
-          subjectId:options.instrument?.instrumentId||options.symbol||options.subjectId||null,
+          subjectId:options.instrument?.instrumentId||options.symbol||options.expectedSymbol||options.subjectId||null,
           status:envelope.status,reason:envelope.reason||null,
           receivedAt:envelope.receivedAt,
           observedAt:observedTimes.length?Math.max(...observedTimes):null
@@ -302,6 +314,22 @@ function createStagingSourcePipeline({fetchImpl,clock=Date.now,publishHome,resea
         sources.push(bind('cftcTffEquityIndex',{loader,subjectId:'REGION:'+region}));
       }
       regions[region]=Object.freeze(sources);
+    }
+
+    if(input.usVolatility!==undefined){
+      const config=input.usVolatility;
+      if(!object(config)||typeof config.endpoint!=='string'||!config.endpoint||typeof config.symbol!=='string'||!config.symbol.trim())throw Error('US_VOLATILITY_CONFIG_INVALID');
+      if(hasCredential(secretReader,'twelve-data-us-volatility')&&hasEntitlement(entitlementReader,'twelve-data-us-volatility')){
+        usedProviderIds.add('twelve-data-us-volatility');
+        const loader=createCredentialedSourceLoader({
+          sourceId:'twelve-data-us-volatility',endpoint:config.endpoint,fetchImpl,
+          readSecret:secretReader,readEntitlement:entitlementReader,clock
+        });
+        const binding=bind('twelveDataVolatility',{loader,expectedSymbol:config.symbol});
+        const usSources=regions.US?[...regions.US]:[];
+        usSources.push(binding);
+        regions.US=Object.freeze(usSources);
+      }
     }
 
     return Object.freeze({twMarket,twQuotes:Object.freeze(twQuotes),twAssets:Object.freeze(twAssets),usAssets:Object.freeze(usAssets),regions:Object.freeze(regions),providerIds:Object.freeze([...usedProviderIds].sort())});
