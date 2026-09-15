@@ -23,9 +23,10 @@ test('J-Quants key alone does not imply plan entitlement',()=>{
 });
 
 test('review-required source cannot be activated by credential presence',()=>{
-  const r=evaluateSource('hkex-marketplace',{credentialSources:['hkex-marketplace'],entitledSources:['hkex-marketplace']});
+  const r=evaluateSource('hkex-eod-summary',{credentialSources:['hkex-eod-summary'],entitledSources:['hkex-eod-summary']});
   assert.equal(r.readiness,READINESS.REVIEW_REQUIRED);
   assert.equal(r.canActivate,false);
+  assert.equal(r.liveEligible,false);
 });
 
 test('decision-required source stays blocked until catalog decision is changed',()=>{
