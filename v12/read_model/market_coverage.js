@@ -52,7 +52,7 @@ function normalizedCatalogCapabilities(source){
     if(['FILINGS','XBRL','FORM4','BENEFICIAL_OWNERSHIP','CORPORATE_OPEN_DATA','MONTHLY_REVENUE','FINANCIAL_DISCLOSURE','CORPORATE_DISCLOSURE','FINANCIALS'].includes(raw))out.add('FUNDAMENTAL');
     if(['CPI','EMPLOYMENT','MACRO_SERIES','FED_POLICY','FED_SPEECH','FED_RELEASE','RATES_CONTEXT','RATES','FX','EU_MACRO'].includes(raw))out.add('MACRO');
     if(['FUNDING','OPEN_INTEREST','DERIVATIVES_CONTEXT','OPTIONS_FLOW','IV','SKEW','TERM_STRUCTURE'].includes(raw))out.add('DERIVATIVES_CONTEXT');
-    if(['IV','SKEW','TERM_STRUCTURE'].includes(raw))out.add('VOLATILITY_CONTEXT');
+    if(['VOLATILITY_INDEX','IV','SKEW','TERM_STRUCTURE'].includes(raw))out.add('VOLATILITY_CONTEXT');
     if(['NEWS','CATALYST'].includes(raw))out.add('NEWS');
     if(['ECONOMIC_CALENDAR','EVENT_SCHEDULE'].includes(raw))out.add('EVENT_CALENDAR');
   }
