@@ -1,154 +1,259 @@
 # FOXYYA v12 — Next Engineering Actions
 
-Updated: 2026-09-15 16:08 +08:00
+Updated: 2026-09-15 16:40 +08:00
 
-## Live Research Staging
+## Current accepted live Research Staging
 
-Current accepted live deployment remains unchanged:
+The accepted Railway live deployment is intentionally still the older validated checkpoint:
 
 - deployment `6cedb435-a175-4cb8-85bd-ffa1b70a5fd3`
 - product commit `dc56501497bf1095ad0509678889197fe6762f44`
-- SUCCESS
-- Node/v12, `/ready`
+- status: SUCCESS
+- runtime: Node/v12
+- healthcheck: `/ready`
 - `RESEARCH_ONLY=true`
 - `EXECUTION_WRITE=false`
-- Production Execution V2 untouched
+- backup helper remains SUCCESS
+- Production Execution V2 remains untouched
 
-New deployment creation remains externally blocked by Railway's `You have used all your available resources`. Runtime RAM/disk saturation has been ruled out. An hourly condition watch is active for the EU release candidate and must not spam retries while blocked.
+Do not describe newer provider-governance code as live until Railway creates and accepts a new deployment.
 
-## Fully-green product code ahead of live
+## Latest fully-green product checkpoint
 
 Latest fully-green product commit:
 
-`efde7c4201a5cc80300120ec811f11a64e00c54b`
+`93ec3895ab8cda90f446de22cff60f777cd421e3`
 
-CI run `34944945541`:
+GitHub Actions run:
 
-- v12 Node: 752 / 752 PASS
-- existing JS regressions: 16 / 16 PASS
-- Python regression: PASS
-- Production safety gate: PASS
-- Staging + backup container smoke: PASS
+`34948123788` — SUCCESS
+
+Fresh verification evidence:
+
+- v12 Node contracts/integration: **772 / 772 PASS**
+- existing JavaScript regressions: **16 / 16 PASS**
+- Python regression: **1 / 1 PASS**
+- Production safety gate: **PASS**
+- isolated Staging + backup container smoke: **PASS**
+- smoke image: `node:22-alpine`
+- smoke runtime: `RESEARCH_ONLY=true`, `EXECUTION_WRITE=false`
+- lineage trace probe: PASS
+- seven-market Coverage probe: PASS
 - Production release authorized: false
 
-This commit includes both the EU and CN_HK provider-governance improvements. Do not call them live until a new Research Staging deployment is accepted.
+This product checkpoint contains all currently implementable provider-governance and fail-closed improvements that do not require new exchange licences, provider credentials/entitlements, Railway deployment capacity, or Production changes.
 
-## EU provider split — CODE GREEN / LIVE PENDING
+## JP provider split — CODE GREEN / LIVE PENDING
 
-- `cboe-europe-index` → `INDEX` → `LICENSE_REQUIRED`
-- `twelve-data-eu-breadth` → `MARKET_BREADTH` → `API_KEY_REQUIRED + ENTITLEMENT_REQUIRED`
-- generic `eu-equity-realtime` retired
-- no live provider request added
-- no readiness promotion
+JP market-direction governance is now explicit.
 
-Expected EU live truth remains BLOCKED / direction PARTIAL with MACRO available.
+- research source remains `jpx-jquants`
+  - historical price / fundamentals
+  - API key + entitlement gated
+- direction source is now `tse-market-information`
+  - `INDEX`
+  - `MARKET_BREADTH`
+  - `LICENSE_REQUIRED`
+  - `liveEligible=false`
+  - `MARKET_CORE`
+- the former JP `NOT_IMPLEMENTED` direction gaps are replaced by explicit TSE licence blockers
+- no TSE network loader was added
+- no readiness promotion occurred
+
+TDD:
+
+- RED `ecda825007a64ec64373c0f5edd05a0324358d9a`
+- GREEN `80d22cb8f08888e21d8871e632d6c1c0e97fb02a`
+
+JP remains fail-closed until a valid TSE Market Information licence and appropriate J-Quants plan exist.
+
+## KR provider audit — NO PRODUCTION CHANGE REQUIRED
+
+Existing governance is already aligned:
+
+- provider: `krx-openapi`
+- official KRX Data Marketplace Open API
+- Authentication Key required
+- per-service usage application / administrator approval represented as entitlement gate
+- normalized capabilities already cover:
+  - `QUOTE`
+  - `INDEX`
+  - `MARKET_BREADTH`
+- Coverage already exposes `API_KEY_REQUIRED + ENTITLEMENT_REQUIRED`
+- no speculative replacement provider was added
+
+KR stays externally blocked until a real key and service approval are available.
+
+## EU provider governance — CODE GREEN / LIVE PENDING
+
+### INDEX
+
+- provider: `cboe-europe-index`
+- capability: `INDEX`
+- blocker: `LICENSE_REQUIRED`
+- no live activation
+
+### MARKET_BREADTH
+
+`twelve-data-eu-breadth` is now implemented end-to-end through the Research Staging code path while remaining fail-closed by default.
+
+Canonical contract:
+
+- dataset: `TWELVEDATA:BREADTH:EU`
+- entity: `MARKET:EU:BREADTH:CBOE_EUROPE`
+- scope: `PAN_EUROPE_CBOE_EQUITIES`
+- canonical schema observations use `foxyya-context-observation/1`
+- snapshot derives total / advancers / decliners / unchanged / advance ratio / decline ratio
+- breadth `observedAt` is bounded by the oldest constituent quote time
+
+Safety / access control:
+
+- missing API key => zero provider requests
+- key without entitlement => zero provider requests
+- key + entitlement => read-only request path permitted
+- key never appears in URL, public result, lineage or sanitized error output
+- only approved Twelve Data HTTPS `/quote` origin/path is accepted
+- default Staging has no verified EU breadth key + entitlement, therefore live activation remains false
+
+TDD chain:
+
+- adapter RED `73d66894e1c8cba50251f5aea39f8579901c4517`
+- adapter GREEN `dbf4e84bb80e8c31fb0fa54c8623b8e7cb59d470`
+- loader RED `9e36e09ad742cb45e3247e82cd4858f32403adce`
+- loader GREEN `42b6ddd4192b0c2da578ec040b5ee4ebfc9350cc`
+- binding RED `103c05072df404f9a59ed785fe1b3394e548eb7b`
+- binding GREEN `85851464eb61735e53f523c177c894a87d379862`
+- pipeline RED `77295c3ab42a67850599e9a33047a3b0d7c0f993`
+- pipeline wiring `ce94a5e62a214290a01969b0a91caab7cd4ddcbc`
+- Coverage mapping `45ff2536e15c2d424b4a67e21cffcf945a69ca44`
+
+When a valid EU breadth key + entitlement is eventually supplied, an AVAILABLE dataset may grant only `MARKET_BREADTH`. EU remains BLOCKED until the separate Cboe `INDEX` licence requirement is satisfied.
 
 ## CN_HK provider split — CODE GREEN / LIVE PENDING
 
-TDD evidence:
+Capability-specific governance is complete:
 
-- RED `865eca29aade49aa680db5954240567cb6de1ace`: 752 tests / 750 pass / 2 expected new failures.
-- initial GREEN `4f2ccf6619e31c40147b3aa7421cd337305041dc`: new contracts passed; only two stale `hkex-marketplace` tests remained.
-- final GREEN `efde7c4201a5cc80300120ec811f11a64e00c54b`: full CI success.
-
-Capability-specific sources:
-
-- `hkex-eod-summary` → `HISTORICAL_PRICE` via `HISTORICAL_DATA` → `DATA_PRODUCT_REQUIRED + LICENSE_REVIEW_REQUIRED`
-- `hkex-omd-index` → `INDEX` → `LICENSE_REQUIRED`
-- `sse-market-data` → `INDEX + MARKET_BREADTH` → product/license-review blocked
-- `szse-ssic-market-data` → `INDEX + MARKET_BREADTH` → product/license-review blocked
+- `hkex-eod-summary`
+  - historical price path
+  - `DATA_PRODUCT_REQUIRED + LICENSE_REVIEW_REQUIRED`
+- `hkex-omd-index`
+  - `INDEX`
+  - `LICENSE_REQUIRED`
+- `sse-market-data`
+  - `INDEX + MARKET_BREADTH`
+  - product/license-review blocked
+- `szse-ssic-market-data`
+  - `INDEX + MARKET_BREADTH`
+  - product/license-review blocked
 - generic `hkex-marketplace` retired
 - Stock Connect remains confirmation-only
-- no live network loaders added
 - no scraping
+- no live loaders
 - no readiness promotion
 
-CN_HK remains `BLOCKED / NOT_READY / NOT_READY / NOT_ELIGIBLE` until real licensed paths exist.
+Final CN_HK green checkpoint: `efde7c4201a5cc80300120ec811f11a64e00c54b`.
 
-## JP provider resolution — RESEARCH COMPLETE / BOUNDED DESIGN READY
+## Home decision-readiness integration — CODE GREEN
 
-Current individual research source remains separate:
+Home now consumes backend Coverage truth more safely without recomputing market readiness.
 
-- `jpx-jquants` covers individual research such as historical price and fundamentals behind key + entitlement.
-- JPX states J-Quants API is for individuals; corporate machine-readable distribution is J-Quants Pro via API/SFTP. Do not silently reuse an individual licence for corporate use.
+### Backend truth preservation
 
-For JP market-direction data, the authoritative path is TSE Market Information:
+- `marketCoverage` is still returned by reference from the backend read model.
+- Home now exposes an immutable `decisionReadiness` projection containing only:
+  - `coverageStatus`
+  - `directionReadiness`
+  - `researchReadiness`
+  - `rankingEligibility`
+  - `missingCapabilities`
+  - blocker summaries
+- the browser/view model does not independently decide that a market is READY.
 
-- official TSE Market Information contains JPX indices including TOPIX.
-- its periodic statistic data includes the number of issues rising/declining.
-- therefore it is a technically valid source family for both `INDEX` and `MARKET_BREADTH`.
-- direct/indirect acquisition is governed by TSE information-provision/licensing procedures.
-- the 15-minute Last Sales API is not a substitute: JPX explicitly states `Index and Statistics: Not included`.
+### Ranking guard
 
-### Proposed bounded JP catalog/Coverage design
+- `rankingEligibility=NOT_ELIGIBLE`
+  - research rows remain visible for inspection
+  - row does **not** enter `Ranking.rankResearch()`
+  - `rank`, `researchScore`, priority and ranking metadata are cleared
+- `LIMITED`
+  - may remain in human-review ranking
+- `ELIGIBLE`
+  - may remain in human-review ranking
+- older snapshots with no `marketCoverage` preserve legacy ranking behavior
 
-Do not add a live loader yet.
+TDD:
 
-1. Add `tse-market-information` for market `JP`.
-2. Capabilities: `INDEX`, `MARKET_BREADTH`.
-3. Status: `LICENSE_REQUIRED`.
-4. Authority: `OFFICIAL` or `LICENSED` with `accessClass=COMMERCIAL_LICENSE`; `serverOnly=true`, `liveEligible=false`, `evidenceRole=MARKET_CORE`.
-5. Preserve `jpx-jquants` as the separate research source for `HISTORICAL_PRICE` + `FUNDAMENTAL` behind key + entitlement.
-6. Replace JP `NOT_IMPLEMENTED` direction blockers with `LICENSE_REQUIRED:tse-market-information` blockers.
-7. JP must remain `coverageStatus=BLOCKED`, `directionReadiness=NOT_READY`, and no ranking/readiness promotion occurs.
-8. No TSE public-page scraping, no network request, no Production change.
-9. Implement with RED → minimal catalog GREEN → full v12/JS/Python/Production safety/container smoke.
+- RED `bb2394bfdaa2d6173bec898302ed939603278c6e`
+- GREEN `93ec3895ab8cda90f446de22cff60f777cd421e3`
 
-This is the next bounded code change and requires design approval before implementation.
+## Railway deployment queue — EXTERNAL BLOCKER
 
-## KR provider resolution — EXISTING GOVERNANCE IS ALIGNED
+New deployment creation is still blocked before Railway produces a deployment ID with:
 
-No provider replacement is currently needed.
+`You have used all your available resources`
 
-- `krx-openapi` is the appropriate official source family.
-- KRX terms require an Authentication Key.
-- API usage requires selecting a service, applying for use, and administrator approval.
-- official service list includes KRX/KOSPI/KOSDAQ index daily price data and KOSPI/KOSDAQ/KONEX stock daily trading data.
-- current `API_KEY_REQUIRED + ENTITLEMENT_REQUIRED` governance therefore remains appropriate.
-- real-time/professional KRX market data is a separate contracted distribution path through KRX/Koscom; do not infer real-time rights from Open API.
+The current live services remain healthy, so do not classify this as FOXYYA application OOM or disk exhaustion.
 
-KR stays externally activation-blocked until a real key/service approval is supplied. Do not add speculative provider code now.
+The hourly condition watch remains active. Its release target must now be the latest fully-green product commit:
 
-## Railway IaC migration
+`93ec3895ab8cda90f446de22cff60f777cd421e3`
 
-Legacy `railway.toml` is deprecated and remains a known source-trigger precedence risk. Correct target is `.railway/railway.ts` through a real scoped Railway CLI migration and plan.
+When Railway deployment capacity returns:
 
-- do not trust agent-predicted migration output
-- Railway agent cannot run CLI
-- no `.railway/` directory exists yet
-- no `--delete-files` on first migration
-- do not delete root `railway.toml` or modify Production Execution V2 in a staging-only migration
-- apply only after a real plan proves variables, `/data` volume, backup-helper reference, Node Dockerfile and `/ready` are preserved without unrelated deletes
+1. Revalidate branch ancestry and ensure there are no untested later product-code commits.
+2. Target only the existing `foxyya-v12-staging` service.
+3. Do not create a new service and do not modify the backup helper or Production Execution V2.
+4. Inspect source-trigger build logs.
+5. If the source-trigger uses root Production `python:3.12-slim`, reject it as INVALID.
+6. Only after verifying the captured snapshot is the intended fully-green code may one native redeploy be used.
+7. Accepted build must use `v12/staging/Dockerfile` + `node:22-alpine`.
+8. Verify `/ready`, `RESEARCH_ONLY=true`, `EXECUTION_WRITE=false`.
+9. Wait for initial bootstrap, lineage trace probe and seven-market Coverage probe.
+10. Verify live blocker truth for US / EU / CN_HK / JP / KR.
+11. Verify Home decision-readiness projection is present and marketCoverage is still authoritative.
+12. Confirm zero `DURABLE_WRITE_FAILED`, zero `LINEAGE_JOURNAL_CORRUPT`, zero research refresh failure.
+13. Only then mark the latest checkpoint LIVE_GREEN.
 
-## Parked external activations
+## Railway IaC migration — REAL CLI REQUIRED
 
-US:
-- INDEX / MARKET_BREADTH require a licensed path
-- QUOTE requires real Twelve Data key
-- VOLATILITY_CONTEXT requires real Twelve Data key + entitlement
+Legacy `railway.toml` Config as Code remains deprecated and is still a known precedence risk.
 
-EU:
-- INDEX requires Cboe licence
-- MARKET_BREADTH requires Twelve Data key + Cboe Europe entitlement
+Permanent migration requires a real Railway CLI path:
 
-CN_HK:
-- historical/index/breadth require licensed HKEX/SSE/SZSE data-product paths
+- target: `.railway/railway.ts`
+- `railway config migrate --service foxyya-v12-staging`
+- first run without `--apply`
+- then `railway config plan`
+- single-service migration should use a named partial
+- review for zero destructive changes
+- preserve variables, `/data` volume, backup-helper reference, Node Dockerfile and `/ready`
+- do not use `--delete-files` on the first migration
+- do not delete root `railway.toml` as part of a Staging-only migration without an approved complete plan
+- Railway agent cannot execute the CLI, so predicted migration output is not evidence
 
-JP:
-- direction requires TSE Market Information licensed path
+## External activation blockers remaining
 
-KR:
-- KRX Open API key + service approval required
+These are the only major provider paths that cannot be completed autonomously from code alone:
 
-## Execution order
+- Railway: new Staging deployment capacity / workspace allocation
+- Railway IaC: real scoped CLI auth / plan
+- US INDEX + MARKET_BREADTH: valid licensed market-data path
+- US QUOTE: real Twelve Data Staging API key
+- US VOLATILITY_CONTEXT: real Twelve Data key + entitlement + symbol verification
+- EU INDEX: Cboe licence
+- EU MARKET_BREADTH: Twelve Data key + Cboe Europe entitlement
+- CN_HK: HKEX/SSE/SZSE licensed data products / licence reviews
+- JP: TSE Market Information licence + appropriate J-Quants plan
+- KR: KRX Open API key + service approval
 
-1. Keep the hourly EU deployment condition watch active.
-2. On explicit approval of the bounded JP design above, implement JP catalog/Coverage blocker truth with TDD only; no live loader.
-3. Keep KR code unchanged until real key/approval exists.
-4. Do not begin Home decision-readiness UX changes until provider-governance truth is stable across all seven markets.
-5. Railway IaC migration requires real scoped CLI access.
-6. Never weaken Coverage gates just to make a market READY.
+Do not bypass these gates or fabricate availability.
+
+## Current execution status
+
+All provider-governance / fail-closed / Home readiness code-only work currently identified in the completion plan is implemented and fully regression-tested.
+
+The next engineering work that materially changes provider availability requires one of the external items above. Until one becomes available, preserve the latest green code and keep the Railway deployment condition watch active rather than weakening Coverage semantics.
 
 ## Handoff rule
 
-At every material checkpoint, update `FOXYYA_STATE.json` and this file. Revalidate GitHub and Railway truth before execution. Never conflate branch HEAD, CI success, Railway source metadata, deployment health, provider availability, or agent predictions with live evidence.
+At every material checkpoint, update `FOXYYA_STATE.json` and this file. Before any future code or deployment action, revalidate GitHub branch/CI and Railway live truth. Never conflate branch HEAD, CI success, source metadata, build metadata, deployment health or provider availability.
