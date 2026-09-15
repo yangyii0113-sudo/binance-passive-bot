@@ -1,6 +1,6 @@
 # FOXYYA v12 — Next Engineering Actions
 
-Updated: 2026-09-15 15:51 +08:00
+Updated: 2026-09-15 15:55 +08:00
 
 ## Research Staging — current accepted live checkpoint
 
@@ -95,6 +95,73 @@ Correct migration target:
 
 Authoritative IaC SDK schema confirms low-level service build configuration supports `build.dockerfilePath`, but no hand-written migration should be applied until a real CLI `migrate/plan` confirms existing variables and the `/data` volume will be preserved without destructive changes.
 
+## CN_HK provider resolution — RESEARCH COMPLETE / CODE NOT STARTED
+
+The next provider path has now been resolved without weakening current Coverage semantics.
+
+### Hong Kong historical price
+
+Recommended source family:
+
+- `hkex-eod-summary`
+- HKEX Data Marketplace End of Day / End of Session Summary products.
+- Capability target: `HISTORICAL_PRICE`.
+- Coverage: HKEX Main Board + GEM.
+- Treat as `DATA_PRODUCT_REQUIRED` plus license-controlled use.
+- Delivery is product-dependent through S3, SFTP, direct download/email-style delivery.
+- Do not scrape HKEX public display pages as a substitute.
+
+### Hong Kong / China index context
+
+Recommended source family:
+
+- `hkex-omd-index`
+- HKEX OMD Index Datafeed.
+- Capability target: `INDEX`.
+- OMD carries HK and China-related third-party indices, including Hang Seng family and selected CSI/SSE index families.
+- Index compiler licences remain separately required; this is therefore `LICENSE_REQUIRED`, not public-use data.
+
+### Mainland Shanghai market data
+
+Recommended source family:
+
+- `sse-market-data`
+- Official Shanghai Stock Exchange market data interfaces.
+- Capability targets: `INDEX`, `MARKET_BREADTH`.
+- Technical interfaces exist, but public website/interface specifications do not constitute permission for automated server-side research consumption.
+- Keep fail-closed as `LICENSE_REVIEW_REQUIRED` / `DATA_PRODUCT_REQUIRED` until an authorized distribution path is contracted.
+
+### Mainland Shenzhen market data
+
+Recommended source family:
+
+- `szse-ssic-market-data`
+- Shenzhen Securities Information Co. / SZSE Data Services.
+- Capability targets: `INDEX`, `MARKET_BREADTH`.
+- SZSE states SSIC is exclusively authorized to manage and distribute SZSE securities information and offers Level-1, Level-2 and end-of-day market data services.
+- Treat as `LICENSE_REQUIRED` / `DATA_PRODUCT_REQUIRED`; public quote pages are not an approved server-side feed.
+
+### Stock Connect
+
+HKEX Shanghai-Hong Kong and Shenzhen-Hong Kong Stock Connect daily statistics can be useful as confirmation/flow context only. They must not satisfy `MARKET_BREADTH` or complete CN_HK direction readiness.
+
+### Recommended bounded code change
+
+Do not add any live CN_HK network loader yet.
+
+The next code change should only improve provider governance and blocker truth:
+
+1. Retire or narrow the generic `hkex-marketplace` catalog entry.
+2. Add capability-specific fail-closed catalog entries:
+   - `hkex-eod-summary` → `HISTORICAL_PRICE` → product/license blocked.
+   - `hkex-omd-index` → `INDEX` → license blocked.
+   - `sse-market-data` → `INDEX` + `MARKET_BREADTH` → product/license-review blocked.
+   - `szse-ssic-market-data` → `INDEX` + `MARKET_BREADTH` → product/license blocked.
+3. Replace CN_HK `NOT_IMPLEMENTED` direction blockers with explicit external license/data-product blockers.
+4. Preserve `coverageStatus=BLOCKED`, `directionReadiness=NOT_READY`, `researchReadiness=NOT_READY`, `rankingEligibility=NOT_ELIGIBLE`.
+5. No live API requests, no scraping, no readiness promotion, no Production Execution V2 changes.
+6. Use RED → minimal GREEN → full v12/JS/Python/Production safety/container smoke before any deployment attempt.
+
 ## US Provider Coverage — parked external activations
 
 US remains intentionally fail-closed:
@@ -106,16 +173,14 @@ US remains intentionally fail-closed:
 
 CFTC `FUTURES_POSITIONING` remains LIVE_GREEN as weekly confirmation-only evidence.
 
-## After EU split live acceptance
+## Current execution order while Railway deploy is externally blocked
 
-Recommended order:
-
-1. EU breadth adapter + credential/entitlement-gated loader/binding/runtime wiring using the same fail-closed pattern as US Twelve Data sources.
-2. EU INDEX remains license-blocked until a valid Cboe license exists.
+1. Keep the hourly EU deployment condition watch active; do not spam deploy attempts.
+2. CN_HK capability-specific provider split is the next code-only task once its bounded design is approved.
 3. Railway IaC migration may proceed only from a real CLI `migrate` + `plan` review, preferably with a project token scoped only to Research Staging if moved into GitHub Actions.
-4. JP / KR activation after real key + entitlement requirements are available.
-5. CN_HK approved data-product path.
-6. Home decision-readiness UX refinement and direction eligibility integration.
+4. EU breadth adapter + credential/entitlement-gated loader/binding/runtime wiring remains parked until the EU provider split is live-accepted.
+5. JP / KR activation remains parked until real key + entitlement requirements are available.
+6. Home decision-readiness UX refinement and direction eligibility integration can follow provider-governance cleanup.
 7. Activate US credential-gated providers only with real credentials/entitlements and independent live verification.
 
 ## Handoff rule
