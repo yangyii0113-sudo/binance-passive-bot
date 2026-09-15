@@ -4,6 +4,15 @@ const assert=require('node:assert/strict');
 const {createStagingHomeService}=require('../v12/staging/home_service.js');
 const {createStagingSourcePipeline}=require('../v12/staging/source_pipeline.js');
 
+
+// Archived explicit provider path remains testable but is excluded from current Home.
+const {buildMarketCoverage}=require('../v12/read_model/market_coverage.js');
+function archivedEu(result){
+  const home=result.orchestration.published;
+  assert.equal(home.marketCoverage.markets.EU,undefined);
+  return buildMarketCoverage({asOf:home.asOf,providerDiagnostics:home.providerDiagnostics,home:home.home}).markets.EU;
+}
+
 const nowMs=Date.parse('2026-09-15T09:15:00Z');
 const breadthEndpoint='https://api.twelvedata.com/quote?symbol=AAA,BBB,CCC';
 function response(body,{status=200}={}){return {ok:status>=200&&status<300,status,headers:{get(){return 'application/json; charset=utf-8'}},async json(){return body}};}
@@ -31,7 +40,7 @@ test('missing EU breadth key and entitlement performs zero provider requests and
   assert.deepEqual(calls,[]);
   const datasets=result.orchestration.published.providerDiagnostics.datasets;
   assert.equal(datasets.some(x=>x.sourceId==='twelve-data-eu-breadth'),false);
-  const eu=result.orchestration.published.marketCoverage.markets.EU;
+  const eu=archivedEu(result);
   assert.equal(eu.coverageStatus,'BLOCKED');
   assert.ok(eu.missingCapabilities.includes('MARKET_BREADTH'));
   assert.ok(eu.blockers.some(x=>x.type==='API_KEY_REQUIRED'&&x.capability==='MARKET_BREADTH'&&x.sourceId==='twelve-data-eu-breadth'));
@@ -43,7 +52,7 @@ test('EU breadth key without entitlement performs zero provider requests',async(
   const result=await pipeline.run(input());
   assert.deepEqual(calls,[]);
   assert.equal(result.orchestration.published.providerDiagnostics.datasets.some(x=>x.sourceId==='twelve-data-eu-breadth'),false);
-  assert.ok(result.orchestration.published.marketCoverage.markets.EU.missingCapabilities.includes('MARKET_BREADTH'));
+  assert.ok(archivedEu(result).missingCapabilities.includes('MARKET_BREADTH'));
 });
 
 test('EU breadth key plus entitlement loads canonical breadth but EU remains blocked by index licence',async()=>{
@@ -59,7 +68,7 @@ test('EU breadth key plus entitlement loads canonical breadth but EU remains blo
   assert.equal(read.datasetId,'TWELVEDATA:BREADTH:EU');
   assert.equal(read.subjectId,'REGION:EU');
   assert.equal(read.status,'AVAILABLE');
-  const eu=result.orchestration.published.marketCoverage.markets.EU;
+  const eu=archivedEu(result);
   assert.ok(eu.availableCapabilities.includes('MARKET_BREADTH'));
   assert.equal(eu.missingCapabilities.includes('MARKET_BREADTH'),false);
   assert.equal(eu.directionReadiness,'PARTIAL');
@@ -75,7 +84,7 @@ test('EU breadth transport failure is diagnosed without fabricating breadth capa
   assert.ok(read);
   assert.equal(read.status,'UNAVAILABLE');
   assert.equal(read.reason,'FETCH_FAILED');
-  const eu=result.orchestration.published.marketCoverage.markets.EU;
+  const eu=archivedEu(result);
   assert.equal(eu.availableCapabilities.includes('MARKET_BREADTH'),false);
   assert.ok(eu.blockers.some(x=>x.type==='PROVIDER_UNAVAILABLE'&&x.capability==='MARKET_BREADTH'&&x.sourceId==='twelve-data-eu-breadth'));
 });

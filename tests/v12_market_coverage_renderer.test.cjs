@@ -56,11 +56,11 @@ function viewModel(marketCoverage=coverage()){
   });
 }
 
-test('coverage renderer shows seven markets with Chinese readiness labels and backend blocker reasons',()=>{
+test('coverage renderer shows four active markets with Chinese readiness labels and backend blocker reasons',()=>{
   const html=Renderer.renderHomeSections(viewModel()).coverageHtml;
   assert.equal(typeof html,'string');
   assert.match(html,/市場資料覆蓋/);
-  assert.equal((html.match(/data-coverage-market=/g)||[]).length,7);
+  assert.equal((html.match(/data-coverage-market=/g)||[]).length,4);
   assert.match(html,/data-raw-coverage-status="READY"/);
   assert.match(html,/>可用</);
   assert.match(html,/>部分可用</);
@@ -77,9 +77,9 @@ test('coverage renderer shows seven markets with Chinese readiness labels and ba
   assert.match(html,/產業輪動/);
   assert.match(html,/波動環境/);
   assert.match(html,/授權審查中/);
-  assert.match(html,/需要 API 金鑰/);
+  assert.doesNotMatch(html,/data-coverage-market="JP"/);
   assert.match(html,/需要資料方案權限/);
-  assert.match(html,/需要資料產品/);
+  assert.doesNotMatch(html,/data-coverage-market="CN_HK"|data-coverage-market="EU"/);
   assert.equal(/>BUY<|>SELL<|PLACEORDER|SUBMITORDER|AUTHORIZEEXECUTION/i.test(html),false);
 });
 

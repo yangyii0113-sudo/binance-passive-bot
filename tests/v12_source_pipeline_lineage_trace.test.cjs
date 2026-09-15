@@ -143,13 +143,15 @@ test('BLS and ECB regional research states carry durable lineage refs to exact c
     const h=tableFetch(table,{advance:true});
     const lineageStore=createDurableSourceLineageStore({filePath,now:()=>nowMs});
     const service=createStagingHomeService();
-    const pipeline=createStagingSourcePipeline({fetchImpl:h.fetchImpl,clock:h.clock,publishHome:service.publishHome,lineageStore});
+    let archivedContexts;
+    const pipeline=createStagingSourcePipeline({fetchImpl:h.fetchImpl,clock:h.clock,publishHome(input){archivedContexts=input.regionalContexts;return service.publishHome(input);},lineageStore});
     const result=await pipeline.run({nowMs,regions:{
       US:{bls:[{endpoint:blsEndpoint,definitions:{CUUR0000SA0:{entityId:'MACRO:US:CPI',scope:'US',field:'inflation.cpi_index',unit:'INDEX'}}}]},
       EU:{ecb:[{endpoint:ecbEndpoint,definition:{seriesKey:'ICP.M.U2.N.000000.4.ANR',entityId:'MACRO:EU:HICP',scope:'EU',field:'inflation.hicp_yoy',unit:'PCT'}}]}
     }});
+    assert.equal(result.orchestration.published.home.regions.some(x=>x.region==='EU'),false);
     for(const region of ['US','EU']){
-      const homeRegion=result.orchestration.published.home.regions.find(x=>x.region===region);
+      const homeRegion=archivedContexts[region];
       assert.match(homeRegion.lineageRef,/^out_[a-f0-9]{64}$/);
       const trace=lineageStore.traceOutput(homeRegion.lineageRef);
       assert.equal(trace.output.outputType,'REGIONAL_CONTEXT');

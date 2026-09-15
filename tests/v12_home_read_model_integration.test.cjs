@@ -14,7 +14,7 @@ const cryptoExecution=Object.freeze({
   candidates:Object.freeze([{symbol:'ETHUSDT',side:'LONG',family:'A',status:'ARMED'}]),pending:Object.freeze([]),openPositions:Object.freeze([]),closedTrades:Object.freeze([])
 });
 
-test('home read model merges seven regional contexts, TW early trend, and read-only Crypto opportunities',()=>{
+test('home read model merges four active regional contexts, TW early trend, and read-only Crypto opportunities',()=>{
   const out=H.buildHomeReadModel({
     asOf,
     regionEvidence:{
@@ -28,7 +28,7 @@ test('home read model merges seven regional contexts, TW early trend, and read-o
   assert.equal(out.schemaVersion,'foxyya-home-read-model/1');
   assert.equal(out.researchOnly,true);
   assert.equal(out.executionWrite,false);
-  assert.equal(out.home.regions.length,7);
+  assert.equal(out.home.regions.length,4);
   assert.equal(out.home.regions.find(x=>x.region==='TW').status,'AVAILABLE');
   assert.equal(out.home.regions.find(x=>x.region==='KR').status,'UNAVAILABLE');
   assert.equal(out.home.regions.find(x=>x.region==='KR').bias,'UNAVAILABLE');

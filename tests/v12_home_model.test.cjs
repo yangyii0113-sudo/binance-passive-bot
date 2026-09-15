@@ -2,9 +2,9 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const H=require('../v12/ui/home_model.js');
 
-test('home always covers seven regional contexts in fixed order',()=>{
+test('home always covers four active regional contexts in fixed order',()=>{
   const h=H.buildHomeModel({asOf:1000});
-  assert.deepEqual(h.regions.map(x=>x.region),['US','TW','CN_HK','JP','KR','EU','CRYPTO']);
+  assert.deepEqual(h.regions.map(x=>x.region),['US','TW','KR','CRYPTO']);
 });
 
 test('home always exposes Crypto US and TW pulse together',()=>{

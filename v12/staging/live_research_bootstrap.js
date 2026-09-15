@@ -186,13 +186,6 @@ function buildBootstrapInput(nowMs){
           blsSource('CES0000000001','MACRO:US:PAYROLL','employment.nonfarm_payroll','THOUSANDS')
         ]),
         cftc:Object.freeze([cftcSource()])
-      }),
-      EU:Object.freeze({
-        ecb:Object.freeze([
-          ecbSource('ICP.M.U2.N.000000.4.ANR','MACRO:EU:HICP','inflation.hicp_yoy'),
-          ecbSource('FM.D.U2.EUR.4F.KR.MRR_FR.LEV','MACRO:EU:MRO_RATE','rates.main_refinancing'),
-          ecbSource('FM.D.U2.EUR.4F.KR.DFR.LEV','MACRO:EU:DEPOSIT_RATE','rates.deposit_facility')
-        ])
       })
     }),
     todayFocus:Object.freeze([]),

@@ -44,8 +44,6 @@ function fixtures(){
     const seriesID=Object.keys(item.definitions)[0];
     table.set(item.endpoint,response(200,blsPayload(seriesID,blsValues[seriesID])));
   }
-  const ecbValues=['2.1','2.15','2.00'];
-  input.regions.EU.ecb.forEach((item,index)=>table.set(item.endpoint,response(200,ecbPayload(ecbValues[index]))));
   return table;
 }
 
@@ -86,7 +84,7 @@ test('staging runtime shares one durable lineage store across bootstrap, Home, a
     try{
       const initial=await runtime.researchReady;
       assert.ok(initial);
-      assert.equal(calls.length,17);
+      assert.equal(calls.length,14);
       assert.equal(timers.length,1);
       assert.equal(timers[0].ms,1800*1000);
 
@@ -101,7 +99,7 @@ test('staging runtime shares one durable lineage store across bootstrap, Home, a
       const usRegion=home.home.regions.find(x=>x.region==='US');
       assert.ok(usRegion.facts.some(x=>x.field==='inflation.cpi_index'));
       assert.ok(usRegion.facts.some(x=>x.field==='positioning.cot.asset_manager.net'));
-      assert.equal(home.home.regions.find(x=>x.region==='EU').facts.length,3);
+      assert.equal(home.home.regions.find(x=>x.region==='EU'),undefined);
       const twRegion=home.home.regions.find(x=>x.region==='TW');
       assert.equal(twRegion.status,'AVAILABLE');
       assert.ok(twRegion.facts.some(x=>x.field==='market.index.taiex.close'));
@@ -147,7 +145,7 @@ test('provider network failures stay unavailable without taking down staging hea
     assert.equal(home.home.opportunities.TW.length,0);
     assert.equal(home.home.opportunities.US.length,0);
     assert.equal(home.home.regions.find(x=>x.region==='US').status,'UNAVAILABLE');
-    assert.equal(home.home.regions.find(x=>x.region==='EU').status,'UNAVAILABLE');
+    assert.equal(home.home.regions.find(x=>x.region==='EU'),undefined);
     assert.equal(home.home.regions.find(x=>x.region==='TW').status,'UNAVAILABLE');
   }finally{await runtime.close();fs.rmSync(dir,{recursive:true,force:true})}
 });

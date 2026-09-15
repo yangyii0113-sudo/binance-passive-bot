@@ -45,8 +45,6 @@ function fixtures(input){
     const seriesID=Object.keys(item.definitions)[0];
     table.set(item.endpoint,response(200,blsPayload(seriesID,blsValues[seriesID])));
   }
-  const ecbValues=['2.1','2.15','2.00'];
-  input.regions.EU.ecb.forEach((item,index)=>table.set(item.endpoint,response(200,ecbPayload(ecbValues[index]))));
   return table;
 }
 
@@ -69,8 +67,8 @@ test('completed source cycle publishes transport health and dataset diagnostics 
   const {result}=await runResearch(t);
   const read=result.orchestration.published;
   assert.ok(read.providerDiagnostics,'completed Home must include provider diagnostics');
-  assert.equal(read.providerDiagnostics.providers.length,8);
-  assert.equal(read.providerDiagnostics.datasets.length,16);
+  assert.equal(read.providerDiagnostics.providers.length,7);
+  assert.equal(read.providerDiagnostics.datasets.length,13);
   const sec=read.providerDiagnostics.providers.find(x=>x.providerId==='sec-edgar');
   assert.equal(sec.health,'HEALTHY');
   assert.equal(sec.lastSuccessAt,nowMs);
@@ -139,7 +137,7 @@ test('Home keeps canonical values, observation times, SEC periods and explicit r
 test('Global overview shows macro and positioning facts without inventing regional direction',async t=>{
   const {result}=await runResearch(t);
   const view=VM.buildHomeViewModel(result.orchestration.published);
-  assert.equal(view.regions.length,7);
+  assert.equal(view.regions.length,4);
   const us=view.regions.find(x=>x.region==='US');
   assert.equal(us.bias,'UNAVAILABLE');
   assert.ok(us.facts,'regional facts must survive presentation');
@@ -151,8 +149,7 @@ test('Global overview shows macro and positioning facts without inventing region
   assert.equal(tw.status,'AVAILABLE');
   assert.ok(tw.facts.some(x=>x.field==='market.index.taiex.close'));
   assert.ok(tw.facts.some(x=>x.field==='market.index.otc.close'));
-  assert.equal(view.regions.find(x=>x.region==='JP').status,'UNAVAILABLE');
-  assert.equal(view.regions.find(x=>x.region==='JP').facts.length,0);
+  assert.equal(view.regions.find(x=>x.region==='JP'),undefined);
   const html=Renderer.renderHomeSections(view).regionsHtml;
   assert.match(html,/326.5/);
   assert.match(html,/美國失業率/);
@@ -163,19 +160,19 @@ test('Global overview shows macro and positioning facts without inventing region
 
 test('one regional macro source failure is isolated and valid sibling facts remain available',async t=>{
   const input=Bootstrap.buildBootstrapInput(nowMs);
-  const {result}=await runResearch(t,{[input.regions.EU.ecb[0].endpoint]:{
+  const {result}=await runResearch(t,{[input.regions.US.bls[0].endpoint]:{
     ok:true,status:200,headers:{get(){return 'text/csv'}},json(){throw Error('must not parse')}
   }});
   const read=result.orchestration.published;
   assert.ok(read.providerDiagnostics,'non-JSON failures must be diagnosed');
-  const failed=read.providerDiagnostics.datasets.find(x=>x.datasetId===input.regions.EU.ecb[0].definition.seriesKey||x.datasetId==='ECB:'+input.regions.EU.ecb[0].definition.seriesKey);
+  const failed=read.providerDiagnostics.datasets.find(x=>x.datasetId==='BLS:CUUR0000SA0');
   assert.ok(failed);
   assert.equal(failed.reason,'CONTENT_TYPE_INVALID');
-  const eu=VM.buildHomeViewModel(read).regions.find(x=>x.region==='EU');
-  assert.equal(eu.status,'AVAILABLE','other valid ECB sources keep EU partial coverage available');
-  assert.equal(eu.facts.length,2);
-  assert.equal(eu.facts.some(x=>x.field==='rates.main_refinancing'),true);
-  assert.equal(eu.facts.some(x=>x.field==='rates.deposit_facility'),true);
+  const us=VM.buildHomeViewModel(read).regions.find(x=>x.region==='US');
+  assert.equal(us.status,'AVAILABLE','valid BLS and CFTC siblings remain available');
+  assert.equal(us.facts.some(x=>x.field==='inflation.cpi_index'),false);
+  assert.equal(us.facts.some(x=>x.field==='labor.unemployment_rate'),true);
+  assert.equal(us.facts.some(x=>x.field==='employment.nonfarm_payroll'),true);
 });
 
 

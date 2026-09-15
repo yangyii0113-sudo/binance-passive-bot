@@ -5,7 +5,7 @@ const assert=require('node:assert/strict');
 const http=require('node:http');
 const {runMarketCoverageLiveProbe}=require('../v12/staging/market_coverage_live_probe.js');
 
-const MARKETS=['CRYPTO','US','TW','CN_HK','JP','KR','EU'];
+const MARKETS=['CRYPTO','US','TW','KR'];
 function listen(handler){const server=http.createServer(handler);return new Promise((resolve,reject)=>{server.once('error',reject);server.listen(0,'127.0.0.1',()=>resolve(server));});}
 function close(server){return new Promise((resolve,reject)=>server.close(err=>err?reject(err):resolve()));}
 function row(market){return {market,coverageStatus:market==='US'?'BLOCKED':'UNAVAILABLE',directionReadiness:'NOT_READY',researchReadiness:market==='US'?'PARTIAL':'NOT_READY',rankingEligibility:market==='US'?'LIMITED':'NOT_ELIGIBLE',availableCapabilities:market==='US'?['FUNDAMENTAL','FUTURES_POSITIONING','MACRO']:[],missingCapabilities:market==='US'?['INDEX','MARKET_BREADTH','QUOTE','VOLATILITY_CONTEXT']:[],blockers:[],researchOnly:true,executionWrite:false};}
@@ -24,7 +24,7 @@ test('live coverage probe exposes available capabilities and CFTC dataset status
     if(req.url==='/v12/api/home'){res.setHeader('content-type','application/json');return res.end(JSON.stringify(home()));}
     if(req.url==='/v12-preview/')return res.end('<link href="coverage.css"><script src="home_dom.js"></script><script src="market_coverage_renderer.js"></script><script src="app.js"></script>');
     if(req.url==='/v12-preview/coverage.css')return res.end('.coverage-grid{}@media(max-width:820px){}');
-    if(req.url==='/v12-preview/market_coverage_renderer.js')return res.end("const MARKET_ORDER=['CRYPTO','US','TW','CN_HK','JP','KR','EU'];function ensureCoverageTarget(){};function renderMarketCoverage(){};");
+    if(req.url==='/v12-preview/market_coverage_renderer.js')return res.end("const MARKET_ORDER=['CRYPTO','US','TW','KR'];function ensureCoverageTarget(){};function renderMarketCoverage(){};");
     res.statusCode=404;res.end('NOT_FOUND');
   });
   try{

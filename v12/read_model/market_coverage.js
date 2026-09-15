@@ -291,11 +291,12 @@ function buildMarket({market,asOf,catalog,providerDiagnostics,home,cryptoExecuti
   });
 }
 
-function buildMarketCoverage({asOf,sourceCatalog=SOURCE_CATALOG,providerDiagnostics=null,home=null,cryptoExecution=null,researchPerformance=null}={}){
+function buildMarketCoverage({asOf,sourceCatalog=SOURCE_CATALOG,providerDiagnostics=null,home=null,cryptoExecution=null,researchPerformance=null,marketScope=MARKETS}={}){
   if(!finite(asOf)||asOf<0)throw Error('ASOF_INVALID');
   const catalog=Array.isArray(sourceCatalog)?sourceCatalog:[];
+  if(!Array.isArray(marketScope)||!marketScope.length||marketScope.some(market=>!MARKETS.includes(market)))throw Error('MARKET_SCOPE_INVALID');
   const markets={};
-  for(const market of MARKETS)markets[market]=buildMarket({market,asOf,catalog,providerDiagnostics,home,cryptoExecution,researchPerformance});
+  for(const market of MARKETS.filter(market=>marketScope.includes(market)))markets[market]=buildMarket({market,asOf,catalog,providerDiagnostics,home,cryptoExecution,researchPerformance});
   return deepFreeze({schemaVersion:'foxyya-market-coverage/1',asOf,markets,researchOnly:true,executionWrite:false});
 }
 

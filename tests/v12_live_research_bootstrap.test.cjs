@@ -45,8 +45,6 @@ function fixtures(input){
     const seriesID=Object.keys(item.definitions)[0];
     table.set(item.endpoint,response(200,blsPayload(seriesID,blsValues[seriesID])));
   }
-  const ecbValues=['2.1','2.15','2.00'];
-  input.regions.EU.ecb.forEach((item,index)=>table.set(item.endpoint,response(200,ecbPayload(ecbValues[index]))));
   return table;
 }
 
@@ -68,7 +66,7 @@ test('default research bootstrap uses only approved official read-only sources a
   assert.deepEqual(input.usAssets[0].earlyEvidence,[]);
   assert.equal(input.regions.US.bls.length,3);
   assert.equal(input.regions.US.cftc.length,1);
-  assert.equal(input.regions.EU.ecb.length,3);
+  assert.equal(input.regions.EU,undefined);
 
   const endpoints=[
     input.twMarket.twse.endpoint,input.twMarket.tpex.highlightEndpoint,input.twMarket.tpex.industryTurnoverEndpoint,
@@ -76,12 +74,11 @@ test('default research bootstrap uses only approved official read-only sources a
     ...input.usAssets.map(x=>x.sec.endpoint),
     ...input.regions.US.bls.map(x=>x.endpoint),
     ...input.regions.US.cftc.map(x=>x.endpoint),
-    ...input.regions.EU.ecb.map(x=>x.endpoint)
   ];
   for(const endpoint of endpoints){
     const url=new URL(endpoint);
     assert.equal(url.protocol,'https:');
-    assert.ok(['openapi.twse.com.tw','www.twse.com.tw','www.tpex.org.tw','data.sec.gov','api.bls.gov','publicreporting.cftc.gov','data-api.ecb.europa.eu'].includes(url.hostname),url.hostname);
+    assert.ok(['openapi.twse.com.tw','www.twse.com.tw','www.tpex.org.tw','data.sec.gov','api.bls.gov','publicreporting.cftc.gov'].includes(url.hostname),url.hostname);
   }
   const text=JSON.stringify(input).toLowerCase();
   assert.doesNotMatch(text,/apikey|password|authorization|bearer|secret/);
@@ -115,16 +112,15 @@ test('one bootstrap run publishes traceable TW US and regional research without 
     const euRegion=result.orchestration.published.home.regions.find(x=>x.region==='EU');
     assert.equal(twRegion.status,'AVAILABLE');
     assert.equal(usRegion.status,'AVAILABLE');
-    assert.equal(euRegion.status,'AVAILABLE');
+    assert.equal(euRegion,undefined);
     assert.ok(twRegion.facts.some(x=>x.field==='market.index.taiex.close'));
     assert.ok(twRegion.facts.some(x=>x.field==='market.index.otc.close'));
     assert.ok(usRegion.facts.some(x=>x.field==='inflation.cpi_index'));
     assert.ok(usRegion.facts.some(x=>x.field==='positioning.cot.asset_manager.net'));
-    assert.equal(euRegion.facts.length,3);
     const twPulse=result.orchestration.published.home.marketPulse.find(x=>x.market==='TW');
     assert.equal(twPulse.status,'AVAILABLE');
     assert.equal(twPulse.state,'BROAD_ADVANCE');
-    assert.equal(calls.length,17);
+    assert.equal(calls.length,14);
     for(const call of calls){assert.equal(call.init.method,'GET');assert.equal(call.init.redirect,'error')}
     assert.deepEqual(Object.keys(runtime),['runOnce']);
   }finally{fs.rmSync(dir,{recursive:true,force:true})}

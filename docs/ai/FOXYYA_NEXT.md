@@ -1,8 +1,28 @@
 # FOXYYA v12 — Next Engineering Actions
 
-Updated: 2026-09-15 16:40 +08:00
+Updated: 2026-09-15 — user scope reduction
 
-## Current accepted live Research Staging
+## Current scope override — 2026-09-15
+
+User requested: 「先取消日本中國歐洲」, with limited budget.
+
+- Active scope: **CRYPTO / US / TW / KR**. The existing combined **CN_HK** group is deferred with JP and EU.
+- Remove deferred regions from Home cards, Home coverage API, default bootstrap and current acceptance/activation backlog. The default bootstrap no longer schedules three ECB requests (fixture cycle: 17 → 14 fetches).
+- Preserve archived provider adapters, explicit pipeline paths, historical records and lineage. Archived provider tests remain regression protection, not launch requirements.
+- No paid upgrade, new service, Production Execution V2 edit, data deletion, restart or deployment is part of this change.
+- Railway trial expired at **2026-09-15 13:49:55 UTC**; Production and Staging deployments were removed. Earlier live-health statements below are historical, superseded observations. CI success does not resolve runtime/resource availability or establish that the earlier Production OOM is fixed.
+- Current blockers: hosting/runtime availability under the budget constraint, US licensed data/credentials, KR key/service approval. JP/CN_HK/EU purchases and activation are deferred, not current blockers.
+- After any separately authorized future Staging deployment, verify `/ready`, lineage trace and **four-market** coverage. Do not infer live readiness from this code change.
+
+Verification for this change: v12 **774/774 PASS**, existing JavaScript **16/16 PASS**, Python **1/1 PASS**, changed-path scope gate and `git diff --check` PASS. Remote CI pending; container smoke not run locally (Docker unavailable); no deployment performed. The evidence below applies only to earlier checkpoints.
+
+## Historical checkpoint and retained implementation notes
+
+All sections below record the prior seven-market plan; current scope and runtime status above take precedence.
+
+
+
+## Previously accepted Research Staging
 
 The accepted Railway live deployment is intentionally still the older validated checkpoint:
 
@@ -43,7 +63,7 @@ Fresh verification evidence:
 
 This product checkpoint contains all currently implementable provider-governance and fail-closed improvements that do not require new exchange licences, provider credentials/entitlements, Railway deployment capacity, or Production changes.
 
-## JP provider split — CODE GREEN / LIVE PENDING
+## JP provider split — DEFERRED / archived code green
 
 JP market-direction governance is now explicit.
 
@@ -192,7 +212,7 @@ New deployment creation is still blocked before Railway produces a deployment ID
 
 `You have used all your available resources`
 
-The current live services remain healthy, so do not classify this as FOXYYA application OOM or disk exhaustion.
+Historical observation before trial expiry: services were healthy at that checkpoint. They are now removed; do not treat this as current runtime evidence.
 
 The hourly condition watch remains active. Its release target must now be the latest fully-green product commit:
 
@@ -208,8 +228,8 @@ When Railway deployment capacity returns:
 6. Only after verifying the captured snapshot is the intended fully-green code may one native redeploy be used.
 7. Accepted build must use `v12/staging/Dockerfile` + `node:22-alpine`.
 8. Verify `/ready`, `RESEARCH_ONLY=true`, `EXECUTION_WRITE=false`.
-9. Wait for initial bootstrap, lineage trace probe and seven-market Coverage probe.
-10. Verify live blocker truth for US / EU / CN_HK / JP / KR.
+9. Wait for initial bootstrap, lineage trace probe and four-market Coverage probe.
+10. Verify live blocker truth for US / TW / CRYPTO / KR.
 11. Verify Home decision-readiness projection is present and marketCoverage is still authoritative.
 12. Confirm zero `DURABLE_WRITE_FAILED`, zero `LINEAGE_JOURNAL_CORRUPT`, zero research refresh failure.
 13. Only then mark the latest checkpoint LIVE_GREEN.
@@ -231,19 +251,15 @@ Permanent migration requires a real Railway CLI path:
 - do not delete root `railway.toml` as part of a Staging-only migration without an approved complete plan
 - Railway agent cannot execute the CLI, so predicted migration output is not evidence
 
-## External activation blockers remaining
+## Current external activation blockers
 
 These are the only major provider paths that cannot be completed autonomously from code alone:
 
-- Railway: new Staging deployment capacity / workspace allocation
+- Railway: trial expired; runtime removed; no paid upgrade authorized
 - Railway IaC: real scoped CLI auth / plan
 - US INDEX + MARKET_BREADTH: valid licensed market-data path
 - US QUOTE: real Twelve Data Staging API key
 - US VOLATILITY_CONTEXT: real Twelve Data key + entitlement + symbol verification
-- EU INDEX: Cboe licence
-- EU MARKET_BREADTH: Twelve Data key + Cboe Europe entitlement
-- CN_HK: HKEX/SSE/SZSE licensed data products / licence reviews
-- JP: TSE Market Information licence + appropriate J-Quants plan
 - KR: KRX Open API key + service approval
 
 Do not bypass these gates or fabricate availability.
@@ -252,7 +268,7 @@ Do not bypass these gates or fabricate availability.
 
 All provider-governance / fail-closed / Home readiness code-only work currently identified in the completion plan is implemented and fully regression-tested.
 
-The next engineering work that materially changes provider availability requires one of the external items above. Until one becomes available, preserve the latest green code and keep the Railway deployment condition watch active rather than weakening Coverage semantics.
+Preserve the reduced-scope code without new spending or automatic redeployment. Any condition watch must be read-only under the current cost-saving instruction. Deferred JP/CN_HK/EU work must not be resumed without a new user request.
 
 ## Handoff rule
 

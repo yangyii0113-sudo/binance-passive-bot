@@ -4,7 +4,7 @@
   else root.FOXY_V12_HOME_MODEL=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(){
   'use strict';
-  const REGIONS=Object.freeze(['US','TW','CN_HK','JP','KR','EU','CRYPTO']);
+  const REGIONS=Object.freeze(['US','TW','KR','CRYPTO']);
   const PRIMARY_MARKETS=Object.freeze(['CRYPTO','US','TW']);
   const finite=x=>typeof x==='number'&&Number.isFinite(x);
   const unavailableRegion=(region,asOf)=>Object.freeze({region,status:'UNAVAILABLE',bias:'UNAVAILABLE',confidence:0,asOf,evidence:Object.freeze([]),contradictions:Object.freeze([]),researchOnly:true});

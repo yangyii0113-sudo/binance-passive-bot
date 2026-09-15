@@ -14,7 +14,7 @@
 
   if(!BaseRenderer||typeof BaseRenderer.renderHomeSections!=='function')throw Error('BASE_HOME_RENDERER_REQUIRED');
 
-  const MARKET_ORDER=Object.freeze(['CRYPTO','US','TW','CN_HK','JP','KR','EU']);
+  const MARKET_ORDER=Object.freeze(['CRYPTO','US','TW','KR']);
   const MARKET_LABELS=Object.freeze({CRYPTO:'₿ 加密市場',US:'🇺🇸 美國',TW:'🇹🇼 台灣',CN_HK:'🇨🇳🇭🇰 中國／香港',JP:'🇯🇵 日本',KR:'🇰🇷 韓國',EU:'🇪🇺 歐洲'});
   const STATUS_LABELS=Object.freeze({READY:'可用',PARTIAL:'部分可用',BLOCKED:'外部阻擋',UNAVAILABLE:'尚未接入'});
   const DIRECTION_LABELS=Object.freeze({READY:'可判方向',PARTIAL:'方向證據部分可用',NOT_READY:'不可判方向'});
@@ -86,7 +86,7 @@
     target.className='home-section coverage-section';
     target.id='market-coverage';
     target.setAttribute('data-home-content','market-coverage');
-    target.innerHTML='<div class="empty-state"><b>市場資料覆蓋載入中</b><span>正在整理七大市場的資料可用性、方向資格與外部阻擋。</span></div>';
+    target.innerHTML='<div class="empty-state"><b>市場資料覆蓋載入中</b><span>正在整理四個市場的資料可用性、方向資格與外部阻擋。</span></div>';
     const before=doc.querySelector('#global-status');
     if(before&&before.parentNode===home)home.insertBefore(target,before);else home.appendChild(target);
     return target;

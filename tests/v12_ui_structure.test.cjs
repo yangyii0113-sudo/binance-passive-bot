@@ -18,9 +18,9 @@ test('home sections follow approved decision order',()=>{
   for(let i=1;i<pos.length;i++)assert.ok(pos[i]>pos[i-1]);
 });
 
-test('seven regions and three primary markets are present together',()=>{
+test('four active regions and three primary markets are present together',()=>{
   const html=read('index.html');
-  for(const r of ['US','TW','CN_HK','JP','KR','EU','CRYPTO'])assert.match(html,new RegExp(`data-region="${r}"`));
+  for(const r of ['US','TW','KR','CRYPTO'])assert.match(html,new RegExp(`data-region="${r}"`));
   for(const m of ['CRYPTO','US','TW'])assert.match(html,new RegExp(`data-market-pulse="${m}"`));
 });
 

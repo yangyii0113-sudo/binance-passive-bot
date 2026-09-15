@@ -1,11 +1,11 @@
 {
   "schema": "foxyya-ai-continuity-state/1",
-  "updatedAt": "2026-09-15T16:40:42+08:00",
+  "updatedAt": "2026-09-15T14:23:47.542957+00:00",
   "resumeInstruction": "接續 FOXYYA，先讀 docs/ai/FOXYYA_STATE.json、docs/ai/FOXYYA_NEXT.md、docs/ai/FOXYYA_CONTEXT.md，重新驗證 GitHub/Railway 後直接執行；Production Execution V2 不得修改。",
   "repository": {
     "fullName": "yangyii0113-sudo/binance-passive-bot",
     "branch": "v12-platform-completion-20260910",
-    "branchHeadAtCheckpoint": "93ec3895ab8cda90f446de22cff60f777cd421e3",
+    "branchHeadAtCheckpoint": "03eae0a6a1db632fe29f7460aca4fc29a531f70a",
     "implementationPlanCommit": "4acd5e2b206d64530210ea1e0ae03eb13619c77d",
     "euProviderSplitGreenCommit": "d659c8947524f8bb20139f7be36121d55316acfc",
     "cnHkProviderSplitGreenCommit": "efde7c4201a5cc80300120ec811f11a64e00c54b",
@@ -40,7 +40,7 @@
       "serviceId": "01d2c000-5a1d-4443-a80e-4d110a9d84a4",
       "serviceName": "foxyya-v12-staging",
       "acceptedDeploymentId": "6cedb435-a175-4cb8-85bd-ffa1b70a5fd3",
-      "acceptedDeploymentStatus": "SUCCESS",
+      "acceptedDeploymentStatus": "REMOVED",
       "deployedCommit": "dc56501497bf1095ad0509678889197fe6762f44",
       "runtime": "NODE_V12",
       "researchOnly": true,
@@ -50,12 +50,12 @@
       "primaryVolumeId": "232327ea-aabf-419a-b174-e689fca24d9d",
       "primaryVolumeMount": "/data",
       "primaryVolumeSizeMB": 500,
-      "runtimeCapacitySaturated": false
+      "runtimeCapacitySaturated": null
     },
     "newDeploymentCapacity": {
-      "status": "EXTERNAL_RESOURCE_BLOCKED",
+      "status": "TRIAL_EXPIRED",
       "attempts": 3,
-      "lastError": "You have used all your available resources",
+      "lastError": "Your trial has expired. Please upgrade to use agent features.",
       "conditionWatchEnabled": true,
       "conditionWatchCadence": "HOURLY",
       "nextReleaseCandidate": "93ec3895ab8cda90f446de22cff60f777cd421e3"
@@ -70,25 +70,34 @@
       "cliRequired": true,
       "railwayAgentCanExecuteCli": false,
       "safeWorkaround": "Accept only deployments whose build/runtime prove v12/staging/Dockerfile + node:22-alpine and /ready build revision equals the tested product commit."
-    }
+    },
+    "trialExpiredAt": "2026-09-15T13:49:55Z",
+    "observation": "Production and Staging deployments removed at trial expiry. Historical success and CI do not demonstrate current runtime health.",
+    "deploymentPolicy": "Do not upgrade, restart or redeploy under the current cost-saving scope. Condition checks may only read status."
   },
   "p0StorageRecovery": {
     "status": "P0_CLOSED",
     "backupVerified": true,
     "threeCycleMonitoring": "PASSED",
-    "liveTraceApiRoundTrip": "PASSED"
+    "liveTraceApiRoundTrip": "PASSED",
+    "scope": "Historical Research Staging validation only; does not establish a Production ledger backup."
   },
   "marketDataCoverageGate": {
-    "status": "LIVE_GREEN_ON_ACCEPTED_OLD_STAGING",
+    "status": "FOUR_MARKETS_CODE_ONLY_NOT_LIVE",
     "schemaVersion": "foxyya-market-coverage/1",
-    "markets": ["CRYPTO", "US", "TW", "CN_HK", "JP", "KR", "EU"],
-    "latestCodeOnlyCoverageTruthValidatedByContainerSmoke": true,
+    "markets": [
+      "CRYPTO",
+      "US",
+      "TW",
+      "KR"
+    ],
+    "latestCodeOnlyCoverageTruthValidatedByContainerSmoke": false,
     "productionExecutionMutation": "NONE_BY_THIS_WORKFLOW"
   },
   "providerCoverageExpansion": {
     "status": "CODE_ONLY_GOVERNANCE_AND_FAIL_CLOSED_PATHS_COMPLETE_EXTERNAL_ACTIVATIONS_PENDING",
     "us": {
-      "cftcPositioning": "LIVE_GREEN_CONFIRMATION_ONLY",
+      "cftcPositioning": "PREVIOUSLY_LIVE_GREEN_CURRENT_RUNTIME_REMOVED",
       "indexBreadth": "LICENSE_REQUIRED:nasdaq-trader-daily",
       "quote": "API_KEY_REQUIRED:twelve-data-us-quote",
       "volatility": "API_KEY_REQUIRED+ENTITLEMENT_REQUIRED:twelve-data-us-volatility"
@@ -102,27 +111,42 @@
       "breadthMarketScope": "PAN_EUROPE_CBOE_EQUITIES",
       "breadthActivation": "API_KEY_REQUIRED+ENTITLEMENT_REQUIRED",
       "zeroNetworkWithoutCredentialAndEntitlement": true,
-      "defaultStagingLiveActivation": false
+      "defaultStagingLiveActivation": false,
+      "currentScope": "DEFERRED_BY_USER_NOT_A_CURRENT_COMPLETION_BLOCKER"
     },
     "cnHk": {
       "status": "CODE_GREEN_FAIL_CLOSED",
       "genericSourceRetired": "hkex-marketplace",
-      "sources": ["hkex-eod-summary", "hkex-omd-index", "sse-market-data", "szse-ssic-market-data"],
-      "liveNetworkLoadersAdded": false
+      "sources": [
+        "hkex-eod-summary",
+        "hkex-omd-index",
+        "sse-market-data",
+        "szse-ssic-market-data"
+      ],
+      "liveNetworkLoadersAdded": false,
+      "currentScope": "DEFERRED_BY_USER_NOT_A_CURRENT_COMPLETION_BLOCKER"
     },
     "jp": {
       "status": "CODE_GREEN_FAIL_CLOSED",
       "researchSource": "jpx-jquants",
       "directionSource": "tse-market-information",
-      "directionCapabilities": ["INDEX", "MARKET_BREADTH"],
+      "directionCapabilities": [
+        "INDEX",
+        "MARKET_BREADTH"
+      ],
       "directionActivation": "LICENSE_REQUIRED",
-      "liveNetworkLoaderAdded": false
+      "liveNetworkLoaderAdded": false,
+      "currentScope": "DEFERRED_BY_USER_NOT_A_CURRENT_COMPLETION_BLOCKER"
     },
     "kr": {
       "status": "NO_PRODUCTION_CHANGE_REQUIRED_EXISTING_GOVERNANCE_ALIGNED",
       "source": "krx-openapi",
       "activation": "API_KEY_REQUIRED+ENTITLEMENT_REQUIRED",
-      "capabilitiesNormalized": ["QUOTE", "INDEX", "MARKET_BREADTH"]
+      "capabilitiesNormalized": [
+        "QUOTE",
+        "INDEX",
+        "MARKET_BREADTH"
+      ]
     }
   },
   "homeDecisionReadiness": {
@@ -147,30 +171,69 @@
     "containerSmoke": "PASS",
     "containerSmokeRuntime": "node:22-alpine / RESEARCH_ONLY=true / EXECUTION_WRITE=false",
     "productionReleaseAuthorized": false,
-    "phase": "CODE_ONLY_PROVIDER_GOVERNANCE_COMPLETION_GREEN_LIVE_DEPLOYMENT_EXTERNALLY_BLOCKED"
+    "phase": "CODE_ONLY_PROVIDER_GOVERNANCE_COMPLETION_GREEN_LIVE_DEPLOYMENT_EXTERNALLY_BLOCKED",
+    "scope": "Historical verification before current scope reduction; new CI not yet observed."
   },
   "activePriority": {
-    "name": "LATEST_GREEN_RESEARCH_STAGING_DEPLOYMENT",
-    "status": "CONDITION_WATCH_ACTIVE_EXTERNAL_RESOURCE_BLOCKED",
-    "targetCommit": "93ec3895ab8cda90f446de22cff60f777cd421e3"
+    "name": "REDUCE_CURRENT_SCOPE_WITHOUT_NEW_COST_OR_PRODUCTION_CHANGES",
+    "status": "LOCAL_VERIFIED_REMOTE_CI_PENDING"
   },
   "secondaryPriority": {
     "name": "RAILWAY_STAGING_IAC_MIGRATION_REAL_CLI_PREVIEW",
     "status": "REQUIRES_LOCAL_OR_CI_RAILWAY_CLI_AUTH"
   },
   "externalActivationBlockers": [
-    "RAILWAY_DEPLOYMENT_RESOURCE_OR_AGENT_ALLOCATION_BLOCKS_NEW_STAGING_RELEASES",
+    "RAILWAY_TRIAL_EXPIRED_RUNTIME_REMOVED",
     "RAILWAY_STAGING_CAC_DEPRECATED_REQUIRES_REAL_CLI_MIGRATION_PLAN",
     "US_PROVIDER_LICENSES_AND_CREDENTIALS",
-    "EU_CBOE_INDEX_LICENSE",
-    "EU_TWELVE_DATA_KEY_AND_CBOE_EUROPE_ENTITLEMENT",
-    "CN_HK_LICENSED_DATA_PRODUCTS",
-    "JP_TSE_MARKET_INFORMATION_LICENSE_AND_JQUANTS_PLAN",
     "KR_KRX_OPENAPI_KEY_AND_SERVICE_APPROVAL"
   ],
   "continuity": {
     "proactiveChatHandoff": true,
     "conditionWatchForLatestGreenDeploy": true,
     "rule": "At every material checkpoint, update FOXYYA_STATE.json and FOXYYA_NEXT.md. Revalidate GitHub and Railway truth before execution; never infer deployment health from branch HEAD, CI, dashboard config, agent predictions, or source metadata alone."
+  },
+  "productScope": {
+    "status": "FOUR_MARKETS_LOCAL_GREEN_NOT_LIVE",
+    "activeMarkets": [
+      "CRYPTO",
+      "US",
+      "TW",
+      "KR"
+    ],
+    "deferredMarkets": [
+      "JP",
+      "CN_HK",
+      "EU"
+    ],
+    "reason": "User requested cancellation of Japan, China and Europe to limit cost; China maps to existing combined CN_HK group.",
+    "appliesTo": [
+      "Home regional cards",
+      "Home marketCoverage API",
+      "default scheduled bootstrap",
+      "current acceptance and activation backlog"
+    ],
+    "preserved": [
+      "archived provider adapters and explicit pipeline paths",
+      "historical lineage and ledgers",
+      "Production Execution V2 code and settings"
+    ],
+    "costActions": "No paid upgrades, new services or deployment authorized by this scope change."
+  },
+  "deferredActivationItems": [
+    "EU_CBOE_INDEX_LICENSE",
+    "EU_TWELVE_DATA_KEY_AND_CBOE_EUROPE_ENTITLEMENT",
+    "CN_HK_LICENSED_DATA_PRODUCTS",
+    "JP_TSE_MARKET_INFORMATION_LICENSE_AND_JQUANTS_PLAN"
+  ],
+  "scopeReductionVerification": {
+    "v12Tests": "774/774 PASS",
+    "existingJsRegressions": "16/16 PASS",
+    "pythonRegression": "1/1 PASS",
+    "changedPathScopeGate": "PASS; Production release authorized false",
+    "gitDiffCheck": "PASS",
+    "remoteCi": "PENDING",
+    "containerSmoke": "NOT_RUN_LOCALLY_DOCKER_UNAVAILABLE",
+    "liveDeployment": "NOT_PERFORMED"
   }
 }

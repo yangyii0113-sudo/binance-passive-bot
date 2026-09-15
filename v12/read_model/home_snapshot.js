@@ -148,6 +148,7 @@ function buildHomeReadModel(input={}){
   const marketCoverage=MarketCoverage.buildMarketCoverage({
     asOf:input.asOf,
     sourceCatalog:input.sourceCatalog,
+    marketScope:Home.REGIONS,
     providerDiagnostics,
     home,
     cryptoExecution:crypto,

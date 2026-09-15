@@ -73,10 +73,10 @@ test('今日焦點以中文研究解讀為主，原始英文標題降為來源�
   assert.match(out.todayFocusHtml,/class="panel focus-intel-card"/);
 });
 
-test('預設 live bootstrap 使用更多免費官方宏觀資料：美國 3 條 BLS、歐洲 3 條 ECB',()=>{
+test('預設 live bootstrap 使用更多免費官方宏觀資料：保留美國 3 條 BLS、暫緩歐洲 ECB',()=>{
   const input=Bootstrap.buildBootstrapInput(asOf);
   assert.equal(input.regions.US.bls.length,3);
-  assert.equal(input.regions.EU.ecb.length,3);
+  assert.equal(input.regions.EU,undefined);
   const blsFields=input.regions.US.bls.flatMap(x=>Object.values(x.definitions).map(d=>d.field));
   assert.deepEqual(blsFields.sort(),['employment.nonfarm_payroll','inflation.cpi_index','labor.unemployment_rate'].sort());
   for(const item of input.regions.US.bls){
@@ -84,8 +84,6 @@ test('預設 live bootstrap 使用更多免費官方宏觀資料：美國 3 條 
     assert.equal(url.hostname,'api.bls.gov');
     assert.equal(url.searchParams.get('latest'),'true');
   }
-  const ecbFields=input.regions.EU.ecb.map(x=>x.definition.field).sort();
-  assert.deepEqual(ecbFields,['inflation.hicp_yoy','rates.deposit_facility','rates.main_refinancing'].sort());
 });
 
 test('新增宏觀欄位在使用者介面必須是繁體中文標籤與單位',()=>{
