@@ -1,0 +1,8 @@
+{
+  "name": "foxyya-lite",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node ./tests/gate-a-smoke.mjs && node ./tests/architecture-boundaries.mjs && node ./tests/staging-server-smoke.mjs"
+  }
+}
