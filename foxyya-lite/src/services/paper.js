@@ -1,17 +1,14 @@
-import { SNAPSHOT_ENDPOINTS } from '../config.js';
 import { emptyPaperSnapshot } from '../contracts.js';
 import { STATUS } from '../status.js';
-import { fetchSnapshotJson } from './http.js';
+import { loadRuntimeSnapshot } from './runtime.js';
 
 function num(value, fallback = 0) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-export function normalizePaperSnapshot(payload) {
-  if (!payload || typeof payload !== 'object') throw new Error('Invalid Paper Snapshot payload');
+function normalizeCanonicalPaper(payload) {
   const rawSummary = payload.summary || {};
-
   return {
     status: STATUS.LIVE,
     updatedAt: payload.updatedAt || payload.updated_at || new Date().toISOString(),
@@ -28,9 +25,39 @@ export function normalizePaperSnapshot(payload) {
   };
 }
 
+function normalizeRuntimePaper(payload) {
+  const book = payload?.books?.['5x'] || {};
+  const positionsObject = book.positions && typeof book.positions === 'object' ? book.positions : {};
+  const positions = Object.values(positionsObject);
+  const pending = Array.isArray(payload?.pending) ? payload.pending : [];
+  const initialNav = num(payload?.initial_nav_usdt, 1000);
+  const cash = num(book.balance, initialNav);
+  const nav = num(book.equity, cash);
+  return {
+    status: STATUS.LIVE,
+    updatedAt: payload?.served_at ? new Date(payload.served_at).toISOString() : new Date().toISOString(),
+    summary: {
+      nav,
+      cash,
+      openPositions: positions.length,
+      pendingOrders: pending.length,
+      unrealizedPnl: nav - cash,
+      portfolioRiskPct: num(payload?.reserved_risk_fraction, 0) * 100
+    },
+    positions,
+    pending
+  };
+}
+
+export function normalizePaperSnapshot(payload) {
+  if (!payload || typeof payload !== 'object') throw new Error('Invalid Paper Snapshot payload');
+  if (payload.schema === 'foxyya-runtime-snapshot/1' || payload.books) return normalizeRuntimePaper(payload);
+  return normalizeCanonicalPaper(payload);
+}
+
 export async function loadPaperSnapshot() {
   try {
-    const payload = await fetchSnapshotJson(SNAPSHOT_ENDPOINTS.paper);
+    const payload = await loadRuntimeSnapshot();
     if (payload === null) return emptyPaperSnapshot();
     return normalizePaperSnapshot(payload);
   } catch (error) {
@@ -38,3 +65,5 @@ export async function loadPaperSnapshot() {
     return { ...empty, status: STATUS.ERROR, error };
   }
 }
+
+export { normalizeRuntimePaper };
