@@ -1,4 +1,4 @@
-import { STATUS } from './state.js';
+import { STATUS } from './status.js';
 
 export function emptyStrategySnapshot() {
   return { status: STATUS.EMPTY, updatedAt: null, items: [] };
