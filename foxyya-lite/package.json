@@ -3,6 +3,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node ./tests/gate-a-smoke.mjs"
+    "test": "node ./tests/gate-a-smoke.mjs && node ./tests/architecture-boundaries.mjs"
   }
 }
