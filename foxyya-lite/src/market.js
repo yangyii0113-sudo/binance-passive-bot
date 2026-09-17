@@ -1,6 +1,6 @@
 import { MARKET_SYMBOLS, MARKET_TIMEOUT_MS } from './config.js';
 import { readMarketCache, writeMarketCache } from './cache.js';
-import { STATUS } from './state.js';
+import { STATUS } from './status.js';
 
 function formatPrice(value) {
   const n = Number(value);
