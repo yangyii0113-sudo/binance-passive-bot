@@ -1,5 +1,17 @@
 # FOXYYA Lite V1 Architecture
 
+## Status
+
+Architecture Freeze v1 — Gate A verified on branch `foxyya-lite-v1-20260917`.
+
+Verified by GitHub Actions workflow `FOXYYA Lite Gate A` after legacy `app.js` removal:
+
+- ES Module syntax checks: PASS
+- Market state machine `LIVE -> STALE -> ERROR`: PASS
+- Snapshot endpoints `404 -> EMPTY`: PASS
+- Five routes: PASS
+- Five page renderers: PASS
+
 ## Goal
 
 FOXYYA Lite is a read-first, mobile-first trading intelligence shell. The web UI must remain usable when Strategy, Paper, Results, or Backtest services are unavailable. Production Execution V2 is outside this application boundary and must not be modified or invoked by the Lite UI.
@@ -16,13 +28,10 @@ Browser / Mobile PWA
         |       |
         |       +--> local Last Known Good cache
         |
-        +--> Strategy Service ----> Strategy Snapshot adapter (next phase)
-        |
-        +--> Paper Service -------> Paper Snapshot adapter (next phase)
-        |
-        +--> Results Service -----> Forward Paper results adapter (next phase)
-        |
-        +--> Backtest Service ----> Historical Backtest adapter (next phase)
+        +--> Strategy Service ----> /api/strategy
+        +--> Paper Service -------> /api/paper
+        +--> Results Service -----> /api/results
+        +--> Backtest Service ----> /api/backtest
         |
         v
      appState
@@ -40,12 +49,14 @@ Browser / Mobile PWA
 2. `main.js` orchestrates services, state updates, routing, and rendering. It contains no exchange-specific parsing logic.
 3. `state.js` owns the in-browser state slices only. It does not fetch remote data.
 4. `contracts.js` defines the canonical Snapshot shapes for Strategy, Paper, Results, and Backtest.
-5. `status.js` is the only source of `LIVE / STALE / ERROR / LOADING / EMPTY` state constants.
+5. `status.js` is the only source of `LIVE / STALE / ERROR / LOADING / EMPTY` constants.
 6. `market.js` owns Binance market transport/parsing and returns a Market Snapshot; it does not render DOM.
 7. Each file under `src/services/` is an adapter boundary. Replacing a data source must not require changing page renderers.
-8. `pages.js` reads canonical state only. It must not call Binance, Execution V2, SQLite, or Railway directly.
+8. `pages.js` reads canonical state only. It must not call Binance, Execution V2, SQLite, Railway, or another trading runtime directly.
 9. `router.js` owns hash-route parsing and navigation state only.
 10. `ui.js` contains reusable presentational primitives only.
+11. A failure in one state slice must not block rendering or refresh of another slice.
+12. Snapshot adapters are read-only; execution mutations are outside FOXYYA Lite.
 
 ## State slices
 
@@ -58,7 +69,7 @@ appState
 └── backtest
 ```
 
-Each slice can fail independently. One slice entering `ERROR` or `STALE` must not prevent other pages or slices from rendering.
+Each slice can fail independently. One slice entering `ERROR`, `STALE`, or `EMPTY` must not prevent other pages or slices from rendering.
 
 ## Snapshot contracts
 
@@ -81,7 +92,7 @@ updatedAt
 items[]
 ```
 
-Target item fields for the next adapter phase:
+Canonical item fields:
 
 ```text
 symbol
@@ -150,6 +161,16 @@ Fetch failure + no cache -> ERROR
 
 No fabricated live price may be substituted for an unavailable market response.
 
+## Snapshot degradation policy
+
+```text
+Endpoint 200 + valid payload -> LIVE
+Endpoint 404 -> EMPTY
+Transport / HTTP / payload failure -> ERROR
+```
+
+A Snapshot adapter must return its canonical empty shape even when status is `EMPTY` or `ERROR`, so the page renderer remains safe.
+
 ## Execution safety boundary
 
 FOXYYA Lite V1 is read-only with respect to trading execution.
@@ -162,6 +183,7 @@ Mandatory invariants:
 - Production Execution V2 remains isolated
 - Forward Paper and Historical Backtest remain separate datasets
 - No Backtest run may mutate the Paper ledger
+- No page renderer imports or calls an execution engine
 
 ## Current file map
 
@@ -169,8 +191,11 @@ Mandatory invariants:
 foxyya-lite/
 ├── index.html
 ├── styles.css
-├── app.js                  # legacy V1 shell; retained temporarily until full module verification
 ├── ARCHITECTURE.md
+├── API_CONTRACTS.md
+├── package.json
+├── tests/
+│   └── gate-a-smoke.mjs
 └── src/
     ├── main.js
     ├── config.js
@@ -184,34 +209,37 @@ foxyya-lite/
     ├── pages.js
     ├── router.js
     └── services/
+        ├── http.js
         ├── strategy.js
         ├── paper.js
         ├── results.js
         └── backtest.js
 ```
 
-## Next architecture gates
+The former monolithic `foxyya-lite/app.js` has been removed after Gate A regression tests passed.
 
-### Gate A — module verification
+## Architecture gates
 
-Verify all browser ES Module imports, five routes, and Market LIVE/STALE/ERROR behavior from one deployed Preview before removing legacy `app.js`.
+### Gate A — Module verification — VERIFIED
 
-### Gate B — Strategy Adapter
+Covered by `.github/workflows/foxyya-lite-gate-a.yml`.
 
-Connect the existing strategy engine through `loadStrategySnapshot()` only. The page layer must receive canonical Strategy Snapshot data and must not import the old strategy engine.
+### Gate B — Strategy Adapter — STRUCTURE READY
 
-### Gate C — Paper Adapter
+`loadStrategySnapshot()` is the only Strategy entry point for the Lite app. Next work is to provide a real read-only `/api/strategy` producer from the existing engine.
 
-Expose read-only Paper Snapshot data. No Lite UI code may create, amend, cancel, or submit an execution order.
+### Gate C — Paper Adapter — STRUCTURE READY
 
-### Gate D — Results Adapter
+`loadPaperSnapshot()` is read-only. Next work is to expose canonical Paper Snapshot data without adding order mutation endpoints.
 
-Expose Forward Paper statistics and NAV curve through Results Snapshot.
+### Gate D — Results Adapter — STRUCTURE READY
 
-### Gate E — Backtest Adapter
+`loadResultsSnapshot()` consumes Forward Paper statistics only.
 
-Expose Historical Backtest through its own service boundary. Keep storage and output separate from Forward Paper.
+### Gate E — Backtest Adapter — STRUCTURE READY
 
-### Gate F — UI refinement
+`loadBacktestSnapshot()` consumes Historical Backtest output only; it remains separate from Forward Paper storage.
 
-Only after Gates A-E are structurally stable should visual polish, spacing, card hierarchy, typography, iconography, and gold/dark design language be refined.
+### Gate F — UI refinement — DEFERRED
+
+Visual polish, spacing, card hierarchy, typography, iconography, and the gold/dark design language begin only after the real Strategy/Paper/Results/Backtest producers are connected and architecture remains green.
