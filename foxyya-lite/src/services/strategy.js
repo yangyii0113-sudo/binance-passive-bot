@@ -1,6 +1,7 @@
-import { STRATEGY_ENDPOINT, SNAPSHOT_TIMEOUT_MS } from '../config.js';
+import { SNAPSHOT_ENDPOINTS } from '../config.js';
 import { emptyStrategySnapshot } from '../contracts.js';
 import { STATUS } from '../status.js';
+import { fetchSnapshotJson } from './http.js';
 
 function normalizeItem(raw) {
   if (!raw || typeof raw !== 'object') return null;
@@ -40,25 +41,13 @@ function normalizeSnapshot(payload) {
 }
 
 export async function loadStrategySnapshot() {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), SNAPSHOT_TIMEOUT_MS);
-
   try {
-    const response = await fetch(STRATEGY_ENDPOINT, {
-      method: 'GET',
-      cache: 'no-store',
-      signal: controller.signal
-    });
-
-    if (response.status === 404) return emptyStrategySnapshot();
-    if (!response.ok) throw new Error(`Strategy snapshot HTTP ${response.status}`);
-
-    return normalizeSnapshot(await response.json());
+    const payload = await fetchSnapshotJson(SNAPSHOT_ENDPOINTS.strategy);
+    if (payload === null) return emptyStrategySnapshot();
+    return normalizeSnapshot(payload);
   } catch (error) {
     const empty = emptyStrategySnapshot();
     return { ...empty, status: STATUS.ERROR, error };
-  } finally {
-    clearTimeout(timeout);
   }
 }
 
