@@ -1,18 +1,14 @@
 const STATUS = Object.freeze({ LIVE:'LIVE', STALE:'STALE', ERROR:'ERROR', LOADING:'LOADING', EMPTY:'EMPTY' });
 
+const MARKET_SYMBOLS = [
+  { symbol:'BTCUSDT', icon:'₿', display:'BTC / USDT' },
+  { symbol:'ETHUSDT', icon:'◆', display:'ETH / USDT' },
+  { symbol:'SOLUSDT', icon:'S', display:'SOL / USDT' }
+];
+const MARKET_CACHE_KEY = 'foxyya.market.v1';
+const MARKET_REFRESH_MS = 30000;
+
 const mock = {
-  market: {
-    status: STATUS.EMPTY,
-    source: 'MOCK DATA',
-    direction: '震盪',
-    sentiment: '謹慎',
-    rows: [
-      ['₿','BTC / USDT','78,759.80',-0.19],
-      ['◆','ETH / USDT','2,495.16',0.42],
-      ['S','SOL / USDT','104.14',1.02],
-      ['N','NEAR / USDT','2.390',-1.04]
-    ]
-  },
   news: [
     ['01','通膨與利率走向','關注主要經濟體通膨數據與利率政策動向，影響市場風險偏好。','BTC / 美元'],
     ['02','地緣局勢與能源風險','地緣政治緊張情勢持續，能源供應與價格波動備受關注。','黃金 / 原油'],
@@ -24,16 +20,128 @@ const mock = {
   ]
 };
 
-const badge = (text) => `<span class="status-badge">${text}</span>`;
+const marketState = {
+  status: STATUS.LOADING,
+  source: 'BINANCE USD-M',
+  updatedAt: null,
+  direction: '讀取中',
+  sentiment: '讀取中',
+  rows: MARKET_SYMBOLS.map(({icon,display}) => [icon, display, '—', null])
+};
+
+const badge = (text, tone='') => `<span class="status-badge ${tone ? `status-${tone.toLowerCase()}` : ''}">${text}</span>`;
 const section = (title, content, action='') => `<section class="panel"><div class="section-head"><div class="section-title"><span class="accent-bar"></span>${title}</div>${action}</div>${content}</section>`;
 const metric = (label, value) => `<div class="metric"><span>${label}</span><strong>${value}</strong></div>`;
 
+function formatPrice(value){
+  const n = Number(value);
+  if (!Number.isFinite(n)) return '—';
+  const digits = n >= 1000 ? 2 : n >= 1 ? 3 : 5;
+  return n.toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits });
+}
+
+function deriveMarketSummary(rows){
+  const changes = rows.map(row => row[3]).filter(Number.isFinite);
+  if (!changes.length) return { direction:'無資料', sentiment:'無資料' };
+  const avg = changes.reduce((sum, value) => sum + value, 0) / changes.length;
+  return {
+    direction: avg > 1.5 ? '偏多' : avg < -1.5 ? '偏空' : '震盪',
+    sentiment: avg > 1 ? '積極' : avg < -1 ? '謹慎' : '中性'
+  };
+}
+
+function readMarketCache(){
+  try {
+    const parsed = JSON.parse(localStorage.getItem(MARKET_CACHE_KEY) || 'null');
+    if (!parsed || !Array.isArray(parsed.rows) || !parsed.updatedAt) return null;
+    return parsed;
+  } catch (_) {
+    return null;
+  }
+}
+
+function writeMarketCache(snapshot){
+  try { localStorage.setItem(MARKET_CACHE_KEY, JSON.stringify(snapshot)); } catch (_) {}
+}
+
+function marketStatusLabel(){
+  const time = marketState.updatedAt
+    ? new Date(marketState.updatedAt).toLocaleTimeString('zh-TW', { hour:'2-digit', minute:'2-digit' })
+    : '尚未更新';
+  return `${marketState.status} · ${time}`;
+}
+
+async function fetchTicker(symbol){
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 7000);
+  try {
+    const response = await fetch(`https://fapi.binance.com/fapi/v1/ticker/24hr?symbol=${encodeURIComponent(symbol)}`, {
+      method:'GET',
+      cache:'no-store',
+      signal:controller.signal
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+    const lastPrice = Number(data.lastPrice);
+    const priceChangePercent = Number(data.priceChangePercent);
+    if (!Number.isFinite(lastPrice) || !Number.isFinite(priceChangePercent)) throw new Error('Invalid ticker payload');
+    return { symbol, lastPrice, priceChangePercent };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function refreshMarket(){
+  try {
+    const tickers = await Promise.all(MARKET_SYMBOLS.map(item => fetchTicker(item.symbol)));
+    const rows = MARKET_SYMBOLS.map(item => {
+      const ticker = tickers.find(t => t.symbol === item.symbol);
+      return [item.icon, item.display, formatPrice(ticker.lastPrice), ticker.priceChangePercent];
+    });
+    const summary = deriveMarketSummary(rows);
+    Object.assign(marketState, {
+      status: STATUS.LIVE,
+      updatedAt: new Date().toISOString(),
+      rows,
+      direction: summary.direction,
+      sentiment: summary.sentiment
+    });
+    writeMarketCache({ updatedAt:marketState.updatedAt, rows, direction:marketState.direction, sentiment:marketState.sentiment });
+  } catch (error) {
+    const cached = readMarketCache();
+    if (cached) {
+      Object.assign(marketState, {
+        status: STATUS.STALE,
+        updatedAt: cached.updatedAt,
+        rows: cached.rows,
+        direction: cached.direction || deriveMarketSummary(cached.rows).direction,
+        sentiment: cached.sentiment || deriveMarketSummary(cached.rows).sentiment
+      });
+    } else {
+      Object.assign(marketState, {
+        status: STATUS.ERROR,
+        updatedAt: null,
+        direction: '無資料',
+        sentiment: '無資料',
+        rows: MARKET_SYMBOLS.map(({icon,display}) => [icon, display, '—', null])
+      });
+    }
+    console.warn('[FOXYYA] market refresh failed', error);
+  }
+  render();
+}
+
 function home(){
-  const coins = mock.market.rows.map(([icon,symbol,price,change]) => `<div class="coin-row"><span class="coin-icon">${icon}</span><strong>${symbol}</strong><span>${price}</span><b class="${change >= 0 ? 'up' : 'down'}">${change >= 0 ? '+' : ''}${change.toFixed(2)}%</b></div>`).join('');
+  const coins = marketState.rows.map(([icon,symbol,price,change]) => {
+    const hasChange = Number.isFinite(change);
+    const changeText = hasChange ? `${change >= 0 ? '+' : ''}${change.toFixed(2)}%` : '—';
+    const changeClass = !hasChange ? '' : change >= 0 ? 'up' : 'down';
+    return `<div class="coin-row"><span class="coin-icon">${icon}</span><strong>${symbol}</strong><span>${price}</span><b class="${changeClass}">${changeText}</b></div>`;
+  }).join('');
   const news = mock.news.map(([n,title,text,tag]) => `<article class="news-row"><div class="news-num">${n}</div><div><h3>${title}</h3><p>${text}</p></div>${badge(tag)}</article>`).join('');
   const s = mock.strategies[0];
   return `<div class="page-stack">
-    ${section('市場脈動', `<div class="market-summary"><div><span>市場方向</span><strong>${mock.market.direction}</strong></div><div><span>風險情緒</span><strong class="muted-strong">${mock.market.sentiment}</strong></div></div><div class="tabs"><span>收藏</span><span class="active">熱門</span><span>漲幅</span><span>跌幅</span><span>成交額</span></div><div class="table-head"><span>幣種</span><span>最新價格</span><span>24h</span></div><div class="coin-list">${coins}</div>`, badge(mock.market.source))}
+    ${section('市場脈動', `<div class="market-meta"><span>${marketState.source}</span>${badge(marketStatusLabel(), marketState.status)}</div><div class="market-summary"><div><span>市場方向</span><strong>${marketState.direction}</strong></div><div><span>風險情緒</span><strong class="muted-strong">${marketState.sentiment}</strong></div></div><div class="tabs"><span>收藏</span><span class="active">熱門</span><span>漲幅</span><span>跌幅</span><span>成交額</span></div><div class="table-head"><span>幣種</span><span>最新價格</span><span>24h</span></div><div class="coin-list">${coins}</div>`, badge(marketState.status, marketState.status))}
     ${section('國際熱點', `<div class="tabs compact"><span class="active">新聞</span><span>經濟日曆</span></div><div class="news-list">${news}</div><div class="calendar-row"><span>▣</span><div><strong>重要事件日曆</strong><small>關注關鍵經濟數據與國際事件，掌握市場變化。</small></div><span>前值 —　預期 —　公布值 —　›</span></div>`)}
     ${section('策略機會', `<div class="strategy-card"><div class="coin-icon large">₿</div><div class="strategy-main"><strong>${s.symbol}</strong><span>${s.strategy}</span><b>${s.direction}</b>${badge(s.status)}<p>綜合技術面與市場情緒，關注關鍵位置，等待進一步確認。</p></div></div>`, '<span class="action-link">查看條件與圖表 ›</span>')}
   </div>`;
@@ -67,5 +175,20 @@ function render(){
   document.getElementById('app').innerHTML = view();
   document.querySelectorAll('.bottom-nav a').forEach(a => a.classList.toggle('active', a.dataset.route === (routes[route] ? route : 'home')));
 }
+function init(){
+  const cached = readMarketCache();
+  if (cached) {
+    Object.assign(marketState, {
+      status: STATUS.STALE,
+      updatedAt: cached.updatedAt,
+      rows: cached.rows,
+      direction: cached.direction || deriveMarketSummary(cached.rows).direction,
+      sentiment: cached.sentiment || deriveMarketSummary(cached.rows).sentiment
+    });
+  }
+  render();
+  refreshMarket();
+  setInterval(refreshMarket, MARKET_REFRESH_MS);
+}
 window.addEventListener('hashchange', render);
-window.addEventListener('DOMContentLoaded', render);
+window.addEventListener('DOMContentLoaded', init);
