@@ -1,29 +1,47 @@
-# FOXYYA Lite Snapshot API Contracts
+# FOXYYA Lite Snapshot Contracts
 
-FOXYYA Lite consumes read-only canonical snapshots. Data providers may be the existing FOXYYA engine, a Cloudflare Worker, a Mac mini bridge, or another adapter, but the browser contract does not change.
+FOXYYA Lite consumes **canonical read-only snapshots** in the page/state layer. The current V1 implementation does not require Production Execution V2 changes: it bridges existing read-only runtime endpoints into canonical Strategy / Paper / Results / Backtest snapshots in the browser service layer.
+
+## Current source mapping
+
+```text
+Existing runtime GET /api/runtime/snapshot
+        ├─> Strategy Adapter ─> StrategySnapshot
+        ├─> Paper Adapter ────> PaperSnapshot
+        └─> Results Adapter ──> ResultsSnapshot
+
+Existing runtime GET /api/backtest/latest
+        └─> Backtest Adapter ─> BacktestSnapshot
+```
+
+`src/services/runtime.js` deduplicates concurrent reads of `/api/runtime/snapshot` with a short in-memory cache, so Strategy / Paper / Results can share the same immutable runtime projection.
+
+The existing runtime service remains untouched. Lite performs no write operation against it.
 
 ## Common transport rules
 
 - Method: `GET` only.
 - Default browser timeout: 5 seconds.
-- `200`: parse canonical snapshot and set slice to `LIVE`.
-- `404`: provider is not configured yet; keep canonical `EMPTY` snapshot.
+- Runtime snapshot endpoint `200`: normalize into canonical slice(s) and set them to `LIVE`.
+- Runtime snapshot endpoint `404`: provider is not available in the current hosting context; keep canonical `EMPTY` snapshot.
 - Other non-2xx / timeout / invalid payload: set only that slice to `ERROR`.
 - An error in one slice must not prevent other slices from rendering.
 - Lite V1 exposes no create/amend/cancel/submit order endpoint.
+- The browser never receives exchange API keys or private account credentials.
 
-## GET /api/strategy
+## Canonical StrategySnapshot
 
 ```json
 {
-  "updated_at": "2026-09-17T08:00:00Z",
+  "status": "LIVE",
+  "updatedAt": "2026-09-17T08:00:00Z",
   "items": [
     {
       "symbol": "BTCUSDT",
       "strategy": "A",
-      "direction": "LONG WATCH",
-      "status": "PENDING_INTENT",
-      "status_label": "等待確認",
+      "direction": "偏多觀察",
+      "status": "ARMED",
+      "statusLabel": "等待進場",
       "entry": 76000,
       "stop": 74800,
       "tp1": 77200,
@@ -31,93 +49,134 @@ FOXYYA Lite consumes read-only canonical snapshots. Data providers may be the ex
       "rr": 1.8,
       "confidence": "MEDIUM",
       "note": "read-only strategy snapshot",
-      "updated_at": "2026-09-17T08:00:00Z"
+      "updatedAt": "2026-09-17T08:00:00Z"
     }
   ]
 }
 ```
 
-Required per item: `symbol`, `strategy`.
+Current runtime mapping:
 
-The adapter accepts snake_case or camelCase timestamp/status-label fields and normalizes them before they reach the page layer.
+- `candidates[]` become Strategy items.
+- `pending[]` become Strategy items with `status="PENDING"` and `statusLabel="等待進場"`.
+- `LONG` / `SHORT` are mapped to display-only direction labels.
+- Missing price/target fields remain `null`; Lite must not invent values.
 
-## GET /api/paper
+## Canonical PaperSnapshot
 
 ```json
 {
-  "updated_at": "2026-09-17T08:00:00Z",
+  "status": "LIVE",
+  "updatedAt": "2026-09-17T08:00:00Z",
   "summary": {
-    "nav": 100000,
-    "cash": 95000,
-    "open_positions": 1,
-    "pending_orders": 1,
-    "unrealized_pnl": 250,
-    "portfolio_risk_pct": 0.75
+    "nav": 1012,
+    "cash": 1010,
+    "openPositions": 1,
+    "pendingOrders": 1,
+    "unrealizedPnl": 2,
+    "portfolioRiskPct": 1.2
   },
   "positions": [],
-  "pending_orders": []
+  "pending": []
 }
 ```
 
-This endpoint is strictly read-only. It must not mutate the Paper ledger or invoke Production Execution V2.
+Current runtime mapping from the `5x` paper book:
 
-## GET /api/results
+- `books["5x"].equity -> nav`
+- `books["5x"].balance -> cash`
+- number of `books["5x"].positions -> openPositions`
+- number of `pending[] -> pendingOrders`
+- `equity - balance -> unrealizedPnl`
+- `reserved_risk_fraction * 100 -> portfolioRiskPct`
+
+This mapping is strictly read-only and does not mutate the Paper ledger.
+
+## Canonical ResultsSnapshot
 
 ```json
 {
-  "updated_at": "2026-09-17T08:00:00Z",
+  "status": "LIVE",
+  "updatedAt": "2026-09-17T08:00:00Z",
   "summary": {
     "trades": 42,
-    "win_rate_pct": 54.76,
-    "expectancy_r": 0.22,
-    "profit_factor": 1.31,
-    "net_pnl": 3250,
-    "max_drawdown_pct": -4.6
+    "winRatePct": 54.76,
+    "expectancyR": 0.22,
+    "profitFactor": 1.31,
+    "netPnl": 3250,
+    "maxDrawdownPct": null
   },
-  "nav_curve": [],
-  "recent_trades": []
+  "navCurve": [],
+  "recentTrades": []
 }
 ```
 
-Results represent Forward Paper only. Historical Backtest data must never be merged into this endpoint.
+Current runtime mapping uses **closed Forward Paper trades only**:
 
-## GET /api/backtest
+- trade count = closed trades
+- win rate = positive `net_pnl_usdt` / closed trades
+- expectancy = average available `realized_r`
+- profit factor = gross positive net P&L / absolute gross negative net P&L
+- net P&L = sum of closed trade `net_pnl_usdt`
+- max drawdown remains `null` until a trusted Forward Paper equity-history source exists
+
+Lite must not fabricate a drawdown value.
+
+## Canonical BacktestSnapshot
 
 ```json
 {
-  "updated_at": "2026-09-17T08:00:00Z",
+  "status": "LIVE",
+  "updatedAt": "2026-09-17T08:00:00Z",
   "input": {
     "symbol": "ETHUSDT",
-    "strategy": "A",
-    "time_range": "1Y",
-    "timeframe": "1H"
+    "strategy_version": "PB-1.0.0"
   },
   "result": {
     "trades": 124,
-    "win_rate_pct": 51.6,
-    "profit_factor": 1.28,
-    "net_return_pct": 18.9,
-    "max_drawdown_pct": -8.2
+    "winRatePct": 51.6,
+    "expectancyR": 0.21,
+    "profitFactor": 1.28,
+    "netReturnPct": 18.9,
+    "maxDrawdownPct": 8.2
   },
-  "equity_curve": []
+  "equityCurve": []
 }
 ```
 
-Historical Backtest is a separate dataset. Reading or running a backtest must not modify Forward Paper positions, orders, ledger events, or NAV.
+Current source is `/api/backtest/latest`:
+
+- `run_config -> input`
+- `metrics.performance.closed_trades -> trades`
+- ratio-form `win_rate`, `net_return`, and `max_drawdown` are converted to percent values
+- `metrics.equity_curve -> equityCurve`
+
+Historical Backtest remains a separate dataset. Reading it must not modify Forward Paper positions, orders, ledger events, or NAV.
+
+## Future canonical HTTP façade
+
+A Cloudflare Worker, Mac mini service, or another hosting adapter may later expose these canonical paths directly:
+
+```text
+GET /api/strategy
+GET /api/paper
+GET /api/results
+GET /api/backtest
+```
+
+When that happens, only the service/transport layer may change. `appState`, page renderers, and UI contracts must remain unchanged.
 
 ## Execution boundary
-
-The Lite browser must never directly consume exchange API keys or private account credentials.
 
 ```text
 FOXYYA Lite Browser
        |
-       +-- public Binance market data
+       +-- Binance public market data
        |
-       +-- /api/strategy  (read only)
-       +-- /api/paper     (read only)
-       +-- /api/results   (read only)
-       +-- /api/backtest  (read only snapshot)
+       +-- Runtime Bridge (GET only)
+               |
+               +-- /api/runtime/snapshot
+               +-- /api/backtest/latest
 
 Production Execution V2  <-- isolated / no Lite write path
 ```
