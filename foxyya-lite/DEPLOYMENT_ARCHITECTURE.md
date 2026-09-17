@@ -4,6 +4,14 @@
 
 Keep the browser simple and public while keeping the existing FOXYYA runtime private/read-only. The browser must never know a Railway, Mac mini, tunnel, or private runtime hostname.
 
+## Current hosting decision
+
+Phase 1 uses Netlify Free as the temporary public host so FOXYYA Lite can be opened immediately without Railway billing.
+
+Phase 2 migrates the same static app and same-origin read-only gateway to Cloudflare Pages + Workers when the Cloudflare connector/account path is available.
+
+This is a hosting swap only. Page routes, state contracts, read-only adapters, and Production Execution V2 boundaries must not change.
+
 ## Required shape
 
 ```text
@@ -85,16 +93,37 @@ It must never be placed in:
 
 ## Hosting portability
 
-The same browser application can run on:
-
-### Cloudflare
+### Phase 1 — Netlify Free
 
 ```text
-Pages / Worker static assets
-Worker routes /api/* -> runtime origin
+Netlify static site
+├─ FOXYYA Lite files
+├─ hash-based five-page routing
+└─ /api/* remains EMPTY until a read-only gateway is attached
 ```
 
-### Vercel
+Rules:
+
+- No Netlify-specific application dependency.
+- No Netlify Functions unless a later gateway decision explicitly requires them.
+- Static frontend must remain deployable elsewhere without source changes.
+- Market module remains independent from runtime availability.
+
+### Phase 2 — Cloudflare target
+
+```text
+Cloudflare Pages
+      +
+Cloudflare Worker /api/*
+      ↓
+Private read-only runtime
+      ↓
+Future Mac mini via Cloudflare Tunnel
+```
+
+Cloudflare migration must not require UI or state-contract changes.
+
+### Vercel fallback
 
 ```text
 Static app
@@ -109,7 +138,7 @@ Reverse proxy /api/* -> localhost runtime
 Private network / tunnel for remote mobile access
 ```
 
-The browser contract remains the same in all three cases.
+The browser contract remains the same in all cases.
 
 ## Failure policy
 
@@ -129,6 +158,7 @@ Other pages continue rendering
 - `REAL ORDER LOCKED` remains true.
 - Production Execution V2 is not changed to support Lite.
 - Backtest stays separate from Forward Paper.
+- Hosting migration must not expand execution permissions.
 
 ## Architecture freeze criterion
 
