@@ -9,5 +9,10 @@ export const MARKET_REFRESH_MS = 30_000;
 export const MARKET_TIMEOUT_MS = 7_000;
 export const MARKET_SOURCE = 'BINANCE USD-M';
 
-export const STRATEGY_ENDPOINT = '/api/strategy';
 export const SNAPSHOT_TIMEOUT_MS = 5_000;
+export const SNAPSHOT_ENDPOINTS = Object.freeze({
+  strategy: '/api/strategy',
+  paper: '/api/paper',
+  results: '/api/results',
+  backtest: '/api/backtest'
+});
