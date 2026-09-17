@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - foxyya-lite-v1-20260917
+      - v12-platform-completion-20260910
     paths:
       - 'foxyya-lite/**'
       - '.github/workflows/foxyya-lite-gate-a.yml'
