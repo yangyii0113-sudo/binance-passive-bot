@@ -2,15 +2,18 @@
 
 ## Status
 
-Architecture Freeze v1 — Gate A verified on branch `foxyya-lite-v1-20260917`.
+Architecture Freeze v1.1 — core modules and read-only runtime bridge verified on branch `foxyya-lite-v1-20260917`.
 
-Verified by GitHub Actions workflow `FOXYYA Lite Gate A` after legacy `app.js` removal:
+Verified by GitHub Actions workflow `FOXYYA Lite Gate A`:
 
 - ES Module syntax checks: PASS
 - Market state machine `LIVE -> STALE -> ERROR`: PASS
-- Snapshot endpoints `404 -> EMPTY`: PASS
+- Missing read-only sources -> canonical `EMPTY`: PASS
+- Existing runtime -> Strategy/Paper/Results canonicalization: PASS
+- Existing historical backtest -> Backtest canonicalization: PASS
 - Five routes: PASS
 - Five page renderers: PASS
+- Legacy monolithic `app.js`: removed and regression-tested
 
 ## Goal
 
@@ -19,44 +22,54 @@ FOXYYA Lite is a read-first, mobile-first trading intelligence shell. The web UI
 ## Runtime shape
 
 ```text
-Browser / Mobile PWA
-        |
-        v
-    src/main.js
-        |
-        +--> Market Service ------> Binance USD-M public data
-        |       |
-        |       +--> local Last Known Good cache
-        |
-        +--> Strategy Service ----> /api/strategy
-        +--> Paper Service -------> /api/paper
-        +--> Results Service -----> /api/results
-        +--> Backtest Service ----> /api/backtest
-        |
-        v
-     appState
-        |
-        v
-   Page Renderers
-        |
-        v
-    index.html
+Mobile / Browser
+      |
+      +--> Binance USD-M public market data
+      |
+      +--> same-origin /api/*
+                |
+                v
+          Edge Gateway
+                |
+                | GET only
+                v
+       Existing FOXYYA Runtime
+       /api/runtime/snapshot
+       /api/backtest/latest
+                |
+                v
+        Lite Runtime Bridge
+          ├─ Strategy
+          ├─ Paper
+          ├─ Results
+          └─ Backtest
+                |
+                v
+             appState
+                |
+                v
+          Page Renderers
 ```
+
+The browser does not need the runtime hostname. Hosting-specific runtime origins belong only in the server/edge gateway. See `DEPLOYMENT_ARCHITECTURE.md`.
 
 ## Dependency rules
 
 1. `index.html` loads only `src/main.js` as the application entry point.
 2. `main.js` orchestrates services, state updates, routing, and rendering. It contains no exchange-specific parsing logic.
 3. `state.js` owns the in-browser state slices only. It does not fetch remote data.
-4. `contracts.js` defines the canonical Snapshot shapes for Strategy, Paper, Results, and Backtest.
+4. `contracts.js` defines canonical Snapshot shapes.
 5. `status.js` is the only source of `LIVE / STALE / ERROR / LOADING / EMPTY` constants.
-6. `market.js` owns Binance market transport/parsing and returns a Market Snapshot; it does not render DOM.
-7. Each file under `src/services/` is an adapter boundary. Replacing a data source must not require changing page renderers.
-8. `pages.js` reads canonical state only. It must not call Binance, Execution V2, SQLite, Railway, or another trading runtime directly.
-9. `router.js` owns hash-route parsing and navigation state only.
-10. `ui.js` contains reusable presentational primitives only.
-11. A failure in one state slice must not block rendering or refresh of another slice.
-12. Snapshot adapters are read-only; execution mutations are outside FOXYYA Lite.
+6. `market.js` owns Binance public market transport/parsing and does not render DOM.
+7. `src/services/runtime.js` is the shared read-only bridge to the existing runtime endpoints.
+8. Strategy/Paper/Results adapters may transform a shared immutable runtime snapshot but must not mutate runtime data.
+9. Backtest reads the existing historical backtest endpoint separately from Forward Paper.
+10. `pages.js` reads canonical state only. It must not call Binance, Execution V2, SQLite, Railway, or another trading runtime directly.
+11. `router.js` owns navigation state only.
+12. `ui.js` contains reusable presentational primitives only.
+13. One state slice failing must not block other slices or the shell.
+14. Browser runtime endpoints remain same-origin `/api/*`; external runtime origins and credentials are forbidden in browser modules.
+15. All Lite runtime access is GET-only.
 
 ## State slices
 
@@ -71,84 +84,21 @@ appState
 
 Each slice can fail independently. One slice entering `ERROR`, `STALE`, or `EMPTY` must not prevent other pages or slices from rendering.
 
-## Snapshot contracts
-
-### Market
+## Snapshot source mapping
 
 ```text
-status
-source
-updatedAt
-direction
-sentiment
-rows[]
+/api/runtime/snapshot
+├─ candidates + pending -> StrategySnapshot
+├─ books["5x"] + pending -> PaperSnapshot
+└─ closed trades -> ResultsSnapshot
+
+/api/backtest/latest
+└─ run_config + metrics -> BacktestSnapshot
 ```
 
-### Strategy
+`runtime.js` deduplicates concurrent runtime reads with a short in-memory cache so Strategy, Paper, and Results can consume one runtime projection rather than issuing three independent reads at startup.
 
-```text
-status
-updatedAt
-items[]
-```
-
-Canonical item fields:
-
-```text
-symbol
-strategy
-direction
-status
-statusLabel
-entry
-stop
-tp1
-tp2
-rr
-confidence
-note
-updatedAt
-```
-
-### Paper
-
-```text
-status
-updatedAt
-summary.nav
-summary.cash
-summary.openPositions
-summary.pendingOrders
-summary.unrealizedPnl
-summary.portfolioRiskPct
-positions[]
-pending[]
-```
-
-### Results
-
-```text
-status
-updatedAt
-summary.trades
-summary.winRatePct
-summary.expectancyR
-summary.profitFactor
-summary.netPnl
-summary.maxDrawdownPct
-navCurve[]
-recentTrades[]
-```
-
-### Backtest
-
-```text
-status
-updatedAt
-input
-result
-equityCurve[]
-```
+Detailed canonical fields and mapping rules are defined in `API_CONTRACTS.md`.
 
 ## Market degradation policy
 
@@ -161,15 +111,29 @@ Fetch failure + no cache -> ERROR
 
 No fabricated live price may be substituted for an unavailable market response.
 
-## Snapshot degradation policy
+## Runtime slice degradation policy
 
 ```text
-Endpoint 200 + valid payload -> LIVE
+Read-only endpoint 200 + valid payload -> LIVE
 Endpoint 404 -> EMPTY
-Transport / HTTP / payload failure -> ERROR
+Transport / HTTP / invalid payload -> ERROR
 ```
 
-A Snapshot adapter must return its canonical empty shape even when status is `EMPTY` or `ERROR`, so the page renderer remains safe.
+Every adapter returns its canonical empty shape even when status is `EMPTY` or `ERROR`, keeping page renderers safe.
+
+## Results integrity policy
+
+Forward Results use closed Forward Paper trades only.
+
+Currently available and derived from the trusted runtime snapshot:
+
+- closed trade count
+- win rate
+- expectancy R
+- profit factor
+- net P&L
+
+`maxDrawdownPct` and NAV curve remain unavailable until a trusted Forward Paper equity-history source is connected. Lite must not fabricate them.
 
 ## Execution safety boundary
 
@@ -180,10 +144,11 @@ Mandatory invariants:
 - PAPER ONLY
 - REAL ORDER LOCKED
 - No direct order endpoint in the Lite UI
-- Production Execution V2 remains isolated
+- Production Execution V2 remains isolated and unmodified
 - Forward Paper and Historical Backtest remain separate datasets
 - No Backtest run may mutate the Paper ledger
 - No page renderer imports or calls an execution engine
+- Same-origin gateway exposes only allow-listed GET routes
 
 ## Current file map
 
@@ -193,9 +158,11 @@ foxyya-lite/
 ├── styles.css
 ├── ARCHITECTURE.md
 ├── API_CONTRACTS.md
+├── DEPLOYMENT_ARCHITECTURE.md
 ├── package.json
 ├── tests/
-│   └── gate-a-smoke.mjs
+│   ├── gate-a-smoke.mjs
+│   └── architecture-boundaries.mjs
 └── src/
     ├── main.js
     ├── config.js
@@ -210,36 +177,39 @@ foxyya-lite/
     ├── router.js
     └── services/
         ├── http.js
+        ├── runtime.js
         ├── strategy.js
         ├── paper.js
         ├── results.js
         └── backtest.js
 ```
 
-The former monolithic `foxyya-lite/app.js` has been removed after Gate A regression tests passed.
-
 ## Architecture gates
 
-### Gate A — Module verification — VERIFIED
+### Gate A — Core module verification — VERIFIED
 
-Covered by `.github/workflows/foxyya-lite-gate-a.yml`.
+Module syntax, routing, market degradation, empty-source behavior, page rendering, and legacy-file removal are under CI.
 
-### Gate B — Strategy Adapter — STRUCTURE READY
+### Gate B — Strategy Adapter — VERIFIED WITH RUNTIME FIXTURE
 
-`loadStrategySnapshot()` is the only Strategy entry point for the Lite app. Next work is to provide a real read-only `/api/strategy` producer from the existing engine.
+Existing runtime `candidates` and `pending` are normalized into canonical Strategy items. A live hosted gateway/runtime round trip is still required before production-style use.
 
-### Gate C — Paper Adapter — STRUCTURE READY
+### Gate C — Paper Adapter — VERIFIED WITH RUNTIME FIXTURE
 
-`loadPaperSnapshot()` is read-only. Next work is to expose canonical Paper Snapshot data without adding order mutation endpoints.
+The 5x Paper book is normalized read-only into NAV, cash, positions, pending orders, unrealized P&L, and portfolio risk. No write path exists.
 
-### Gate D — Results Adapter — STRUCTURE READY
+### Gate D — Results Adapter — VERIFIED WITH RUNTIME FIXTURE
 
-`loadResultsSnapshot()` consumes Forward Paper statistics only.
+Closed Forward Paper trades produce trade count, win rate, expectancy, profit factor, and net P&L. Drawdown/NAV curve remain intentionally unavailable rather than fabricated.
 
-### Gate E — Backtest Adapter — STRUCTURE READY
+### Gate E — Backtest Adapter — VERIFIED WITH BACKTEST FIXTURE
 
-`loadBacktestSnapshot()` consumes Historical Backtest output only; it remains separate from Forward Paper storage.
+Existing `/api/backtest/latest` data is normalized independently from Forward Paper.
 
-### Gate F — UI refinement — DEFERRED
+### Gate F — Deployment Gateway — STRUCTURE DEFINED / PREVIEW PROOF PENDING
 
-Visual polish, spacing, card hierarchy, typography, iconography, and the gold/dark design language begin only after the real Strategy/Paper/Results/Backtest producers are connected and architecture remains green.
+The browser uses same-origin `/api/*`; the edge host must proxy allow-listed GET requests to the private runtime. The Preview deployment must prove this round trip and outage isolation.
+
+### Gate G — UI refinement — DEFERRED
+
+Only after Gate F is proven should visual polish, card hierarchy, typography, iconography, spacing, and the black/gold high-fidelity design language be refined.
