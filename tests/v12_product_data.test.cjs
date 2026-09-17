@@ -137,7 +137,7 @@ test('Home keeps canonical values, observation times, SEC periods and explicit r
 test('Global overview shows macro and positioning facts without inventing regional direction',async t=>{
   const {result}=await runResearch(t);
   const view=VM.buildHomeViewModel(result.orchestration.published);
-  assert.equal(view.regions.length,4);
+  assert.equal(view.regions.length,3);
   const us=view.regions.find(x=>x.region==='US');
   assert.equal(us.bias,'UNAVAILABLE');
   assert.ok(us.facts,'regional facts must survive presentation');

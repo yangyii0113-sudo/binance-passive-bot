@@ -1,0 +1,1 @@
+{"name":"foxyya-cloudflare-research","private":true,"scripts":{"prepare:assets":"node prepare.cjs","dev":"wrangler dev --config wrangler.jsonc","check":"wrangler deploy --dry-run --config wrangler.jsonc"},"devDependencies":{"wrangler":"4.132.0"}}

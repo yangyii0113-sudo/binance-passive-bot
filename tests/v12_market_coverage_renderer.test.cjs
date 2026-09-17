@@ -56,18 +56,17 @@ function viewModel(marketCoverage=coverage()){
   });
 }
 
-test('coverage renderer shows four active markets with Chinese readiness labels and backend blocker reasons',()=>{
+test('coverage renderer shows three active markets with Chinese readiness labels and backend blocker reasons',()=>{
   const html=Renderer.renderHomeSections(viewModel()).coverageHtml;
   assert.equal(typeof html,'string');
   assert.match(html,/市場資料覆蓋/);
-  assert.equal((html.match(/data-coverage-market=/g)||[]).length,4);
+  assert.equal((html.match(/data-coverage-market=/g)||[]).length,3);
   assert.match(html,/data-raw-coverage-status="READY"/);
   assert.match(html,/>可用</);
   assert.match(html,/>部分可用</);
   assert.match(html,/>外部阻擋</);
   assert.match(html,/可判方向/);
   assert.match(html,/方向證據部分可用/);
-  assert.match(html,/不可判方向/);
   assert.match(html,/個股研究可用/);
   assert.match(html,/個股研究部分可用/);
   assert.match(html,/可進研究排序/);
@@ -78,7 +77,7 @@ test('coverage renderer shows four active markets with Chinese readiness labels 
   assert.match(html,/波動環境/);
   assert.match(html,/授權審查中/);
   assert.doesNotMatch(html,/data-coverage-market="JP"/);
-  assert.match(html,/需要資料方案權限/);
+  assert.doesNotMatch(html,/data-coverage-market="KR"/);
   assert.doesNotMatch(html,/data-coverage-market="CN_HK"|data-coverage-market="EU"/);
   assert.equal(/>BUY<|>SELL<|PLACEORDER|SUBMITORDER|AUTHORIZEEXECUTION/i.test(html),false);
 });
@@ -113,4 +112,12 @@ test('coverage panel has responsive grid styles for desktop and mobile',()=>{
   assert.match(css,/\.coverage-grid\s*\{/);
   assert.match(css,/\.coverage-card\s*\{/);
   assert.match(css,/@media\(max-width:820px\)[\s\S]*\.coverage-grid/);
+});
+
+test('active market without direction data preserves unavailable label and entitlement blocker',()=>{
+  const base=coverage();
+  const input={...base,markets:{...base.markets,TW:row('TW',{blockers:[{type:'ENTITLEMENT_REQUIRED',capability:'INDEX',sourceId:'fixture',userFacingLabel:'需要資料方案權限'}]})}};
+  const html=Renderer.renderHomeSections(viewModel(input)).coverageHtml;
+  assert.match(html,/不可判方向/);
+  assert.match(html,/需要資料方案權限/);
 });

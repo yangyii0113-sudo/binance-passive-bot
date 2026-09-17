@@ -2,7 +2,7 @@
 
 const http=require('node:http');
 
-const MARKETS=Object.freeze(['CRYPTO','US','TW','KR']);
+const MARKETS=Object.freeze(['CRYPTO','US','TW']);
 
 function requestText({host,port,path,timeoutMs,httpImpl=http,accept='*/*'}){
   return new Promise((resolve,reject)=>{

@@ -1,5 +1,10 @@
 # FOXYYA v12 — Next Engineering Actions
 
+## Cloudflare branch override — 2026-09-17
+
+User cancelled KR: current scope is **CRYPTO / US / TW**. KR joins JP / CN_HK / EU as deferred; preserve historical datasets/adapters. All four-market/KR activation requirements below are historical and do not apply to current launch acceptance. Independent Cloudflare candidate is maintained on `v12-cloudflare-low-usage-20260916`; see `FOXYYA_CLOUDFLARE_NEXT.md`. Deployment requires authenticated Cloudflare access, which is not currently available. Production Execution V2 remains unchanged.
+
+
 Updated: 2026-09-15 — user scope reduction
 
 ## Current scope override — 2026-09-15

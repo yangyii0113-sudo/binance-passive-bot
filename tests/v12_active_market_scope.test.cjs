@@ -8,12 +8,12 @@ const {buildBootstrapInput}=require('../v12/staging/live_research_bootstrap.js')
 const Renderer=require('../v12/ui/market_coverage_renderer.js');
 const {buildHomeViewModel}=require('../v12/ui/home_view_model.js');
 const {buildMarketCoverage}=require('../v12/read_model/market_coverage.js');
-const deferred=['JP','CN_HK','EU'];
+const deferred=['JP','CN_HK','EU','KR'];
 
 test('current Home API and UI omit deferred regions even with historical coverage input',()=>{
   const read=buildHomeReadModel({asOf:1000});
-  assert.deepEqual(read.home.regions.map(x=>x.region),['US','TW','KR','CRYPTO']);
-  assert.deepEqual(Object.keys(read.marketCoverage.markets),['CRYPTO','US','TW','KR']);
+  assert.deepEqual(read.home.regions.map(x=>x.region),['US','TW','CRYPTO']);
+  assert.deepEqual(Object.keys(read.marketCoverage.markets),['CRYPTO','US','TW']);
   const historical=buildMarketCoverage({asOf:1000});
   for(const market of deferred)assert.ok(historical.markets[market]);
   const vm=buildHomeViewModel({...read,marketCoverage:historical});

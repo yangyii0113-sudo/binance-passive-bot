@@ -14,7 +14,7 @@ function listen(handler){
 }
 function close(server){return new Promise((resolve,reject)=>server.close(err=>err?reject(err):resolve()));}
 
-const MARKETS=['CRYPTO','US','TW','KR'];
+const MARKETS=['CRYPTO','US','TW'];
 function marketCoverage(){
   return {
     schemaVersion:'foxyya-market-coverage/1',
@@ -54,7 +54,7 @@ test('live coverage probe validates home coverage and preview assets through rea
     }
     if(req.url==='/v12-preview/market_coverage_renderer.js'){
       res.setHeader('content-type','application/javascript; charset=utf-8');
-      return res.end("const MARKET_ORDER=['CRYPTO','US','TW','KR'];function ensureCoverageTarget(){};function renderMarketCoverage(){};");
+      return res.end("const MARKET_ORDER=['CRYPTO','US','TW'];function ensureCoverageTarget(){};function renderMarketCoverage(){};");
     }
     res.statusCode=404;res.end('NOT_FOUND');
   });
@@ -62,7 +62,7 @@ test('live coverage probe validates home coverage and preview assets through rea
     const result=await runMarketCoverageLiveProbe({host:'127.0.0.1',port:server.address().port,timeoutMs:2000});
     assert.equal(result.status,'PASSED');
     assert.equal(result.homeStatus,200);
-    assert.equal(result.marketCount,4);
+    assert.equal(result.marketCount,3);
     assert.deepEqual(result.markets,MARKETS);
     assert.equal(result.previewStatus,200);
     assert.equal(result.coverageCssStatus,200);
@@ -82,7 +82,7 @@ test('live coverage probe exposes deterministic per-market readiness and blocker
     }
     if(req.url==='/v12-preview/')return res.end('<link href="coverage.css"><script src="home_dom.js"></script><script src="market_coverage_renderer.js"></script><script src="app.js"></script>');
     if(req.url==='/v12-preview/coverage.css')return res.end('.coverage-grid{}@media(max-width:820px){}');
-    if(req.url==='/v12-preview/market_coverage_renderer.js')return res.end("const MARKET_ORDER=['CRYPTO','US','TW','KR'];function ensureCoverageTarget(){};function renderMarketCoverage(){};");
+    if(req.url==='/v12-preview/market_coverage_renderer.js')return res.end("const MARKET_ORDER=['CRYPTO','US','TW'];function ensureCoverageTarget(){};function renderMarketCoverage(){};");
     res.statusCode=404;res.end('NOT_FOUND');
   });
   try{
@@ -102,8 +102,8 @@ test('live coverage probe exposes deterministic per-market readiness and blocker
   }finally{await close(server);}
 });
 
-test('live coverage probe fails closed when the four-market coverage contract is incomplete',async()=>{
-  const broken=marketCoverage();delete broken.markets.KR;
+test('live coverage probe fails closed when the three-market coverage contract is incomplete',async()=>{
+  const broken=marketCoverage();delete broken.markets.TW;
   const server=await listen((req,res)=>{
     res.setHeader('content-type','application/json');
     res.end(JSON.stringify({schemaVersion:'foxyya-home-read-model/1',asOf:123,home:{},marketCoverage:broken,researchOnly:true,executionWrite:false}));

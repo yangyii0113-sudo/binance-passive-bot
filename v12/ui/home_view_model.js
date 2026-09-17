@@ -6,7 +6,7 @@
 })(typeof globalThis!=='undefined'?globalThis:this,function(Ranking){
   'use strict';
 
-  const REGION_ORDER=Object.freeze(['US','TW','KR','CRYPTO']);
+  const REGION_ORDER=Object.freeze(['US','TW','CRYPTO']);
   const MARKET_ORDER=Object.freeze(['CRYPTO','US','TW']);
   const EVENT_PRIORITY=Object.freeze({EXTREME:90,HIGH:75,MEDIUM:55,LOW:35,UNAVAILABLE:0});
   const IMPACT_MARKET_LABELS=Object.freeze({GLOBAL:'全球市場',US:'美股',TW:'台股',CN_HK:'中國／香港',JP:'日本',KR:'韓國',EU:'歐洲',CRYPTO:'加密市場'});

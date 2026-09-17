@@ -28,11 +28,11 @@ function homeReadModel(){
   });
 }
 
-test('home view model selects four active regions from historical input and unavailable market data',()=>{
+test('home view model selects three active regions from historical input and unavailable market data',()=>{
   const out=V.buildHomeViewModel(homeReadModel());
   assert.equal(out.schemaVersion,'foxyya-home-view-model/1');
-  assert.deepEqual(out.regions.map(x=>x.region),['US','TW','KR','CRYPTO']);
-  assert.equal(out.regions.find(x=>x.region==='KR').bias,'UNAVAILABLE');
+  assert.deepEqual(out.regions.map(x=>x.region),['US','TW','CRYPTO']);
+  assert.equal(out.regions.find(x=>x.region==='KR'),undefined);
   assert.equal(out.marketPulse.find(x=>x.market==='US').status,'UNAVAILABLE');
   assert.equal(out.marketPulse.find(x=>x.market==='US').stateLabel,'UNAVAILABLE');
   assert.equal(out.marketPulse.find(x=>x.market==='TW').stateLabel,'AVAILABLE');

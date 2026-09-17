@@ -25,7 +25,7 @@ test('Home backend publishes one authoritative marketCoverage object derived fro
   assert.equal(snapshot.marketCoverage.schemaVersion,'foxyya-market-coverage/1');
   assert.equal(snapshot.marketCoverage.researchOnly,true);
   assert.equal(snapshot.marketCoverage.executionWrite,false);
-  const expected=buildMarketCoverage({asOf:NOW,marketScope:['CRYPTO','US','TW','KR'],providerDiagnostics,home:snapshot.home,cryptoExecution:null,researchPerformance:null});
+  const expected=buildMarketCoverage({asOf:NOW,marketScope:['CRYPTO','US','TW'],providerDiagnostics,home:snapshot.home,cryptoExecution:null,researchPerformance:null});
   assert.deepEqual(snapshot.marketCoverage,expected);
   assert.equal(snapshot.marketCoverage.markets.TW.directionReadiness,'READY');
   assert.equal(snapshot.marketCoverage.markets.TW.researchReadiness,'NOT_READY');

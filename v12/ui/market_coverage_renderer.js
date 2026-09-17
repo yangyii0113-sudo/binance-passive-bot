@@ -14,7 +14,7 @@
 
   if(!BaseRenderer||typeof BaseRenderer.renderHomeSections!=='function')throw Error('BASE_HOME_RENDERER_REQUIRED');
 
-  const MARKET_ORDER=Object.freeze(['CRYPTO','US','TW','KR']);
+  const MARKET_ORDER=Object.freeze(['CRYPTO','US','TW']);
   const MARKET_LABELS=Object.freeze({CRYPTO:'₿ 加密市場',US:'🇺🇸 美國',TW:'🇹🇼 台灣',CN_HK:'🇨🇳🇭🇰 中國／香港',JP:'🇯🇵 日本',KR:'🇰🇷 韓國',EU:'🇪🇺 歐洲'});
   const STATUS_LABELS=Object.freeze({READY:'可用',PARTIAL:'部分可用',BLOCKED:'外部阻擋',UNAVAILABLE:'尚未接入'});
   const DIRECTION_LABELS=Object.freeze({READY:'可判方向',PARTIAL:'方向證據部分可用',NOT_READY:'不可判方向'});
