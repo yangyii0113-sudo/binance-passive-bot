@@ -2,7 +2,8 @@ const STATUS = Object.freeze({ LIVE:'LIVE', STALE:'STALE', ERROR:'ERROR', LOADIN
 
 const mock = {
   market: {
-    status: STATUS.LIVE,
+    status: STATUS.EMPTY,
+    source: 'MOCK DATA',
     direction: '震盪',
     sentiment: '謹慎',
     rows: [
@@ -32,7 +33,7 @@ function home(){
   const news = mock.news.map(([n,title,text,tag]) => `<article class="news-row"><div class="news-num">${n}</div><div><h3>${title}</h3><p>${text}</p></div>${badge(tag)}</article>`).join('');
   const s = mock.strategies[0];
   return `<div class="page-stack">
-    ${section('市場脈動', `<div class="market-summary"><div><span>市場方向</span><strong>${mock.market.direction}</strong></div><div><span>風險情緒</span><strong class="muted-strong">${mock.market.sentiment}</strong></div></div><div class="tabs"><span>收藏</span><span class="active">熱門</span><span>漲幅</span><span>跌幅</span><span>成交額</span></div><div class="table-head"><span>幣種</span><span>最新價格</span><span>24h</span></div><div class="coin-list">${coins}</div>`, badge(mock.market.status))}
+    ${section('市場脈動', `<div class="market-summary"><div><span>市場方向</span><strong>${mock.market.direction}</strong></div><div><span>風險情緒</span><strong class="muted-strong">${mock.market.sentiment}</strong></div></div><div class="tabs"><span>收藏</span><span class="active">熱門</span><span>漲幅</span><span>跌幅</span><span>成交額</span></div><div class="table-head"><span>幣種</span><span>最新價格</span><span>24h</span></div><div class="coin-list">${coins}</div>`, badge(mock.market.source))}
     ${section('國際熱點', `<div class="tabs compact"><span class="active">新聞</span><span>經濟日曆</span></div><div class="news-list">${news}</div><div class="calendar-row"><span>▣</span><div><strong>重要事件日曆</strong><small>關注關鍵經濟數據與國際事件，掌握市場變化。</small></div><span>前值 —　預期 —　公布值 —　›</span></div>`)}
     ${section('策略機會', `<div class="strategy-card"><div class="coin-icon large">₿</div><div class="strategy-main"><strong>${s.symbol}</strong><span>${s.strategy}</span><b>${s.direction}</b>${badge(s.status)}<p>綜合技術面與市場情緒，關注關鍵位置，等待進一步確認。</p></div></div>`, '<span class="action-link">查看條件與圖表 ›</span>')}
   </div>`;
