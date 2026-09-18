@@ -46,15 +46,17 @@ class ForwardRunner:
                                                         atr_extension=extension,data_latest_ms=int(now_ms)))
         return out
     def execute_open(self,snapshot,*,open_ms,observed_ms):
-        # Size every new batch from the latest verified ledger NAV instead of
+        opens=snapshot.get('hour_open_prices',{})
+        due=[intent for intent in self.pending()
+             if intent['scheduled_open_ms']==open_ms and intent['symbol'] in opens]
+        if not due:return []
+        # Size every due batch from the latest verified ledger NAV instead of
         # the NAV captured when the process originally started.
         current_nav=self._current_nav()
         self.execution.nav=current_nav
         self.risk_book.nav=current_nav
-        out=[]; opens=snapshot.get('hour_open_prices',{})
-        for intent in self.pending():
-            if intent['scheduled_open_ms']!=open_ms: continue
-            if intent['symbol'] not in opens: continue
+        out=[]
+        for intent in due:
             out.append(self.execution.fill_due_intent(intent['intent_id'],open_ms,float(opens[intent['symbol']]),observed_ms=int(observed_ms)))
         return out
 
