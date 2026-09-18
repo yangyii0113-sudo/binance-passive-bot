@@ -38,9 +38,13 @@ jobs:
         uses: actions/configure-pages@v5
       - name: Prepare static site
         run: |
+          BUILD_SHA="$(git rev-parse --short HEAD)"
           mkdir -p _site
-          cp index.html styles.css package.json _site/
+          sed "s#./styles.css#./styles.css?v=$BUILD_SHA#g; s#./src/main.js#./src/main.js?v=$BUILD_SHA#g" index.html > _site/index.html
+          cp styles.css package.json _site/
           cp -R src _site/src
+          printf '{"build":"%s"}\n' "$BUILD_SHA" > _site/build.json
+          echo "Publishing FOXYYA Lite build $BUILD_SHA"
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
         with:
