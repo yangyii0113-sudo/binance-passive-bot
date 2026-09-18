@@ -153,6 +153,12 @@ function initEvents() {
       render();
       return;
     }
+    const strategyTimeframe = event.target.closest?.('[data-strategy-timeframe]');
+    if (strategyTimeframe) {
+      appState.ui.strategyTimeframe = strategyTimeframe.dataset.strategyTimeframe;
+      render();
+      return;
+    }
     const strategyFilter = event.target.closest?.('[data-strategy-filter]');
     if (strategyFilter) {
       appState.ui.strategyFilter = strategyFilter.dataset.strategyFilter;
