@@ -229,7 +229,7 @@ function strongCoinCards(state){
   const strong = [...(state.market?.rows || [])]
     .filter(row => Number.isFinite(Number(row?.[5])))
     .sort((a,b)=>Number(b[5])-Number(a[5]))
-    .slice(0,5);
+    .slice(0,10);
   if(!strong.length) return '<div class="empty-state"><strong>強勢幣種資料讀取中</strong><span>等待市場成交額與動能資料。</span></div>';
   return `<div class="strong-grid">${strong.map((row,index)=>{
     const [icon, display, lastPrice, change, quoteVolume, score] = row;
@@ -320,7 +320,7 @@ export function homePage(state) {
 
     <section class="panel strong-panel">
       <div class="section-head premium-head">
-        <div class="section-title"><span class="section-symbol">◆</span>強勢幣種篩選</div>
+        <div class="section-title"><span class="section-symbol">◆</span>強勢幣種 Top 10</div>
         <span class="section-quiet">24H MOMENTUM + LIQUIDITY</span>
       </div>
       ${strongCoinCards(state)}
