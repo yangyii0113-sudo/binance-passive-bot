@@ -1,0 +1,100 @@
+{
+  "schema": "foxyya-forward-shadow-evidence/1",
+  "mode": "PAPER_ONLY_SHADOW_EVIDENCE",
+  "real_orders": false,
+  "captured_at": "2026-09-19T03:06:00+08:00",
+  "source": "Binance USD-M public market data",
+  "strategy_version": "FOXYYA-EXEC-V2-20260908",
+  "symbol": "STRKUSDT",
+  "direction": "LONG",
+  "setup_family": "A-L",
+  "setup_name": "Structure Pullback",
+  "regime": "RISK_ON",
+  "universe_policy": {
+    "quote_asset": "USDT",
+    "contract_type": "PERPETUAL",
+    "status": "TRADING",
+    "minimum_history_days": 60,
+    "minimum_24h_quote_volume_usdt": 5000000,
+    "exclude_stablecoin_bases": true,
+    "exclude_non_crypto_derivatives": true,
+    "exclude_stale_delisted": true
+  },
+  "market_regime_snapshot": {
+    "BTCUSDT_24h_pct": 5.775,
+    "ETHUSDT_24h_pct": 6.751,
+    "SOLUSDT_24h_pct": 11.610,
+    "crypto_market_cap_24h_pct": 5.4,
+    "fear_greed": 73,
+    "label": "RISK_ON"
+  },
+  "closed_bar_evidence": {
+    "daily_trend": "UP",
+    "daily_last_fully_closed_close": 0.02896,
+    "daily_ema20": 0.028082417064004047,
+    "daily_ema50": 0.02744625937299097,
+    "h4_trend": "UP",
+    "h4_last_fully_closed_close": 0.03726,
+    "h4_ema20": 0.029954397153714597,
+    "h4_ema50": 0.029273378360168228,
+    "decision_bar_close_local": "2026-09-19T02:59:59+08:00",
+    "decision_close": 0.04121,
+    "prior_breakout_level": 0.03643,
+    "impulse": {"high": 0.03736, "low": 0.03465, "close": 0.03726},
+    "pullback_1": {"high": 0.03814, "low": 0.03646, "close": 0.03708},
+    "pullback_2": {"high": 0.03895, "low": 0.03675, "close": 0.03867},
+    "confirmation": {"high": 0.04156, "low": 0.03788, "close": 0.04121},
+    "trigger": 0.03895,
+    "structural_stop": 0.03646,
+    "a_breakout": true,
+    "a_retest": true,
+    "a_closed_confirmation": true,
+    "b_atr14": 0.001951428571428572,
+    "b_atr_extension": 1.88579795021962,
+    "b_rejected_reason": "ATR_EXTENSION_NOT_CONTROLLED",
+    "d_compression_ratio": 2.0276923076923055,
+    "d_rejected_reason": "COMPRESSION_ABSENT"
+  },
+  "market_snapshot_24h": {
+    "STRKUSDT": {"price_change_percent": 45.608, "approx_quote_volume_usdt": 77000000},
+    "BTCUSDT": {"price_change_percent": 5.775, "last_price": 80976.00, "quote_volume_usdt": 16560543277.12},
+    "ETHUSDT": {"price_change_percent": 6.751, "last_price": 2618.71, "quote_volume_usdt": 12371759188.34},
+    "SOLUSDT": {"price_change_percent": 11.610, "last_price": 112.57, "quote_volume_usdt": 3390540307.5879}
+  },
+  "risk_model": {
+    "nav_source": "fallback_unverified_canonical_ledger",
+    "nav_usdt": 1000.0,
+    "risk_fraction": 0.005,
+    "risk_budget_usdt": 5.0,
+    "structural_stop": 0.03646,
+    "position_size_status": "PENDING_FUTURE_LEGAL_OPEN",
+    "fee_each_side": 0.0005,
+    "adverse_slippage_each_side": 0.0003,
+    "funding_reserve": 0.0001
+  },
+  "reference_only_leverage_preflight": {
+    "reference_price_not_fill": 0.04121,
+    "5x": {"status": "MODEL_PASS_AT_REFERENCE_ONLY", "modeled_buffer_fraction": 0.04810603156592455},
+    "8x": {"status": "REJECT_BUFFER_AT_REFERENCE_ONLY", "modeled_buffer_fraction": -0.02689396843407546},
+    "10x": {"status": "REJECT_BUFFER_AT_REFERENCE_ONLY", "modeled_buffer_fraction": -0.051893968434075455},
+    "note": "Must be recomputed from the actual next legal 1H open; leverage does not change risk budget."
+  },
+  "execution": {
+    "decision_persisted_canonically": false,
+    "canonical_intent_created": false,
+    "canonical_paper_entry_created": false,
+    "production_service": "foxyya-paper-engine",
+    "production_service_status": "FAILED",
+    "production_volume_present": true,
+    "production_volume_mount": "/data",
+    "next_future_legal_open_local_if_intent_were_persisted_now": "2026-09-19T04:00:00+08:00",
+    "event": "CRITICAL_EXECUTION_ANOMALY_QUALIFIED_SIGNAL_NOT_CANONICALLY_PERSISTED",
+    "no_backfill": true,
+    "reason": "A newly qualified fully-closed-bar STRKUSDT A-L signal cannot be written to the canonical ledger or armed for its next future-legal 1H open because the production paper engine is FAILED."
+  },
+  "strategy_trial": {
+    "parameters_changed": false,
+    "control_freeze_preserved": true,
+    "real_trading_permissions_used": false
+  }
+}
