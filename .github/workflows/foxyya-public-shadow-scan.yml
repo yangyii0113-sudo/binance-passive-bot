@@ -1,0 +1,100 @@
+name: FOXYYA Public Shadow Scan
+
+on:
+  push:
+    branches:
+      - foxyya-ledger-reconcile-20260918
+    paths:
+      - .github/foxyya-scan-trigger
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run isolated public-data scan
+        env:
+          PYTHONPATH: src
+        run: |
+          python - <<'PY'
+          import json, time
+          from pathlib import Path
+          from foxyya.ledger import EventLedger
+          from foxyya.market import PublicBinanceClient
+          from foxyya.live import PublicSnapshotBuilder
+          from foxyya.runner import ForwardRunner
+          from foxyya.execution import ExecutionEngine
+
+          now_ms=int(time.time()*1000)
+          db=Path('/tmp/foxyya-shadow-scan.sqlite')
+          ledger=EventLedger(db)
+          runner=ForwardRunner(ledger,initial_nav=1000.0)
+          builder=PublicSnapshotBuilder(PublicBinanceClient(),max_workers=8)
+          snap=builder.build(now_ms=now_ms,funding_symbols=[])
+          result=runner.scan_if_new_close(snap,now_ms=now_ms)
+          events=ledger.events()
+          qualified=[]
+          if result:
+              for d in result['decisions']:
+                  qualified.append({
+                      'symbol':d.symbol,'side':d.side,'family':d.family,'rank':d.rank,
+                      'regime':d.regime,'reason':d.reason,'signal_id':d.signal_id,
+                      'decision_close_ms':d.decision_close_ms,'stop':d.stop,'trigger':d.trigger,
+                      'action':d.action,'quality':d.quality,
+                  })
+          ranks={'long':[],'short':[]}
+          if result:
+              for side in ('long','short'):
+                  for f in result['ranks'][side][:15]:
+                      ranks[side].append({
+                          'symbol':f.symbol,
+                          'score':f.long_score if side=='long' else f.short_score,
+                          'daily_trend':f.daily_trend,'h4_trend':f.h4_trend,
+                          'momentum_1h':f.momentum_1h,'momentum_4h':f.momentum_4h,
+                          'return_24h':f.return_24h,'relative_strength':f.relative_strength,
+                          'quote_volume_24h':f.quote_volume_24h,'volume_quality':f.volume_quality,
+                          'atr_extension':f.atr_extension,'compression':f.compression,
+                          'structure_quality':f.structure_quality,
+                      })
+          rejected=[e for e in events if e.get('kind')=='SIGNAL_REJECTED']
+          summary={
+              'schema':'foxyya-public-shadow-scan/1',
+              'mode':'PAPER_ONLY_SHADOW_NON_CANONICAL',
+              'real_orders':False,
+              'private_permissions_used':False,
+              'now_ms':now_ms,
+              'decision_cutoff_ms':result['summary'].get('decision_cutoff_ms') if result else None,
+              'next_legal_open_ms':ExecutionEngine.next_future_hour(now_ms),
+              'regime':result['regime'] if result else None,
+              'major_returns':snap.get('major_returns'),
+              'breadth':snap.get('breadth'),
+              'eligible_universe_count':snap.get('eligible_universe_count'),
+              'funnel':result['funnel'] if result else None,
+              'qualified':qualified,
+              'top_ranks':ranks,
+              'rejection_count':len(rejected),
+              'rejection_reasons':{},
+              'fallback_nav_usdt':1000.0,
+              'canonical_ledger_verified':False,
+          }
+          for e in rejected:
+              k=e.get('reason','UNKNOWN'); summary['rejection_reasons'][k]=summary['rejection_reasons'].get(k,0)+1
+          Path('/tmp/foxyya-shadow-summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2),encoding='utf-8')
+          print('FOXYYA_SCAN_SUMMARY='+json.dumps(summary,ensure_ascii=False,separators=(',',':')))
+          ledger.close()
+          PY
+      - name: Upload isolated scan evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: foxyya-public-shadow-scan
+          path: |
+            /tmp/foxyya-shadow-summary.json
+            /tmp/foxyya-shadow-scan.sqlite
+          retention-days: 7
