@@ -16,12 +16,14 @@
       </div>
       <div class="top-actions">
         <span class="mode-pill"><span class="live-dot"></span>模擬模式</span>
-        <button class="icon-btn" aria-label="配置">⚙ 配置</button>
         <div class="avatar" aria-label="FOXYYA">🦊</div>
       </div>
     </header>
 
-    <div class="searchbar">⌕ <span>搜尋幣種、國際事件</span></div>
+    <label class="searchbar" aria-label="搜尋">
+      <span>⌕</span>
+      <input id="global-search" type="search" placeholder="搜尋 BTC、ETH、SOL 或事件" autocomplete="off" />
+    </label>
     <main id="app" aria-live="polite"></main>
 
     <nav class="bottom-nav" aria-label="主要導覽">
