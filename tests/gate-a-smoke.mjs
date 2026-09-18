@@ -30,26 +30,35 @@ const { emptyStrategySnapshot, emptyPaperSnapshot, emptyResultsSnapshot, emptyBa
 const { pages } = await import('../src/pages.js');
 const { currentRoute } = await import('../src/router.js');
 
-const marketPayloads = {
-  BTCUSDT: { lastPrice: '76419.40', priceChangePercent: '0.880' },
-  ETHUSDT: { lastPrice: '2442.26', priceChangePercent: '1.894' },
-  SOLUSDT: { lastPrice: '99.9600', priceChangePercent: '3.137' }
-};
+const marketPayloads = [
+  { symbol: 'BTCUSDT', lastPrice: '76419.40', priceChangePercent: '0.880', quoteVolume: '9000000000' },
+  { symbol: 'ETHUSDT', lastPrice: '2442.26', priceChangePercent: '1.894', quoteVolume: '7000000000' },
+  { symbol: 'SOLUSDT', lastPrice: '99.9600', priceChangePercent: '3.137', quoteVolume: '4000000000' },
+  { symbol: 'BNBUSDT', lastPrice: '650.20', priceChangePercent: '2.400', quoteVolume: '2500000000' },
+  { symbol: 'XRPUSDT', lastPrice: '1.24', priceChangePercent: '5.600', quoteVolume: '2300000000' },
+  { symbol: 'DOGEUSDT', lastPrice: '0.18', priceChangePercent: '4.100', quoteVolume: '1800000000' },
+  { symbol: 'ADAUSDT', lastPrice: '0.71', priceChangePercent: '-1.200', quoteVolume: '900000000' },
+  { symbol: 'USDCUSDT', lastPrice: '1.0', priceChangePercent: '0.0', quoteVolume: '9999999999' }
+];
 
 globalThis.fetch = async (url) => {
   const parsed = new URL(String(url));
-  const symbol = parsed.searchParams.get('symbol');
-  const payload = marketPayloads[symbol];
-  if (!payload) return { ok: false, status: 404, json: async () => ({}) };
-  return { ok: true, status: 200, json: async () => payload };
+  if (parsed.pathname.endsWith('/ticker/24hr') && !parsed.searchParams.get('symbol')) {
+    return { ok: true, status: 200, json: async () => marketPayloads };
+  }
+  return { ok: false, status: 404, json: async () => ({}) };
 };
 
 const live = await loadMarketSnapshot();
 assert.equal(live.status, STATUS.LIVE, 'Market must enter LIVE on valid Binance payloads');
-assert.equal(live.rows.length, 3, 'Market must expose BTC/ETH/SOL only');
+assert.ok(live.rows.length >= 7, 'Market must expose a broader liquid universe');
 assert.equal(live.rows[0][1], 'BTC / USDT');
 assert.equal(live.rows[1][1], 'ETH / USDT');
 assert.equal(live.rows[2][1], 'SOL / USDT');
+assert.equal(live.rows.some((row) => row[1] === 'XRP / USDT'), true, 'Dynamic universe must include liquid non-core symbols');
+assert.equal(live.rows.some((row) => row[1] === 'USDC / USDT'), false, 'Stablecoin bases must be excluded');
+assert.equal(live.rows.every((row) => row.length >= 6), true, 'Market rows must include liquidity and strength metadata');
+assert.equal(live.rows.every((row) => Number.isFinite(Number(row[5]))), true, 'LIVE market rows must expose strength score');
 
 globalThis.fetch = async () => { throw new Error('offline'); };
 const stale = await loadMarketSnapshot();
@@ -59,7 +68,7 @@ assert.deepEqual(stale.rows, live.rows, 'STALE must retain Last Known Good rows'
 localStorage.clear();
 const error = await loadMarketSnapshot();
 assert.equal(error.status, STATUS.ERROR, 'Market must enter ERROR when no cache exists');
-assert.equal(error.rows.length, 3);
+assert.ok(error.rows.length > 3, 'Fallback universe must not collapse to three coins');
 assert.equal(error.rows.every((row) => row[2] === '—'), true, 'ERROR must not fabricate prices');
 
 globalThis.fetch = async () => ({ ok: false, status: 404, json: async () => ({}) });
@@ -177,7 +186,7 @@ for (const [hash, route] of [
 }
 
 console.log('GATE_A_SMOKE_OK');
-console.log('market: LIVE -> STALE -> ERROR');
+console.log('market: dynamic liquid universe + strength score; LIVE -> STALE -> ERROR');
 console.log('snapshot sources: missing -> EMPTY');
 console.log('runtime bridge: strategy/paper/results/backtest canonicalization');
 console.log('routes: 5/5');
