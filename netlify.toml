@@ -3,3 +3,5 @@
 
 [build.environment]
   NODE_VERSION = "22"
+
+# Continuous deployment trigger: 2026-09-18
