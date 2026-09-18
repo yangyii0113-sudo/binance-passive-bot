@@ -381,27 +381,27 @@ export function backtestPage(state) {
   const result = b.result;
   const resultHtml = result ? `
     <div class="metric-grid">
-      ${metric('Trades',result.trades)}${metric('Win Rate',pct(result.winRatePct))}
-      ${metric('Profit Factor',result.profitFactor == null ? '—' : Number(result.profitFactor).toFixed(2))}
-      ${metric('Net Return',pct(result.netReturnPct))}${metric('Max Drawdown',pct(result.maxDrawdownPct))}
-      ${metric('Samples',input.samples || '—')}
+      ${metric('交易筆數',result.trades)}${metric('勝率',pct(result.winRatePct))}
+      ${metric('獲利因子',result.profitFactor == null ? '—' : Number(result.profitFactor).toFixed(2))}
+      ${metric('淨報酬率',pct(result.netReturnPct))}${metric('最大回撤',pct(result.maxDrawdownPct))}
+      ${metric('樣本數',input.samples || '—')}
     </div>
     <div class="backtest-summary">
       <div><span>樣本</span><strong>${input.samples || '—'} K</strong></div>
       <div><span>成本模型</span><strong>${input.costModel || '—'}</strong></div>
-      <div><span>Timeframe</span><strong>${String(input.timeframe || '—').toUpperCase()}</strong></div>
+      <div><span>時間週期</span><strong>${String(input.timeframe || '—').toUpperCase()}</strong></div>
     </div>
-    <div class="chart-placeholder"><span>Equity Curve</span><strong>${b.equityCurve?.length || 0} 個權益節點</strong></div>`
-    : `<div class="empty-state"><strong>${b.status==='LOADING'?'Backtest 執行中…':'尚未執行 Backtest'}</strong><span>使用 Binance USD-M 歷史 K 線；Forward Paper 與 Historical Backtest 完全分離。</span></div>`;
+    <div class="chart-placeholder"><span>權益曲線</span><strong>${b.equityCurve?.length || 0} 個權益節點</strong></div>`
+    : `<div class="empty-state"><strong>${b.status==='LOADING'?'歷史回測執行中…':'尚未執行歷史回測'}</strong><span>使用 Binance USD-M 歷史 K 線；模擬交易與歷史回測完全分離。</span></div>`;
   return `<div class="page-stack">${messageBar(state)}${section('策略測試', `
     <form id="backtest-form" class="form-grid">
       <label>幣種<select name="symbol"><option>BTCUSDT</option><option>ETHUSDT</option><option>SOLUSDT</option></select></label>
-      <label>時間區間<select name="range"><option value="90D">90D</option><option value="180D">180D</option><option value="1Y">1Y</option></select></label>
+      <label>測試期間<select name="range"><option value="90D">90 天</option><option value="180D">180 天</option><option value="1Y">1 年</option></select></label>
       <label>策略<select name="strategy"><option value="A">策略 A · EMA20/50</option><option value="B">策略 B · EMA10/30</option></select></label>
-      <label>Timeframe<select name="timeframe"><option value="1h">1H</option><option value="4h">4H</option></select></label>
+      <label>時間週期<select name="timeframe"><option value="1h">1 小時</option><option value="4h">4 小時</option></select></label>
     </form>
     <button class="primary-btn" data-backtest-run type="button" ${b.status==='LOADING'?'disabled':''}>開始歷史測試</button>
-    ${resultHtml}`, badge('HISTORICAL BACKTEST'))}</div>`;
+    ${resultHtml}`, badge('歷史回測'))}</div>`;
 }
 
 export const pages = Object.freeze({ home: homePage, strategies: strategiesPage, orders: ordersPage, results: resultsPage, backtest: backtestPage });
