@@ -97,7 +97,7 @@ async function handleBacktest(form) {
       timeframe: data.get('timeframe')
     });
     setStateSlice('backtest', snapshot);
-    appState.ui.message = `Backtest 完成：${snapshot.input.samples} 根 K 線 / ${snapshot.result.trades} 筆交易`;
+    appState.ui.message = `回測完成：${snapshot.input.samples} 根 K 線 / ${snapshot.result.trades} 筆交易`;
   } catch (error) {
     setStateSlice('backtest', {
       status: STATUS.ERROR,
@@ -107,7 +107,7 @@ async function handleBacktest(form) {
       equityCurve: [],
       error
     });
-    appState.ui.message = `Backtest 失敗：${error?.message || 'unknown error'}`;
+    appState.ui.message = `回測失敗：${error?.message || '未知錯誤'}`;
   }
   render();
 }
@@ -183,16 +183,8 @@ function initEvents() {
 }
 
 function ensureHomeOnFreshOpen() {
-  try {
-    const key = 'foxyya.session.booted';
-    if (!sessionStorage.getItem(key)) {
-      sessionStorage.setItem(key, '1');
-      if (location.hash !== '#/') {
-        history.replaceState(null, '', `${location.pathname}${location.search}#/`);
-      }
-    }
-  } catch (_) {
-    if (!location.hash) location.hash = '#/';
+  if (location.hash !== '#/') {
+    history.replaceState(null, '', `${location.pathname}${location.search}#/`);
   }
 }
 
