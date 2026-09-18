@@ -1,0 +1,158 @@
+{
+  "schema": "foxyya-forward-shadow-scan/1",
+  "scan_time_utc": "2026-09-18T16:10:17.105Z",
+  "scan_time_taipei": "2026-09-19T00:10:17.105+08:00",
+  "mode": "SHADOW_ONLY",
+  "source": "Binance USD-M public market data only",
+  "paper_only": true,
+  "real_orders": false,
+  "private_trading_permissions_used": false,
+  "canonical_runtime": {
+    "project": "FOXYYA Execution V2",
+    "environment": "production",
+    "service": "foxyya-paper-engine",
+    "latest_deployment_status": "FAILED",
+    "latest_deployment_id": "83976bb5-408b-4a14-af80-e99780157b44",
+    "persistent_volume_present": true,
+    "volume_mount": "/data",
+    "volume_size_mb": 500,
+    "canonical_ledger_verified_in_this_run": false,
+    "latest_verified_nav_available": false,
+    "fallback_nav_usdt": 1000.0
+  },
+  "decision": {
+    "fully_closed_bars_only": true,
+    "decision_cutoff_ms": 1789747199999,
+    "decision_cutoff_utc": "2026-09-18T15:59:59.999Z",
+    "decision_cutoff_taipei": "2026-09-18T23:59:59.999+08:00",
+    "next_future_legal_1h_open_utc": "2026-09-18T17:00:00Z",
+    "next_future_legal_1h_open_taipei": "2026-09-19T01:00:00+08:00",
+    "no_backfill": true
+  },
+  "regime": {
+    "router": "RISK_ON",
+    "major_24h_returns_pct": {
+      "BTCUSDT": 5.458,
+      "ETHUSDT": 5.112,
+      "SOLUSDT": 9.992
+    },
+    "interpretation": "strong broad risk-on; prefer LONG momentum/compression while retaining symmetric SHORT review"
+  },
+  "universe_policy": {
+    "quote_asset": "USDT",
+    "contract_type": "PERPETUAL",
+    "min_history_days": 60,
+    "min_quote_volume_24h_usdt": 5000000,
+    "exclude_stablecoin_bases": true,
+    "exclude_noncrypto_derivatives": true,
+    "exclude_stale_or_delisted": true,
+    "exclude_insufficient_history": true
+  },
+  "qualified_shadow_signals": [
+    {
+      "signal_id": "ce854644ca5c0cdf7b1d94e0b5a1e9b03402e891733a442a4dcb40e5a7a1942c",
+      "symbol": "STRKUSDT",
+      "side": "LONG",
+      "family": "D",
+      "setup": "Compression Breakout",
+      "reason": "COMPRESSION_BREAK_CONFIRMED",
+      "quality": "HIGH",
+      "decision_close": 0.03726,
+      "trigger": 0.03643,
+      "structural_stop": 0.03302,
+      "latest_closed_1h_volume": 168981110.3,
+      "prebreak_recent_3h_average_volume": 66722136.43333334,
+      "break_volume_ratio": 2.5326094057,
+      "compression_ratio": 0.6274131274,
+      "compression_gate_max": 0.78,
+      "htf_alignment": "Daily UP / 4H UP",
+      "ticker_24h_price_change_pct": 33.226,
+      "ticker_24h_quote_volume_usdt": 56682228.355959,
+      "fallback_nav_usdt": 1000.0,
+      "planned_risk_fraction": 0.005,
+      "planned_risk_budget_usdt": 5.0,
+      "position_quantity": null,
+      "position_quantity_reason": "must be derived from the next eligible 1H raw open and structural stop; no early or backfilled fill is permitted",
+      "leverage_books": {
+        "5x": "PENDING_NEXT_LEGAL_OPEN_SIZING",
+        "8x": "PENDING_NEXT_LEGAL_OPEN_SIZING",
+        "10x": "PENDING_NEXT_LEGAL_OPEN_SIZING"
+      },
+      "canonical_intent_persisted": false,
+      "canonical_paper_entry": false,
+      "execution_blocker": "foxyya-paper-engine production deployment is FAILED; canonical ledger cannot be verified or written"
+    }
+  ],
+  "reviewed_rejections": [
+    {
+      "symbol": "HYPEUSDT",
+      "side": "LONG",
+      "decision_close": 91.364,
+      "reason": "NO_FRESH_A_B_C_D_CONFIRMATION_ON_23_59_CLOSED_BAR"
+    },
+    {
+      "symbol": "NEARUSDT",
+      "side": "LONG",
+      "decision_close": 3.654,
+      "reason": "NO_FRESH_CONTINUATION_OR_STARTER_BREAK"
+    },
+    {
+      "symbol": "UNIUSDT",
+      "side": "LONG",
+      "decision_close": 8.749,
+      "reason": "NO_FRESH_CONTINUATION_OR_STARTER_BREAK"
+    },
+    {
+      "symbol": "ARBUSDT",
+      "side": "LONG",
+      "decision_close": 0.21079,
+      "reason": "NO_FRESH_CONTINUATION_OR_STARTER_BREAK"
+    },
+    {
+      "symbol": "SOLUSDT",
+      "side": "LONG",
+      "decision_close": 111.14,
+      "reason": "B_VOLUME_CONFIRMATION_WEAK; D_COMPRESSION_ABSENT; C_TOP3_GATE_NOT_ESTABLISHED"
+    },
+    {
+      "symbol": "INJUSDT",
+      "side": "LONG",
+      "decision_close": 6.649,
+      "reason": "C_STRUCTURE_BREAK_PRESENT_BUT_TOP3_RANK_GATE_NOT_ESTABLISHED_IN_SHADOW_REVIEW"
+    },
+    {
+      "symbol": "AVAUSDT",
+      "side": "SHORT",
+      "decision_close": 0.248,
+      "reason": "HTF_MISALIGNMENT; Daily trend had not qualified DOWN in the immediately preceding scan and the daily bar did not roll in this interval"
+    },
+    {
+      "symbol": "SOLVUSDT",
+      "side": "SHORT",
+      "decision_close": 0.003979,
+      "reason": "NO_FRESH_DOWNSIDE_BREAK"
+    },
+    {
+      "symbol": "PROMUSDT",
+      "side": "SHORT",
+      "decision_close": 5.045,
+      "reason": "NO_FRESH_DOWNSIDE_BREAK"
+    }
+  ],
+  "notification_events": [
+    {
+      "type": "QUALIFYING_SIGNAL_BLOCKED_BY_CRITICAL_EXECUTION_ANOMALY",
+      "symbol": "STRKUSDT",
+      "family": "D-L",
+      "detail": "A new fully-closed-bar qualifying D-L setup exists, but the failed canonical paper engine cannot persist the intent or perform canonical pre-open revalidation/execution."
+    }
+  ],
+  "safety": {
+    "strategy_parameters_changed": false,
+    "real_orders_attempted": false,
+    "private_account_permissions_used": false,
+    "paper_history_rewritten": false,
+    "missed_fill_backfilled": false
+  },
+  "coverage_note": "Canonical full-universe scanner persistence is unavailable while the production paper engine is failed. This run rebuilt the public-data universe policy and performed closed-bar validation across the highest-priority liquid long leaders and relative-weakness short laggards; all evidence remains shadow-only."
+}
