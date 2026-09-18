@@ -34,6 +34,7 @@ export const appState = {
     marketSort: 'popular',
     homeSection: 'market',
     strategyFilter: 'all',
+    strategyWorkspace: 'signals',
     labTab: 'forward',
     calendarOpen: false,
     focusAnalysisIndex: null,
