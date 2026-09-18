@@ -74,19 +74,25 @@ function calendarPanel(state){
   if(!state.ui?.calendarOpen) return '';
   const rows = (mock.calendar || []).map((item)=>`
     <article class="calendar-event">
-      <div class="calendar-event-main">
-        <span class="focus-tag">${item.category}</span>
-        <strong>${item.title}</strong>
-        <small>影響：${item.impact}</small>
+      <div class="calendar-event-top">
+        <div class="calendar-event-main">
+          <div class="calendar-tag-row"><span class="focus-tag">${item.category}</span><span class="impact-bias impact-pending">${item.bias || '待判讀'}</span></div>
+          <strong>${item.title}</strong>
+          <small>影響資產：${item.impact}</small>
+        </div>
+        <span class="calendar-time">${item.timing}</span>
       </div>
-      <span class="calendar-time">${item.timing}</span>
+      <div class="impact-direction-grid">
+        <div class="impact-positive"><span>偏利多條件</span><p>${item.bullishWhen || '—'}</p></div>
+        <div class="impact-negative"><span>偏利空條件</span><p>${item.bearishWhen || '—'}</p></div>
+      </div>
     </article>`).join('');
   return `<section class="panel calendar-panel" id="event-calendar-panel">
     <div class="section-head premium-head">
       <div class="section-title"><span class="section-symbol">▣</span>事件日曆</div>
       <button class="section-link" data-event-calendar type="button">關閉 ×</button>
     </div>
-    <div class="calendar-panel-note">目前為事件監看模板；即時前值／預期／公布值資料源尚未接入，不會偽裝成即時數據。</div>
+    <div class="calendar-panel-note">事件尚未公布前只顯示「條件式利多／利空」。待即時前值、預期、公布值資料接入後，再依實際結果判讀方向。</div>
     <div class="calendar-events">${rows}</div>
   </section>`;
 }
@@ -116,6 +122,18 @@ function focusAnalysisPanel(state){
     <section class="analysis-block analysis-summary">
       <span class="analysis-eyebrow">核心解讀</span>
       <p>${item.summary}</p>
+    </section>
+
+    <section class="analysis-block analysis-impact">
+      <span class="analysis-eyebrow">市場方向判讀</span>
+      <div class="impact-direction-grid">
+        <div class="impact-positive"><span>偏利多條件</span><p>${item.bullishCondition || '—'}</p></div>
+        <div class="impact-negative"><span>偏利空條件</span><p>${item.bearishCondition || '—'}</p></div>
+      </div>
+      <div class="analysis-assets">
+        <span>主要影響</span>
+        <div>${(item.affectedAssets || []).map(asset=>`<b>${asset}</b>`).join('')}</div>
+      </div>
     </section>
 
     <section class="analysis-block">
@@ -377,7 +395,9 @@ export function homePage(state) {
   const sort = state.ui?.marketSort || 'popular';
   const [focusA, focusB, focusC] = mock.news;
 
-  const focusCard = ([, title, text, tag], index, featured = false) => `
+  const focusCard = ([, title, text, tag], index, featured = false) => {
+    const analysis = mock.focusAnalysis?.[index] || {};
+    return `
     <button class="focus-card ${featured ? 'focus-featured' : ''} ${Number(state.ui?.focusAnalysisIndex) === index ? 'is-selected' : ''}"
       data-search="${title} ${text} ${tag}" data-focus-analysis="${index}" type="button"
       aria-expanded="${Number(state.ui?.focusAnalysisIndex) === index}">
@@ -385,10 +405,15 @@ export function homePage(state) {
       <div class="focus-copy">
         <h3>${title}</h3>
         <p>${text}</p>
+        <div class="focus-mini-impact">
+          <span class="impact-mini-up">偏多條件</span>
+          <span class="impact-mini-down">偏空條件</span>
+        </div>
         <span class="focus-tag">${tag}</span>
       </div>
       <span class="focus-arrow">›</span>
     </button>`;
+  };
 
   return `<div class="page-stack home-stack">${messageBar(state)}
     ${assetClassSwitcher(state)}
@@ -470,6 +495,26 @@ export function homePage(state) {
 }
 
 
+function strategyTimeframeTabs(state){
+  const active = state.ui?.strategyTimeframe || '1h';
+  const frames = [
+    ['15m','15分'],
+    ['1h','1H'],
+    ['4h','4H'],
+    ['12h','12H'],
+    ['1d','日線'],
+    ['1w','週線'],
+    ['1M','月線']
+  ];
+  return `<div class="strategy-timeframe-wrap">
+    <div class="strategy-timeframe-tabs" role="tablist" aria-label="策略分析週期">
+      ${frames.map(([key,label])=>`
+        <button type="button" class="timeframe-btn ${active===key?'active':''}" data-strategy-timeframe="${key}" role="tab" aria-selected="${active===key}">${label}</button>
+      `).join('')}
+    </div>
+    <div class="timeframe-note">目前 Lite 交易訊號仍以 24h 動能＋流動性為基準；週期按鈕先作為策略分析工作區，待多週期訊號引擎接入後再分別計算。</div>
+  </div>`;
+}
 function strategyWorkspaceTabs(state){
   const active = state.ui?.strategyWorkspace || 'signals';
   const items = [
@@ -629,6 +674,7 @@ export function strategiesPage(state) {
   return `<div class="page-stack">${messageBar(state)}
     ${assetClassSwitcher(state)}
     ${strategyWorkspaceTabs(state)}
+    ${strategyTimeframeTabs(state)}
     ${section(workspace === 'signals' ? '交易訊號' : '策略研發', content, badge(workspace === 'signals' ? (isCrypto ? 'LIVE SIGNALS' : 'EMPTY') : 'R&D'))}
   </div>`;
 }
