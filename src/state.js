@@ -25,6 +25,7 @@ export const appState = {
     marketSort: 'popular',
     strategyFilter: 'all',
     calendarOpen: false,
+    focusAnalysisIndex: null,
     message: ''
   }
 };
