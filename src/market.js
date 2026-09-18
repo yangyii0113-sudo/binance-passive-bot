@@ -1,15 +1,38 @@
-import { MARKET_SYMBOLS, MARKET_TIMEOUT_MS } from './config.js';
+import {
+  CORE_MARKET_SYMBOLS,
+  MARKET_SYMBOLS,
+  MARKET_MAX_ROWS,
+  MARKET_LIQUIDITY_POOL,
+  MARKET_TIMEOUT_MS
+} from './config.js';
 import { readMarketCache, writeMarketCache } from './cache.js';
 import { STATUS } from './status.js';
+
+const STABLE_BASES = new Set(['USDC','FDUSD','TUSD','USDP','DAI','USDE']);
 
 function formatPrice(value) {
   const n = Number(value);
   if (!Number.isFinite(n)) return '—';
-  const digits = n >= 1000 ? 2 : n >= 1 ? 3 : 5;
+  const digits = n >= 1000 ? 2 : n >= 1 ? 3 : n >= 0.01 ? 5 : 7;
   return n.toLocaleString('en-US', {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits
   });
+}
+
+function baseFromSymbol(symbol) {
+  return String(symbol || '').replace(/USDT$/,'');
+}
+
+function displayFromSymbol(symbol) {
+  return `${baseFromSymbol(symbol)} / USDT`;
+}
+
+function fallbackIcon(symbol) {
+  const base = baseFromSymbol(symbol).replace(/^1000/,'');
+  if (base === 'BTC') return '₿';
+  if (base === 'ETH') return '◆';
+  return base.slice(0,1) || '•';
 }
 
 function deriveMarketSummary(rows) {
@@ -22,23 +45,73 @@ function deriveMarketSummary(rows) {
   };
 }
 
-async function fetchTicker(symbol) {
+function isEligibleTicker(item) {
+  if (!item || typeof item !== 'object') return false;
+  const symbol = String(item.symbol || '');
+  if (!symbol.endsWith('USDT')) return false;
+  const base = baseFromSymbol(symbol);
+  if (!base || STABLE_BASES.has(base)) return false;
+  const price = Number(item.lastPrice);
+  const change = Number(item.priceChangePercent);
+  const quoteVolume = Number(item.quoteVolume);
+  return Number.isFinite(price) && price > 0 &&
+    Number.isFinite(change) &&
+    Number.isFinite(quoteVolume) && quoteVolume > 0;
+}
+
+function strengthScore(changePct, liquidityRank, poolSize) {
+  const momentum = Math.max(-12, Math.min(12, Number(changePct) || 0));
+  const liquidityPoints = poolSize > 1 ? (1 - liquidityRank / (poolSize - 1)) * 20 : 20;
+  return Math.max(0, Math.min(100, 40 + momentum * 3.3 + liquidityPoints));
+}
+
+function normalizeUniverse(payload) {
+  const eligible = payload.filter(isEligibleTicker);
+  eligible.sort((a,b) => Number(b.quoteVolume) - Number(a.quoteVolume));
+  const liquid = eligible.slice(0, MARKET_LIQUIDITY_POOL);
+
+  const core = CORE_MARKET_SYMBOLS
+    .map((item) => eligible.find((ticker) => ticker.symbol === item.symbol))
+    .filter(Boolean);
+
+  const merged = [];
+  const seen = new Set();
+  for (const ticker of [...core, ...liquid]) {
+    if (seen.has(ticker.symbol)) continue;
+    seen.add(ticker.symbol);
+    merged.push(ticker);
+    if (merged.length >= MARKET_MAX_ROWS) break;
+  }
+
+  const liquidityIndex = new Map(liquid.map((ticker, index) => [ticker.symbol, index]));
+  return merged.map((ticker) => {
+    const index = liquidityIndex.get(ticker.symbol);
+    const rank = Number.isInteger(index) ? index : liquid.length - 1;
+    const score = strengthScore(Number(ticker.priceChangePercent), rank, Math.max(1, liquid.length));
+    return [
+      fallbackIcon(ticker.symbol),
+      displayFromSymbol(ticker.symbol),
+      formatPrice(ticker.lastPrice),
+      Number(ticker.priceChangePercent),
+      Number(ticker.quoteVolume),
+      score
+    ];
+  });
+}
+
+async function fetchAllTickers() {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), MARKET_TIMEOUT_MS);
   try {
-    const response = await fetch(`https://fapi.binance.com/fapi/v1/ticker/24hr?symbol=${encodeURIComponent(symbol)}`, {
+    const response = await fetch('https://fapi.binance.com/fapi/v1/ticker/24hr', {
       method: 'GET',
       cache: 'no-store',
       signal: controller.signal
     });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data = await response.json();
-    const lastPrice = Number(data.lastPrice);
-    const priceChangePercent = Number(data.priceChangePercent);
-    if (!Number.isFinite(lastPrice) || !Number.isFinite(priceChangePercent)) {
-      throw new Error('Invalid ticker payload');
-    }
-    return { symbol, lastPrice, priceChangePercent };
+    if (!Array.isArray(data)) throw new Error('Invalid ticker payload');
+    return data;
   } finally {
     clearTimeout(timeout);
   }
@@ -59,11 +132,11 @@ export function cachedMarketSnapshot() {
 
 export async function loadMarketSnapshot() {
   try {
-    const tickers = await Promise.all(MARKET_SYMBOLS.map((item) => fetchTicker(item.symbol)));
-    const rows = MARKET_SYMBOLS.map((item) => {
-      const ticker = tickers.find((candidate) => candidate.symbol === item.symbol);
-      return [item.icon, item.display, formatPrice(ticker.lastPrice), ticker.priceChangePercent];
-    });
+    const payload = await fetchAllTickers();
+    const rows = normalizeUniverse(payload);
+    if (rows.length < CORE_MARKET_SYMBOLS.length) {
+      throw new Error('Liquid universe too small');
+    }
     const summary = deriveMarketSummary(rows);
     const snapshot = {
       status: STATUS.LIVE,
@@ -82,8 +155,10 @@ export async function loadMarketSnapshot() {
       updatedAt: null,
       direction: '無資料',
       sentiment: '無資料',
-      rows: MARKET_SYMBOLS.map(({ icon, display }) => [icon, display, '—', null]),
+      rows: MARKET_SYMBOLS.map(({ icon, display }) => [icon, display, '—', null, null, null]),
       error
     };
   }
 }
+
+export { normalizeUniverse, strengthScore };
