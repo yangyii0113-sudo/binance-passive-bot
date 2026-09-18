@@ -131,6 +131,17 @@ function initEvents() {
       render();
       return;
     }
+    const focus = event.target.closest?.('[data-focus-analysis]');
+    if (focus) {
+      const index = Number(focus.dataset.focusAnalysis);
+      const next = appState.ui.focusAnalysisIndex === index ? null : index;
+      appState.ui.focusAnalysisIndex = next;
+      render();
+      if (next !== null) {
+        setTimeout(() => document.getElementById('focus-analysis-detail')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
+      }
+      return;
+    }
     const calendar = event.target.closest?.('[data-event-calendar]');
     if (calendar) {
       appState.ui.calendarOpen = !appState.ui.calendarOpen;
