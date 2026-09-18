@@ -147,6 +147,12 @@ function initEvents() {
       applySearch(appState.ui.search);
       return;
     }
+    const strategyWorkspace = event.target.closest?.('[data-strategy-workspace]');
+    if (strategyWorkspace) {
+      appState.ui.strategyWorkspace = strategyWorkspace.dataset.strategyWorkspace;
+      render();
+      return;
+    }
     const strategyFilter = event.target.closest?.('[data-strategy-filter]');
     if (strategyFilter) {
       appState.ui.strategyFilter = strategyFilter.dataset.strategyFilter;
