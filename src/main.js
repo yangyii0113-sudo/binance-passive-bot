@@ -127,6 +127,19 @@ function initEvents() {
       applySearch(appState.ui.search);
       return;
     }
+    const homeSection = event.target.closest?.('[data-home-section]');
+    if (homeSection) {
+      appState.ui.homeSection = homeSection.dataset.homeSection;
+      render();
+      applySearch(appState.ui.search);
+      return;
+    }
+    const labTab = event.target.closest?.('[data-lab-tab]');
+    if (labTab) {
+      appState.ui.labTab = labTab.dataset.labTab;
+      render();
+      return;
+    }
     const sort = event.target.closest?.('[data-market-sort]');
     if (sort) {
       appState.ui.marketSort = sort.dataset.marketSort;
@@ -160,8 +173,9 @@ function initEvents() {
     const useBacktest = event.target.closest?.('[data-use-backtest]');
     if (useBacktest) {
       appState.ui.selectedSymbol = useBacktest.dataset.useBacktest;
+      appState.ui.labTab = 'backtest';
       appState.ui.message = `已帶入 ${appState.ui.selectedSymbol}，可直接設定期間與策略開始回測。`;
-      location.hash = '#/backtest';
+      location.hash = '#/lab';
       return;
     }
     const focus = event.target.closest?.('[data-focus-analysis]');
