@@ -469,23 +469,167 @@ export function homePage(state) {
   </div>`;
 }
 
+
+function strategyWorkspaceTabs(state){
+  const active = state.ui?.strategyWorkspace || 'signals';
+  const items = [
+    ['signals','訊號'],
+    ['library','策略庫'],
+    ['develop','策略開發'],
+    ['review','策略檢討'],
+    ['optimize','策略優化']
+  ];
+  return `<div class="strategy-workspace-tabs" role="tablist" aria-label="策略研發工作區">
+    ${items.map(([key,label])=>`
+      <button type="button" class="strategy-workspace-btn ${active===key?'active':''}" data-strategy-workspace="${key}" role="tab" aria-selected="${active===key}">${label}</button>
+    `).join('')}
+  </div>`;
+}
+
+function profitabilityPanel(state){
+  const s = state.results?.summary || {};
+  const backtest = state.backtest?.result || null;
+  const top = derivedStrategies(state)[0] || {};
+  const trades = Number(s.trades) || 0;
+  const expectancy = s.expectancyR == null ? '—' : `${Number(s.expectancyR).toFixed(2)}R`;
+  const winRate = trades > 0 ? pct(s.winRatePct) : '—';
+  const pf = s.profitFactor == null ? '—' : Number(s.profitFactor).toFixed(2);
+  const dd = trades > 0 ? pct(s.maxDrawdownPct) : '—';
+  const backtestReturn = backtest?.netReturnPct == null ? '—' : pct(backtest.netReturnPct);
+  return `<div class="profit-panel">
+    <div class="rd-panel-head"><div><span>收益架構</span><strong>以正期望值與風險控制為核心</strong></div><small>REAL DATA ONLY</small></div>
+    <div class="profit-grid">
+      <div><span>Expectancy</span><strong>${expectancy}</strong><small>Forward Paper</small></div>
+      <div><span>設計 R:R</span><strong>${valueOrDash(top.rr)}</strong><small>目前訊號模型</small></div>
+      <div><span>勝率</span><strong>${winRate}</strong><small>${trades} 筆已平倉</small></div>
+      <div><span>Profit Factor</span><strong>${pf}</strong><small>Forward Paper</small></div>
+      <div><span>最大回撤</span><strong>${dd}</strong><small>Forward Paper</small></div>
+      <div><span>最新回測報酬</span><strong>${backtestReturn}</strong><small>${backtest ? '歷史回測' : '待執行'}</small></div>
+    </div>
+    <p class="rd-note">無足夠樣本時顯示「—」，不以臨時訊號或推估值冒充策略績效。</p>
+  </div>`;
+}
+
+function strategyLibraryPanel(state){
+  const entries = [
+    {name:'動能策略',version:'Lite v1',type:'Momentum',status:'訊號運作中',tone:'live',desc:'24h 動能＋流動性分級，負責目前市場雷達與訊號分類。'},
+    {name:'趨勢策略',version:'EMA20 / 50',type:'Trend',status:'可回測',tone:'ready',desc:'較慢的趨勢跟隨版本，現有歷史回測引擎可驗證。'},
+    {name:'快速趨勢',version:'EMA10 / 30',type:'Trend',status:'可回測',tone:'ready',desc:'反應較快的趨勢版本，用來和慢速版本進行比較。'},
+    {name:'ICT 結構策略',version:'Planned',type:'Structure',status:'規劃中',tone:'planned',desc:'BOS、CHoCH、Liquidity Sweep、OTE 等結構邏輯。'},
+    {name:'均值回歸',version:'Planned',type:'Mean Reversion',status:'規劃中',tone:'planned',desc:'震盪市場用，後續驗證 RSI、VWAP deviation 等條件。'},
+    {name:'突破策略',version:'Planned',type:'Breakout',status:'規劃中',tone:'planned',desc:'區間突破、成交量與波動擴張的方向性策略。'}
+  ];
+  return `<div class="rd-stack">
+    ${profitabilityPanel(state)}
+    <div class="strategy-library-grid">
+      ${entries.map(item=>`<article class="rd-card">
+        <div class="rd-card-head"><div><span>${item.type}</span><strong>${item.name}</strong></div><span class="rd-status rd-${item.tone}">${item.status}</span></div>
+        <b>${item.version}</b>
+        <p>${item.desc}</p>
+      </article>`).join('')}
+    </div>
+  </div>`;
+}
+
+function strategyDevelopmentPanel(){
+  const steps = [
+    ['01','交易假設','先說明為什麼這個 edge 應該存在。'],
+    ['02','市場狀態','定義 Trend / Range / High Volatility 等 Regime。'],
+    ['03','Entry','明確定義觸發條件，不使用事後判讀。'],
+    ['04','Stop','定義失效點、ATR 或結構停損。'],
+    ['05','Take Profit','TP1 / TP2、移動停利與離場規則。'],
+    ['06','Risk','每筆風險、Portfolio Risk、槓桿與成本。'],
+    ['07','Validation','Backtest → OOS → Forward Paper → Control。']
+  ];
+  return `<div class="rd-stack">
+    <div class="rd-intro"><strong>Strategy Builder</strong><span>開發規則先固定，再進入歷史驗證；避免看到結果後反向調參。</span></div>
+    <div class="rd-flow">${steps.map(([no,title,text])=>`
+      <div class="rd-step"><span>${no}</span><div><strong>${title}</strong><p>${text}</p></div></div>
+    `).join('')}</div>
+    <div class="rd-template">
+      <div class="rd-panel-head"><div><span>新策略規格</span><strong>開發模板</strong></div><small>DRAFT</small></div>
+      <div class="rd-spec-grid">
+        <div><span>策略名稱</span><strong>尚未命名</strong></div>
+        <div><span>適用資產</span><strong>Crypto / Stocks</strong></div>
+        <div><span>Regime</span><strong>待定義</strong></div>
+        <div><span>Risk / Trade</span><strong>待定義</strong></div>
+        <div><span>Entry</span><strong>待定義</strong></div>
+        <div><span>Exit</span><strong>待定義</strong></div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function strategyReviewPanel(state){
+  const s = state.results?.summary || {};
+  const trades = Number(s.trades) || 0;
+  const notes = [];
+  if(!trades){
+    notes.push('目前沒有足夠已平倉 Forward Paper 樣本，暫不對策略好壞下結論。');
+  } else {
+    const wr = Number(s.winRatePct);
+    const pf = Number(s.profitFactor);
+    const dd = Number(s.maxDrawdownPct);
+    if(Number.isFinite(wr) && wr < 45) notes.push('勝率低於 45%，需要檢查是否依靠高 R:R 才維持正期望值。');
+    if(Number.isFinite(pf) && pf < 1) notes.push('Profit Factor 低於 1，現有樣本的總獲利尚未覆蓋總虧損。');
+    if(Number.isFinite(dd) && dd > 5) notes.push('最大回撤超過 5%，需要檢查部位風險與連續虧損集中度。');
+    if(!notes.length) notes.push('目前樣本未觸發基礎警示，但仍需增加樣本並拆解 Regime、Long / Short 與交易成本。');
+  }
+  return `<div class="rd-stack">
+    ${profitabilityPanel(state)}
+    <div class="review-grid">
+      <div class="rd-card"><span class="rd-eyebrow">樣本完整性</span><strong>${trades} 筆已平倉</strong><p>${trades >= 30 ? '可開始做初步分層檢討。' : '樣本仍偏少，避免過早優化。'}</p></div>
+      <div class="rd-card"><span class="rd-eyebrow">檢討維度</span><strong>Regime / Direction / Cost</strong><p>後續拆解趨勢盤、震盪盤、Long / Short、手續費與滑價。</p></div>
+    </div>
+    <div class="review-notes"><strong>檢討提示</strong>${notes.map(n=>`<p>• ${n}</p>`).join('')}</div>
+  </div>`;
+}
+
+function strategyOptimizationPanel(state){
+  const b = state.backtest;
+  return `<div class="rd-stack">
+    <div class="optimization-lanes">
+      <article class="opt-card"><span>CONTROL</span><strong>正式策略基準</strong><p>沿用既有 Control Freeze 原則。Lite 訊號不會自動升格成正式策略。</p><small>保持不動，作為比較基準</small></article>
+      <article class="opt-card"><span>CANDIDATE</span><strong>EMA20 / 50</strong><p>可使用現有歷史回測驗證；需再加入 OOS 與 Forward Paper。</p><small>${b?.result ? '已有最新回測結果' : '尚未執行最新回測'}</small></article>
+      <article class="opt-card"><span>CHALLENGER</span><strong>EMA10 / 30</strong><p>反應較快，需比較交易頻率、成本侵蝕與最大回撤。</p><small>不可只用最高報酬選參數</small></article>
+    </div>
+    <div class="optimization-rules">
+      <strong>優化門檻</strong>
+      <div><span>01</span>先增加樣本，不用少量交易調參。</div>
+      <div><span>02</span>Historical Backtest 與 Forward Paper 必須分離。</div>
+      <div><span>03</span>比較 Expectancy、PF、Drawdown、成本後報酬與 Equity Curve 品質。</div>
+      <div><span>04</span>新版本先成為 Candidate / Challenger，通過驗證才考慮替換 Control。</div>
+    </div>
+  </div>`;
+}
+
 export function strategiesPage(state) {
   const filter = state.ui?.strategyFilter || 'all';
+  const workspace = state.ui?.strategyWorkspace || 'signals';
   const isCrypto = (state.ui?.assetClass || 'crypto') === 'crypto';
+  const signalsHtml = isCrypto ? `
+    <div class="signal-filter-row">
+      ${tab('全部','all',filter,'data-strategy-filter')}
+      ${tab('🔥 高強度','HIGH',filter,'data-strategy-filter')}
+      ${tab('已觸發','TRIGGERED',filter,'data-strategy-filter')}
+      ${tab('等待觸發','READY',filter,'data-strategy-filter')}
+      ${tab('形成中','SETUP',filter,'data-strategy-filter')}
+      ${tab('觀察','WATCH',filter,'data-strategy-filter')}
+    </div>
+    <div class="signal-legend">訊號依動能與流動性分級；高強度訊號會特別置頂，但不代表保證買進或獲利。</div>
+    ${strategyCards(state)}
+  ` : stockEmptyState('股市策略資料源尚未接入');
+
+  let content = signalsHtml;
+  if(workspace === 'library') content = strategyLibraryPanel(state);
+  if(workspace === 'develop') content = strategyDevelopmentPanel();
+  if(workspace === 'review') content = strategyReviewPanel(state);
+  if(workspace === 'optimize') content = strategyOptimizationPanel(state);
+
   return `<div class="page-stack">${messageBar(state)}
     ${assetClassSwitcher(state)}
-    ${section('交易訊號', isCrypto ? `
-      <div class="signal-filter-row">
-        ${tab('全部','all',filter,'data-strategy-filter')}
-        ${tab('🔥 高強度','HIGH',filter,'data-strategy-filter')}
-        ${tab('已觸發','TRIGGERED',filter,'data-strategy-filter')}
-        ${tab('等待觸發','READY',filter,'data-strategy-filter')}
-        ${tab('形成中','SETUP',filter,'data-strategy-filter')}
-        ${tab('觀察','WATCH',filter,'data-strategy-filter')}
-      </div>
-      <div class="signal-legend">訊號依動能與流動性分級；高強度訊號會特別置頂，但不代表保證買進或獲利。</div>
-      ${strategyCards(state)}
-    ` : stockEmptyState('股市策略資料源尚未接入'), badge(isCrypto ? (state.strategy?.items?.length ? state.strategy.status : 'LITE') : 'EMPTY'))}
+    ${strategyWorkspaceTabs(state)}
+    ${section(workspace === 'signals' ? '交易訊號' : '策略研發', content, badge(workspace === 'signals' ? (isCrypto ? 'LIVE SIGNALS' : 'EMPTY') : 'R&D'))}
   </div>`;
 }
 
