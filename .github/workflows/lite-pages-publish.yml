@@ -27,7 +27,7 @@ jobs:
     if: github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'foxyya-lite-railway-deploy')
     runs-on: ubuntu-latest
     environment:
-      name: github-pages
+      name: foxyya-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout FOXYYA Lite
