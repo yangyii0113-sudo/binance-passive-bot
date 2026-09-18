@@ -118,6 +118,15 @@ function initEvents() {
   });
 
   document.addEventListener('click', async (event) => {
+    const assetClass = event.target.closest?.('[data-asset-class]');
+    if (assetClass) {
+      appState.ui.assetClass = assetClass.dataset.assetClass;
+      appState.ui.selectedStrongSymbol = null;
+      appState.ui.marketSort = 'popular';
+      render();
+      applySearch(appState.ui.search);
+      return;
+    }
     const sort = event.target.closest?.('[data-market-sort]');
     if (sort) {
       appState.ui.marketSort = sort.dataset.marketSort;
