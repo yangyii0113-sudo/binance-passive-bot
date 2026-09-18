@@ -1,0 +1,77 @@
+{
+  "schema": "foxyya-shadow-forward-scan/1",
+  "generated_at_utc": "2026-09-18T14:00:00Z",
+  "generated_at_local": "2026-09-18T22:00:00+08:00",
+  "mode": "SHADOW_EVIDENCE_NOT_CANONICAL",
+  "source": "Binance USD-M public data",
+  "real_orders": false,
+  "canonical_write": false,
+  "no_backfill": true,
+  "regime": {
+    "state": "RISK_ON",
+    "btc24h_pct": 4.91,
+    "eth24h_pct": 4.268,
+    "sol24h_pct": 8.211
+  },
+  "canonical_ledger": {
+    "verified": false,
+    "reason": "Production forward-paper service is FAILED and canonical database was not readable in this run.",
+    "fallback_nav_usdt": 1000
+  },
+  "event": {
+    "type": "CRITICAL_EXECUTION_ANOMALY",
+    "symbol": "HYPEUSDT",
+    "setup_family": "A-L",
+    "direction": "LONG",
+    "decision_close_local": "2026-09-18T20:59:59+08:00",
+    "decision_close": 91.257,
+    "confirmation_trigger": 91.161,
+    "structural_stop": 88.985,
+    "scheduled_open_local": "2026-09-18T22:00:00+08:00",
+    "raw_open": 90.633,
+    "preopen_last_closed": {
+      "open": 91.256,
+      "high": 91.722,
+      "low": 90.416,
+      "close": 90.634
+    },
+    "preopen_revalidation": "WOULD_PASS_PUBLIC_DATA",
+    "atr_extension_gate": "PASS",
+    "gap_check": "PASS_FAVORABLE",
+    "risk_budget_usdt": 5.0,
+    "entry_fill_with_adverse_slippage": 90.6601899,
+    "modeled_stop_fill": 88.9583045,
+    "unit_modeled_loss_usdt": 1.8007606662,
+    "pre_round_qty": 2.7766044,
+    "result": "MISSED_CANONICAL_PAPER_ENTRY_ENGINE_FAILED"
+  },
+  "leverage_books": {
+    "5x": {
+      "role": "primary",
+      "stress_buffer": "PASS",
+      "pre_round_margin_usdt": 50.35
+    },
+    "8x": {
+      "role": "aggressive_comparison",
+      "stress_buffer": "PASS",
+      "pre_round_margin_usdt": 31.47
+    },
+    "10x": {
+      "role": "stress_comparison",
+      "stress_buffer": "PASS",
+      "pre_round_margin_usdt": 25.17
+    }
+  },
+  "production": {
+    "service": "foxyya-paper-engine",
+    "status": "FAILED",
+    "deployment_id": "83976bb5-408b-4a14-af80-e99780157b44"
+  },
+  "notes": [
+    "No canonical paper entry was created.",
+    "No real order was placed.",
+    "No private trading permission was used.",
+    "The missed scheduled open must not be backfilled.",
+    "Quantity and margin figures are shadow pre-round estimates; canonical lot-step rounding was not applied."
+  ]
+}
