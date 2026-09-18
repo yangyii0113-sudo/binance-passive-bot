@@ -24,9 +24,15 @@ button,input,select{font:inherit}
 button{cursor:pointer}
 .app-shell{width:min(100%,920px);margin:0 auto;padding:22px 18px 150px;min-width:0}
 .topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px}
-.brand{font-size:2rem;font-weight:900;letter-spacing:.035em;line-height:1}
-.brand-sub{margin-top:7px;color:#a3a5a9;font-size:.76rem;font-weight:650;letter-spacing:.22em}
+.brand-lockup{display:flex;align-items:center;gap:12px;min-width:0;color:inherit;text-decoration:none}
+.brand-mark{width:48px;height:48px;flex:0 0 48px;filter:drop-shadow(0 8px 18px rgba(242,138,34,.18))}
+.brand-copy{display:grid;gap:5px;min-width:0}
+.brand{font-size:2rem;font-weight:950;letter-spacing:.045em;line-height:.92;color:#fff}
+.brand-sub{color:#9fa2a8;font-size:.57rem;font-weight:700;letter-spacing:.2em;line-height:1.25;white-space:nowrap}
 .top-actions{display:flex;align-items:center;gap:10px}
+.brand-status{display:grid;gap:2px;text-align:right;line-height:1.05}
+.brand-status>span{color:#d9d6cf;font-size:.67rem;font-weight:850;letter-spacing:.08em}
+.brand-status>small{color:#686b70;font-size:.46rem;letter-spacing:.11em}
 .mode-pill,.status-badge{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line-strong);background:#151618;color:#dad7d0;border-radius:999px;padding:8px 11px;font-size:.76rem;line-height:1.1}
 .live-dot{width:7px;height:7px;border-radius:50%;background:var(--gold);box-shadow:0 0 12px rgba(241,184,75,.45)}
 .avatar{width:42px;height:42px;display:grid;place-items:center;border:1px solid rgba(241,184,75,.34);background:#151515;border-radius:50%;font-size:1.25rem}
@@ -155,10 +161,12 @@ select:focus,.form-grid input:focus{border-color:rgba(241,184,75,.35)}
 
 @media(max-width:700px){
   .app-shell{padding:18px 10px 155px}
-  .brand{font-size:1.65rem}
-  .brand-sub{font-size:.68rem;letter-spacing:.17em}
+  .brand-lockup{gap:9px}
+  .brand-mark{width:40px;height:40px;flex-basis:40px}
+  .brand{font-size:1.58rem;letter-spacing:.04em}
+  .brand-sub{font-size:.46rem;letter-spacing:.16em}
   .mode-pill{padding:7px 9px;font-size:.69rem}
-  .avatar{width:38px;height:38px;font-size:1.15rem}
+  .brand-status{display:none}
   .searchbar{padding:12px 13px;border-radius:15px}
   .searchbar input{font-size:.88rem}
   .page-stack{gap:13px}
@@ -651,4 +659,14 @@ select:focus,.form-grid input:focus{border-color:rgba(241,184,75,.35)}
   .asset-empty{margin:10px 11px 12px;min-height:132px;padding:16px}
   .asset-empty strong{font-size:.78rem}
   .asset-empty span{font-size:.61rem}
+}
+
+
+@media(max-width:420px){
+  .topbar{gap:10px}
+  .brand-lockup{gap:8px}
+  .brand-mark{width:36px;height:36px;flex-basis:36px}
+  .brand{font-size:1.42rem}
+  .brand-sub{font-size:.41rem;letter-spacing:.135em}
+  .mode-pill{padding:6px 8px;font-size:.62rem}
 }
