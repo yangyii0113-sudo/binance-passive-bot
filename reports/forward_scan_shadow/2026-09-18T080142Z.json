@@ -1,0 +1,122 @@
+{
+  "schema": "foxyya-forward-scan-shadow/1",
+  "mode": "PAPER_ONLY_NONCANONICAL_SHADOW",
+  "real_orders": false,
+  "decision_time_utc": "2026-09-18T08:01:42Z",
+  "decision_time_taipei": "2026-09-18T16:01:42+08:00",
+  "latest_closed_1h_end_ms": 1789718399999,
+  "latest_closed_1h_taipei": "2026-09-18T15:59:59.999+08:00",
+  "latest_closed_4h_end_ms": 1789718399999,
+  "latest_closed_4h_taipei": "2026-09-18T15:59:59.999+08:00",
+  "latest_closed_1d_end_ms": 1789689599999,
+  "next_eligible_1h_open_utc": "2026-09-18T09:00:00Z",
+  "next_eligible_1h_open_taipei": "2026-09-18T17:00:00+08:00",
+  "nav_source": "FALLBACK_UNVERIFIED_CANONICAL_LEDGER_UNAVAILABLE",
+  "nav_usdt": 1000.0,
+  "production_runtime": {
+    "service": "foxyya-paper-engine",
+    "canonical_ledger_available_for_this_shadow_run": false,
+    "canonical_persistence_this_run": false,
+    "canonical_execution_this_run": false,
+    "note": "Known prior runtime outage; no new runtime-state change established in this scan."
+  },
+  "market_regime": {
+    "classification": "RISK_ON",
+    "major_returns_24h": {
+      "BTC": 0.01835,
+      "ETH": 0.02039,
+      "SOL": 0.05929
+    },
+    "major_average_24h": 0.03268,
+    "volatility": "NORMAL",
+    "note": "Current Binance USD-M public ticker snapshot remains broadly positive; stablecoin, dated, non-crypto/TradFi, stale/delisted and insufficient-history contracts are excluded from strategy review."
+  },
+  "provisional_setup_passes": [
+    {
+      "symbol": "UNIUSDT",
+      "side": "LONG",
+      "family": "C",
+      "action": "ENTRY",
+      "reason": "STARTER_STRUCTURE_CONFIRMED_ON_16:00_TPE_CLOSED_BAR",
+      "daily_trend": "UP",
+      "h4_trend": "UP",
+      "decision_close_ms": 1789718399999,
+      "closed_1h_close": 8.768,
+      "trigger": 8.715,
+      "stop": 8.405,
+      "risk_fraction": 0.002,
+      "risk_budget_usdt_at_fallback_nav": 2.0,
+      "rank_gate": "C_REQUIRES_TOP3",
+      "rank_status": "VERY_HIGH_SCORE_COHORT; EXACT_COMPLETE_UNIVERSE_RANK_NOT_CANONICALLY_PROVEN_IN_SHADOW_RUN",
+      "execution_rule": "NEXT_FUTURE_LEGAL_1H_OPEN_ONLY",
+      "entry_price": null,
+      "position_size": null,
+      "canonical_entry_status": "NOT_CREATED"
+    },
+    {
+      "symbol": "HYPEUSDT",
+      "side": "LONG",
+      "family": "B",
+      "action": "ENTRY",
+      "reason": "MOMENTUM_CONTINUATION_PRICE_VOLUME_STRUCTURE_GATES_PASS_ON_16:00_TPE_CLOSED_BAR",
+      "daily_trend": "UP",
+      "h4_trend": "UP",
+      "decision_close_ms": 1789718399999,
+      "closed_1h_close": 88.289,
+      "trigger": 87.968,
+      "stop": 86.023,
+      "volume_last": 388773.59,
+      "volume_prev3_avg": 308882.48,
+      "volume_ratio": 1.25865,
+      "atr_extension_status": "CONTROLLED_BY_VISIBLE_CLOSED_BAR_SERIES",
+      "risk_fraction": 0.0035,
+      "risk_budget_usdt_at_fallback_nav": 3.5,
+      "rank_gate": "B_REQUIRES_TOP5",
+      "rank_status": "PRIOR_TOP_COHORT_AND_CURRENT_SCORE_SUPPORT_TOP5_LIKELIHOOD; EXACT_COMPLETE_UNIVERSE_RANK_NOT_CANONICALLY_PROVEN_IN_SHADOW_RUN",
+      "execution_rule": "NEXT_FUTURE_LEGAL_1H_OPEN_ONLY",
+      "entry_price": null,
+      "position_size": null,
+      "canonical_entry_status": "NOT_CREATED"
+    }
+  ],
+  "reviewed_long_rejections": [
+    {"symbol":"NEARUSDT","reason":"NO_FRESH_A_B_C_D_CONFIRMATION_ON_16:00_TPE_CLOSED_BAR; LAST_CLOSE_3.501_BELOW_C_TRIGGER_3.551"},
+    {"symbol":"ARBUSDT","reason":"NO_FRESH_A_B_C_D_CONFIRMATION_ON_16:00_TPE_CLOSED_BAR"},
+    {"symbol":"ZECUSDT","reason":"NO_FRESH_A_B_C_D_CONFIRMATION_ON_16:00_TPE_CLOSED_BAR"},
+    {"symbol":"ONEUSDT","reason":"NO_FRESH_CONTINUATION_OR_STARTER_BREAK_ON_16:00_TPE_CLOSED_BAR; PRIOR_DAILY_EMA_ALIGNMENT_FLAT"},
+    {"symbol":"DRIFTUSDT","reason":"NO_FRESH_CONTINUATION_OR_STARTER_BREAK_ON_16:00_TPE_CLOSED_BAR"},
+    {"symbol":"COTIUSDT","reason":"NO_FRESH_CONTINUATION_OR_STARTER_BREAK_ON_16:00_TPE_CLOSED_BAR"}
+  ],
+  "reviewed_short_rejections": [
+    {"symbol":"LSKUSDT","reason":"NO_FRESH_SHORT_BREAK_ON_16:00_TPE_CLOSED_BAR; PRIOR_HTF_SHORT_MISALIGNMENT_REMAINS_MATERIAL"},
+    {"symbol":"MAGMAUSDT","reason":"NO_NEW_VERIFIED_HTF_ALIGNED_SHORT_SETUP_IN_REVIEW"},
+    {"symbol":"SKYAIUSDT","reason":"NO_NEW_VERIFIED_HTF_ALIGNED_SHORT_SETUP_IN_REVIEW"},
+    {"symbol":"IOSTUSDT","reason":"PRIOR_DAILY_DOWNTREND_GATE_NOT_CONFIRMED; NO_NEW_FULL_SETUP"},
+    {"symbol":"AINUSDT","reason":"NO_NEW_VERIFIED_HTF_ALIGNED_SHORT_SETUP_IN_REVIEW"},
+    {"symbol":"FFUSDT","reason":"NO_NEW_VERIFIED_TOP_RANKED_HTF_ALIGNED_SHORT_SETUP_IN_REVIEW"}
+  ],
+  "result": {
+    "notify_worthy_event": false,
+    "new_canonical_qualifying_paper_entry": false,
+    "simulated_partial_or_full_exit": false,
+    "new_risk_limit_event": false,
+    "new_liquidation_or_critical_execution_anomaly": false,
+    "new_ledger_integrity_problem": false,
+    "material_strategy_health_change": false,
+    "note": "UNI/HYPE show fresh long-side setup structure for the next eligible open, but no canonical paper entry exists in this run and complete-universe rank proof is unavailable while production/canonical runtime is offline."
+  },
+  "limitations": [
+    "Production runtime/canonical ledger remains unavailable, so this is a non-canonical public-data shadow review rather than a canonical scanner persistence cycle.",
+    "Exact complete-universe ranking is not claimed by this shadow artifact. Highest-liquidity/high-relative-strength long candidates and symmetric downside leaders were reviewed with fresh fully closed bars.",
+    "No entry price, position size, leverage margin, fee, slippage, funding, MFE/MAE or P&L is fabricated before a legal future-open fill exists."
+  ],
+  "safety": {
+    "fully_closed_bars_only": true,
+    "no_backfill": true,
+    "paper_only": true,
+    "strategy_parameters_changed": false,
+    "private_trading_permissions_used": false,
+    "real_orders_placed": false,
+    "canonical_history_rewritten": false
+  }
+}
