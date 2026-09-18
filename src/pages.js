@@ -18,6 +18,12 @@ function pct(value) {
 function valueOrDash(value) {
   return value === null || value === undefined || value === '' ? '—' : String(value);
 }
+function price(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return '—';
+  const digits = n >= 1000 ? 2 : n >= 1 ? 3 : 5;
+  return n.toLocaleString('en-US',{minimumFractionDigits:digits,maximumFractionDigits:digits});
+}
 function numberPrice(value){
   const n = Number(String(value || '').replace(/,/g,''));
   return Number.isFinite(n) ? n : null;
@@ -68,10 +74,10 @@ function strategyCards(state) {
       <div class="mini-grid strategy-metrics">
         <span><em>R:R</em><strong>${valueOrDash(strategy.rr)}</strong></span>
         <span><em>信心</em><strong>${valueOrDash(strategy.confidence)}</strong></span>
-        <span><em>Entry</em><strong>${valueOrDash(strategy.entry)}</strong></span>
-        <span><em>Stop</em><strong>${valueOrDash(strategy.stop)}</strong></span>
-        <span><em>TP1</em><strong>${valueOrDash(strategy.tp1)}</strong></span>
-        <span><em>TP2</em><strong>${valueOrDash(strategy.tp2)}</strong></span>
+        <span><em>Entry</em><strong>${price(strategy.entry)}</strong></span>
+        <span><em>Stop</em><strong>${price(strategy.stop)}</strong></span>
+        <span><em>TP1</em><strong>${price(strategy.tp1)}</strong></span>
+        <span><em>TP2</em><strong>${price(strategy.tp2)}</strong></span>
       </div>
       <p class="strategy-note">${strategy.note || '策略快照僅供觀察，不提供真實下單。'}</p>
     </article>`).join('')}</div>`;
@@ -145,12 +151,18 @@ export function strategiesPage(state) {
 function paperPositions(paper){
   if(!paper.positions?.length) return '<div class="empty-state"><strong>目前沒有模擬持倉</strong><span>建立 PAPER 倉位後會顯示於此。</span></div>';
   return `<div class="position-list">${paper.positions.map(p=>`
-    <article class="position-row">
-      <div><strong>${p.symbol}</strong><span>${p.side} · ${p.leverage || '-'}x</span></div>
-      <div><small>Entry</small><b>${valueOrDash(p.entry ?? p.entry_fill)}</b></div>
-      <div><small>Mark</small><b>${valueOrDash(p.mark)}</b></div>
-      <div><small>PnL</small><b class="${Number(p.unrealizedPnl)>=0?'up':'down'}">${money(p.unrealizedPnl)}</b></div>
-      ${p.id ? `<button class="danger-btn" data-paper-close="${p.id}" type="button">平倉</button>` : ''}
+    <article class="position-card">
+      <div class="position-card-head">
+        <div><strong>${p.symbol}</strong><span>${p.side} · ${p.leverage || '-'}x</span></div>
+        <b class="${Number(p.unrealizedPnl)>=0?'up':'down'}">${money(p.unrealizedPnl)}</b>
+      </div>
+      <div class="position-stats">
+        <span><small>Entry</small><strong>${price(p.entry ?? p.entry_fill)}</strong></span>
+        <span><small>Mark</small><strong>${price(p.mark)}</strong></span>
+        <span><small>Margin</small><strong>${money(p.margin)}</strong></span>
+        <span><small>Notional</small><strong>${money(p.notional)}</strong></span>
+      </div>
+      ${p.id ? `<button class="danger-btn full-width" data-paper-close="${p.id}" type="button">模擬平倉</button>` : ''}
     </article>`).join('')}</div>`;
 }
 
@@ -176,8 +188,15 @@ export function ordersPage(state) {
 
 function tradeRows(results){
   if(!results.recentTrades?.length) return '<div class="empty-state"><strong>尚無已平倉交易</strong><span>Paper 平倉後會自動進入 Results。</span></div>';
-  return `<div class="trade-list">${results.recentTrades.map(t=>`
-    <div class="trade-row"><strong>${t.symbol || '-'}</strong><span>${t.side || '-'}</span><span>${money(t.netPnl ?? t.net_pnl_usdt)}</span><span>${t.closedAt ? new Date(t.closedAt).toLocaleString('zh-TW') : ''}</span></div>`).join('')}</div>`;
+  return `<div class="trade-list">${results.recentTrades.map(t=>{
+    const pnl = Number(t.netPnl ?? t.net_pnl_usdt);
+    return `
+    <article class="trade-card">
+      <div class="trade-card-head"><strong>${t.symbol || '-'}</strong><span>${t.side || '-'}</span></div>
+      <b class="${pnl>=0?'up':'down'}">${money(pnl)}</b>
+      <small>${t.closedAt ? new Date(t.closedAt).toLocaleString('zh-TW') : ''}</small>
+    </article>`;
+  }).join('')}</div>`;
 }
 export function resultsPage(state) {
   const results = state.results;
@@ -202,6 +221,11 @@ export function backtestPage(state) {
       ${metric('Profit Factor',result.profitFactor == null ? '—' : Number(result.profitFactor).toFixed(2))}
       ${metric('Net Return',pct(result.netReturnPct))}${metric('Max Drawdown',pct(result.maxDrawdownPct))}
       ${metric('Samples',input.samples || '—')}
+    </div>
+    <div class="backtest-summary">
+      <div><span>樣本</span><strong>${input.samples || '—'} K</strong></div>
+      <div><span>成本模型</span><strong>${input.costModel || '—'}</strong></div>
+      <div><span>Timeframe</span><strong>${String(input.timeframe || '—').toUpperCase()}</strong></div>
     </div>
     <div class="chart-placeholder"><span>Equity Curve</span><strong>${b.equityCurve?.length || 0} 個權益節點</strong></div>`
     : `<div class="empty-state"><strong>${b.status==='LOADING'?'Backtest 執行中…':'尚未執行 Backtest'}</strong><span>使用 Binance USD-M 歷史 K 線；Forward Paper 與 Historical Backtest 完全分離。</span></div>`;
