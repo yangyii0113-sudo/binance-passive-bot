@@ -342,8 +342,24 @@ function stockEmptyState(title='股市資料源尚未接入'){
     <span>股市模組已與加密貨幣分離；目前不會使用 Crypto 行情替代股票資料。下一階段再接入正式股票行情與策略資料源。</span>
   </div>`;
 }
+function homeSectionTabs(state){
+  const active = state.ui?.homeSection || 'market';
+  const items = [
+    ['market','市場排行','◉'],
+    ['strong','強勢 Top 10','◆'],
+    ['focus','國際焦點','◌'],
+    ['strategy','策略機會','◎']
+  ];
+  return `<div class="home-section-tabs" role="tablist" aria-label="首頁內容分頁">
+    ${items.map(([key,label,icon]) => `
+      <button type="button" class="home-section-btn ${active===key?'active':''}" data-home-section="${key}" role="tab" aria-selected="${active===key}">
+        <span>${icon}</span><strong>${label}</strong>
+      </button>`).join('')}
+  </div>`;
+}
 
 export function homePage(state) {
+  const homeSection = state.ui?.homeSection || 'market';
   const assetClass = state.ui?.assetClass || 'crypto';
   const isCrypto = assetClass === 'crypto';
   const market = isCrypto ? state.market : state.stocks;
@@ -396,8 +412,9 @@ export function homePage(state) {
     </div>
 
     ${calendarPanel(state)}
+    ${homeSectionTabs(state)}
 
-    <section class="panel ranking-panel">
+    <section class="panel ranking-panel home-section-panel ${homeSection==='market'?'is-active':''}">
       <div class="section-head premium-head">
         <div class="section-title"><span class="section-symbol">◉</span>市場排行</div>
         <div class="section-meta">${market.source} · ${badge(market.status, market.status)}</div>
@@ -414,7 +431,7 @@ export function homePage(state) {
       ` : stockEmptyState('股市行情尚未接入')}
     </section>
 
-    <section class="panel strong-panel">
+    <section class="panel strong-panel home-section-panel ${homeSection==='strong'?'is-active':''}">
       <div class="section-head premium-head">
         <div class="section-title"><span class="section-symbol">◆</span>${isCrypto ? '強勢加密貨幣 Top 10' : '強勢股票 Top 10'}</div>
         <span class="section-quiet">${isCrypto ? '24H MOMENTUM + LIQUIDITY' : 'STOCKS · SEPARATE MODULE'}</span>
@@ -422,7 +439,7 @@ export function homePage(state) {
       ${isCrypto ? strongCoinCards(state) : stockEmptyState('強勢股票排行待接入')}
     </section>
 
-    <section class="panel focus-panel">
+    <section class="panel focus-panel home-section-panel ${homeSection==='focus'?'is-active':''}">
       <div class="section-head premium-head">
         <div class="section-title"><span class="section-symbol">◌</span>國際焦點</div>
         <span class="section-quiet">STATIC</span>
@@ -442,7 +459,7 @@ export function homePage(state) {
       </div>
     </section>
 
-    <section class="panel opportunity-panel">
+    <section class="panel opportunity-panel home-section-panel ${homeSection==='strategy'?'is-active':''}">
       <div class="section-head premium-head">
         <div class="section-title"><span class="section-symbol">◎</span>策略機會</div>
         <button class="section-link" data-go-strategies type="button">查看全部 ›</button>
