@@ -131,6 +131,15 @@ function initEvents() {
       render();
       return;
     }
+    const calendar = event.target.closest?.('[data-event-calendar]');
+    if (calendar) {
+      appState.ui.calendarOpen = !appState.ui.calendarOpen;
+      render();
+      if (appState.ui.calendarOpen) {
+        setTimeout(() => document.getElementById('event-calendar-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
+      }
+      return;
+    }
     const goStrategies = event.target.closest?.('[data-go-strategies]');
     if (goStrategies) {
       location.hash = '#/strategies';
