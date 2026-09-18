@@ -171,7 +171,22 @@ function initEvents() {
   });
 }
 
+function ensureHomeOnFreshOpen() {
+  try {
+    const key = 'foxyya.session.booted';
+    if (!sessionStorage.getItem(key)) {
+      sessionStorage.setItem(key, '1');
+      if (location.hash !== '#/') {
+        history.replaceState(null, '', `${location.pathname}${location.search}#/`);
+      }
+    }
+  } catch (_) {
+    if (!location.hash) location.hash = '#/';
+  }
+}
+
 function init() {
+  ensureHomeOnFreshOpen();
   const cached = cachedMarketSnapshot();
   if (cached) setMarketState(cached);
   initEvents();
