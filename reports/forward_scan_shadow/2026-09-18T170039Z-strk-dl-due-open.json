@@ -1,0 +1,103 @@
+{
+  "schema": "foxyya-forward-shadow-evidence/1",
+  "mode": "PAPER_ONLY_SHADOW_EVIDENCE",
+  "real_orders": false,
+  "captured_at": "2026-09-19T01:00:39+08:00",
+  "source": "Binance USD-M public market data",
+  "symbol": "STRKUSDT",
+  "direction": "LONG",
+  "setup_family": "D-L",
+  "setup_name": "Compression Breakout",
+  "regime": "RISK_ON",
+  "decision": {
+    "decision_bar_close_local": "2026-09-18T23:59:59+08:00",
+    "reference_close": 0.03726,
+    "breakout_trigger": 0.03643,
+    "structural_stop": 0.03302,
+    "compression_ratio": 0.627,
+    "breakout_volume_multiple": 2.53,
+    "quality": "HIGH",
+    "scheduled_future_legal_open_local": "2026-09-19T01:00:00+08:00"
+  },
+  "pre_open_market_state": {
+    "latest_fully_closed_1h_bar_local": "2026-09-19T00:00:00+08:00/2026-09-19T00:59:59+08:00",
+    "closed_bar_open": 0.03728,
+    "closed_bar_high": 0.03814,
+    "closed_bar_low": 0.03646,
+    "closed_bar_close": 0.03708,
+    "atr14": 0.0017057142857142861,
+    "last_range": 0.00168,
+    "atr_extension": 0.9849246231155775,
+    "structure_valid": true,
+    "volatility_gate_valid": true,
+    "note": "These market-side conditions were reconstructable from public data, but no canonical pre-open revalidation event was persisted because the production paper engine was unavailable."
+  },
+  "future_legal_open": {
+    "open_local": "2026-09-19T01:00:00+08:00",
+    "raw_open": 0.03708,
+    "reference_price": 0.03726,
+    "r_distance": 0.00424,
+    "adverse_gap_r": 0.0,
+    "gap_gate_valid": true
+  },
+  "market_snapshot_24h": {
+    "STRKUSDT": {
+      "price_change_percent": 25.500,
+      "last_price": 0.03691,
+      "quote_volume_usdt": 65180124.6579936
+    },
+    "BTCUSDT": {"price_change_percent": 4.026},
+    "ETHUSDT": {"price_change_percent": 3.866},
+    "SOLUSDT": {"price_change_percent": 7.997}
+  },
+  "risk_model": {
+    "nav_source": "fallback_unverified_canonical_ledger",
+    "nav_usdt": 1000.0,
+    "risk_fraction": 0.005,
+    "risk_budget_usdt": 5.0,
+    "fee_each_side": 0.0005,
+    "adverse_slippage_each_side": 0.0003,
+    "funding_reserve": 0.0001,
+    "entry_fill_model": 0.037091124,
+    "stop_fill_model": 0.033010094,
+    "modeled_unit_total_loss": 0.0041197897214,
+    "theoretical_qty_before_exchange_step_rounding": 1213.6541760924838,
+    "theoretical_notional_usdt_before_step_rounding": 45.01579753856416,
+    "lot_step_not_finalized": true
+  },
+  "leverage_books": {
+    "5x": {
+      "role": "primary",
+      "status": "MODEL_PASS",
+      "theoretical_margin_usdt_before_step_rounding": 9.003159507712832,
+      "modeled_buffer_fraction": 0.053872867902304666
+    },
+    "8x": {
+      "role": "aggressive_comparison",
+      "status": "REJECT_BUFFER",
+      "theoretical_margin_usdt_before_step_rounding": 5.62697469232052,
+      "modeled_buffer_fraction": -0.021127132097695345
+    },
+    "10x": {
+      "role": "stress_comparison",
+      "status": "REJECT_BUFFER",
+      "theoretical_margin_usdt_before_step_rounding": 4.501579753856416,
+      "modeled_buffer_fraction": -0.04612713209769534
+    }
+  },
+  "execution_result": {
+    "canonical_paper_entry_created": false,
+    "canonical_preopen_revalidation_persisted": false,
+    "production_service_status": "FAILED",
+    "production_volume_present": true,
+    "production_volume_mount": "/data",
+    "production_volume_size_gb": 0.5,
+    "event": "CRITICAL_EXECUTION_ANOMALY_MISSED_FUTURE_LEGAL_OPEN",
+    "no_backfill": true,
+    "reason": "Production paper engine was FAILED at the scheduled legal 1H open, so the required canonical pre-open revalidation and paper entry could not be persisted."
+  },
+  "strategy_trial": {
+    "parameters_changed": false,
+    "control_freeze_preserved": true
+  }
+}
