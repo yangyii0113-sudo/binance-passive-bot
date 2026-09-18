@@ -1,6 +1,7 @@
 import { emptyPaperSnapshot } from '../contracts.js';
 import { STATUS } from '../status.js';
 import { loadRuntimeSnapshot } from './runtime.js';
+import { localPaperSnapshot } from '../local_paper.js';
 
 function num(value, fallback = 0) {
   const parsed = Number(value);
@@ -21,7 +22,7 @@ function normalizeCanonicalPaper(payload) {
       portfolioRiskPct: num(rawSummary.portfolioRiskPct ?? rawSummary.portfolio_risk_pct, 0)
     },
     positions: Array.isArray(payload.positions) ? payload.positions : [],
-    pending: Array.isArray(payload.pending) ? payload.pending : Array.isArray(payload.pending_orders) ? payload.pending_orders : []
+    pending: Array.isArray(payload.pending) ? payload.pending : []
   };
 }
 
@@ -55,12 +56,15 @@ export function normalizePaperSnapshot(payload) {
   return normalizeCanonicalPaper(payload);
 }
 
-export async function loadPaperSnapshot() {
+export async function loadPaperSnapshot({ marketRows = [] } = {}) {
   try {
     const payload = await loadRuntimeSnapshot();
-    if (payload === null) return emptyPaperSnapshot();
+    if (payload === null) {
+      return marketRows.length ? localPaperSnapshot(marketRows) : emptyPaperSnapshot();
+    }
     return normalizePaperSnapshot(payload);
   } catch (error) {
+    if (marketRows.length) return { ...localPaperSnapshot(marketRows), upstreamError: error };
     const empty = emptyPaperSnapshot();
     return { ...empty, status: STATUS.ERROR, error };
   }
