@@ -28,3 +28,64 @@
   .tabs.interactive{overflow-x:auto}
   .tab-btn{flex:0 0 auto;min-width:100px}
 }
+
+
+/* Mobile layout repair — functional pass before final visual redesign */
+html,body{max-width:100%;overflow-x:hidden}
+.app-shell,.page-stack,.panel,.cards-grid,.detail-card,.strategy-main,.strategy-card-meta{min-width:0;max-width:100%}
+.strategy-detail-card{display:grid;gap:14px;overflow:hidden}
+.strategy-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;min-width:0}
+.strategy-card-meta{display:grid;gap:7px;flex:1 1 auto;min-width:0}
+.strategy-symbol{font-size:1.05rem;line-height:1.2;letter-spacing:.02em}
+.strategy-name{display:block;color:var(--cyan);font-size:.96rem;line-height:1.4;overflow-wrap:anywhere;word-break:break-word}
+.strategy-direction{display:block;color:#e8f0f4;font-size:.92rem;line-height:1.35;font-weight:800;overflow-wrap:anywhere}
+.strategy-note{margin:0!important;color:var(--muted)!important;line-height:1.6!important;font-size:.86rem;overflow-wrap:anywhere;word-break:break-word;white-space:normal}
+.strategy-metrics{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important}
+.strategy-metrics span{min-width:0;overflow:hidden}
+.strategy-metrics em{font-style:normal;color:var(--muted);font-size:.78rem;line-height:1.2}
+.strategy-metrics strong{display:block;min-width:0;font-size:.92rem!important;line-height:1.25;overflow-wrap:anywhere;word-break:break-word}
+.strategy-detail-card .status-badge{flex:0 0 auto;max-width:45%;white-space:normal;text-align:center;line-height:1.2}
+.strategy-opportunity{min-width:0}
+.strategy-opportunity .strategy-main{display:grid!important;grid-template-columns:1fr!important;gap:10px!important}
+.strategy-opportunity-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;min-width:0}
+.strategy-opportunity-top>div{display:grid;gap:5px;min-width:0}
+.strategy-opportunity-top span{overflow-wrap:anywhere;word-break:break-word}
+.section-head{min-width:0;flex-wrap:wrap}
+.section-title{min-width:0}
+.bottom-nav a span:last-child{white-space:nowrap}
+@media(max-width:700px){
+  .app-shell{padding:16px 10px 150px!important}
+  .topbar{gap:10px}
+  .brand{font-size:1.72rem}
+  .brand-sub{font-size:.82rem;letter-spacing:.18em}
+  .mode-pill{padding:7px 9px;font-size:.74rem;white-space:nowrap}
+  .avatar{width:40px;height:40px;font-size:1.35rem}
+  .searchbar{margin:18px 0 16px;padding:13px 14px}
+  .panel{border-radius:12px}
+  .section-head{padding:14px 15px}
+  .section-title{font-size:1.05rem;gap:10px}
+  .accent-bar{height:28px;width:5px}
+  .cards-grid{grid-template-columns:minmax(0,1fr)!important;padding:12px!important;gap:12px!important}
+  .detail-card{width:100%;padding:14px!important}
+  .strategy-card-head{align-items:flex-start}
+  .strategy-symbol{font-size:1rem}
+  .strategy-name{font-size:.9rem}
+  .strategy-direction{font-size:.88rem}
+  .strategy-metrics{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .strategy-metrics span{padding:10px!important}
+  .strategy-metrics strong{font-size:.86rem!important}
+  .strategy-note{font-size:.8rem}
+  .strategy-detail-card .status-badge{font-size:.7rem;padding:6px 8px;max-width:42%}
+  .strategy-card{margin:12px!important;padding:12px!important}
+  .strategy-card .coin-icon.large{width:42px;height:42px;font-size:1.1rem;flex:0 0 42px}
+  .strategy-opportunity-top{flex-wrap:wrap}
+  .market-summary>div{padding:12px 10px;gap:7px;flex-direction:column}
+  .market-summary strong{font-size:1rem}
+  .metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;padding:12px!important}
+  .metric{min-width:0;padding:10px!important}
+  .metric strong{overflow-wrap:anywhere;word-break:break-word}
+  .form-grid{grid-template-columns:minmax(0,1fr)!important;padding:12px!important}
+  .bottom-nav{width:100%;padding:8px 4px max(14px,env(safe-area-inset-bottom))}
+  .bottom-nav a{font-size:.6rem;min-width:0}
+  .nav-icon{font-size:1rem}
+}
