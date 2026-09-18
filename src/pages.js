@@ -68,6 +68,66 @@ function calendarPanel(state){
     <div class="calendar-events">${rows}</div>
   </section>`;
 }
+function focusAnalysisPanel(state){
+  const rawIndex = state.ui?.focusAnalysisIndex;
+  if(rawIndex === null || rawIndex === undefined) return '';
+  const index = Number(rawIndex);
+  const item = mock.focusAnalysis?.[index];
+  if(!item) return '';
+
+  const chain = (item.chain || []).map((step, i)=>`
+    <div class="analysis-chain-step"><span>${String(i + 1).padStart(2,'0')}</span><strong>${step}</strong></div>`).join('');
+
+  const crypto = (item.crypto || []).map((text)=>`<li>${text}</li>`).join('');
+  const watch = (item.watch || []).map((text)=>`<span class="analysis-watch-chip">${text}</span>`).join('');
+
+  return `<div class="focus-analysis-detail" id="focus-analysis-detail">
+    <div class="analysis-detail-head">
+      <div>
+        <span class="focus-tag">${item.status || 'ANALYSIS'}</span>
+        <h2>${item.title}</h2>
+        <p>分析視窗：${item.horizon || '—'}</p>
+      </div>
+      <button class="analysis-close" data-focus-analysis="${index}" type="button" aria-label="關閉深度分析">×</button>
+    </div>
+
+    <section class="analysis-block analysis-summary">
+      <span class="analysis-eyebrow">核心解讀</span>
+      <p>${item.summary}</p>
+    </section>
+
+    <section class="analysis-block">
+      <span class="analysis-eyebrow">市場傳導鏈</span>
+      <div class="analysis-chain">${chain}</div>
+    </section>
+
+    <section class="analysis-block">
+      <span class="analysis-eyebrow">對 Crypto 的影響</span>
+      <ul class="analysis-bullets">${crypto}</ul>
+    </section>
+
+    <section class="analysis-block">
+      <span class="analysis-eyebrow">三種市場情境</span>
+      <div class="scenario-grid">
+        <article class="scenario-card scenario-positive"><span>風險資產友善</span><p>${item.scenarios?.positive || '—'}</p></article>
+        <article class="scenario-card scenario-base"><span>基準情境</span><p>${item.scenarios?.base || '—'}</p></article>
+        <article class="scenario-card scenario-risk"><span>壓力情境</span><p>${item.scenarios?.risk || '—'}</p></article>
+      </div>
+    </section>
+
+    <section class="analysis-block">
+      <span class="analysis-eyebrow">接下來要盯什麼</span>
+      <div class="analysis-watchlist">${watch}</div>
+    </section>
+
+    <section class="analysis-block analysis-invalidate">
+      <span class="analysis-eyebrow">什麼情況要重新評估</span>
+      <p>${item.invalidate || '—'}</p>
+    </section>
+
+    <div class="analysis-disclaimer">目前為 FOXYYA 分析框架內容，非即時新聞 feed；待新聞與經濟數據來源接入後，再以最新事件覆寫這個分析層。</div>
+  </div>`;
+}
 function derivedStrategies(state){
   if(state.strategy?.items?.length) return state.strategy.items;
   return (state.market?.rows || []).map((row,index)=>{
@@ -162,8 +222,10 @@ export function homePage(state) {
   const sort = state.ui?.marketSort || 'popular';
   const [focusA, focusB, focusC] = mock.news;
 
-  const focusCard = ([, title, text, tag], featured = false) => `
-    <article class="focus-card ${featured ? 'focus-featured' : ''}" data-search="${title} ${text} ${tag}">
+  const focusCard = ([, title, text, tag], index, featured = false) => `
+    <button class="focus-card ${featured ? 'focus-featured' : ''} ${Number(state.ui?.focusAnalysisIndex) === index ? 'is-selected' : ''}"
+      data-search="${title} ${text} ${tag}" data-focus-analysis="${index}" type="button"
+      aria-expanded="${Number(state.ui?.focusAnalysisIndex) === index}">
       <div class="focus-icon">${featured ? '◎' : '◇'}</div>
       <div class="focus-copy">
         <h3>${title}</h3>
@@ -171,7 +233,7 @@ export function homePage(state) {
         <span class="focus-tag">${tag}</span>
       </div>
       <span class="focus-arrow">›</span>
-    </article>`;
+    </button>`;
 
   return `<div class="page-stack home-stack">${messageBar(state)}
     <div class="hero-grid">
@@ -215,11 +277,12 @@ export function homePage(state) {
         <span class="section-quiet">STATIC</span>
       </div>
       <div class="focus-layout">
-        ${focusCard(focusA, true)}
+        ${focusCard(focusA, 0, true)}
         <div class="focus-grid">
-          ${focusCard(focusB)}
-          ${focusCard(focusC)}
+          ${focusCard(focusB, 1)}
+          ${focusCard(focusC, 2)}
         </div>
+        ${focusAnalysisPanel(state)}
         <button class="calendar-row premium-calendar" data-event-calendar type="button" aria-expanded="${Boolean(state.ui?.calendarOpen)}">
           <span class="hero-icon">▣</span>
           <div><strong>重要事件日曆</strong><small>事件監看模板 · 點擊展開</small></div>
