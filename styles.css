@@ -560,3 +560,95 @@ select:focus,.form-grid input:focus{border-color:rgba(241,184,75,.35)}
   .strong-actions{grid-template-columns:1fr}
   .secondary-btn,.primary-inline-btn{font-size:.66rem}
 }
+
+
+/* Asset class separation: Crypto / Stocks */
+.asset-switcher{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  padding:5px;
+  border:1px solid var(--line);
+  background:#0d0e0f;
+  border-radius:17px;
+}
+.asset-switch{
+  appearance:none;
+  border:1px solid transparent;
+  background:transparent;
+  color:#8d9095;
+  border-radius:13px;
+  min-height:58px;
+  padding:9px 12px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  text-align:left;
+}
+.asset-switch>span{
+  width:31px;
+  height:31px;
+  display:grid;
+  place-items:center;
+  border:1px solid var(--line);
+  background:#111214;
+  border-radius:10px;
+  font-weight:900;
+  font-size:.82rem;
+}
+.asset-switch>div{display:grid;gap:2px}
+.asset-switch strong{font-size:.78rem}
+.asset-switch small{font-size:.56rem;color:#6f7277}
+.asset-switch.active{
+  border-color:rgba(241,184,75,.28);
+  background:linear-gradient(180deg,rgba(241,184,75,.11),rgba(241,184,75,.04));
+  color:#efe8da;
+  box-shadow:inset 0 0 0 1px rgba(241,184,75,.035);
+}
+.asset-switch.active>span{
+  border-color:rgba(241,184,75,.28);
+  color:var(--gold);
+  background:rgba(241,184,75,.07);
+}
+.asset-switch.active small{color:#b39a69}
+.asset-empty{
+  margin:12px 14px 14px;
+  min-height:150px;
+  border:1px dashed var(--line-strong);
+  background:#0f1011;
+  border-radius:16px;
+  padding:20px;
+  display:grid;
+  place-items:center;
+  align-content:center;
+  gap:8px;
+  text-align:center;
+}
+.asset-empty-icon{
+  width:38px;
+  height:38px;
+  border-radius:12px;
+  display:grid;
+  place-items:center;
+  background:rgba(241,184,75,.07);
+  border:1px solid rgba(241,184,75,.16);
+  color:var(--gold);
+}
+.asset-empty strong{font-size:.86rem;color:#ddd9d0}
+.asset-empty span{
+  max-width:560px;
+  color:var(--muted);
+  font-size:.66rem;
+  line-height:1.6;
+}
+@media(max-width:700px){
+  .asset-switcher{gap:6px;padding:4px;border-radius:15px}
+  .asset-switch{min-height:52px;padding:8px 9px;gap:8px}
+  .asset-switch>span{width:28px;height:28px;border-radius:9px;font-size:.74rem}
+  .asset-switch strong{font-size:.72rem}
+  .asset-switch small{font-size:.52rem}
+  .asset-empty{margin:10px 11px 12px;min-height:132px;padding:16px}
+  .asset-empty strong{font-size:.78rem}
+  .asset-empty span{font-size:.61rem}
+}
