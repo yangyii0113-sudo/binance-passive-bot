@@ -19,7 +19,13 @@ export const appState = {
   strategy: emptyStrategySnapshot(),
   paper: emptyPaperSnapshot(),
   results: emptyResultsSnapshot(),
-  backtest: emptyBacktestSnapshot()
+  backtest: emptyBacktestSnapshot(),
+  ui: {
+    search: '',
+    marketSort: 'popular',
+    strategyFilter: 'all',
+    message: ''
+  }
 };
 
 export function setStateSlice(name, next) {
