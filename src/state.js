@@ -35,6 +35,7 @@ export const appState = {
     homeSection: 'market',
     strategyFilter: 'all',
     strategyWorkspace: 'signals',
+    strategyTimeframe: '1h',
     labTab: 'forward',
     calendarOpen: false,
     focusAnalysisIndex: null,
