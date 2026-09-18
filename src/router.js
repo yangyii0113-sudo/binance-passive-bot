@@ -4,7 +4,8 @@ export function currentRoute() {
 }
 
 export function markActiveNav(route, knownRoute) {
+  const normalized = route === 'results' || route === 'backtest' ? 'lab' : route;
   document.querySelectorAll('.bottom-nav a').forEach((link) => {
-    link.classList.toggle('active', link.dataset.route === (knownRoute ? route : 'home'));
+    link.classList.toggle('active', link.dataset.route === (knownRoute ? normalized : 'home'));
   });
 }
