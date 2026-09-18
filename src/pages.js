@@ -28,12 +28,34 @@ function numberPrice(value){
   const n = Number(String(value || '').replace(/,/g,''));
   return Number.isFinite(n) ? n : null;
 }
+function compactVolume(value){
+  const n = Number(value);
+  if(!Number.isFinite(n)) return '—';
+  if(n >= 1e9) return `${(n/1e9).toFixed(1)}B`;
+  if(n >= 1e6) return `${(n/1e6).toFixed(1)}M`;
+  if(n >= 1e3) return `${(n/1e3).toFixed(1)}K`;
+  return n.toFixed(0);
+}
+function symbolFromDisplay(display){
+  return String(display || '').replace(/\s|\//g,'');
+}
+function marketSymbolOptions(state, limit = 20){
+  const symbols = [];
+  const seen = new Set();
+  for(const row of state.market?.rows || []){
+    const symbol = symbolFromDisplay(row?.[1]);
+    if(!symbol || seen.has(symbol)) continue;
+    seen.add(symbol);
+    symbols.push(symbol);
+    if(symbols.length >= limit) break;
+  }
+  if(!symbols.length) symbols.push('BTCUSDT','ETHUSDT','SOLUSDT');
+  return symbols.map(symbol => `<option value="${symbol}">${symbol.replace(/USDT$/,' / USDT')}</option>`).join('');
+}
 function coinCode(symbol){
-  const normalized = String(symbol || '').toUpperCase().replace(/[^A-Z]/g,'');
-  if(normalized.startsWith('BTC')) return 'btc';
-  if(normalized.startsWith('ETH')) return 'eth';
-  if(normalized.startsWith('SOL')) return 'sol';
-  return null;
+  const normalized = String(symbol || '').toUpperCase().replace(/[^A-Z0-9]/g,'').replace(/USDT$/,'');
+  const base = normalized.replace(/^1000/,'');
+  return base ? base.toLowerCase() : null;
 }
 function coinLogo(symbol, fallback = '•', large = false){
   const code = coinCode(symbol);
@@ -200,7 +222,31 @@ function sortedRows(state){
   const sort = state.ui?.marketSort || 'popular';
   if(sort === 'gain') rows.sort((a,b)=>(Number(b[3])||-999)-(Number(a[3])||-999));
   if(sort === 'loss') rows.sort((a,b)=>(Number(a[3])||999)-(Number(b[3])||999));
+  if(sort === 'strong') rows.sort((a,b)=>(Number(b[5])||-1)-(Number(a[5])||-1));
   return rows;
+}
+function strongCoinCards(state){
+  const strong = [...(state.market?.rows || [])]
+    .filter(row => Number.isFinite(Number(row?.[5])))
+    .sort((a,b)=>Number(b[5])-Number(a[5]))
+    .slice(0,5);
+  if(!strong.length) return '<div class="empty-state"><strong>強勢幣種資料讀取中</strong><span>等待市場成交額與動能資料。</span></div>';
+  return `<div class="strong-grid">${strong.map((row,index)=>{
+    const [icon, display, lastPrice, change, quoteVolume, score] = row;
+    const changeNum = Number(change);
+    return `<article class="strong-card">
+      <div class="strong-rank">#${index+1}</div>
+      ${coinLogo(display, icon)}
+      <div class="strong-main">
+        <strong>${display}</strong>
+        <span>24h 成交額 ${compactVolume(quoteVolume)} USDT</span>
+      </div>
+      <div class="strong-score"><small>強勢分數</small><b>${Number(score).toFixed(0)}</b></div>
+      <div class="strong-change ${changeNum>=0?'up':'down'}">${changeNum>=0?'+':''}${changeNum.toFixed(2)}%</div>
+      <div class="strong-price">${lastPrice}</div>
+    </article>`;
+  }).join('')}</div>
+  <div class="strong-note">強勢分數依 24h 價格動能與成交額流動性計算，僅作市場篩選，不代表未來報酬或買進建議。</div>`;
 }
 function tab(label,key,active,attr){
   return `<button type="button" class="tab-btn ${active===key?'active':''}" ${attr}="${key}">${label}</button>`;
@@ -264,11 +310,20 @@ export function homePage(state) {
       </div>
       <div class="tabs interactive premium-tabs">
         ${tab('熱門','popular',sort,'data-market-sort')}
+        ${tab('強勢','strong',sort,'data-market-sort')}
         ${tab('漲幅','gain',sort,'data-market-sort')}
         ${tab('跌幅','loss',sort,'data-market-sort')}
       </div>
       <div class="table-head"><span>幣種</span><span>最新價格</span><span>24h</span></div>
       <div class="coin-list">${coins}</div>
+    </section>
+
+    <section class="panel strong-panel">
+      <div class="section-head premium-head">
+        <div class="section-title"><span class="section-symbol">◆</span>強勢幣種篩選</div>
+        <span class="section-quiet">24H MOMENTUM + LIQUIDITY</span>
+      </div>
+      ${strongCoinCards(state)}
     </section>
 
     <section class="panel focus-panel">
@@ -340,7 +395,7 @@ export function ordersPage(state) {
       ${metric('Margin / NAV', pct(summary.portfolioRiskPct))}${metric('Mode', paper.local ? 'LOCAL' : 'RUNTIME')}
     </div>
     <form id="paper-order-form" class="form-grid compact-form">
-      <label>幣種<select name="symbol"><option>BTCUSDT</option><option>ETHUSDT</option><option>SOLUSDT</option></select></label>
+      <label>幣種<select name="symbol">${marketSymbolOptions(state)}</select></label>
       <label>方向<select name="side"><option value="LONG">LONG</option><option value="SHORT">SHORT</option></select></label>
       <label>槓桿<select name="leverage"><option value="5">5x</option><option value="8">8x</option><option value="10">10x</option></select></label>
       <label>模擬保證金 USDT<input name="margin" type="number" min="1" step="1" value="100" /></label>
@@ -395,7 +450,7 @@ export function backtestPage(state) {
     : `<div class="empty-state"><strong>${b.status==='LOADING'?'歷史回測執行中…':'尚未執行歷史回測'}</strong><span>使用 Binance USD-M 歷史 K 線；模擬交易與歷史回測完全分離。</span></div>`;
   return `<div class="page-stack">${messageBar(state)}${section('策略測試', `
     <form id="backtest-form" class="form-grid">
-      <label>幣種<select name="symbol"><option>BTCUSDT</option><option>ETHUSDT</option><option>SOLUSDT</option></select></label>
+      <label>幣種<select name="symbol">${marketSymbolOptions(state)}</select></label>
       <label>測試期間<select name="range"><option value="90D">90 天</option><option value="180D">180 天</option><option value="1Y">1 年</option></select></label>
       <label>策略<select name="strategy"><option value="A">策略 A · EMA20/50</option><option value="B">策略 B · EMA10/30</option></select></label>
       <label>時間週期<select name="timeframe"><option value="1h">1 小時</option><option value="4h">4 小時</option></select></label>
