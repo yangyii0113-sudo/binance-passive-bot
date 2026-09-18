@@ -1,0 +1,55 @@
+{
+  "schema": "foxyya-forward-shadow-scan/1",
+  "mode": "PUBLIC_DATA_SHADOW_ONLY",
+  "real_orders": false,
+  "canonical_ledger_written": false,
+  "scan_time_local": "2026-09-18T18:01:50+08:00",
+  "decision_bar_close_local": "2026-09-18T17:59:59.999+08:00",
+  "decision_close_ms": 1789725599999,
+  "next_eligible_open_local": "2026-09-18T19:00:00+08:00",
+  "next_eligible_open_ms": 1789729200000,
+  "market_source": "Binance USD-M public market data",
+  "regime": "RISK_ON",
+  "regime_evidence": {
+    "BTCUSDT_24h_pct": 2.293,
+    "ETHUSDT_24h_pct": 3.169,
+    "SOLUSDT_24h_pct": 6.535,
+    "major_average_pct": 4.0,
+    "volatility_flag": "NORMAL",
+    "breadth_observation": "broad eligible crypto universe predominantly positive; threshold consistent with RISK_ON"
+  },
+  "confirmed_pre_entry_signals": [
+    {
+      "symbol": "UNIUSDT",
+      "direction": "LONG",
+      "family": "B-L",
+      "setup": "Momentum Continuation",
+      "status": "QUALIFIED_SIGNAL_WAITING_NEXT_LEGAL_OPEN",
+      "daily_trend": "UP",
+      "h4_trend": "UP",
+      "long_score": 100.0,
+      "latest_closed_1h_close": 9.132,
+      "break_trigger": 9.017,
+      "structural_stop": 8.432,
+      "atr_extension_1h": 1.10594,
+      "volume_quality": 1.466,
+      "higher_low_confirmed": true,
+      "closed_continuation_break_confirmed": true,
+      "risk_fraction_if_filled": 0.0035,
+      "fallback_nav_usdt_if_canonical_nav_unverified": 1000.0,
+      "risk_budget_usdt_if_filled_with_fallback_nav": 3.5,
+      "fill_status": "NOT_YET_ELIGIBLE_AT_SCAN_TIME",
+      "note": "No entry price/qty/margin booked before the next legal 1H open. No backfill permitted."
+    }
+  ],
+  "execution_state": {
+    "railway_project": "FOXYYA Execution V2",
+    "service": "foxyya-paper-engine",
+    "latest_deployment_status": "FAILED",
+    "canonical_volume_present": true,
+    "canonical_nav_verified_this_run": false,
+    "canonical_positions_verified_this_run": false
+  },
+  "notification_decision": "NO_NOTIFICATION_YET",
+  "notification_reason": "A setup qualified, but no legal next-hour paper fill, exit, new risk-limit event, new liquidation anomaly, new ledger-integrity finding, or material health-state change had occurred at scan time."
+}
