@@ -50,7 +50,7 @@ function marketSymbolOptions(state, limit = 20){
     if(symbols.length >= limit) break;
   }
   if(!symbols.length) symbols.push('BTCUSDT','ETHUSDT','SOLUSDT');
-  return symbols.map(symbol => `<option value="${symbol}">${symbol.replace(/USDT$/,' / USDT')}</option>`).join('');
+  return symbols.map(symbol => `<option value="${symbol}" ${state.ui?.selectedSymbol === symbol ? 'selected' : ''}>${symbol.replace(/USDT$/,' / USDT')}</option>`).join('');
 }
 function coinCode(symbol){
   const normalized = String(symbol || '').toUpperCase().replace(/[^A-Z0-9]/g,'').replace(/USDT$/,'');
@@ -225,6 +225,40 @@ function sortedRows(state){
   if(sort === 'strong') rows.sort((a,b)=>(Number(b[5])||-1)-(Number(a[5])||-1));
   return rows;
 }
+function strongCoinDetail(state, strong){
+  const selected = state.ui?.selectedStrongSymbol;
+  if(!selected) return '';
+  const row = strong.find(item => symbolFromDisplay(item[1]) === selected);
+  if(!row) return '';
+  const [icon, display, lastPrice, change, quoteVolume, score] = row;
+  const changeNum = Number(change);
+  const scoreNum = Number(score);
+  const tier = scoreNum >= 80 ? '極強' : scoreNum >= 65 ? '強勢' : scoreNum >= 50 ? '偏強' : '觀察';
+  return `<div class="strong-detail" id="strong-coin-detail">
+    <div class="strong-detail-head">
+      <div class="strong-detail-title">
+        ${coinLogo(display, icon, true)}
+        <div><span>強勢幣種分析</span><strong>${display}</strong></div>
+      </div>
+      <span class="strong-tier">${tier} · ${scoreNum.toFixed(0)} 分</span>
+    </div>
+    <div class="strong-detail-grid">
+      <div><span>最新價格</span><strong>${lastPrice}</strong></div>
+      <div><span>24h 動能</span><strong class="${changeNum>=0?'up':'down'}">${changeNum>=0?'+':''}${changeNum.toFixed(2)}%</strong></div>
+      <div><span>24h 成交額</span><strong>${compactVolume(quoteVolume)} USDT</strong></div>
+      <div><span>篩選狀態</span><strong>${tier}</strong></div>
+    </div>
+    <div class="strong-reasons">
+      <div><span>價格動能</span><p>${changeNum >= 3 ? '短線動能明顯高於中性區間。' : changeNum > 0 ? '價格維持正向動能，但需觀察延續性。' : '流動性較佳，但價格動能尚未轉強。'}</p></div>
+      <div><span>流動性</span><p>已通過 FOXYYA 高成交額市場池篩選，降低極低流動性幣種干擾。</p></div>
+      <div><span>風險提醒</span><p>強勢排行是市場雷達，不等同進場訊號；需再經策略、停損與風險額度確認。</p></div>
+    </div>
+    <div class="strong-actions">
+      <button class="secondary-btn" data-use-backtest="${selected}" type="button">用此幣歷史回測</button>
+      <button class="primary-inline-btn" data-use-paper="${selected}" type="button">帶入模擬交易</button>
+    </div>
+  </div>`;
+}
 function strongCoinCards(state){
   const strong = [...(state.market?.rows || [])]
     .filter(row => Number.isFinite(Number(row?.[5])))
@@ -234,7 +268,9 @@ function strongCoinCards(state){
   return `<div class="strong-grid">${strong.map((row,index)=>{
     const [icon, display, lastPrice, change, quoteVolume, score] = row;
     const changeNum = Number(change);
-    return `<article class="strong-card">
+    const symbol = symbolFromDisplay(display);
+    const selected = state.ui?.selectedStrongSymbol === symbol;
+    return `<button class="strong-card ${selected?'is-selected':''}" data-strong-symbol="${symbol}" type="button" aria-expanded="${selected}">
       <div class="strong-rank">#${index+1}</div>
       ${coinLogo(display, icon)}
       <div class="strong-main">
@@ -244,8 +280,9 @@ function strongCoinCards(state){
       <div class="strong-score"><small>強勢分數</small><b>${Number(score).toFixed(0)}</b></div>
       <div class="strong-change ${changeNum>=0?'up':'down'}">${changeNum>=0?'+':''}${changeNum.toFixed(2)}%</div>
       <div class="strong-price">${lastPrice}</div>
-    </article>`;
+    </button>`;
   }).join('')}</div>
+  ${strongCoinDetail(state,strong)}
   <div class="strong-note">強勢分數依 24h 價格動能與成交額流動性計算，僅作市場篩選，不代表未來報酬或買進建議。</div>`;
 }
 function tab(label,key,active,attr){
@@ -368,7 +405,7 @@ export function strategiesPage(state) {
 }
 
 function paperPositions(paper){
-  if(!paper.positions?.length) return '<div class="empty-state"><strong>目前沒有模擬持倉</strong><span>建立 PAPER 倉位後會顯示於此。</span></div>';
+  if(!paper.positions?.length) return '<div class="empty-state"><strong>目前沒有模擬持倉</strong><span>建立模擬倉位後會顯示於此。</span></div>';
   return `<div class="position-list">${paper.positions.map(p=>`
     <article class="position-card">
       <div class="position-card-head">
@@ -390,23 +427,23 @@ export function ordersPage(state) {
   const summary = paper.summary;
   return `<div class="page-stack">${messageBar(state)}${section('持倉訂單', `
     <div class="metric-grid">
-      ${metric('Paper NAV', money(summary.nav))}${metric('Cash', money(summary.cash))}
-      ${metric('Open Positions', summary.openPositions)}${metric('Unrealized PnL', money(summary.unrealizedPnl))}
-      ${metric('Margin / NAV', pct(summary.portfolioRiskPct))}${metric('Mode', paper.local ? 'LOCAL' : 'RUNTIME')}
+      ${metric('模擬淨值', money(summary.nav))}${metric('可用資金', money(summary.cash))}
+      ${metric('未平倉數', summary.openPositions)}${metric('未實現損益', money(summary.unrealizedPnl))}
+      ${metric('保證金 / 淨值', pct(summary.portfolioRiskPct))}${metric('資料模式', paper.local ? '本機模擬' : '執行環境')}
     </div>
     <form id="paper-order-form" class="form-grid compact-form">
       <label>幣種<select name="symbol">${marketSymbolOptions(state)}</select></label>
-      <label>方向<select name="side"><option value="LONG">LONG</option><option value="SHORT">SHORT</option></select></label>
+      <label>方向<select name="side"><option value="LONG">做多</option><option value="SHORT">做空</option></select></label>
       <label>槓桿<select name="leverage"><option value="5">5x</option><option value="8">8x</option><option value="10">10x</option></select></label>
       <label>模擬保證金 USDT<input name="margin" type="number" min="1" step="1" value="100" /></label>
     </form>
     <button class="primary-btn" data-paper-open type="button">建立 PAPER 倉位</button>
-    <p class="guard-note">Lite Risk Guard：總模擬保證金 ≤ NAV 1.5%；不會送出任何真實訂單。</p>
+    <p class="guard-note">風險限制：總模擬保證金 ≤ 淨值 1.5%；不會送出任何真實訂單。</p>
     ${paperPositions(paper)}`, `${badge('PAPER ONLY')} ${badge('REAL ORDER LOCKED')}`)}</div>`;
 }
 
 function tradeRows(results){
-  if(!results.recentTrades?.length) return '<div class="empty-state"><strong>尚無已平倉交易</strong><span>Paper 平倉後會自動進入 Results。</span></div>';
+  if(!results.recentTrades?.length) return '<div class="empty-state"><strong>尚無已平倉交易</strong><span>模擬平倉後會自動進入交易結果。</span></div>';
   return `<div class="trade-list">${results.recentTrades.map(t=>{
     const pnl = Number(t.netPnl ?? t.net_pnl_usdt);
     return `
@@ -422,12 +459,12 @@ export function resultsPage(state) {
   const s = results.summary;
   return `<div class="page-stack">${messageBar(state)}${section('交易結果', `
     <div class="metric-grid">
-      ${metric('Trades', s.trades)}${metric('Win Rate', pct(s.winRatePct))}
-      ${metric('Expectancy', s.expectancyR == null ? '—' : `${Number(s.expectancyR).toFixed(2)}R`)}
-      ${metric('Profit Factor', s.profitFactor == null ? '—' : Number(s.profitFactor).toFixed(2))}
-      ${metric('Net PnL', money(s.netPnl))}${metric('Max Drawdown', pct(s.maxDrawdownPct))}
+      ${metric('交易筆數', s.trades)}${metric('勝率', pct(s.winRatePct))}
+      ${metric('期望值', s.expectancyR == null ? '—' : `${Number(s.expectancyR).toFixed(2)}R`)}
+      ${metric('獲利因子', s.profitFactor == null ? '—' : Number(s.profitFactor).toFixed(2))}
+      ${metric('淨損益', money(s.netPnl))}${metric('最大回撤', pct(s.maxDrawdownPct))}
     </div>
-    ${tradeRows(results)}`, badge(results.local ? 'LOCAL FORWARD PAPER' : 'FORWARD PAPER'))}</div>`;
+    ${tradeRows(results)}`, badge(results.local ? '本機模擬交易' : '模擬交易'))}</div>`;
 }
 
 export function backtestPage(state) {
