@@ -24,6 +24,7 @@ export const appState = {
     search: '',
     marketSort: 'popular',
     strategyFilter: 'all',
+    calendarOpen: false,
     message: ''
   }
 };
