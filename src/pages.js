@@ -288,10 +288,30 @@ function strongCoinCards(state){
 function tab(label,key,active,attr){
   return `<button type="button" class="tab-btn ${active===key?'active':''}" ${attr}="${key}">${label}</button>`;
 }
+function assetClassSwitcher(state){
+  const active = state.ui?.assetClass || 'crypto';
+  return `<div class="asset-switcher" role="tablist" aria-label="資產分類">
+    <button type="button" class="asset-switch ${active==='crypto'?'active':''}" data-asset-class="crypto" role="tab" aria-selected="${active==='crypto'}">
+      <span>₿</span><div><strong>加密貨幣</strong><small>Crypto</small></div>
+    </button>
+    <button type="button" class="asset-switch ${active==='stocks'?'active':''}" data-asset-class="stocks" role="tab" aria-selected="${active==='stocks'}">
+      <span>▥</span><div><strong>股市</strong><small>Stocks</small></div>
+    </button>
+  </div>`;
+}
+function stockEmptyState(title='股市資料源尚未接入'){
+  return `<div class="asset-empty">
+    <div class="asset-empty-icon">▥</div>
+    <strong>${title}</strong>
+    <span>股市模組已與加密貨幣分離；目前不會使用 Crypto 行情替代股票資料。下一階段再接入正式股票行情與策略資料源。</span>
+  </div>`;
+}
 
 export function homePage(state) {
-  const market = state.market;
-  const coins = sortedRows(state).map(([icon, symbol, price, change]) => {
+  const assetClass = state.ui?.assetClass || 'crypto';
+  const isCrypto = assetClass === 'crypto';
+  const market = isCrypto ? state.market : state.stocks;
+  const coins = isCrypto ? sortedRows(state).map(([icon, symbol, price, change]) => {
     const hasChange = Number.isFinite(change);
     const changeText = hasChange ? `${change >= 0 ? '+' : ''}${change.toFixed(2)}%` : '—';
     const changeClass = !hasChange ? '' : change >= 0 ? 'up' : 'down';
@@ -301,7 +321,7 @@ export function homePage(state) {
       <span>${price}</span>
       <b class="${changeClass} change-pill">${changeText}</b>
     </div>`;
-  }).join('');
+  }).join('') : '';
   const sort = state.ui?.marketSort || 'popular';
   const [focusA, focusB, focusC] = mock.news;
 
@@ -319,6 +339,7 @@ export function homePage(state) {
     </button>`;
 
   return `<div class="page-stack home-stack">${messageBar(state)}
+    ${assetClassSwitcher(state)}
     <div class="hero-grid">
       <section class="panel hero-card direction-card">
         <div class="hero-label"><span class="hero-icon">◈</span>市場方向</div>
@@ -345,22 +366,24 @@ export function homePage(state) {
         <div class="section-title"><span class="section-symbol">◉</span>市場排行</div>
         <div class="section-meta">${market.source} · ${badge(market.status, market.status)}</div>
       </div>
-      <div class="tabs interactive premium-tabs">
-        ${tab('熱門','popular',sort,'data-market-sort')}
-        ${tab('強勢','strong',sort,'data-market-sort')}
-        ${tab('漲幅','gain',sort,'data-market-sort')}
-        ${tab('跌幅','loss',sort,'data-market-sort')}
-      </div>
-      <div class="table-head"><span>幣種</span><span>最新價格</span><span>24h</span></div>
-      <div class="coin-list">${coins}</div>
+      ${isCrypto ? `
+        <div class="tabs interactive premium-tabs">
+          ${tab('熱門','popular',sort,'data-market-sort')}
+          ${tab('強勢','strong',sort,'data-market-sort')}
+          ${tab('漲幅','gain',sort,'data-market-sort')}
+          ${tab('跌幅','loss',sort,'data-market-sort')}
+        </div>
+        <div class="table-head"><span>幣種</span><span>最新價格</span><span>24h</span></div>
+        <div class="coin-list">${coins}</div>
+      ` : stockEmptyState('股市行情尚未接入')}
     </section>
 
     <section class="panel strong-panel">
       <div class="section-head premium-head">
-        <div class="section-title"><span class="section-symbol">◆</span>強勢幣種 Top 10</div>
-        <span class="section-quiet">24H MOMENTUM + LIQUIDITY</span>
+        <div class="section-title"><span class="section-symbol">◆</span>${isCrypto ? '強勢加密貨幣 Top 10' : '強勢股票 Top 10'}</div>
+        <span class="section-quiet">${isCrypto ? '24H MOMENTUM + LIQUIDITY' : 'STOCKS · SEPARATE MODULE'}</span>
       </div>
-      ${strongCoinCards(state)}
+      ${isCrypto ? strongCoinCards(state) : stockEmptyState('強勢股票排行待接入')}
     </section>
 
     <section class="panel focus-panel">
@@ -388,20 +411,25 @@ export function homePage(state) {
         <div class="section-title"><span class="section-symbol">◎</span>策略機會</div>
         <button class="section-link" data-go-strategies type="button">查看全部 ›</button>
       </div>
-      ${strategyOpportunity(state)}
+      ${isCrypto ? strategyOpportunity(state) : stockEmptyState('股市策略模組待接入')}
     </section>
   </div>`;
 }
 
 export function strategiesPage(state) {
   const filter = state.ui?.strategyFilter || 'all';
-  return `<div class="page-stack">${messageBar(state)}${section('交易策略', `
-    <div class="tabs interactive">
-      ${tab('全部','all',filter,'data-strategy-filter')}
-      ${tab('觀察中','WATCH',filter,'data-strategy-filter')}
-      ${tab('等待進場','PENDING',filter,'data-strategy-filter')}
-    </div>
-    ${strategyCards(state)}`, badge(state.strategy?.items?.length ? state.strategy.status : 'LITE'))}</div>`;
+  const isCrypto = (state.ui?.assetClass || 'crypto') === 'crypto';
+  return `<div class="page-stack">${messageBar(state)}
+    ${assetClassSwitcher(state)}
+    ${section('交易策略', isCrypto ? `
+      <div class="tabs interactive">
+        ${tab('全部','all',filter,'data-strategy-filter')}
+        ${tab('觀察中','WATCH',filter,'data-strategy-filter')}
+        ${tab('等待進場','PENDING',filter,'data-strategy-filter')}
+      </div>
+      ${strategyCards(state)}
+    ` : stockEmptyState('股市策略資料源尚未接入'), badge(isCrypto ? (state.strategy?.items?.length ? state.strategy.status : 'LITE') : 'EMPTY'))}
+  </div>`;
 }
 
 function paperPositions(paper){
