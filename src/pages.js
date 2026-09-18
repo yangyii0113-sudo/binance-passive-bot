@@ -28,8 +28,45 @@ function numberPrice(value){
   const n = Number(String(value || '').replace(/,/g,''));
   return Number.isFinite(n) ? n : null;
 }
+function coinCode(symbol){
+  const normalized = String(symbol || '').toUpperCase().replace(/[^A-Z]/g,'');
+  if(normalized.startsWith('BTC')) return 'btc';
+  if(normalized.startsWith('ETH')) return 'eth';
+  if(normalized.startsWith('SOL')) return 'sol';
+  return null;
+}
+function coinLogo(symbol, fallback = '•', large = false){
+  const code = coinCode(symbol);
+  if(!code) return `<span class="coin-logo ${large ? 'large' : ''}"><span class="coin-logo-fallback">${fallback}</span></span>`;
+  const src = `https://assets.coincap.io/assets/icons/${code}@2x.png`;
+  return `<span class="coin-logo ${large ? 'large' : ''}">
+    <img src="${src}" alt="${code.toUpperCase()}" loading="lazy" referrerpolicy="no-referrer"
+      onerror="this.hidden=true;this.nextElementSibling.hidden=false">
+    <span class="coin-logo-fallback" hidden>${fallback}</span>
+  </span>`;
+}
 function messageBar(state){
   return state.ui?.message ? `<div class="flash-message">${state.ui.message}</div>` : '';
+}
+function calendarPanel(state){
+  if(!state.ui?.calendarOpen) return '';
+  const rows = (mock.calendar || []).map((item)=>`
+    <article class="calendar-event">
+      <div class="calendar-event-main">
+        <span class="focus-tag">${item.category}</span>
+        <strong>${item.title}</strong>
+        <small>影響：${item.impact}</small>
+      </div>
+      <span class="calendar-time">${item.timing}</span>
+    </article>`).join('');
+  return `<section class="panel calendar-panel" id="event-calendar-panel">
+    <div class="section-head premium-head">
+      <div class="section-title"><span class="section-symbol">▣</span>事件日曆</div>
+      <button class="section-link" data-event-calendar type="button">關閉 ×</button>
+    </div>
+    <div class="calendar-panel-note">目前為事件監看模板；即時前值／預期／公布值資料源尚未接入，不會偽裝成即時數據。</div>
+    <div class="calendar-events">${rows}</div>
+  </section>`;
 }
 function derivedStrategies(state){
   if(state.strategy?.items?.length) return state.strategy.items;
@@ -86,7 +123,7 @@ function strategyOpportunity(state) {
   const strategy = derivedStrategies(state)[0];
   if (!strategy) return '<div class="empty-state"><strong>策略機會等待資料</strong></div>';
   return `<div class="strategy-card strategy-opportunity">
-    <div class="coin-icon large">${strategy.symbol.startsWith('BTC') ? '₿' : '◇'}</div>
+    ${coinLogo(strategy.symbol, strategy.symbol.startsWith('BTC') ? '₿' : '◇', true)}
     <div class="strategy-main">
       <div class="strategy-opportunity-top">
         <div><strong>${strategy.symbol}</strong><span>${strategy.strategy}</span></div>
@@ -116,7 +153,7 @@ export function homePage(state) {
     const changeText = hasChange ? `${change >= 0 ? '+' : ''}${change.toFixed(2)}%` : '—';
     const changeClass = !hasChange ? '' : change >= 0 ? 'up' : 'down';
     return `<div class="coin-row" data-search="${symbol}">
-      <span class="coin-icon">${icon}</span>
+      ${coinLogo(symbol, icon)}
       <strong>${symbol}</strong>
       <span>${price}</span>
       <b class="${changeClass} change-pill">${changeText}</b>
@@ -149,12 +186,14 @@ export function homePage(state) {
           <p>關注國際動態與資金變化，保持靈活應對。</p>
         </div>
       </section>
-      <section class="panel hero-card event-card">
+      <section class="panel hero-card event-card" data-event-calendar role="button" tabindex="0" aria-expanded="${Boolean(state.ui?.calendarOpen)}">
         <div class="hero-label"><span class="hero-icon">▣</span>事件日曆</div>
         <p>追蹤重要經濟數據與市場事件。</p>
-        <div class="event-bottom"><span class="focus-tag">STATIC</span><span>查看本週 ›</span></div>
+        <div class="event-bottom"><span class="focus-tag">TEMPLATE</span><span>${state.ui?.calendarOpen ? '收合' : '查看本週'} ›</span></div>
       </section>
     </div>
+
+    ${calendarPanel(state)}
 
     <section class="panel ranking-panel">
       <div class="section-head premium-head">
@@ -181,11 +220,11 @@ export function homePage(state) {
           ${focusCard(focusB)}
           ${focusCard(focusC)}
         </div>
-        <div class="calendar-row premium-calendar">
+        <button class="calendar-row premium-calendar" data-event-calendar type="button" aria-expanded="${Boolean(state.ui?.calendarOpen)}">
           <span class="hero-icon">▣</span>
-          <div><strong>重要事件日曆</strong><small>前值 · 預期 · 公布值</small></div>
+          <div><strong>重要事件日曆</strong><small>事件監看模板 · 點擊展開</small></div>
           <span class="focus-arrow">›</span>
-        </div>
+        </button>
       </div>
     </section>
 
