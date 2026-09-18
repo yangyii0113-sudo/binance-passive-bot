@@ -115,25 +115,87 @@ export function homePage(state) {
     const hasChange = Number.isFinite(change);
     const changeText = hasChange ? `${change >= 0 ? '+' : ''}${change.toFixed(2)}%` : '—';
     const changeClass = !hasChange ? '' : change >= 0 ? 'up' : 'down';
-    return `<div class="coin-row" data-search="${symbol}"><span class="coin-icon">${icon}</span><strong>${symbol}</strong><span>${price}</span><b class="${changeClass}">${changeText}</b></div>`;
+    return `<div class="coin-row" data-search="${symbol}">
+      <span class="coin-icon">${icon}</span>
+      <strong>${symbol}</strong>
+      <span>${price}</span>
+      <b class="${changeClass} change-pill">${changeText}</b>
+    </div>`;
   }).join('');
-  const news = mock.news.map(([n, title, text, tag]) => `
-    <article class="news-row" data-search="${title} ${text} ${tag}">
-      <div class="news-num">${n}</div><div><h3>${title}</h3><p>${text}</p></div>${badge(tag)}
-    </article>`).join('');
   const sort = state.ui?.marketSort || 'popular';
-  return `<div class="page-stack">${messageBar(state)}
-    ${section('市場脈動', `
-      <div class="market-meta"><span>${market.source}</span>${badge(marketStatusLabel(market), market.status)}</div>
-      <div class="market-summary"><div><span>市場方向</span><strong>${market.direction}</strong></div><div><span>風險情緒</span><strong class="muted-strong">${market.sentiment}</strong></div></div>
-      <div class="tabs interactive">
+  const [focusA, focusB, focusC] = mock.news;
+
+  const focusCard = ([, title, text, tag], featured = false) => `
+    <article class="focus-card ${featured ? 'focus-featured' : ''}" data-search="${title} ${text} ${tag}">
+      <div class="focus-icon">${featured ? '◎' : '◇'}</div>
+      <div class="focus-copy">
+        <h3>${title}</h3>
+        <p>${text}</p>
+        <span class="focus-tag">${tag}</span>
+      </div>
+      <span class="focus-arrow">›</span>
+    </article>`;
+
+  return `<div class="page-stack home-stack">${messageBar(state)}
+    <div class="hero-grid">
+      <section class="panel hero-card direction-card">
+        <div class="hero-label"><span class="hero-icon">◈</span>市場方向</div>
+        <div class="direction-layout">
+          <div class="direction-primary">
+            <strong class="direction-value">${market.direction}</strong>
+            <span class="hero-kicker">${marketStatusLabel(market)}</span>
+          </div>
+          <div class="direction-divider"></div>
+          <p>關注國際動態與資金變化，保持靈活應對。</p>
+        </div>
+      </section>
+      <section class="panel hero-card event-card">
+        <div class="hero-label"><span class="hero-icon">▣</span>事件日曆</div>
+        <p>追蹤重要經濟數據與市場事件。</p>
+        <div class="event-bottom"><span class="focus-tag">STATIC</span><span>查看本週 ›</span></div>
+      </section>
+    </div>
+
+    <section class="panel ranking-panel">
+      <div class="section-head premium-head">
+        <div class="section-title"><span class="section-symbol">◉</span>市場排行</div>
+        <div class="section-meta">${market.source} · ${badge(market.status, market.status)}</div>
+      </div>
+      <div class="tabs interactive premium-tabs">
         ${tab('熱門','popular',sort,'data-market-sort')}
         ${tab('漲幅','gain',sort,'data-market-sort')}
         ${tab('跌幅','loss',sort,'data-market-sort')}
       </div>
-      <div class="table-head"><span>幣種</span><span>最新價格</span><span>24h</span></div><div class="coin-list">${coins}</div>`, badge(market.status, market.status))}
-    ${section('國際熱點', `<div class="news-list">${news}</div><div class="calendar-row"><span>▣</span><div><strong>重要事件日曆</strong><small>此區目前為靜態資訊，正式 News/Calendar Feed 後續接入。</small></div></div>`)}
-    ${section('策略機會', strategyOpportunity(state))}
+      <div class="table-head"><span>幣種</span><span>最新價格</span><span>24h</span></div>
+      <div class="coin-list">${coins}</div>
+    </section>
+
+    <section class="panel focus-panel">
+      <div class="section-head premium-head">
+        <div class="section-title"><span class="section-symbol">◌</span>國際焦點</div>
+        <span class="section-quiet">STATIC</span>
+      </div>
+      <div class="focus-layout">
+        ${focusCard(focusA, true)}
+        <div class="focus-grid">
+          ${focusCard(focusB)}
+          ${focusCard(focusC)}
+        </div>
+        <div class="calendar-row premium-calendar">
+          <span class="hero-icon">▣</span>
+          <div><strong>重要事件日曆</strong><small>前值 · 預期 · 公布值</small></div>
+          <span class="focus-arrow">›</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel opportunity-panel">
+      <div class="section-head premium-head">
+        <div class="section-title"><span class="section-symbol">◎</span>策略機會</div>
+        <button class="section-link" data-go-strategies type="button">查看全部 ›</button>
+      </div>
+      ${strategyOpportunity(state)}
+    </section>
   </div>`;
 }
 
