@@ -1,0 +1,96 @@
+{
+  "schema": "foxyya-forward-shadow-evidence/2",
+  "mode": "PAPER_ONLY_SHADOW_EVIDENCE",
+  "captured_at": "2026-09-19T05:07:11+08:00",
+  "source": [
+    "Binance USD-M public connector data",
+    "GitHub Actions FOXYYA Public Shadow Scan",
+    "Railway production service status"
+  ],
+  "paper_only": true,
+  "real_orders": false,
+  "private_account_permissions_used": false,
+  "strategy_parameters_changed": false,
+  "control_freeze_preserved": true,
+  "full_universe_scan": {
+    "status": "BLOCKED",
+    "workflow_run_id": 35395105628,
+    "workflow_head_sha": "8dd5040505b2311b48abc6a011cf2d73db0dbce8",
+    "failure_stage": "PublicSnapshotBuilder.exchange_info",
+    "error": "urllib.error.HTTPError: HTTP Error 451",
+    "meaning": "GitHub-hosted runner could not access the Binance USD-M public exchange-info endpoint, so the full-universe snapshot did not build and no complete qualified/rejected set was produced.",
+    "workflow_integrity_issue": "The scan shell command pipes Python to tee without pipefail, so GitHub marked the scan step successful despite the Python traceback. The next persistence step then failed because /tmp/foxyya-shadow-scan.json did not exist.",
+    "canonical_scan_persisted": false,
+    "shadow_scan_persisted_by_workflow": false
+  },
+  "production_execution": {
+    "project": "FOXYYA Execution V2",
+    "service": "foxyya-paper-engine",
+    "status": "FAILED",
+    "latest_deployment_id": "83976bb5-408b-4a14-af80-e99780157b44",
+    "canonical_ledger_verified": false,
+    "fallback_nav_usdt": 1000.0
+  },
+  "prior_qualified_signal_due_open": {
+    "symbol": "STRKUSDT",
+    "direction": "LONG",
+    "setup_family": "A-L",
+    "decision_bar_close_local": "2026-09-19T02:59:59+08:00",
+    "structural_stop": 0.03646,
+    "scheduled_future_legal_open_local": "2026-09-19T04:00:00+08:00",
+    "latest_fully_closed_bar_before_open": {
+      "open_local": "2026-09-19T03:00:00+08:00",
+      "open": 0.04122,
+      "high": 0.04348,
+      "low": 0.04042,
+      "close": 0.04139,
+      "atr14": 0.0021435714285714287,
+      "atr_extension": 1.4275233164556962,
+      "structure_valid": true,
+      "execution_volatility_gate_valid": true
+    },
+    "future_legal_open": {
+      "raw_open": 0.04137,
+      "decision_reference": 0.04121,
+      "r_distance": 0.00475,
+      "adverse_gap_r": 0.03368421052631529,
+      "gap_gate_valid": true
+    },
+    "risk_model": {
+      "nav_usdt": 1000.0,
+      "risk_fraction": 0.005,
+      "risk_budget_usdt": 5.0,
+      "entry_fill_model": 0.041382411,
+      "stop_fill_model": 0.036449062,
+      "modeled_unit_total_loss": 0.0049764029776,
+      "theoretical_qty_before_exchange_step_rounding": 1004.7417828713267,
+      "theoretical_notional_usdt_before_step_rounding": 41.57863740765399
+    },
+    "leverage_books": {
+      "5x": {"status": "MODEL_PASS", "modeled_buffer_fraction": 0.04468633214483331},
+      "8x": {"status": "REJECT_BUFFER", "modeled_buffer_fraction": -0.030313667855166704},
+      "10x": {"status": "REJECT_BUFFER", "modeled_buffer_fraction": -0.0553136678551667}
+    },
+    "execution_result": {
+      "canonical_paper_entry_created": false,
+      "canonical_preopen_revalidation_persisted": false,
+      "event": "CRITICAL_EXECUTION_ANOMALY_MISSED_FUTURE_LEGAL_OPEN",
+      "no_backfill": true,
+      "reason": "The production paper engine was FAILED at the legal open, so required canonical pre-open revalidation and paper entry could not be persisted."
+    }
+  },
+  "current_market_context": {
+    "router_bias": "RISK_ON",
+    "major_24h_returns_pct_observed_during_run": {
+      "BTCUSDT": 6.086,
+      "ETHUSDT": 7.513,
+      "SOLUSDT": 12.284
+    },
+    "note": "Current public ticker data confirms a strong risk-on backdrop, but it is not substituted for the blocked full-universe multi-timeframe scan."
+  },
+  "notification_reason": [
+    "critical execution anomaly: STRK A-L legal paper-entry window missed",
+    "material strategy-health/infrastructure change: full-universe GitHub shadow scanner is blocked by Binance HTTP 451",
+    "ledger/runtime integrity: canonical production paper engine remains FAILED"
+  ]
+}
