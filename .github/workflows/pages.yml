@@ -1,6 +1,9 @@
 name: FOXYYA Lite Pages Deploy
 
 on:
+  push:
+    branches:
+      - foxyya-lite-railway-deploy
   workflow_dispatch:
 
 permissions:
