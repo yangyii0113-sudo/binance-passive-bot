@@ -1,0 +1,123 @@
+import { STATUS } from './status.js';
+
+const BASE = 'https://fapi.binance.com/fapi/v1/klines';
+const COST_PER_TRADE = 0.0008;
+
+function ema(values, period){
+  const out = Array(values.length).fill(null);
+  if(values.length < period) return out;
+  const k = 2 / (period + 1);
+  let seed = 0;
+  for(let i=0;i<period;i++) seed += values[i];
+  let prev = seed / period;
+  out[period-1] = prev;
+  for(let i=period;i<values.length;i++){
+    prev = values[i] * k + prev * (1-k);
+    out[i] = prev;
+  }
+  return out;
+}
+async function fetchKlines(symbol, interval, days){
+  const end = Date.now();
+  const start = end - days * 86400000;
+  let cursor = start;
+  const rows = [];
+  let guard = 0;
+  while(cursor < end && guard < 20){
+    guard++;
+    const url = `${BASE}?symbol=${encodeURIComponent(symbol)}&interval=${encodeURIComponent(interval)}&startTime=${cursor}&endTime=${end}&limit=1000`;
+    const response = await fetch(url,{cache:'no-store'});
+    if(!response.ok) throw new Error(`Kline HTTP ${response.status}`);
+    const batch = await response.json();
+    if(!Array.isArray(batch) || !batch.length) break;
+    for(const k of batch){
+      rows.push({time:Number(k[0]),open:Number(k[1]),high:Number(k[2]),low:Number(k[3]),close:Number(k[4])});
+    }
+    const next = Number(batch[batch.length-1][0]) + 1;
+    if(!Number.isFinite(next) || next <= cursor) break;
+    cursor = next;
+    if(batch.length < 1000) break;
+  }
+  const seen = new Set();
+  return rows.filter(r => Number.isFinite(r.close) && !seen.has(r.time) && seen.add(r.time));
+}
+function simulate(candles, strategy){
+  if(candles.length < 60) throw new Error('歷史樣本不足');
+  const closes = candles.map(c=>c.close);
+  const fast = ema(closes, strategy === 'B' ? 10 : 20);
+  const slow = ema(closes, strategy === 'B' ? 30 : 50);
+  let side = 0;
+  let entry = null;
+  let equity = 1;
+  let peak = 1;
+  let maxDd = 0;
+  const trades = [];
+  const curve = [{time:candles[0].time,balance:1000}];
+  for(let i=1;i<candles.length;i++){
+    if(fast[i] == null || slow[i] == null || fast[i-1] == null || slow[i-1] == null) continue;
+    const nextSide = fast[i] > slow[i] ? 1 : fast[i] < slow[i] ? -1 : side;
+    if(side === 0 && nextSide !== 0){
+      side = nextSide;
+      entry = candles[i].close;
+      continue;
+    }
+    if(nextSide !== side){
+      const exit = candles[i].close;
+      const raw = side === 1 ? exit / entry - 1 : entry / exit - 1;
+      const ret = raw - COST_PER_TRADE;
+      equity *= Math.max(0.01,1 + ret);
+      trades.push({entry,exit,side:side===1?'LONG':'SHORT',returnPct:ret*100,time:candles[i].time});
+      peak = Math.max(peak,equity);
+      maxDd = Math.max(maxDd,(peak-equity)/peak);
+      curve.push({time:candles[i].time,balance:1000*equity});
+      side = nextSide;
+      entry = exit;
+    }
+  }
+  if(side !== 0 && entry){
+    const exit = candles[candles.length-1].close;
+    const raw = side === 1 ? exit / entry - 1 : entry / exit - 1;
+    const ret = raw - COST_PER_TRADE;
+    equity *= Math.max(0.01,1 + ret);
+    trades.push({entry,exit,side:side===1?'LONG':'SHORT',returnPct:ret*100,time:candles[candles.length-1].time});
+    peak = Math.max(peak,equity);
+    maxDd = Math.max(maxDd,(peak-equity)/peak);
+    curve.push({time:candles[candles.length-1].time,balance:1000*equity});
+  }
+  const positives = trades.filter(t=>t.returnPct>0).map(t=>t.returnPct);
+  const negatives = trades.filter(t=>t.returnPct<0).map(t=>t.returnPct);
+  const grossWin = positives.reduce((a,b)=>a+b,0);
+  const grossLoss = Math.abs(negatives.reduce((a,b)=>a+b,0));
+  return {
+    trades: trades.length,
+    winRatePct: trades.length ? positives.length/trades.length*100 : null,
+    expectancyR: trades.length ? trades.reduce((s,t)=>s+t.returnPct,0)/trades.length/1.5 : null,
+    profitFactor: grossLoss > 0 ? grossWin/grossLoss : null,
+    netReturnPct: (equity-1)*100,
+    maxDrawdownPct: maxDd*100,
+    tradesList: trades,
+    equityCurve: curve
+  };
+}
+export async function runLiteBacktest({symbol='BTCUSDT',range='90D',strategy='A',timeframe='1h'} = {}){
+  const days = range === '1Y' ? 365 : range === '180D' ? 180 : 90;
+  const interval = String(timeframe).toLowerCase() === '4h' ? '4h' : '1h';
+  const candles = await fetchKlines(symbol,interval,days);
+  const result = simulate(candles,strategy);
+  return {
+    status: STATUS.LIVE,
+    updatedAt: new Date().toISOString(),
+    local: true,
+    input:{symbol,range,strategy,timeframe:interval,samples:candles.length,costModel:'0.08% round-trip'},
+    result:{
+      trades:result.trades,
+      winRatePct:result.winRatePct,
+      expectancyR:result.expectancyR,
+      profitFactor:result.profitFactor,
+      netReturnPct:result.netReturnPct,
+      maxDrawdownPct:result.maxDrawdownPct
+    },
+    equityCurve:result.equityCurve,
+    recentTrades:result.tradesList.slice(-10).reverse()
+  };
+}
