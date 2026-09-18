@@ -1,9 +1,6 @@
 name: FOXYYA Lite Pages Deploy
 
 on:
-  push:
-    branches:
-      - foxyya-lite-railway-deploy
   workflow_dispatch:
 
 permissions:
@@ -25,8 +22,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
-        with:
-          enablement: true
       - name: Prepare static site
         run: |
           mkdir -p _site
