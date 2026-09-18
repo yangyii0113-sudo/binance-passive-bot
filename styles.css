@@ -249,3 +249,179 @@ select:focus,.form-grid input:focus{border-color:rgba(241,184,75,.35)}
   .calendar-event-main strong{font-size:.74rem}
   .calendar-event-main small,.calendar-time{font-size:.6rem}
 }
+
+
+/* International focus deep-analysis drilldown */
+.focus-card{
+  width:100%;
+  color:inherit;
+  text-align:left;
+  cursor:pointer;
+  appearance:none;
+}
+.focus-card:active{transform:translateY(1px)}
+.focus-card.is-selected{
+  border-color:rgba(241,184,75,.38);
+  background:linear-gradient(180deg,rgba(241,184,75,.08),#111214 70%);
+  box-shadow:inset 0 0 0 1px rgba(241,184,75,.05);
+}
+.focus-card.is-selected .focus-arrow{color:var(--gold)}
+.focus-analysis-detail{
+  scroll-margin-top:18px;
+  border:1px solid rgba(241,184,75,.18);
+  background:linear-gradient(180deg,#151516,#101112);
+  border-radius:18px;
+  padding:15px;
+  display:grid;
+  gap:12px;
+}
+.analysis-detail-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:14px;
+  padding-bottom:12px;
+  border-bottom:1px solid var(--line);
+}
+.analysis-detail-head>div{min-width:0;display:grid;gap:6px}
+.analysis-detail-head h2{
+  margin:0;
+  font-size:1.08rem;
+  line-height:1.3;
+}
+.analysis-detail-head p{
+  margin:0;
+  color:var(--muted);
+  font-size:.68rem;
+}
+.analysis-close{
+  flex:0 0 auto;
+  width:30px;
+  height:30px;
+  border:1px solid var(--line-strong);
+  background:#111214;
+  color:#a6a8ad;
+  border-radius:10px;
+  font-size:1rem;
+}
+.analysis-block{
+  border:1px solid var(--line);
+  background:#0f1011;
+  border-radius:14px;
+  padding:12px;
+}
+.analysis-eyebrow{
+  display:block;
+  color:var(--gold);
+  font-size:.64rem;
+  font-weight:800;
+  letter-spacing:.08em;
+  margin-bottom:8px;
+}
+.analysis-block p{
+  margin:0;
+  color:#c8c5bd;
+  font-size:.74rem;
+  line-height:1.65;
+}
+.analysis-summary p{font-size:.78rem}
+.analysis-chain{
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:7px;
+}
+.analysis-chain-step{
+  position:relative;
+  min-width:0;
+  display:grid;
+  gap:6px;
+  border:1px solid var(--line);
+  background:#121315;
+  border-radius:11px;
+  padding:9px;
+}
+.analysis-chain-step span{
+  color:var(--gold);
+  font-size:.58rem;
+  font-weight:800;
+}
+.analysis-chain-step strong{
+  font-size:.68rem;
+  line-height:1.4;
+  overflow-wrap:anywhere;
+}
+.analysis-bullets{
+  margin:0;
+  padding-left:18px;
+  display:grid;
+  gap:7px;
+  color:#c4c1b9;
+  font-size:.72rem;
+  line-height:1.55;
+}
+.scenario-grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:8px;
+}
+.scenario-card{
+  min-width:0;
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:10px;
+  background:#121315;
+}
+.scenario-card>span{
+  display:block;
+  font-size:.65rem;
+  font-weight:800;
+  margin-bottom:7px;
+}
+.scenario-card p{font-size:.68rem;line-height:1.5}
+.scenario-positive>span{color:var(--green)}
+.scenario-base>span{color:var(--gold)}
+.scenario-risk>span{color:var(--red)}
+.analysis-watchlist{
+  display:flex;
+  flex-wrap:wrap;
+  gap:7px;
+}
+.analysis-watch-chip{
+  display:inline-flex;
+  align-items:center;
+  border:1px solid var(--line);
+  background:#121315;
+  color:#b6b3ac;
+  border-radius:999px;
+  padding:6px 8px;
+  font-size:.64rem;
+}
+.analysis-invalidate{
+  border-color:rgba(255,99,109,.16);
+  background:rgba(255,99,109,.035);
+}
+.analysis-disclaimer{
+  color:#6f7277;
+  font-size:.62rem;
+  line-height:1.5;
+  padding:0 2px;
+}
+@media(max-width:700px){
+  .focus-analysis-detail{padding:12px;gap:10px;border-radius:15px}
+  .analysis-detail-head h2{font-size:.95rem}
+  .analysis-summary p{font-size:.72rem}
+  .analysis-block{padding:10px}
+  .analysis-block p,.analysis-bullets{font-size:.67rem}
+  .analysis-chain{grid-template-columns:1fr}
+  .analysis-chain-step{
+    grid-template-columns:24px 1fr;
+    align-items:center;
+    gap:7px;
+  }
+  .analysis-chain-step span{font-size:.56rem}
+  .analysis-chain-step strong{font-size:.66rem}
+  .scenario-grid{grid-template-columns:1fr}
+  .scenario-card p{font-size:.65rem}
+  .analysis-watch-chip{font-size:.6rem;padding:5px 7px}
+  .analysis-disclaimer{font-size:.58rem}
+}
