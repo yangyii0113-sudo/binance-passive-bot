@@ -22,3 +22,16 @@ jobs:
         run: find src -name '*.js' -print0 | xargs -0 -n1 node --check
       - name: Gate A and architecture tests
         run: npm test
+
+      - name: Prepare deploy artifact
+        run: |
+          mkdir -p deploy-artifact
+          cp index.html styles.css netlify.toml package.json deploy-artifact/
+          cp -R src deploy-artifact/src
+      - name: Upload deploy artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: foxyya-lite-static
+          path: deploy-artifact
+          if-no-files-found: error
+          retention-days: 7
