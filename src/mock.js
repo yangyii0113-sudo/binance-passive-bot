@@ -22,6 +22,9 @@ export const mock = Object.freeze({
         risk: '通膨高於預期 + 殖利率上行 + 美元走強：風險資產估值壓力上升。'
       },
       watch: ['CPI / 核心 CPI', 'PCE / 核心 PCE', '2Y / 10Y 美債殖利率', '美元指數 DXY', '實質利率', 'BTC / ETH 資金流'],
+      bullishCondition: '通膨低於預期、殖利率回落、美元轉弱時，風險資產與 Crypto 通常較偏利多。',
+      bearishCondition: '通膨高於預期、實質利率與美元同步走強時，風險資產與 Crypto 通常較偏利空。',
+      affectedAssets: ['BTC / ETH','美元','美債殖利率','科技股'],
       invalidate: '如果宏觀數據變化明顯，但美元、利率與風險資產沒有同步反應，代表市場主導因子可能已轉向其他事件，需降低這條宏觀鏈的權重。'
     },
     {
@@ -41,6 +44,9 @@ export const mock = Object.freeze({
         risk: '能源供應或運輸持續受阻 + 油價大幅上升：通膨與風險溢價同步上升。'
       },
       watch: ['Brent / WTI 原油', '黃金', 'VIX', '美元指數', '運輸 / 航運成本', '美債殖利率'],
+      bullishCondition: '局勢降溫、油價回落、VIX 下滑時，對高 Beta 風險資產較偏利多。',
+      bearishCondition: '能源供應受阻、油價與波動率同步上升時，對股市與 Crypto 較偏利空，黃金可能相對受惠。',
+      affectedAssets: ['BTC / ETH','美股','黃金','原油','VIX'],
       invalidate: '如果新聞強度很高，但油價、黃金、VIX 與美元都沒有確認，代表市場可能將事件視為局部風險，不能只依標題追價。'
     },
     {
@@ -60,13 +66,40 @@ export const mock = Object.freeze({
         risk: '成長急降 + 信用利差擴大 + 美元走強：市場進入防禦與去槓桿。'
       },
       watch: ['全球 PMI', '信用利差', '美元指數 DXY', '主要股指廣度', 'BTC Dominance', 'BTC / ETH 相對強弱', '現貨 / ETF 資金流'],
+      bullishCondition: '成長穩定、信用利差收斂、美元偏弱、流動性改善時，風險資產通常較偏利多。',
+      bearishCondition: '成長急降、信用利差擴大、美元走強時，風險資產通常較偏利空。',
+      affectedAssets: ['BTC / ETH','美股','美元','信用市場'],
       invalidate: '如果全球風險資產與美元、信用利差的關係脫鉤，需重新檢查是否有大型政策、產業或 Crypto 特有資金流主導。'
     }
   ],
   calendar: [
-    { title: '美國 CPI / PCE', category: '通膨', impact: '美元 · BTC · 黃金', timing: '待即時資料源' },
-    { title: 'FOMC 利率決議', category: '央行', impact: '美元 · 美股 · Crypto', timing: '待即時資料源' },
-    { title: '非農就業 / 失業率', category: '就業', impact: '美元 · 美債 · BTC', timing: '待即時資料源' }
+    {
+      title: '美國 CPI / PCE',
+      category: '通膨',
+      impact: '美元 · BTC · 黃金 · 科技股',
+      timing: '待即時資料源',
+      bias: '待公布',
+      bullishWhen: '通膨低於預期、殖利率回落、美元轉弱 → 風險資產偏利多。',
+      bearishWhen: '通膨高於預期、殖利率上行、美元走強 → 風險資產偏利空。'
+    },
+    {
+      title: 'FOMC 利率決議',
+      category: '央行',
+      impact: '美元 · 美股 · 美債 · Crypto',
+      timing: '待即時資料源',
+      bias: '待公布',
+      bullishWhen: '政策或指引較市場預期寬鬆、殖利率回落 → 風險資產偏利多。',
+      bearishWhen: '政策或指引較市場預期鷹派、殖利率與美元走強 → 風險資產偏利空。'
+    },
+    {
+      title: '非農就業 / 失業率',
+      category: '就業',
+      impact: '美元 · 美債 · 美股 · BTC',
+      timing: '待即時資料源',
+      bias: '待公布',
+      bullishWhen: '就業降溫但未惡化、薪資壓力下降 → 降息預期升溫時偏利多。',
+      bearishWhen: '就業過熱推升利率預期，或就業急惡化引發衰退風險 → 可能偏利空。'
+    }
   ],
   strategies: [
     { symbol: 'BTC / USDT', strategy: '策略 A', direction: '偏多觀察', status: '等待確認', rr: '1.8R', confidence: '中' },
