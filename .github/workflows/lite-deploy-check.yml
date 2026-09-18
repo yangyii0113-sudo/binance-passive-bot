@@ -1,0 +1,24 @@
+name: FOXYYA Lite Deploy Check
+
+on:
+  push:
+    branches:
+      - foxyya-lite-railway-deploy
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax check
+        run: find src -name '*.js' -print0 | xargs -0 -n1 node --check
+      - name: Gate A and architecture tests
+        run: npm test
