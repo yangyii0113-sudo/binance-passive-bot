@@ -108,7 +108,7 @@ export async function runLiteBacktest({symbol='BTCUSDT',range='90D',strategy='A'
     status: STATUS.LIVE,
     updatedAt: new Date().toISOString(),
     local: true,
-    input:{symbol,range,strategy,timeframe:interval,samples:candles.length,costModel:'0.08% round-trip'},
+    input:{symbol,range,strategy,timeframe:interval,samples:candles.length,costModel:'單次來回成本 0.08%'},
     result:{
       trades:result.trades,
       winRatePct:result.winRatePct,
