@@ -1,0 +1,93 @@
+{
+  "schema": "foxyya-forward-shadow-scan/1",
+  "scan_source": "Binance USD-M public data only",
+  "scan_time_ms": 1789729730748,
+  "scan_time_taipei": "2026-09-18T19:08:50.748+08:00",
+  "canonical": false,
+  "paper_only": true,
+  "real_orders": false,
+  "canonical_runtime": {
+    "service": "foxyya-paper-engine",
+    "deployment_status": "FAILED",
+    "canonical_ledger_readable_in_this_run": false,
+    "fallback_nav_usdt": 1000.0,
+    "persistent_volume_present": true,
+    "volume_mount": "/data",
+    "volume_size_mb": 500
+  },
+  "regime_evidence": {
+    "router": "RISK_ON",
+    "major_24h_returns_pct": {
+      "BTCUSDT": 2.467,
+      "ETHUSDT": 3.242,
+      "SOLUSDT": 6.222
+    },
+    "major_average_pct": 3.977,
+    "breadth_review": "broadly positive across the eligible crypto-perpetual ticker snapshot"
+  },
+  "qualified_shadow_signals": [
+    {
+      "symbol": "HYPEUSDT",
+      "side": "LONG",
+      "family": "C",
+      "setup": "Starter-to-Add",
+      "decision_bar_close_ms": 1789729199999,
+      "decision_bar_close_taipei": "2026-09-18T18:59:59.999+08:00",
+      "decision_close": 90.637,
+      "trigger": 89.128,
+      "structural_stop": 87.878,
+      "htf_alignment": "Daily UP / 4H UP",
+      "rank_gate": "top-ranked C-L gate passed in current score/tie-break review",
+      "starter_risk_fraction": 0.002,
+      "starter_risk_budget_usdt_at_fallback_nav": 2.0,
+      "next_future_legal_1h_open_taipei": "2026-09-18T20:00:00+08:00",
+      "canonical_intent_persisted": false,
+      "paper_entry": false,
+      "reason_not_executed": "canonical Railway paper engine is FAILED; no canonical ledger write or pre-open revalidation path is available"
+    }
+  ],
+  "reviewed_high_rank_rejections": [
+    {
+      "symbol": "UNIUSDT",
+      "side": "LONG",
+      "reason": "NO_FRESH_CONTINUATION_BREAK / NO_VALID_STARTER_STRUCTURE on the latest fully closed 1H bar"
+    },
+    {
+      "symbol": "NEARUSDT",
+      "side": "LONG",
+      "reason": "NO_FRESH_CONTINUATION_BREAK / NO_VALID_STARTER_STRUCTURE on the latest fully closed 1H bar"
+    },
+    {
+      "symbol": "ZECUSDT",
+      "side": "LONG",
+      "reason": "NO_FRESH_CONTINUATION_BREAK on the latest fully closed 1H bar"
+    },
+    {
+      "symbol": "ARBUSDT",
+      "side": "LONG",
+      "reason": "NO_FRESH_CONTINUATION_BREAK on the latest fully closed 1H bar"
+    },
+    {
+      "symbol": "LSKUSDT",
+      "side": "SHORT",
+      "reason": "HTF_MISALIGNMENT; recent Daily structure is not a qualifying downtrend"
+    },
+    {
+      "symbol": "SYNUSDT",
+      "side": "SHORT",
+      "reason": "HTF_MISALIGNMENT after recent expansion/reversal"
+    },
+    {
+      "symbol": "USELESSUSDT",
+      "side": "SHORT",
+      "reason": "HTF_MISALIGNMENT after recent large upside expansion"
+    }
+  ],
+  "safety": {
+    "fully_closed_bars_only": true,
+    "no_backfill": true,
+    "strategy_parameters_changed": false,
+    "private_account_permissions_used": false,
+    "real_orders_attempted": false
+  }
+}

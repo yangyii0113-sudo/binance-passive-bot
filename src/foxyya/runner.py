@@ -8,14 +8,16 @@ from .portfolio import replay_books, PortfolioService
 class ForwardRunner:
     def __init__(self,ledger,*,initial_nav):
         self.ledger=ledger; self.initial_nav=float(initial_nav)
-        self.risk_book=RiskBook(self._current_nav())
+        current_nav=self._current_nav()
+        self.risk_book=RiskBook(current_nav)
         self._rebuild_reservations()
-        self.execution=ExecutionEngine(ledger,self.risk_book,nav=self._current_nav())
+        self.execution=ExecutionEngine(ledger,self.risk_book,nav=current_nav)
     def _current_nav(self):
-        try:
-            state=replay_books(self.ledger,self.initial_nav)
-            return min(state['books'][k]['equity'] for k in ('5x','8x','10x'))
-        except Exception:return self.initial_nav
+        # Canonical execution must fail closed if the ledger hash chain or
+        # deterministic portfolio replay cannot be verified.
+        self.ledger.verify()
+        state=replay_books(self.ledger,self.initial_nav)
+        return min(state['books'][k]['equity'] for k in ('5x','8x','10x'))
     def _rebuild_reservations(self):
         active={}
         for e in self.ledger.events():
@@ -44,10 +46,17 @@ class ForwardRunner:
                                                         atr_extension=extension,data_latest_ms=int(now_ms)))
         return out
     def execute_open(self,snapshot,*,open_ms,observed_ms):
-        out=[]; opens=snapshot.get('hour_open_prices',{})
-        for intent in self.pending():
-            if intent['scheduled_open_ms']!=open_ms: continue
-            if intent['symbol'] not in opens: continue
+        opens=snapshot.get('hour_open_prices',{})
+        due=[intent for intent in self.pending()
+             if intent['scheduled_open_ms']==open_ms and intent['symbol'] in opens]
+        if not due:return []
+        # Size every due batch from the latest verified ledger NAV instead of
+        # the NAV captured when the process originally started.
+        current_nav=self._current_nav()
+        self.execution.nav=current_nav
+        self.risk_book.nav=current_nav
+        out=[]
+        for intent in due:
             out.append(self.execution.fill_due_intent(intent['intent_id'],open_ms,float(opens[intent['symbol']]),observed_ms=int(observed_ms)))
         return out
 

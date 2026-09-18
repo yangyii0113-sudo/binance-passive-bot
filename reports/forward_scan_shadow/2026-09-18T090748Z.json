@@ -1,0 +1,125 @@
+{
+  "schema": "foxyya-forward-scan-shadow/1",
+  "mode": "PAPER_ONLY_NONCANONICAL_SHADOW",
+  "real_orders": false,
+  "decision_time_utc": "2026-09-18T09:07:48Z",
+  "decision_time_taipei": "2026-09-18T17:07:48+08:00",
+  "latest_closed_1h_end_ms": 1789721999999,
+  "latest_closed_1h_taipei": "2026-09-18T16:59:59.999+08:00",
+  "next_eligible_1h_open_utc": "2026-09-18T10:00:00Z",
+  "next_eligible_1h_open_taipei": "2026-09-18T18:00:00+08:00",
+  "nav_source": "FALLBACK_UNVERIFIED_CANONICAL_LEDGER_UNAVAILABLE",
+  "nav_usdt": 1000.0,
+  "production_runtime": {
+    "service": "foxyya-paper-engine",
+    "latest_deployment_status": "FAILED",
+    "latest_deployment_id": "83976bb5-408b-4a14-af80-e99780157b44",
+    "persistent_volume_present": true,
+    "volume_mount": "/data",
+    "canonical_ledger_available_for_this_shadow_run": false,
+    "canonical_persistence_this_run": false,
+    "canonical_execution_this_run": false,
+    "state_change_since_prior_shadow": false
+  },
+  "market_regime": {
+    "classification": "RISK_ON",
+    "major_returns_24h": {
+      "BTC": 0.02234,
+      "ETH": 0.02571,
+      "SOL": 0.05653
+    },
+    "major_average_24h": 0.03486,
+    "volatility": "NORMAL",
+    "note": "Binance USD-M public ticker snapshot remained broadly positive; universe filtering follows active USDT perpetual, >=60d history and >=5m USDT 24h quote-volume rules, excluding stablecoin bases and known non-crypto derivatives."
+  },
+  "provisional_setup_passes": [
+    {
+      "symbol": "UNIUSDT",
+      "side": "LONG",
+      "family": "B",
+      "action": "ENTRY",
+      "reason": "MOMENTUM_CONTINUATION_PRICE_VOLUME_STRUCTURE_GATES_PASS_ON_LATEST_FULLY_CLOSED_1H_BAR",
+      "daily_trend": "UP",
+      "daily_last_closed": 7.791,
+      "daily_ema20": 6.1581601651,
+      "daily_ema50": 5.2565184840,
+      "h4_trend": "UP",
+      "h4_last_closed": 8.768,
+      "h4_ema20": 7.1252143811,
+      "h4_ema50": 6.7583608899,
+      "decision_close_ms": 1789721999999,
+      "closed_1h_close": 8.874,
+      "trigger": 8.849,
+      "stop": 8.405,
+      "volume_last": 7115742,
+      "volume_prev3_avg": 4108486.3333333335,
+      "volume_ratio": 1.7319619497,
+      "atr_1h_14": 0.2977142857,
+      "atr_extension": 1.0580614203,
+      "feature_score_long_clamped": 100.0,
+      "risk_fraction": 0.0035,
+      "risk_budget_usdt_at_fallback_nav": 3.5,
+      "rank_gate": "B_REQUIRES_TOP5",
+      "rank_status": "TOP_SCORE_COHORT_SUPPORTED_BY_FRESH_PUBLIC_DATA; EXACT_COMPLETE_UNIVERSE_RANK_NOT_CANONICALLY_PROVEN_WHILE_RUNTIME_OFFLINE",
+      "execution_rule": "NEXT_FUTURE_LEGAL_1H_OPEN_ONLY",
+      "entry_price": null,
+      "position_size": null,
+      "canonical_entry_status": "NOT_CREATED"
+    },
+    {
+      "symbol": "HYPEUSDT",
+      "side": "LONG",
+      "family": "C",
+      "action": "ENTRY",
+      "reason": "STARTER_STRUCTURE_PRICE_GATE_PASS; B_VOLUME_CONFIRMATION_FAILED",
+      "decision_close_ms": 1789721999999,
+      "closed_1h_close": 88.667,
+      "c_trigger": 88.589,
+      "c_stop": 87.426,
+      "b_volume_last": 327047.35,
+      "b_volume_prev3_avg": 327169.2866666667,
+      "b_required_min_volume": 343527.751,
+      "risk_fraction": 0.002,
+      "risk_budget_usdt_at_fallback_nav": 2.0,
+      "rank_gate": "C_REQUIRES_TOP3",
+      "rank_status": "NOT_CANONICALLY_PROVEN_IN_SHADOW_RUN",
+      "canonical_entry_status": "NOT_CREATED"
+    }
+  ],
+  "reviewed_rejections": [
+    {
+      "symbol": "NEARUSDT",
+      "side": "LONG",
+      "reason": "NO_FRESH_B_OR_C_BREAK_ON_LATEST_FULLY_CLOSED_1H_BAR; CLOSE_3.453_BELOW_C_TRIGGER_3.518"
+    },
+    {
+      "symbol": "LSKUSDT",
+      "side": "SHORT",
+      "reason": "NO_FRESH_SHORT_CONTINUATION_OR_STARTER_BREAK; CLOSE_0.42481_ABOVE_RECENT_BREAKDOWN_TRIGGER"
+    }
+  ],
+  "result": {
+    "notify_worthy_event": false,
+    "new_canonical_qualifying_paper_entry": false,
+    "simulated_partial_or_full_exit": false,
+    "new_risk_limit_event": false,
+    "new_liquidation_or_critical_execution_anomaly": false,
+    "new_ledger_integrity_problem": false,
+    "material_strategy_health_change": false,
+    "note": "Fresh UNI B-L and HYPE C-L price-structure passes are shadow-only. No canonical intent/fill exists because production remains in the same previously known FAILED state; no new runtime-state change occurred."
+  },
+  "limitations": [
+    "Production canonical runtime is offline, therefore this is a public-data shadow review rather than a canonical scanner persistence cycle.",
+    "Exact complete-universe rank proof is not claimed because the canonical full-universe scanner could not run; no setup is promoted to canonical paper entry from this artifact alone.",
+    "No fill-dependent size, leverage margin, fees, slippage, funding, MFE/MAE or P&L is fabricated before a legal future-open fill exists."
+  ],
+  "safety": {
+    "fully_closed_bars_only": true,
+    "no_backfill": true,
+    "paper_only": true,
+    "strategy_parameters_changed": false,
+    "private_trading_permissions_used": false,
+    "real_orders_placed": false,
+    "canonical_history_rewritten": false
+  }
+}

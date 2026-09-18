@@ -1,0 +1,89 @@
+{
+  "schema": "foxyya-forward-scan-shadow/1",
+  "mode": "PAPER_ONLY_NONCANONICAL_SHADOW",
+  "real_orders": false,
+  "decision_time_utc": "2026-09-18T05:00:16Z",
+  "decision_time_taipei": "2026-09-18T13:00:16+08:00",
+  "latest_closed_1h_end_ms": 1789707599999,
+  "latest_closed_4h_end_ms": 1789703999999,
+  "latest_closed_1d_end_ms": 1789689599999,
+  "next_eligible_1h_open_utc": "2026-09-18T06:00:00Z",
+  "next_eligible_1h_open_taipei": "2026-09-18T14:00:00+08:00",
+  "nav_source": "FALLBACK_UNVERIFIED_CANONICAL_LEDGER_UNAVAILABLE",
+  "nav_usdt": 1000.0,
+  "production_runtime": {
+    "service": "foxyya-paper-engine",
+    "status": "FAILED",
+    "canonical_ledger_persisted_this_run": false,
+    "execution_possible_this_run": false
+  },
+  "market_regime": {
+    "classification": "RISK_ON",
+    "major_returns_24h": {
+      "BTC": 0.01295,
+      "ETH": 0.01454,
+      "SOL": 0.05780
+    },
+    "major_average_24h": 0.02843,
+    "volatility": "NORMAL",
+    "note": "Broad positive USD-M breadth observed in current public ticker snapshot; exact canonical breadth was not persisted because runtime is unavailable."
+  },
+  "qualified": [
+    {
+      "symbol": "NEARUSDT",
+      "side": "LONG",
+      "family": "C",
+      "action": "ENTRY",
+      "quality": "NORMAL",
+      "reason": "STARTER_STRUCTURE_CONFIRMED",
+      "rank_bound": "<=3",
+      "long_score": 100.0,
+      "daily_trend": "UP",
+      "h4_trend": "UP",
+      "decision_close_ms": 1789707599999,
+      "closed_1h_close": 3.540,
+      "trigger": 3.509,
+      "stop": 3.196,
+      "risk_fraction": 0.002,
+      "risk_budget_usdt_at_fallback_nav": 2.0,
+      "entry_price": null,
+      "position_size": null,
+      "entry_rule": "NEXT_FUTURE_LEGAL_1H_OPEN_ONLY",
+      "persistence_status": "BLOCKED_BY_FAILED_PRODUCTION_RUNTIME",
+      "execution_status": "NOT_FILLED_NO_BACKFILL"
+    }
+  ],
+  "reviewed_rejections": [
+    {
+      "symbol": "ZECUSDT",
+      "side": "LONG",
+      "reason": "NO_CURRENT_A_B_C_D_CLOSED_BAR_CONFIRMATION"
+    },
+    {
+      "symbol": "UNIUSDT",
+      "side": "LONG",
+      "reason": "NO_CURRENT_A_B_C_D_CLOSED_BAR_CONFIRMATION"
+    },
+    {
+      "symbol": "ARBUSDT",
+      "side": "LONG",
+      "reason": "NO_CURRENT_A_B_C_D_CLOSED_BAR_CONFIRMATION"
+    },
+    {
+      "symbol": "LSKUSDT",
+      "side": "SHORT",
+      "reason": "HTF_SHORT_MISALIGNMENT"
+    },
+    {
+      "symbol": "SOLVUSDT",
+      "side": "SHORT",
+      "reason": "HTF_SHORT_MISALIGNMENT_OR_NO_CONFIRMED_DOWNTREND"
+    }
+  ],
+  "safety": {
+    "no_backfill": true,
+    "paper_only": true,
+    "strategy_parameters_changed": false,
+    "canonical_history_rewritten": false
+  }
+}

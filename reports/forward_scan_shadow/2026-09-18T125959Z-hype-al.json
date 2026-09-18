@@ -1,0 +1,60 @@
+{
+  "schema": "foxyya-public-shadow-scan-evidence/1",
+  "decision_bar_close_utc": "2026-09-18T12:59:59.999Z",
+  "decision_bar_close_asia_taipei": "2026-09-18T20:59:59.999+08:00",
+  "source": "Binance USD-M public market data only",
+  "canonical": false,
+  "paper_only": true,
+  "real_orders": false,
+  "private_account_permissions_used": false,
+  "strategy_parameters_changed": false,
+  "fully_closed_bars_only": true,
+  "no_backfill": true,
+  "production_execution_status": "FAILED",
+  "canonical_ledger_available": false,
+  "nav_source": "fallback because canonical ledger NAV cannot be verified",
+  "nav_usdt": 1000.0,
+  "regime": "RISK_ON",
+  "major_24h_returns_pct": {
+    "BTCUSDT": 1.708,
+    "ETHUSDT": 1.667,
+    "SOLUSDT": 5.042
+  },
+  "new_qualified_signal": {
+    "symbol": "HYPEUSDT",
+    "direction": "LONG",
+    "setup_family": "A-L",
+    "setup_name": "Structure Pullback",
+    "daily_trend": "UP",
+    "four_hour_trend": "UP",
+    "prior_breakout_level": 88.694,
+    "impulse_close": 89.006,
+    "impulse_high": 89.128,
+    "pullback_1_close": 90.637,
+    "pullback_1_low": 88.985,
+    "pullback_2_close": 89.910,
+    "pullback_2_low": 89.524,
+    "confirmation_close": 91.257,
+    "confirmation_trigger": 91.161,
+    "structural_stop": 88.985,
+    "risk_fraction": 0.005,
+    "risk_budget_usdt": 5.0,
+    "next_future_legal_open_asia_taipei": "2026-09-18T22:00:00+08:00",
+    "paper_entry_created": false,
+    "entry_block_reason": "Canonical ledger/open risk is not verifiable while Production Execution is failed. Creating a canonical paper fill could violate the 1.5% maximum planned portfolio open-risk cap.",
+    "backfill_allowed": false
+  },
+  "symmetric_short_check": {
+    "symbol": "AVAUSDT",
+    "direction": "SHORT",
+    "status": "REJECTED",
+    "reason": "Higher-timeframe Daily trend is not DOWN despite strong negative 24h return; no approved A/B/C/D SHORT qualification."
+  },
+  "material_strategy_health": {
+    "status": "WARNING",
+    "issue": "Binance USD-M currently exposes equity/TradFi perpetual symbols in addition to crypto contracts, while FOXYYA universe.py only hard-excludes a limited non-crypto symbol set.",
+    "observed_examples": ["AAPLUSDT", "NVDAUSDT"],
+    "effect": "Rank-based B/C candidate rankings can be contaminated unless a crypto-only instrument-type filter is enforced. Non-crypto contracts were treated as ineligible for this decision.",
+    "hype_a_l_impact": "NONE; A-L has no rank gate and HYPEUSDT is a crypto perpetual."
+  }
+}

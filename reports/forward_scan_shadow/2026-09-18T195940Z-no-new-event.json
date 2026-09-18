@@ -1,0 +1,60 @@
+{
+  "mode": "PAPER_ONLY_SHADOW_EVIDENCE",
+  "strategy": "FOXYYA-EXEC-V2-20260908",
+  "captured_at": "2026-09-19T03:59:40+08:00",
+  "scan_type": "SAME_CLOSED_BAR_REFRESH",
+  "real_orders": false,
+  "private_trading_permissions": false,
+  "universe_policy": {
+    "quote_asset": "USDT",
+    "contract_type": "PERPETUAL",
+    "status": "TRADING",
+    "exclude_underlying_types": ["EQUITY", "COMMODITY"],
+    "exclude_stablecoin_bases": true,
+    "min_history_days": 60,
+    "min_24h_quote_volume_usdt": 5000000
+  },
+  "closed_bar_clock": {
+    "latest_fully_closed_1h_end": "2026-09-19T02:59:59+08:00",
+    "current_03h_bar_closed": false,
+    "next_eligible_1h_open": "2026-09-19T04:00:00+08:00",
+    "closed_bar_state_changed_since_prior_scan": false
+  },
+  "regime_refresh": {
+    "regime": "RISK_ON",
+    "btc_24h_change_pct": 5.868,
+    "eth_24h_change_pct": 7.442,
+    "sol_24h_change_pct": 12.780,
+    "source": "Binance USD-M public 24h ticker",
+    "note": "24h/intrabar refresh is informational only and does not create a closed-bar setup signal."
+  },
+  "pending_prior_signal": {
+    "symbol": "STRKUSDT",
+    "direction": "LONG",
+    "setup_family": "A-L",
+    "setup_name": "Structure Pullback",
+    "decision_close": 0.04121,
+    "structural_stop": 0.03646,
+    "future_legal_open": "2026-09-19T04:00:00+08:00",
+    "current_last_price_informational_only": 0.04097,
+    "current_24h_quote_volume_usdt": 97903264.665139,
+    "current_24h_change_pct": 44.975,
+    "status": "PENDING_FUTURE_LEGAL_OPEN_NOT_YET_DUE_AT_SCAN_TIME"
+  },
+  "dedupe_source": "reports/forward_scan_shadow/2026-09-18T190600Z-strk-al-qualified-engine-blocked.json",
+  "event_delta": {
+    "new_qualified_signal": false,
+    "new_paper_entry": false,
+    "simulated_partial_or_full_exit": false,
+    "new_risk_limit_event": false,
+    "new_liquidation_or_critical_execution_anomaly": false,
+    "new_ledger_integrity_problem": false,
+    "material_strategy_health_change": false
+  },
+  "decision": {
+    "notify_user": false,
+    "reason": "NO_NEW_USER_NOTIFY_EVENT; no additional fully closed 1H bar exists since the prior scan, and the prior STRK A-L legal execution open has not yet occurred.",
+    "no_backfill": true,
+    "strategy_parameters_changed": false
+  }
+}

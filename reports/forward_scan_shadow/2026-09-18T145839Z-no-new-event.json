@@ -1,0 +1,76 @@
+{
+  "schema": "foxyya-forward-shadow-scan/1",
+  "scan_time_utc": "2026-09-18T14:58:39Z",
+  "scan_time_taipei": "2026-09-18T22:58:39+08:00",
+  "mode": "SHADOW_ONLY",
+  "real_orders": false,
+  "canonical_engine_status": "FAILED",
+  "latest_verified_nav_available": false,
+  "fallback_nav_usdt": 1000.0,
+  "decision_cutoff_taipei": "2026-09-18T21:59:59+08:00",
+  "regime": "RISK_ON",
+  "major_24h_returns_pct": {
+    "BTCUSDT": 5.887,
+    "ETHUSDT": 5.130,
+    "SOLUSDT": 9.665
+  },
+  "universe_policy": {
+    "quote": "USDT",
+    "contract": "PERPETUAL",
+    "min_history_days": 60,
+    "min_quote_volume_24h_usdt": 5000000,
+    "exclude_stablecoin_bases": true,
+    "exclude_tradfi_and_noncrypto": true,
+    "exclude_stale_or_delisted": true
+  },
+  "screened_long_leaders": [
+    "BTCUSDT", "ETHUSDT", "SOLUSDT", "HYPEUSDT", "NEARUSDT", "UNIUSDT", "ARBUSDT", "ONEUSDT", "SUIUSDT", "APTUSDT", "TAOUSDT", "AAVEUSDT", "INJUSDT", "ENAUSDT", "WLDUSDT", "STRKUSDT", "AKEUSDT", "FETUSDT", "OPUSDT", "MYXUSDT", "BRUSDT"
+  ],
+  "screened_short_laggards": [
+    "AVAUSDT", "GENIUSUSDT", "SYNUSDT", "PROMUSDT", "CROSSUSDT", "SOLVUSDT", "BTWUSDT", "AINUSDT"
+  ],
+  "notable_rejections": [
+    {
+      "symbol": "HYPEUSDT",
+      "side": "LONG",
+      "family": "B",
+      "reason": "ATR_EXTENSION_NOT_CONTROLLED",
+      "latest_closed_1h_close": 92.553,
+      "atr14_1h": 1.2260714286,
+      "atr_extension": 1.8628604719
+    },
+    {
+      "symbol": "SOLUSDT",
+      "side": "LONG",
+      "family": "B",
+      "reason": "ATR_EXTENSION_NOT_CONTROLLED",
+      "latest_closed_1h_close": 110.74,
+      "atr14_1h": 1.3785714286,
+      "atr_extension": 1.9295336788
+    },
+    {
+      "symbol": "CROSSUSDT",
+      "side": "SHORT",
+      "family": "A",
+      "reason": "HTF_MISALIGNMENT",
+      "latest_closed_1h_close": 0.14477,
+      "h4_trend": "UP",
+      "h4_last_closed": 0.15483,
+      "h4_ema20": 0.1465102188,
+      "h4_ema50": 0.1313616906
+    },
+    {
+      "symbol": "STRKUSDT",
+      "side": "LONG",
+      "family": "D",
+      "reason": "BREAK_VOLUME_WEAK"
+    }
+  ],
+  "new_notification_events": [],
+  "notes": [
+    "No new qualifying canonical paper entry, partial/full exit, risk-limit event, liquidation/critical execution anomaly, ledger-integrity change, or material strategy-health change was established in this run.",
+    "Current partial 1H candles were excluded; decisions used fully closed bars only.",
+    "The canonical Railway paper engine remains failed, so this evidence is shadow-only and no missed fill is backfilled.",
+    "Coverage used current Binance USD-M public ticker data plus closed-bar validation of the highest-priority liquid leaders and laggards; canonical full-universe persistence remains unavailable while the engine is failed."
+  ]
+}
