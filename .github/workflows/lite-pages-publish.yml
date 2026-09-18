@@ -1,0 +1,50 @@
+name: FOXYYA Lite Pages Publish
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/lite-pages-publish.yml
+  workflow_run:
+    workflows:
+      - FOXYYA Lite Deploy Check
+    types:
+      - completed
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: foxyya-lite-pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    if: github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'foxyya-lite-railway-deploy')
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout FOXYYA Lite
+        uses: actions/checkout@v4
+        with:
+          ref: foxyya-lite-railway-deploy
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+      - name: Prepare static site
+        run: |
+          mkdir -p _site
+          cp index.html styles.css package.json _site/
+          cp -R src _site/src
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+      - name: Deploy FOXYYA Lite
+        id: deployment
+        uses: actions/deploy-pages@v4
