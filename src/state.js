@@ -26,6 +26,8 @@ export const appState = {
     strategyFilter: 'all',
     calendarOpen: false,
     focusAnalysisIndex: null,
+    selectedStrongSymbol: null,
+    selectedSymbol: null,
     message: ''
   }
 };
