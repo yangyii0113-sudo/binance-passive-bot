@@ -1,0 +1,85 @@
+{
+  "schema": "foxyya-forward-scan-shadow/1",
+  "mode": "PAPER_ONLY_NONCANONICAL_SHADOW",
+  "real_orders": false,
+  "decision_bar_close_utc": "2026-09-18T06:00:00Z",
+  "decision_bar_close_taipei": "2026-09-18T14:00:00+08:00",
+  "latest_closed_1h_end_ms": 1789711199999,
+  "next_eligible_1h_open_utc": "2026-09-18T07:00:00Z",
+  "next_eligible_1h_open_taipei": "2026-09-18T15:00:00+08:00",
+  "nav_source": "FALLBACK_UNVERIFIED_CANONICAL_LEDGER_UNAVAILABLE",
+  "nav_usdt": 1000.0,
+  "production_runtime": {
+    "service": "foxyya-paper-engine",
+    "canonical_ledger_available_for_this_shadow_run": false,
+    "canonical_persistence_this_run": false
+  },
+  "market_regime": {
+    "classification": "RISK_ON",
+    "major_returns_24h": {
+      "BTC": 0.01627,
+      "ETH": 0.02017,
+      "SOL": 0.06158
+    },
+    "major_average_24h": 0.03267,
+    "volatility": "NORMAL",
+    "note": "Broad positive crypto USD-M breadth observed in the fresh public ticker snapshot; non-crypto/TradFi and stablecoin contracts excluded from review."
+  },
+  "qualified": [],
+  "reviewed_long_rejections": [
+    {"symbol":"NEARUSDT","reason":"NO_FRESH_A_B_C_D_CONFIRMATION_ON_14:00_TPE_CLOSED_BAR"},
+    {"symbol":"ZECUSDT","reason":"NO_FRESH_A_B_C_D_CONFIRMATION_ON_14:00_TPE_CLOSED_BAR"},
+    {"symbol":"UNIUSDT","reason":"NO_FRESH_A_B_C_D_CONFIRMATION_ON_14:00_TPE_CLOSED_BAR"},
+    {"symbol":"ARBUSDT","reason":"NO_FRESH_A_B_C_D_CONFIRMATION_ON_14:00_TPE_CLOSED_BAR"},
+    {"symbol":"HYPEUSDT","reason":"B_VOLUME/HIGHER_LOW_GATE_FAILED; C_PRICE_STRUCTURE_PRESENT_BUT_NOT_TOP3_VERSUS_STRONGER_LONG_RANKS"},
+    {"symbol":"ONEUSDT","reason":"DAILY_TREND_FLAT_BY_EMA20_EMA50_ALIGNMENT_RULE"},
+    {"symbol":"APTUSDT","reason":"NO_FRESH_CONTINUATION_BREAK"},
+    {"symbol":"COTIUSDT","reason":"NO_FRESH_CONTINUATION_BREAK"},
+    {"symbol":"DRIFTUSDT","reason":"NO_FRESH_CONTINUATION_BREAK"},
+    {"symbol":"FETUSDT","reason":"NO_FRESH_CONTINUATION_BREAK"},
+    {"symbol":"OPUSDT","reason":"NO_FRESH_CONTINUATION_BREAK"},
+    {"symbol":"SUIUSDT","reason":"NO_FRESH_CONTINUATION_BREAK"},
+    {"symbol":"ENAUSDT","reason":"NO_FRESH_CONTINUATION_BREAK"},
+    {"symbol":"PUMPUSDT","reason":"NO_FRESH_CONTINUATION_BREAK"},
+    {"symbol":"AAVEUSDT","reason":"NO_FRESH_CONTINUATION_BREAK"},
+    {"symbol":"BTCUSDT","reason":"NO_FRESH_CONTINUATION_BREAK"},
+    {"symbol":"ETHUSDT","reason":"NO_FRESH_CONTINUATION_BREAK"},
+    {"symbol":"SOLUSDT","reason":"NO_FRESH_CONTINUATION_BREAK"},
+    {"symbol":"DOTUSDT","reason":"NO_FRESH_CONTINUATION_BREAK"},
+    {"symbol":"WLDUSDT","reason":"NO_FRESH_CONTINUATION_BREAK"}
+  ],
+  "reviewed_short_rejections": [
+    {"symbol":"LSKUSDT","reason":"NO_FRESH_SHORT_BREAK; PRIOR_HTF_SHORT_MISALIGNMENT_REMAINS_MATERIAL"},
+    {"symbol":"SOLVUSDT","reason":"NO_FRESH_SHORT_BREAK"},
+    {"symbol":"SKYAIUSDT","reason":"NO_FRESH_SHORT_BREAK"},
+    {"symbol":"MAGMAUSDT","reason":"RECENT_1H_PRICE_ACTION_REBOUNDING_NOT_BREAKING_DOWN"},
+    {"symbol":"AINUSDT","reason":"NO_FRESH_SHORT_BREAK"},
+    {"symbol":"IOSTUSDT","reason":"C_SHORT_PRICE_STRUCTURE_ONLY; DAILY_TREND_NOT_CONFIRMED_DOWN_AND_NOT_TOP3_SHORT"},
+    {"symbol":"BTWUSDT","reason":"B/C_SHORT_PRICE_STRUCTURE_PRESENT_BUT_DAILY_TREND_NOT_DOWN"},
+    {"symbol":"VTHOUSDT","reason":"C_SHORT_PRICE_STRUCTURE_ONLY; NOT_TOP3_SHORT/HTF_NOT_CONFIRMED_DOWN"},
+    {"symbol":"POWERUSDT","reason":"NO_FRESH_SHORT_BREAK"},
+    {"symbol":"FFUSDT","reason":"C_SHORT_PRICE_STRUCTURE_ONLY; NOT_TOP3_SHORT"}
+  ],
+  "result": {
+    "notify_worthy_event": false,
+    "new_qualifying_entry": false,
+    "simulated_exit": false,
+    "new_risk_limit_event": false,
+    "new_liquidation_or_critical_execution_anomaly": false,
+    "new_ledger_integrity_problem": false,
+    "material_strategy_health_change": false
+  },
+  "limitations": [
+    "Production runtime/canonical ledger remains unavailable, so this is a non-canonical public-data shadow review rather than a canonical scanner persistence cycle.",
+    "Exact complete-universe ranking/persistence is not claimed by this shadow artifact; the highest-liquidity/highest-relative-move candidates and symmetric downside leaders were explicitly reviewed against closed-bar setup gates."
+  ],
+  "safety": {
+    "fully_closed_bars_only": true,
+    "no_backfill": true,
+    "paper_only": true,
+    "strategy_parameters_changed": false,
+    "private_trading_permissions_used": false,
+    "real_orders_placed": false,
+    "canonical_history_rewritten": false
+  }
+}
