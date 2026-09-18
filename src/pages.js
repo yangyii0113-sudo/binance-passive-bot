@@ -56,28 +56,38 @@ function strategyCards(state) {
   const items = filter === 'all' ? all : all.filter(item => item.status === filter);
   if (!items.length) return '<div class="empty-state"><strong>此分類目前沒有策略</strong><span>等待更多樣本或正式 Strategy Runtime。</span></div>';
   return `<div class="cards-grid">${items.map((strategy) => `
-    <article class="detail-card" data-search="${strategy.symbol} ${strategy.strategy}">
-      <div class="row-between"><strong>${strategy.symbol}</strong>${badge(strategy.statusLabel || strategy.status)}</div>
-      <h3>${strategy.strategy} · ${strategy.direction}</h3>
-      <div class="mini-grid">
-        <span>R:R<strong>${valueOrDash(strategy.rr)}</strong></span>
-        <span>信心<strong>${valueOrDash(strategy.confidence)}</strong></span>
-        <span>Entry<strong>${valueOrDash(strategy.entry)}</strong></span>
-        <span>Stop<strong>${valueOrDash(strategy.stop)}</strong></span>
-        <span>TP1<strong>${valueOrDash(strategy.tp1)}</strong></span>
-        <span>TP2<strong>${valueOrDash(strategy.tp2)}</strong></span>
+    <article class="detail-card strategy-detail-card" data-search="${strategy.symbol} ${strategy.strategy}">
+      <div class="strategy-card-head">
+        <div class="strategy-card-meta">
+          <strong class="strategy-symbol">${strategy.symbol}</strong>
+          <span class="strategy-name">${strategy.strategy}</span>
+        </div>
+        ${badge(strategy.statusLabel || strategy.status)}
       </div>
-      <p>${strategy.note || '策略快照僅供觀察，不提供真實下單。'}</p>
+      <div class="strategy-direction">${strategy.direction}</div>
+      <div class="mini-grid strategy-metrics">
+        <span><em>R:R</em><strong>${valueOrDash(strategy.rr)}</strong></span>
+        <span><em>信心</em><strong>${valueOrDash(strategy.confidence)}</strong></span>
+        <span><em>Entry</em><strong>${valueOrDash(strategy.entry)}</strong></span>
+        <span><em>Stop</em><strong>${valueOrDash(strategy.stop)}</strong></span>
+        <span><em>TP1</em><strong>${valueOrDash(strategy.tp1)}</strong></span>
+        <span><em>TP2</em><strong>${valueOrDash(strategy.tp2)}</strong></span>
+      </div>
+      <p class="strategy-note">${strategy.note || '策略快照僅供觀察，不提供真實下單。'}</p>
     </article>`).join('')}</div>`;
 }
 function strategyOpportunity(state) {
   const strategy = derivedStrategies(state)[0];
   if (!strategy) return '<div class="empty-state"><strong>策略機會等待資料</strong></div>';
-  return `<div class="strategy-card">
+  return `<div class="strategy-card strategy-opportunity">
     <div class="coin-icon large">${strategy.symbol.startsWith('BTC') ? '₿' : '◇'}</div>
     <div class="strategy-main">
-      <strong>${strategy.symbol}</strong><span>${strategy.strategy}</span><b>${strategy.direction}</b>${badge(strategy.statusLabel || strategy.status)}
-      <p>${strategy.note}</p>
+      <div class="strategy-opportunity-top">
+        <div><strong>${strategy.symbol}</strong><span>${strategy.strategy}</span></div>
+        ${badge(strategy.statusLabel || strategy.status)}
+      </div>
+      <b class="strategy-direction">${strategy.direction}</b>
+      <p class="strategy-note">${strategy.note}</p>
       <button class="text-btn" data-go-strategies type="button">查看條件與圖表 ›</button>
     </div>
   </div>`;
