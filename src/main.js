@@ -131,6 +131,30 @@ function initEvents() {
       render();
       return;
     }
+    const strongCoin = event.target.closest?.('[data-strong-symbol]');
+    if (strongCoin) {
+      const symbol = strongCoin.dataset.strongSymbol;
+      appState.ui.selectedStrongSymbol = appState.ui.selectedStrongSymbol === symbol ? null : symbol;
+      render();
+      if (appState.ui.selectedStrongSymbol) {
+        setTimeout(() => document.getElementById('strong-coin-detail')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 0);
+      }
+      return;
+    }
+    const usePaper = event.target.closest?.('[data-use-paper]');
+    if (usePaper) {
+      appState.ui.selectedSymbol = usePaper.dataset.usePaper;
+      appState.ui.message = `已帶入 ${appState.ui.selectedSymbol}，請設定方向、槓桿與模擬保證金。`;
+      location.hash = '#/orders';
+      return;
+    }
+    const useBacktest = event.target.closest?.('[data-use-backtest]');
+    if (useBacktest) {
+      appState.ui.selectedSymbol = useBacktest.dataset.useBacktest;
+      appState.ui.message = `已帶入 ${appState.ui.selectedSymbol}，可直接設定期間與策略開始回測。`;
+      location.hash = '#/backtest';
+      return;
+    }
     const focus = event.target.closest?.('[data-focus-analysis]');
     if (focus) {
       const index = Number(focus.dataset.focusAnalysis);
@@ -166,7 +190,7 @@ function initEvents() {
     if (close) {
       try {
         closeLocalPaperPosition(close.dataset.paperClose, appState.market.rows);
-        appState.ui.message = '模擬持倉已平倉，Results 已更新';
+        appState.ui.message = '模擬持倉已平倉，交易結果已更新';
         await syncPaperAndResults();
       } catch (error) {
         appState.ui.message = error?.message || '平倉失敗';
