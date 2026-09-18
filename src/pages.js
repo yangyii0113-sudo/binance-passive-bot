@@ -7,31 +7,56 @@ function marketStatusLabel(market) {
     : '尚未更新';
   return `${market.status} · ${time}`;
 }
-
 function money(value) {
   const n = Number(value);
   return Number.isFinite(n) ? `$${n.toLocaleString('en-US', { maximumFractionDigits: 2 })}` : '—';
 }
-
 function pct(value) {
   const n = Number(value);
   return Number.isFinite(n) ? `${n.toFixed(2)}%` : '—';
 }
-
 function valueOrDash(value) {
   return value === null || value === undefined || value === '' ? '—' : String(value);
 }
-
-function strategyCards(strategySnapshot) {
-  if (!strategySnapshot.items.length) {
-    const message = strategySnapshot.status === 'ERROR'
-      ? 'Strategy Snapshot 目前無法讀取；其他模組仍可正常使用。'
-      : 'Strategy Adapter 已就緒，等待策略引擎提供 Snapshot。';
-    return `<div class="empty-state"><strong>目前沒有策略快照</strong><span>${message}</span></div>`;
-  }
-
-  return `<div class="cards-grid">${strategySnapshot.items.map((strategy) => `
-    <article class="detail-card">
+function numberPrice(value){
+  const n = Number(String(value || '').replace(/,/g,''));
+  return Number.isFinite(n) ? n : null;
+}
+function messageBar(state){
+  return state.ui?.message ? `<div class="flash-message">${state.ui.message}</div>` : '';
+}
+function derivedStrategies(state){
+  if(state.strategy?.items?.length) return state.strategy.items;
+  return (state.market?.rows || []).map((row,index)=>{
+    const price = numberPrice(row[2]);
+    const change = Number(row[3]);
+    const symbol = String(row[1]).replace(/\s|\//g,'');
+    const side = change < -1.5 ? 'SHORT' : 'LONG';
+    const active = Number.isFinite(change) && Math.abs(change) >= 2;
+    const stop = price ? price * (side === 'LONG' ? 0.988 : 1.012) : null;
+    return {
+      symbol,
+      strategy:`Lite ${index === 0 ? 'A' : 'B'} · 24h heuristic`,
+      direction: side === 'LONG' ? '偏多觀察' : '偏空觀察',
+      status: active ? 'PENDING' : 'WATCH',
+      statusLabel: active ? '等待進場' : '觀察中',
+      entry: price,
+      stop,
+      tp1: price ? price * (side === 'LONG' ? 1.02 : 0.98) : null,
+      tp2: price ? price * (side === 'LONG' ? 1.035 : 0.965) : null,
+      rr: 1.67,
+      confidence: Number.isFinite(change) ? (Math.abs(change) >= 2 ? '中' : '低') : '—',
+      note:'Lite 臨時觀察訊號：僅依 24h 動能產生，非正式策略引擎。'
+    };
+  });
+}
+function strategyCards(state) {
+  const all = derivedStrategies(state);
+  const filter = state.ui?.strategyFilter || 'all';
+  const items = filter === 'all' ? all : all.filter(item => item.status === filter);
+  if (!items.length) return '<div class="empty-state"><strong>此分類目前沒有策略</strong><span>等待更多樣本或正式 Strategy Runtime。</span></div>';
+  return `<div class="cards-grid">${items.map((strategy) => `
+    <article class="detail-card" data-search="${strategy.symbol} ${strategy.strategy}">
       <div class="row-between"><strong>${strategy.symbol}</strong>${badge(strategy.statusLabel || strategy.status)}</div>
       <h3>${strategy.strategy} · ${strategy.direction}</h3>
       <div class="mini-grid">
@@ -45,111 +70,140 @@ function strategyCards(strategySnapshot) {
       <p>${strategy.note || '策略快照僅供觀察，不提供真實下單。'}</p>
     </article>`).join('')}</div>`;
 }
-
-function strategyOpportunity(strategySnapshot) {
-  const strategy = strategySnapshot.items[0];
-  if (!strategy) {
-    return `<div class="empty-state"><strong>策略機會等待資料</strong><span>Strategy Adapter 已隔離，Market Data 不受影響。</span></div>`;
-  }
-
+function strategyOpportunity(state) {
+  const strategy = derivedStrategies(state)[0];
+  if (!strategy) return '<div class="empty-state"><strong>策略機會等待資料</strong></div>';
   return `<div class="strategy-card">
     <div class="coin-icon large">${strategy.symbol.startsWith('BTC') ? '₿' : '◇'}</div>
     <div class="strategy-main">
       <strong>${strategy.symbol}</strong><span>${strategy.strategy}</span><b>${strategy.direction}</b>${badge(strategy.statusLabel || strategy.status)}
-      <p>${strategy.note || '等待策略條件進一步確認。'}</p>
+      <p>${strategy.note}</p>
+      <button class="text-btn" data-go-strategies type="button">查看條件與圖表 ›</button>
     </div>
   </div>`;
+}
+function sortedRows(state){
+  const rows = [...(state.market?.rows || [])];
+  const sort = state.ui?.marketSort || 'popular';
+  if(sort === 'gain') rows.sort((a,b)=>(Number(b[3])||-999)-(Number(a[3])||-999));
+  if(sort === 'loss') rows.sort((a,b)=>(Number(a[3])||999)-(Number(b[3])||999));
+  return rows;
+}
+function tab(label,key,active,attr){
+  return `<button type="button" class="tab-btn ${active===key?'active':''}" ${attr}="${key}">${label}</button>`;
 }
 
 export function homePage(state) {
   const market = state.market;
-  const coins = market.rows.map(([icon, symbol, price, change]) => {
+  const coins = sortedRows(state).map(([icon, symbol, price, change]) => {
     const hasChange = Number.isFinite(change);
     const changeText = hasChange ? `${change >= 0 ? '+' : ''}${change.toFixed(2)}%` : '—';
     const changeClass = !hasChange ? '' : change >= 0 ? 'up' : 'down';
-    return `<div class="coin-row"><span class="coin-icon">${icon}</span><strong>${symbol}</strong><span>${price}</span><b class="${changeClass}">${changeText}</b></div>`;
+    return `<div class="coin-row" data-search="${symbol}"><span class="coin-icon">${icon}</span><strong>${symbol}</strong><span>${price}</span><b class="${changeClass}">${changeText}</b></div>`;
   }).join('');
-
   const news = mock.news.map(([n, title, text, tag]) => `
-    <article class="news-row">
-      <div class="news-num">${n}</div>
-      <div><h3>${title}</h3><p>${text}</p></div>
-      ${badge(tag)}
+    <article class="news-row" data-search="${title} ${text} ${tag}">
+      <div class="news-num">${n}</div><div><h3>${title}</h3><p>${text}</p></div>${badge(tag)}
     </article>`).join('');
-
-  return `<div class="page-stack">
+  const sort = state.ui?.marketSort || 'popular';
+  return `<div class="page-stack">${messageBar(state)}
     ${section('市場脈動', `
       <div class="market-meta"><span>${market.source}</span>${badge(marketStatusLabel(market), market.status)}</div>
-      <div class="market-summary">
-        <div><span>市場方向</span><strong>${market.direction}</strong></div>
-        <div><span>風險情緒</span><strong class="muted-strong">${market.sentiment}</strong></div>
+      <div class="market-summary"><div><span>市場方向</span><strong>${market.direction}</strong></div><div><span>風險情緒</span><strong class="muted-strong">${market.sentiment}</strong></div></div>
+      <div class="tabs interactive">
+        ${tab('熱門','popular',sort,'data-market-sort')}
+        ${tab('漲幅','gain',sort,'data-market-sort')}
+        ${tab('跌幅','loss',sort,'data-market-sort')}
       </div>
-      <div class="tabs"><span>收藏</span><span class="active">熱門</span><span>漲幅</span><span>跌幅</span><span>成交額</span></div>
-      <div class="table-head"><span>幣種</span><span>最新價格</span><span>24h</span></div>
-      <div class="coin-list">${coins}</div>`, badge(market.status, market.status))}
-
-    ${section('國際熱點', `
-      <div class="tabs compact"><span class="active">新聞</span><span>經濟日曆</span></div>
-      <div class="news-list">${news}</div>
-      <div class="calendar-row"><span>▣</span><div><strong>重要事件日曆</strong><small>關注關鍵經濟數據與國際事件，掌握市場變化。</small></div><span>前值 —　預期 —　公布值 —　›</span></div>`)}
-
-    ${section('策略機會', strategyOpportunity(state.strategy), '<span class="action-link">查看條件與圖表 ›</span>')}
+      <div class="table-head"><span>幣種</span><span>最新價格</span><span>24h</span></div><div class="coin-list">${coins}</div>`, badge(market.status, market.status))}
+    ${section('國際熱點', `<div class="news-list">${news}</div><div class="calendar-row"><span>▣</span><div><strong>重要事件日曆</strong><small>此區目前為靜態資訊，正式 News/Calendar Feed 後續接入。</small></div></div>`)}
+    ${section('策略機會', strategyOpportunity(state))}
   </div>`;
 }
 
 export function strategiesPage(state) {
-  return `<div class="page-stack">${section('交易策略', `
-    <div class="tabs"><span class="active">觀察中</span><span>等待進場</span><span>已失效</span></div>
-    ${strategyCards(state.strategy)}`, badge(state.strategy.status))}</div>`;
+  const filter = state.ui?.strategyFilter || 'all';
+  return `<div class="page-stack">${messageBar(state)}${section('交易策略', `
+    <div class="tabs interactive">
+      ${tab('全部','all',filter,'data-strategy-filter')}
+      ${tab('觀察中','WATCH',filter,'data-strategy-filter')}
+      ${tab('等待進場','PENDING',filter,'data-strategy-filter')}
+    </div>
+    ${strategyCards(state)}`, badge(state.strategy?.items?.length ? state.strategy.status : 'LITE'))}</div>`;
+}
+
+function paperPositions(paper){
+  if(!paper.positions?.length) return '<div class="empty-state"><strong>目前沒有模擬持倉</strong><span>建立 PAPER 倉位後會顯示於此。</span></div>';
+  return `<div class="position-list">${paper.positions.map(p=>`
+    <article class="position-row">
+      <div><strong>${p.symbol}</strong><span>${p.side} · ${p.leverage || '-'}x</span></div>
+      <div><small>Entry</small><b>${valueOrDash(p.entry ?? p.entry_fill)}</b></div>
+      <div><small>Mark</small><b>${valueOrDash(p.mark)}</b></div>
+      <div><small>PnL</small><b class="${Number(p.unrealizedPnl)>=0?'up':'down'}">${money(p.unrealizedPnl)}</b></div>
+      ${p.id ? `<button class="danger-btn" data-paper-close="${p.id}" type="button">平倉</button>` : ''}
+    </article>`).join('')}</div>`;
 }
 
 export function ordersPage(state) {
   const paper = state.paper;
   const summary = paper.summary;
-  return `<div class="page-stack">${section('持倉訂單', `
+  return `<div class="page-stack">${messageBar(state)}${section('持倉訂單', `
     <div class="metric-grid">
-      ${metric('Paper NAV', money(summary.nav))}
-      ${metric('Cash', money(summary.cash))}
-      ${metric('Open Positions', summary.openPositions)}
-      ${metric('Pending Orders', summary.pendingOrders)}
-      ${metric('Unrealized PnL', money(summary.unrealizedPnl))}
-      ${metric('Portfolio Risk', pct(summary.portfolioRiskPct))}
+      ${metric('Paper NAV', money(summary.nav))}${metric('Cash', money(summary.cash))}
+      ${metric('Open Positions', summary.openPositions)}${metric('Unrealized PnL', money(summary.unrealizedPnl))}
+      ${metric('Margin / NAV', pct(summary.portfolioRiskPct))}${metric('Mode', paper.local ? 'LOCAL' : 'RUNTIME')}
     </div>
-    <div class="empty-state"><strong>${paper.positions.length ? '持倉資料已載入' : '目前沒有模擬持倉'}</strong><span>Paper Snapshot 與交易執行保持唯讀隔離。</span></div>`, `${badge('PAPER ONLY')} ${badge('REAL ORDER LOCKED')}`)}</div>`;
+    <form id="paper-order-form" class="form-grid compact-form">
+      <label>幣種<select name="symbol"><option>BTCUSDT</option><option>ETHUSDT</option><option>SOLUSDT</option></select></label>
+      <label>方向<select name="side"><option value="LONG">LONG</option><option value="SHORT">SHORT</option></select></label>
+      <label>槓桿<select name="leverage"><option value="5">5x</option><option value="8">8x</option><option value="10">10x</option></select></label>
+      <label>模擬保證金 USDT<input name="margin" type="number" min="1" step="1" value="100" /></label>
+    </form>
+    <button class="primary-btn" data-paper-open type="button">建立 PAPER 倉位</button>
+    <p class="guard-note">Lite Risk Guard：總模擬保證金 ≤ NAV 1.5%；不會送出任何真實訂單。</p>
+    ${paperPositions(paper)}`, `${badge('PAPER ONLY')} ${badge('REAL ORDER LOCKED')}`)}</div>`;
 }
 
+function tradeRows(results){
+  if(!results.recentTrades?.length) return '<div class="empty-state"><strong>尚無已平倉交易</strong><span>Paper 平倉後會自動進入 Results。</span></div>';
+  return `<div class="trade-list">${results.recentTrades.map(t=>`
+    <div class="trade-row"><strong>${t.symbol || '-'}</strong><span>${t.side || '-'}</span><span>${money(t.netPnl ?? t.net_pnl_usdt)}</span><span>${t.closedAt ? new Date(t.closedAt).toLocaleString('zh-TW') : ''}</span></div>`).join('')}</div>`;
+}
 export function resultsPage(state) {
   const results = state.results;
-  const summary = results.summary;
-  return `<div class="page-stack">${section('交易結果', `
+  const s = results.summary;
+  return `<div class="page-stack">${messageBar(state)}${section('交易結果', `
     <div class="metric-grid">
-      ${metric('Trades', summary.trades)}
-      ${metric('Win Rate', pct(summary.winRatePct))}
-      ${metric('Expectancy', summary.expectancyR == null ? '—' : `${summary.expectancyR}R`)}
-      ${metric('Profit Factor', valueOrDash(summary.profitFactor))}
-      ${metric('Net PnL', money(summary.netPnl))}
-      ${metric('Max Drawdown', pct(summary.maxDrawdownPct))}
+      ${metric('Trades', s.trades)}${metric('Win Rate', pct(s.winRatePct))}
+      ${metric('Expectancy', s.expectancyR == null ? '—' : `${Number(s.expectancyR).toFixed(2)}R`)}
+      ${metric('Profit Factor', s.profitFactor == null ? '—' : Number(s.profitFactor).toFixed(2))}
+      ${metric('Net PnL', money(s.netPnl))}${metric('Max Drawdown', pct(s.maxDrawdownPct))}
     </div>
-    <div class="chart-placeholder"><span>NAV Curve</span><strong>${results.navCurve.length ? 'Forward Paper 資料已載入' : '等待 Forward Paper 資料'}</strong></div>`, badge('FORWARD PAPER'))}</div>`;
+    ${tradeRows(results)}`, badge(results.local ? 'LOCAL FORWARD PAPER' : 'FORWARD PAPER'))}</div>`;
 }
 
 export function backtestPage(state) {
-  const backtest = state.backtest;
-  return `<div class="page-stack">${section('策略測試', `
-    <div class="form-grid">
-      <label>幣種<select><option>BTCUSDT</option><option>ETHUSDT</option><option>SOLUSDT</option></select></label>
-      <label>時間區間<select><option>1Y</option><option>180D</option><option>90D</option></select></label>
-      <label>策略<select><option>策略 A</option><option>策略 B</option></select></label>
-      <label>Timeframe<select><option>1H</option><option>4H</option></select></label>
+  const b = state.backtest;
+  const input = b.input || {};
+  const result = b.result;
+  const resultHtml = result ? `
+    <div class="metric-grid">
+      ${metric('Trades',result.trades)}${metric('Win Rate',pct(result.winRatePct))}
+      ${metric('Profit Factor',result.profitFactor == null ? '—' : Number(result.profitFactor).toFixed(2))}
+      ${metric('Net Return',pct(result.netReturnPct))}${metric('Max Drawdown',pct(result.maxDrawdownPct))}
+      ${metric('Samples',input.samples || '—')}
     </div>
-    <button class="primary-btn" type="button">開始測試</button>
-    <div class="empty-state"><strong>${backtest.result ? 'Backtest Snapshot 已載入' : 'Backtest 尚未接入'}</strong><span>Forward Paper 與 Historical Backtest 保持完全分離。</span></div>`, badge('HISTORICAL BACKTEST'))}</div>`;
+    <div class="chart-placeholder"><span>Equity Curve</span><strong>${b.equityCurve?.length || 0} 個權益節點</strong></div>`
+    : `<div class="empty-state"><strong>${b.status==='LOADING'?'Backtest 執行中…':'尚未執行 Backtest'}</strong><span>使用 Binance USD-M 歷史 K 線；Forward Paper 與 Historical Backtest 完全分離。</span></div>`;
+  return `<div class="page-stack">${messageBar(state)}${section('策略測試', `
+    <form id="backtest-form" class="form-grid">
+      <label>幣種<select name="symbol"><option>BTCUSDT</option><option>ETHUSDT</option><option>SOLUSDT</option></select></label>
+      <label>時間區間<select name="range"><option value="90D">90D</option><option value="180D">180D</option><option value="1Y">1Y</option></select></label>
+      <label>策略<select name="strategy"><option value="A">策略 A · EMA20/50</option><option value="B">策略 B · EMA10/30</option></select></label>
+      <label>Timeframe<select name="timeframe"><option value="1h">1H</option><option value="4h">4H</option></select></label>
+    </form>
+    <button class="primary-btn" data-backtest-run type="button" ${b.status==='LOADING'?'disabled':''}>開始歷史測試</button>
+    ${resultHtml}`, badge('HISTORICAL BACKTEST'))}</div>`;
 }
 
-export const pages = Object.freeze({
-  home: homePage,
-  strategies: strategiesPage,
-  orders: ordersPage,
-  results: resultsPage,
-  backtest: backtestPage
-});
+export const pages = Object.freeze({ home: homePage, strategies: strategiesPage, orders: ordersPage, results: resultsPage, backtest: backtestPage });
