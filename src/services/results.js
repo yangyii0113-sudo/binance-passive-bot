@@ -1,6 +1,7 @@
 import { emptyResultsSnapshot } from '../contracts.js';
 import { STATUS } from '../status.js';
 import { loadRuntimeSnapshot } from './runtime.js';
+import { localResultsSnapshot } from '../local_paper.js';
 
 function numOrNull(value) {
   if (value === null || value === undefined || value === '') return null;
@@ -34,7 +35,7 @@ function normalizeCanonicalResults(payload) {
 function profitFactor(values) {
   const wins = values.filter((v) => v > 0).reduce((sum, v) => sum + v, 0);
   const losses = Math.abs(values.filter((v) => v < 0).reduce((sum, v) => sum + v, 0));
-  if (losses === 0) return wins > 0 ? null : null;
+  if (losses === 0) return null;
   return wins / losses;
 }
 
@@ -44,7 +45,6 @@ function normalizeRuntimeResults(payload) {
   const netValues = closed.map((trade) => num(trade.net_pnl_usdt, 0));
   const rValues = closed.map((trade) => numOrNull(trade.realized_r)).filter((value) => value !== null);
   const wins = netValues.filter((value) => value > 0).length;
-  const totalNet = netValues.reduce((sum, value) => sum + value, 0);
   return {
     status: STATUS.LIVE,
     updatedAt: payload?.served_at ? new Date(payload.served_at).toISOString() : new Date().toISOString(),
@@ -53,7 +53,7 @@ function normalizeRuntimeResults(payload) {
       winRatePct: closed.length ? (wins / closed.length) * 100 : null,
       expectancyR: rValues.length ? rValues.reduce((sum, value) => sum + value, 0) / rValues.length : null,
       profitFactor: profitFactor(netValues),
-      netPnl: totalNet,
+      netPnl: netValues.reduce((sum, value) => sum + value, 0),
       maxDrawdownPct: null
     },
     navCurve: [],
@@ -67,12 +67,13 @@ export function normalizeResultsSnapshot(payload) {
   return normalizeCanonicalResults(payload);
 }
 
-export async function loadResultsSnapshot() {
+export async function loadResultsSnapshot({ allowLocal = false } = {}) {
   try {
     const payload = await loadRuntimeSnapshot();
-    if (payload === null) return emptyResultsSnapshot();
+    if (payload === null) return allowLocal ? localResultsSnapshot() : emptyResultsSnapshot();
     return normalizeResultsSnapshot(payload);
   } catch (error) {
+    if (allowLocal) return { ...localResultsSnapshot(), upstreamError: error };
     const empty = emptyResultsSnapshot();
     return { ...empty, status: STATUS.ERROR, error };
   }
