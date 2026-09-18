@@ -16,12 +16,21 @@ export const appState = {
     sentiment: '讀取中',
     rows: MARKET_SYMBOLS.map(({ icon, display }) => [icon, display, '—', null])
   },
+  stocks: {
+    status: STATUS.EMPTY,
+    source: '股票資料源待接',
+    updatedAt: null,
+    direction: '尚未接入',
+    sentiment: '尚未接入',
+    rows: []
+  },
   strategy: emptyStrategySnapshot(),
   paper: emptyPaperSnapshot(),
   results: emptyResultsSnapshot(),
   backtest: emptyBacktestSnapshot(),
   ui: {
     search: '',
+    assetClass: 'crypto',
     marketSort: 'popular',
     strategyFilter: 'all',
     calendarOpen: false,
