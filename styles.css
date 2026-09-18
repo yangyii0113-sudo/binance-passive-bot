@@ -221,3 +221,31 @@ select:focus,.form-grid input:focus{border-color:rgba(241,184,75,.35)}
   .event-card{min-height:112px}
   .focus-grid{grid-template-columns:1fr}
 }
+
+
+/* Event calendar interaction + real crypto logos */
+.event-card[data-event-calendar],.premium-calendar[data-event-calendar]{cursor:pointer}
+.event-card[data-event-calendar]:active,.premium-calendar[data-event-calendar]:active{transform:translateY(1px)}
+.calendar-panel{scroll-margin-top:18px}
+.calendar-panel-note{margin:12px 14px 0;padding:10px 11px;border:1px solid rgba(241,184,75,.16);background:rgba(241,184,75,.055);border-radius:12px;color:#b9aa8c;font-size:.68rem;line-height:1.5}
+.calendar-events{display:grid;gap:8px;padding:12px 14px 14px}
+.calendar-event{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid var(--line);background:#101112;border-radius:14px;padding:11px 12px}
+.calendar-event-main{display:grid;gap:5px;min-width:0}
+.calendar-event-main strong{font-size:.8rem}
+.calendar-event-main small{color:var(--muted);font-size:.66rem;overflow-wrap:anywhere}
+.calendar-time{flex:0 0 auto;color:#777a80;font-size:.64rem;text-align:right}
+.premium-calendar{width:100%;color:inherit;text-align:left}
+.coin-logo{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;overflow:hidden;background:#0f1011;border:1px solid rgba(255,255,255,.08);box-shadow:inset 0 1px 0 rgba(255,255,255,.05)}
+.coin-logo.large{width:44px;height:44px;flex:0 0 44px}
+.coin-logo img{width:100%;height:100%;object-fit:cover;display:block}
+.coin-logo-fallback{width:100%;height:100%;display:grid;place-items:center;background:linear-gradient(145deg,#efb44c,#d99629);color:#19130b;font-weight:900;font-size:.84rem}
+.coin-logo.large .coin-logo-fallback{font-size:1rem}
+@media(max-width:700px){
+  .coin-logo{width:29px;height:29px}
+  .coin-logo.large{width:38px;height:38px;flex-basis:38px}
+  .calendar-panel-note{margin:10px 11px 0;font-size:.63rem}
+  .calendar-events{padding:10px 11px 12px}
+  .calendar-event{align-items:flex-start;padding:10px}
+  .calendar-event-main strong{font-size:.74rem}
+  .calendar-event-main small,.calendar-time{font-size:.6rem}
+}
