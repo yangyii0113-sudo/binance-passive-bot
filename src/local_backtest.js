@@ -169,10 +169,12 @@ function simulate(candles, strategy){
   const negatives = trades.filter(t=>t.returnPct<0).map(t=>t.returnPct);
   const grossWin = positives.reduce((a,b)=>a+b,0);
   const grossLoss = Math.abs(negatives.reduce((a,b)=>a+b,0));
+  const avgTradePct = trades.length ? trades.reduce((s,t)=>s+t.returnPct,0)/trades.length : null;
   return {
     trades: trades.length,
     winRatePct: trades.length ? positives.length/trades.length*100 : null,
-    expectancyR: trades.length ? trades.reduce((s,t)=>s+t.returnPct,0)/trades.length/1.5 : null,
+    expectancyR: null,
+    avgTradePct,
     profitFactor: grossLoss > 0 ? grossWin/grossLoss : null,
     netReturnPct: (equity-1)*100,
     maxDrawdownPct: maxDd*100,
@@ -196,6 +198,7 @@ export async function runLiteBacktest({symbol='BTCUSDT',range='90D',strategy='A'
       trades:result.trades,
       winRatePct:result.winRatePct,
       expectancyR:result.expectancyR,
+      avgTradePct:result.avgTradePct,
       profitFactor:result.profitFactor,
       netReturnPct:result.netReturnPct,
       maxDrawdownPct:result.maxDrawdownPct,
