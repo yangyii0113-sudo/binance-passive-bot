@@ -285,11 +285,77 @@ function sortedRows(state){
   if(sort === 'strong') rows.sort((a,b)=>(Number(b[5])||-1)-(Number(a[5])||-1));
   return rows;
 }
+function strongEvidence(state, row){
+  const symbol = symbolFromDisplay(row?.[1]);
+  const marketScore = Number(row?.[5]);
+  const change = Number(row?.[3]);
+  const candidate = (state.candidates?.items || []).find(item => item.symbol === symbol);
+
+  let technicalScore = 50;
+  const consensus = String(candidate?.technical?.consensus || '');
+  if(consensus === '多週期偏多') technicalScore = 90;
+  else if(consensus === '偏多') technicalScore = 72;
+  else if(consensus === '偏空') technicalScore = 28;
+  else if(consensus === '多週期偏空') technicalScore = 10;
+
+  let validatorScore = 50;
+  const verdict = validatorVerdict(candidate?.validator);
+  if(verdict.label === 'PASS') validatorScore = 90;
+  else if(verdict.label === 'CAUTION') validatorScore = 62;
+  else if(verdict.label === 'REVIEW') validatorScore = 28;
+  else if(verdict.label === '樣本不足') validatorScore = 45;
+
+  let riskScore = 50;
+  const risk = String(candidate?.risk?.status || '').toUpperCase();
+  if(risk === 'PASS') riskScore = 90;
+  else if(risk === 'CAUTION') riskScore = 42;
+  else if(risk === 'BLOCKED') riskScore = 0;
+
+  const momentumScore = Number.isFinite(change)
+    ? Math.max(0, Math.min(100, 50 + change * 5))
+    : 50;
+  const baseMarket = Number.isFinite(marketScore) ? marketScore : 50;
+
+  const composite = Math.max(0, Math.min(100, Math.round(
+    baseMarket * 0.60 +
+    momentumScore * 0.15 +
+    technicalScore * 0.10 +
+    validatorScore * 0.10 +
+    riskScore * 0.05
+  )));
+
+  return {
+    symbol,
+    candidate,
+    marketScore: baseMarket,
+    momentumScore,
+    technicalScore,
+    validatorScore,
+    riskScore,
+    composite,
+    validatorLabel: verdict.label,
+    technicalLabel: candidate?.technical?.consensus || '待分析',
+    riskLabel: candidate?.risk?.status || '待檢查'
+  };
+}
+function strongTopFive(state){
+  return [...(state.market?.rows || [])]
+    .filter(row => Number.isFinite(Number(row?.[5])))
+    .map(row => ({ row, evidence: strongEvidence(state, row) }))
+    .sort((a,b)=>
+      b.evidence.composite - a.evidence.composite ||
+      Number(b.row?.[5] || 0) - Number(a.row?.[5] || 0)
+    )
+    .slice(0,5);
+}
+
 function strongCoinDetail(state, strong){
   const selected = state.ui?.selectedStrongSymbol;
   if(!selected) return '';
-  const row = strong.find(item => symbolFromDisplay(item[1]) === selected);
-  if(!row) return '';
+  const selectedItem = strong.find(item => symbolFromDisplay(item.row?.[1] || item?.[1]) === selected);
+  if(!selectedItem) return '';
+  const row = selectedItem.row || selectedItem;
+  const evidence = selectedItem.evidence || strongEvidence(state, row);
   const [icon, display, lastPrice, change, quoteVolume, score] = row;
   const changeNum = Number(change);
   const scoreNum = Number(score);
@@ -300,23 +366,24 @@ function strongCoinDetail(state, strong){
         ${coinLogo(display, icon, true)}
         <div><span>強勢幣種分析</span><strong>${display}</strong></div>
       </div>
-      <span class="strong-tier">${tier} · ${scoreNum.toFixed(0)} 分</span>
+      <span class="strong-tier">綜合 ${evidence.composite} · ${tier}</span>
     </div>
     <div class="strong-detail-grid">
       <div><span>最新價格</span><strong>${lastPrice}</strong></div>
       <div><span>24h 動能</span><strong class="${changeNum>=0?'up':'down'}">${changeNum>=0?'+':''}${changeNum.toFixed(2)}%</strong></div>
-      <div><span>24h 成交額</span><strong>${compactVolume(quoteVolume)} USDT</strong></div>
-      <div><span>篩選狀態</span><strong>${tier}</strong></div>
+      <div><span>市場強勢</span><strong>${scoreNum.toFixed(0)} / 100</strong></div>
+      <div><span>綜合分數</span><strong>${evidence.composite} / 100</strong></div>
     </div>
     <div class="strong-reasons">
-      <div><span>價格動能</span><p>${changeNum >= 3 ? '短線動能明顯高於中性區間。' : changeNum > 0 ? '價格維持正向動能，但需觀察延續性。' : '流動性較佳，但價格動能尚未轉強。'}</p></div>
-      <div><span>流動性</span><p>已通過 FOXYYA 高成交額市場池篩選，降低極低流動性幣種干擾。</p></div>
-      <div><span>風險提醒</span><p>強勢排行是市場雷達，不等同進場訊號；需再經策略、停損與風險額度確認。</p></div>
+      <div><span>Technical</span><p>${evidence.technicalLabel} · 權重 10%。未分析時採中性分，不假設方向。</p></div>
+      <div><span>Strategy Validator</span><p>${evidence.validatorLabel} · 權重 10%。PASS 只代表通過目前 Strategy Guard。</p></div>
+      <div><span>Risk Gate</span><p>${evidence.riskLabel} · 權重 5%。BLOCKED 會大幅降權，但保留在研究資料中。</p></div>
+      <div><span>市場基礎</span><p>市場強勢與流動性仍佔主要權重；Top 5 是研究優先序，不等於買進建議。</p></div>
     </div>
     <div class="strong-actions strong-actions-three">
       <button class="candidate-add-btn" data-candidate-add="${selected}"
-        data-candidate-source="Market Scout · 強勢 Top 10"
-        data-candidate-reason="${tier} · 強勢分數 ${scoreNum.toFixed(0)}"
+        data-candidate-source="Market Scout · 綜合強勢 Top 5"
+        data-candidate-reason="綜合 Top 5 · 綜合分數 ${evidence.composite} · 市場強勢 ${scoreNum.toFixed(0)}"
         data-candidate-score="${scoreNum.toFixed(0)}"
         data-candidate-direction="${changeNum >= 0 ? '偏多' : '偏空'}" type="button">＋ 加入候選</button>
       <button class="secondary-btn" data-use-backtest="${selected}" type="button">歷史回測</button>
@@ -325,13 +392,10 @@ function strongCoinDetail(state, strong){
   </div>`;
 }
 function strongCoinCards(state){
-  const strong = [...(state.market?.rows || [])]
-    .filter(row => Number.isFinite(Number(row?.[5])))
-    .sort((a,b)=>Number(b[5])-Number(a[5]))
-    .slice(0,10);
+  const strong = strongTopFive(state);
   if(!strong.length) return '<div class="empty-state"><strong>強勢幣種資料讀取中</strong><span>等待市場成交額與動能資料。</span></div>';
-  return `<div class="strong-grid">${strong.map((row,index)=>{
-    const [icon, display, lastPrice, change, quoteVolume, score] = row;
+  return `<div class="strong-grid">${strong.map(({row,evidence},index)=>{
+    const [icon, display, lastPrice, change] = row;
     const changeNum = Number(change);
     const symbol = symbolFromDisplay(display);
     const selected = state.ui?.selectedStrongSymbol === symbol;
@@ -340,15 +404,15 @@ function strongCoinCards(state){
       ${coinLogo(display, icon)}
       <div class="strong-main">
         <strong>${display}</strong>
-        <span>24h 成交額 ${compactVolume(quoteVolume)} USDT</span>
+        <span>${evidence.technicalLabel} · ${evidence.validatorLabel} · ${evidence.riskLabel}</span>
       </div>
-      <div class="strong-score"><small>強勢分數</small><b>${Number(score).toFixed(0)}</b></div>
+      <div class="strong-score"><small>綜合分數</small><b>${evidence.composite}</b></div>
       <div class="strong-change ${changeNum>=0?'up':'down'}">${changeNum>=0?'+':''}${changeNum.toFixed(2)}%</div>
       <div class="strong-price">${lastPrice}</div>
     </button>`;
   }).join('')}</div>
   ${strongCoinDetail(state,strong)}
-  <div class="strong-note">強勢分數依 24h 價格動能與成交額流動性計算，僅作市場篩選，不代表未來報酬或買進建議。</div>`;
+  <div class="strong-note">Top 5 綜合市場強勢、動能與已存在的 Technical / Validator / Risk 證據。缺資料採中性值；僅作研究優先序，不代表未來報酬或買進建議。</div>`;
 }
 function tab(label,key,active,attr){
   return `<button type="button" class="tab-btn ${active===key?'active':''}" ${attr}="${key}">${label}</button>`;
@@ -375,7 +439,7 @@ function homeSectionTabs(state){
   const active = state.ui?.homeSection || 'market';
   const items = [
     ['market','市場排行','◉'],
-    ['strong','強勢 Top 10','◆'],
+    ['strong','強勢 Top 5','◆'],
     ['focus','國際焦點','◌'],
     ['strategy','策略機會','◎']
   ];
@@ -469,7 +533,7 @@ export function homePage(state) {
 
     <section class="panel strong-panel home-section-panel ${homeSection==='strong'?'is-active':''}">
       <div class="section-head premium-head">
-        <div class="section-title"><span class="section-symbol">◆</span>${isCrypto ? '強勢加密貨幣 Top 10' : '強勢股票 Top 10'}</div>
+        <div class="section-title"><span class="section-symbol">◆</span>${isCrypto ? '綜合強勢加密貨幣 Top 5' : '強勢股票 Top 10'}</div>
         <span class="section-quiet">${isCrypto ? '24H MOMENTUM + LIQUIDITY' : 'STOCKS · SEPARATE MODULE'}</span>
       </div>
       ${isCrypto ? strongCoinCards(state) : stockEmptyState('強勢股票排行待接入')}
