@@ -19,6 +19,11 @@ from research.tw.intelligence.market_regime import (
 )
 from research.tw.intelligence.market_structure import build_market_structure
 from research.tw.intelligence.sector_rotation import build_sector_rotation
+from research.tw.read_models import (
+    MARKET_INTELLIGENCE_SCHEMA_VERSION,
+    VenueIntelligenceBundle,
+    market_intelligence_read_model,
+)
 from research.tw.providers.http import UrllibJsonTransport
 from research.tw.providers.institutional import (
     TPExInstitutionalSummaryProvider,
@@ -260,6 +265,55 @@ def main() -> int:
                     f"{snapshot.venue} market regime execution boundary violated"
                 )
 
+        market_read_model = market_intelligence_read_model(
+            twse=VenueIntelligenceBundle(
+                structure=twse_structure,
+                institutional=twse_inst,
+                leverage=twse_margin,
+                sectors=twse_rotation,
+                regime=twse_regime,
+            ),
+            tpex=VenueIntelligenceBundle(
+                structure=tpex_structure,
+                institutional=tpex_inst,
+                leverage=tpex_margin,
+                sectors=tpex_rotation,
+                regime=tpex_regime,
+            ),
+        )
+        encoded_read_model = json.dumps(
+            market_read_model,
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+
+        if (
+            market_read_model.get("schema_version")
+            != MARKET_INTELLIGENCE_SCHEMA_VERSION
+        ):
+            raise RuntimeError("market-intelligence read-model schema mismatch")
+        if market_read_model.get("observed_at") != target_date:
+            raise RuntimeError("market-intelligence read-model date mismatch")
+        if market_read_model.get("execution_allowed") is not False:
+            raise RuntimeError("market-intelligence read-model execution boundary violated")
+        if market_read_model["quality"]["status"] == "UNAVAILABLE":
+            raise RuntimeError("market-intelligence read-model unavailable")
+        for venue in ("TWSE", "TPEX"):
+            venue_model = market_read_model["venues"][venue]
+            if venue_model["quality"]["status"] == "UNAVAILABLE":
+                raise RuntimeError(f"{venue} read-model unavailable")
+            if venue_model["market_regime"]["state"] == "insufficient_data":
+                raise RuntimeError(f"{venue} read-model regime unavailable")
+        for raw_key in (
+            "OpeningPrice",
+            "SecuritiesCompanyCode",
+            "PurchaseAmount",
+        ):
+            if raw_key in encoded_read_model:
+                raise RuntimeError(
+                    f"provider-native key leaked into read model: {raw_key}"
+                )
+
         print(
             json.dumps(
                 {
@@ -294,6 +348,9 @@ def main() -> int:
                     "tpex_regime_score": tpex_regime.directional_score,
                     "twse_regime_confidence": twse_regime.confidence,
                     "tpex_regime_confidence": tpex_regime.confidence,
+                    "read_model_schema": market_read_model["schema_version"],
+                    "read_model_quality": market_read_model["quality"]["status"],
+                    "read_model_bytes": len(encoded_read_model.encode("utf-8")),
                     "raw_snapshot_root": temp,
                     "execution_allowed": False,
                 },
