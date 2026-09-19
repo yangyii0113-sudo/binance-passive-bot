@@ -8,7 +8,7 @@ function fakeBatch(count = 80) {
     const openTime = now - (count - i) * 60_000;
     const closeTime = i === count - 1 ? now + 60_000 : openTime + 59_000;
     const close = 100 + i * 0.5;
-    rows.push([openTime, close, close + 1, close - 1, close, 1000, closeTime]);
+    rows.push([openTime, close + 5, close + 6, close - 1, close, 1000, closeTime]);
   }
   return rows;
 }
@@ -48,7 +48,12 @@ for (const timeframe of ['15m','1h','4h','12h','1d','1w','1M']) {
   assert.equal(snapshot.input.samples, 79, `timeframe ${timeframe} must exclude the still-open candle`);
   assert.equal(snapshot.result.expectancyR, null, 'EMA crossover must not fabricate R expectancy without a stop-risk definition');
   assert.ok(Number.isFinite(Number(snapshot.result.avgTradePct)), 'EMA crossover must expose average trade return percent');
+  assert.equal(snapshot.input.executionModel, 'Fully Closed Signal → Next Bar Open');
   assert.equal(snapshot.result.validation.label, '交易樣本不足', '80 bars with one open bar removed should not be overstated');
+  if(snapshot.recentTrades.length){
+    const possibleOpens = new Set(fakeBatch().slice(0,-1).map(k=>Number(k[1])));
+    assert.ok(possibleOpens.has(Number(snapshot.recentTrades[0].entry)), 'trade entry must come from a next-bar open, not the signal close');
+  }
 }
 
 assert.deepEqual(BACKTEST_RANGE_OPTIONS['1M'].map(([key])=>key), ['5Y','10Y']);
