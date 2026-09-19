@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "active_phase": "P0",
+  "phases": [
+    {"id": "P0", "name": "Foundation", "status": "ACTIVE", "depends_on": []},
+    {"id": "P1", "name": "Taiwan Data Core", "status": "LOCKED", "depends_on": ["P0"]},
+    {"id": "P2", "name": "Market Intelligence", "status": "LOCKED", "depends_on": ["P1"]},
+    {"id": "P3", "name": "Stock Research Workspace", "status": "LOCKED", "depends_on": ["P2"]},
+    {"id": "P4", "name": "Backtest and Validation", "status": "LOCKED", "depends_on": ["P3"]},
+    {"id": "P5", "name": "Portfolio Risk and Journal", "status": "LOCKED", "depends_on": ["P3"]},
+    {"id": "P6", "name": "Product UI and Mobile", "status": "LOCKED", "depends_on": ["P2", "P3"]},
+    {"id": "P7", "name": "Staging and Observability", "status": "LOCKED", "depends_on": ["P6"]},
+    {"id": "P8", "name": "AI Enhancement", "status": "LOCKED", "depends_on": ["P4", "P5", "P7"]}
+  ]
+}
