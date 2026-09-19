@@ -188,7 +188,7 @@ for (const [name, renderer] of Object.entries(pages)) {
 }
 
 const homeHtml = pages.home(renderState);
-assert.ok(homeHtml.includes('市場機會加密貨幣 Top 5'), 'Home must expose market opportunity crypto Top 5');
+assert.ok(homeHtml.includes('市場機會加密貨幣前五名'), '首頁必須顯示市場機會加密貨幣前五名');
 assert.equal(
   (homeHtml.match(/class="strong-card/g) || []).length,
   5,
