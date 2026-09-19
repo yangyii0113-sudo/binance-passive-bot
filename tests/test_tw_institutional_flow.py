@@ -90,3 +90,17 @@ def test_missing_group_degrades_coverage_instead_of_fabricating_zero():
     assert dealer.net_amount is None
     assert dealer.coverage_ratio == 0.0
     assert snapshot.coverage_ratio == 0.75
+
+
+def test_institutional_intelligence_has_no_provider_dependency():
+    source = (
+        ROOT
+        / "research"
+        / "tw"
+        / "intelligence"
+        / "institutional_flow.py"
+    ).read_text(encoding="utf-8")
+
+    assert "providers." not in source
+    assert "urllib" not in source
+    assert "requests" not in source
