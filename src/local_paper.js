@@ -54,7 +54,9 @@ export function localPaperSnapshot(marketRows = []){
       openPositions: positions.length,
       pendingOrders: 0,
       unrealizedPnl,
-      portfolioRiskPct: nav > 0 ? (marginUsed / nav) * 100 : 0
+      marginUsagePct: nav > 0 ? (marginUsed / nav) * 100 : 0,
+      portfolioRiskPct: nav > 0 ? (marginUsed / nav) * 100 : 0,
+      riskProxy: 'MARGIN_USAGE'
     },
     positions,
     pending: []
@@ -86,7 +88,7 @@ export function localResultsSnapshot(){
     summary: {
       trades: trades.length,
       winRatePct: trades.length ? wins.length / trades.length * 100 : null,
-      expectancyR: rValues.length ? rValues.reduce((a,b)=>a+b,0)/rValues.length : null,
+      expectancyR: null,
       profitFactor: grossLoss > 0 ? grossWin/grossLoss : null,
       netPnl: pnls.reduce((a,b)=>a+b,0),
       maxDrawdownPct: trades.length ? maxDd : null
@@ -141,7 +143,8 @@ export function closeLocalPaperPosition(id, marketRows = []){
     grossPnl,
     fee,
     netPnl,
-    realizedR: position.margin > 0 ? netPnl / position.margin : 0,
+    realizedR: null,
+    returnOnMarginPct: position.margin > 0 ? (netPnl / position.margin) * 100 : null,
     closedAt: now()
   };
   book.positions.splice(index,1);
