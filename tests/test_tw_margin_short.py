@@ -95,3 +95,26 @@ def test_margin_intelligence_has_no_provider_dependency():
     assert "providers." not in source
     assert "urllib" not in source
     assert "requests" not in source
+
+
+def test_twse_rwd_margin_uses_official_positional_layout():
+    day = "2026-09-18"
+    url = TWSEMarginProvider.url_for_date(day)
+    provider = TWSEMarginProvider(
+        FixtureTransport({url: "twse_margin_rwd.json"})
+    )
+
+    observations = provider.fetch(day)
+    rows = {
+        (item.instrument_id, item.field): item
+        for item in observations
+    }
+
+    assert rows[("twse:2330", "margin_balance")].value == 1100
+    assert rows[("twse:2330", "margin_previous_balance")].value == 1000
+    assert rows[("twse:2330", "margin_change")].value == 100
+    assert rows[("twse:2330", "short_balance")].value == 90
+    assert rows[("twse:2330", "short_previous_balance")].value == 100
+    assert rows[("twse:2330", "short_change")].value == -10
+    assert rows[("twse:2330", "margin_balance")].observed_at == day
+    assert rows[("twse:2330", "margin_balance")].source == "TWSE:MI_MARGN_RWD"
