@@ -57,16 +57,24 @@ Gate:
 - [x] exact-date TWSE margin session validation green
 - [x] official TWSE / TPEx margin live smoke green
 
-## P2.4 Sector Rotation — ACTIVE
+## P2.4 Sector Rotation — COMPLETE
 
-Future:
-- canonical sector mapping
-- sector breadth
-- sector weighted return
-- turnover participation
-- top/bottom rotation groups
+Build:
+- sector mapping from canonical Instrument metadata
+- sector breadth / diffusion
+- trade-value-weighted sector return
+- sector turnover participation
+- descriptive leaders / laggards
+- partial-data coverage and evidence provenance
 
-## P2.5 Market Regime Fusion — LOCKED
+Gate:
+- [x] deterministic sector-rotation tests green
+- [x] instruments without sector mapping excluded instead of guessed
+- [x] intelligence layer has no provider/network dependency
+- [x] official live sector coverage exceeds minimum threshold
+- [x] TWSE / TPEx leader-laggard ranking available
+
+## P2.5 Market Regime Fusion — ACTIVE
 
 Future:
 - index direction
