@@ -25,7 +25,7 @@
 - [x] latest daily OHLCV snapshot adapter
 - [x] canonical Observation mapping
 - [x] OTC index canonicalization adapter + deterministic fixture
-- [ ] verify current live TPEx index field schema against official endpoint
+- [x] verify current live TPEx index field schema against official endpoint
 - [x] historical accumulator wiring
 
 ### P1.4 Market calendar/session
