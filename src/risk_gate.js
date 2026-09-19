@@ -10,7 +10,7 @@ function directionFromCandidate(candidate){
 export function evaluatePortfolioRisk(candidate, paper){
   const summary = paper?.summary || {};
   const positions = Array.isArray(paper?.positions) ? paper.positions : [];
-  const riskPct = Number(summary.portfolioRiskPct) || 0;
+  const riskPct = Number(summary.marginUsagePct ?? summary.portfolioRiskPct) || 0;
   const direction = directionFromCandidate(candidate);
   const sameSymbol = positions.filter(p=>String(p.symbol||'').toUpperCase()===String(candidate?.symbol||'').toUpperCase());
   const sameDirection = direction === 'UNKNOWN'
@@ -21,7 +21,7 @@ export function evaluatePortfolioRisk(candidate, paper){
 
   if(riskPct >= MAX_PORTFOLIO_RISK_PCT - 1e-9){
     status = 'BLOCKED';
-    reasons.push(`Portfolio Risk 已達 ${riskPct.toFixed(2)}%，觸及 ${MAX_PORTFOLIO_RISK_PCT}% 上限。`);
+    reasons.push(`Paper Margin Exposure 已達 ${riskPct.toFixed(2)}%，觸及 ${MAX_PORTFOLIO_RISK_PCT}% 上限。`);
   }
   if(sameSymbol.length){
     if(status !== 'BLOCKED') status = 'CAUTION';
@@ -33,7 +33,7 @@ export function evaluatePortfolioRisk(candidate, paper){
   }
   if(riskPct >= CAUTION_RISK_PCT && status === 'PASS'){
     status = 'CAUTION';
-    reasons.push(`Portfolio Risk 已達 ${riskPct.toFixed(2)}%，接近 ${MAX_PORTFOLIO_RISK_PCT}% 上限。`);
+    reasons.push(`Paper Margin Exposure 已達 ${riskPct.toFixed(2)}%，接近 ${MAX_PORTFOLIO_RISK_PCT}% 上限。`);
   }
   if(!reasons.length) reasons.push('目前 Paper 組合未觸發基本風險閘門。');
 
@@ -41,6 +41,8 @@ export function evaluatePortfolioRisk(candidate, paper){
     status,
     checkedAt:new Date().toISOString(),
     portfolioRiskPct:riskPct,
+    marginUsagePct:riskPct,
+    riskProxy:'MARGIN_USAGE',
     maxPortfolioRiskPct:MAX_PORTFOLIO_RISK_PCT,
     openPositions:Number(summary.openPositions)||positions.length,
     sameDirectionCount:sameDirection.length,
