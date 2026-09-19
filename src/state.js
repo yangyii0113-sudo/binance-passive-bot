@@ -36,7 +36,16 @@ export const appState = {
     items: []
   },
   agents: {
-    technical: null
+    technical: null,
+    topFiveResearch: {
+      status: STATUS.EMPTY,
+      startedAt: null,
+      updatedAt: null,
+      progress: 0,
+      total: 0,
+      rows: [],
+      error: null
+    }
   },
   ui: {
     search: '',
