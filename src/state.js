@@ -28,6 +28,11 @@ export const appState = {
   paper: emptyPaperSnapshot(),
   results: emptyResultsSnapshot(),
   backtest: emptyBacktestSnapshot(),
+  candidates: {
+    status: STATUS.EMPTY,
+    updatedAt: null,
+    items: []
+  },
   ui: {
     search: '',
     assetClass: 'crypto',
@@ -41,6 +46,7 @@ export const appState = {
     focusAnalysisIndex: null,
     selectedStrongSymbol: null,
     selectedSymbol: null,
+    validatorTargetSymbol: null,
     message: ''
   }
 };
