@@ -1,6 +1,7 @@
 import { STATUS } from './status.js';
 
-const BASE = 'https://fapi.binance.com/fapi/v1/klines';
+const FUTURES_BASE = 'https://fapi.binance.com/fapi/v1/klines';
+const SPOT_PUBLIC_BASE = 'https://data-api.binance.vision/api/v3/klines';
 const COST_PER_TRADE = 0.0008;
 
 export const BACKTEST_RANGE_OPTIONS = Object.freeze({
@@ -74,6 +75,10 @@ function classifyValidation(samples, trades){
   if(trades < 100) return { level:'INITIAL', label:'可初步分析', reliable:false };
   return { level:'REFERENCE', label:'較有統計參考性', reliable:true };
 }
+async function requestKlines(base, symbol, interval, cursor, end){
+  const url = `${base}?symbol=${encodeURIComponent(symbol)}&interval=${encodeURIComponent(interval)}&startTime=${cursor}&endTime=${end}&limit=1000`;
+  return fetch(url,{cache:'no-store'});
+}
 async function fetchKlines(symbol, interval, days){
   const end = Date.now();
   const start = end - days * 86400000;
@@ -81,11 +86,17 @@ async function fetchKlines(symbol, interval, days){
   const rows = [];
   let guard = 0;
   const guardLimit = maxBatches(interval, days);
+  let base = FUTURES_BASE;
+  let source = 'Binance USD-M public klines';
   while(cursor < end && guard < guardLimit){
     guard++;
-    const url = `${BASE}?symbol=${encodeURIComponent(symbol)}&interval=${encodeURIComponent(interval)}&startTime=${cursor}&endTime=${end}&limit=1000`;
-    const response = await fetch(url,{cache:'no-store'});
-    if(!response.ok) throw new Error(`Kline HTTP ${response.status}`);
+    let response = await requestKlines(base, symbol, interval, cursor, end);
+    if(!response.ok && base === FUTURES_BASE && [403,451].includes(response.status)){
+      base = SPOT_PUBLIC_BASE;
+      source = 'Binance Spot public klines · fallback';
+      response = await requestKlines(base, symbol, interval, cursor, end);
+    }
+    if(!response.ok) throw new Error(`Kline HTTP ${response.status} · ${source}`);
     const batch = await response.json();
     if(!Array.isArray(batch) || !batch.length) break;
     for(const k of batch){
@@ -106,7 +117,10 @@ async function fetchKlines(symbol, interval, days){
     if(batch.length < 1000) break;
   }
   const seen = new Set();
-  return rows.filter(r => Number.isFinite(r.close) && !seen.has(r.time) && seen.add(r.time));
+  return {
+    rows: rows.filter(r => Number.isFinite(r.close) && !seen.has(r.time) && seen.add(r.time)),
+    source
+  };
 }
 function simulate(candles, strategy){
   if(candles.length < 60) throw new Error('歷史樣本不足');
@@ -169,14 +183,15 @@ function simulate(candles, strategy){
 export async function runLiteBacktest({symbol='BTCUSDT',range='90D',strategy='A',timeframe='1h'} = {}){
   const interval = normalizeTimeframe(timeframe);
   const resolved = resolveRange(interval, range);
-  const candles = await fetchKlines(symbol,interval,resolved.days);
+  const fetched = await fetchKlines(symbol,interval,resolved.days);
+  const candles = fetched.rows;
   const result = simulate(candles,strategy);
   const validation = classifyValidation(candles.length, result.trades);
   return {
     status: STATUS.LIVE,
     updatedAt: new Date().toISOString(),
     local: true,
-    input:{symbol,range:resolved.range,strategy,timeframe:interval,samples:candles.length,costModel:'單次來回成本 0.08%'},
+    input:{symbol,range:resolved.range,strategy,timeframe:interval,samples:candles.length,dataSource:fetched.source,costModel:'單次來回成本 0.08%'},
     result:{
       trades:result.trades,
       winRatePct:result.winRatePct,
