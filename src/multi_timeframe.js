@@ -1,4 +1,5 @@
-const BASE = 'https://fapi.binance.com/fapi/v1/klines';
+const FUTURES_BASE = 'https://fapi.binance.com/fapi/v1/klines';
+const SPOT_PUBLIC_BASE = 'https://data-api.binance.vision/api/v3/klines';
 
 const FRAMES = Object.freeze([
   ['15m','15分'],
@@ -18,20 +19,28 @@ function ema(values, period){
   return prev;
 }
 async function fetchClosed(symbol, interval){
-  const url = `${BASE}?symbol=${encodeURIComponent(symbol)}&interval=${encodeURIComponent(interval)}&limit=160`;
-  const response = await fetch(url,{cache:'no-store'});
+  const makeUrl = (base) => `${base}?symbol=${encodeURIComponent(symbol)}&interval=${encodeURIComponent(interval)}&limit=160`;
+  let response = await fetch(makeUrl(FUTURES_BASE),{cache:'no-store'});
+  let source = 'Binance USD-M public klines';
+  if(!response.ok && [403,451].includes(response.status)){
+    response = await fetch(makeUrl(SPOT_PUBLIC_BASE),{cache:'no-store'});
+    source = 'Binance Spot public klines · fallback';
+  }
   if(!response.ok) throw new Error(`${interval} Kline HTTP ${response.status}`);
   const payload = await response.json();
   if(!Array.isArray(payload)) throw new Error(`${interval} Kline payload invalid`);
   const now = Date.now();
-  return payload
-    .filter(k => Number(k?.[6]) < now)
-    .map(k => ({
-      openTime:Number(k[0]),
-      closeTime:Number(k[6]),
-      close:Number(k[4])
-    }))
-    .filter(k => Number.isFinite(k.close));
+  return {
+    candles: payload
+      .filter(k => Number(k?.[6]) < now)
+      .map(k => ({
+        openTime:Number(k[0]),
+        closeTime:Number(k[6]),
+        close:Number(k[4])
+      }))
+      .filter(k => Number.isFinite(k.close)),
+    source
+  };
 }
 function analyzeFrame(interval,label,candles){
   const closes = candles.map(c=>c.close);
@@ -72,8 +81,8 @@ export async function analyzeMultiTimeframe(symbol){
   if(!clean) throw new Error('缺少分析標的');
   const settled = await Promise.all(FRAMES.map(async ([interval,label])=>{
     try{
-      const candles = await fetchClosed(clean,interval);
-      return analyzeFrame(interval,label,candles);
+      const fetched = await fetchClosed(clean,interval);
+      return { ...analyzeFrame(interval,label,fetched.candles), source:fetched.source };
     }catch(error){
       return {interval,label,status:'ERROR',direction:'錯誤',error:String(error?.message||error)};
     }
@@ -94,7 +103,9 @@ export async function analyzeMultiTimeframe(symbol){
     bullish,
     bearish,
     frames:settled,
-    source:'Binance USD-M public klines · Fully Closed Bar'
+    source: settled.some(frame => String(frame.source || '').includes('Spot'))
+      ? 'Binance Spot public klines · fallback · Fully Closed Bar'
+      : 'Binance USD-M public klines · Fully Closed Bar'
   };
 }
 export { FRAMES as TECHNICAL_TIMEFRAMES };
