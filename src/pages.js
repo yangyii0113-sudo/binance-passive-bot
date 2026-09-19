@@ -747,7 +747,7 @@ function candidatePoolPanel(state){
         <button type="button" class="danger-btn" data-candidate-remove="${item.symbol}">移出候選</button>
       </div>
     </article>`;
-  }).join('') : '<div class="empty-state"><strong>候選池目前是空的</strong><span>可從強勢 Top 10、交易訊號，或下方手動加入標的。</span></div>';
+  }).join('') : '<div class="empty-state"><strong>候選池目前是空的</strong><span>可從 Dynamic Top 5、Universe Scanner、交易訊號，或下方手動加入標的。</span></div>';
 
   return `<div class="candidate-pool-wrap">
     <form id="candidate-manual-form" class="candidate-manual-form">
@@ -793,29 +793,47 @@ function agentCandidateButton(symbol, source, reason, extra=''){
 }
 function marketScoutPanel(state){
   const filter = state.ui?.agentFilter || 'strong';
+  const universe = researchUniverseRows(state);
+  const topFive = strongTopFive(state);
+  const evidenceUniverse = universe.map(row => ({row,evidence:strongEvidence(state,row)}));
+  const blockedCount = evidenceUniverse.filter(({evidence}) =>
+    evidence.tradabilityStatus === 'BLOCKED' ||
+    String(evidence.riskLabel || '').toUpperCase() === 'BLOCKED'
+  ).length;
+
   let items = [];
   if(filter === 'strong'){
-    items = strongTopFive(state).map(item => ({...item, isComposite:true}));
+    items = topFive.map(item => ({...item, mode:'top5'}));
   } else {
-    let rows = [...(state.market?.rows || [])].filter(row=>Number.isFinite(Number(row?.[3])));
+    let rows = [...universe];
+    if(filter==='universe') rows.sort((a,b)=>Number(b?.[4]||0)-Number(a?.[4]||0));
     if(filter==='gain') rows.sort((a,b)=>(Number(b[3])||-999)-(Number(a[3])||-999));
     if(filter==='loss') rows.sort((a,b)=>(Number(a[3])||999)-(Number(b[3])||999));
     if(filter==='liquidity') rows.sort((a,b)=>(Number(b[4])||0)-(Number(a[4])||0));
-    items = rows.slice(0,10).map(row => ({row,evidence:strongEvidence(state,row),isComposite:false}));
+    const limit = filter === 'universe' ? 40 : 10;
+    items = rows.slice(0,limit).map(row => ({row,evidence:strongEvidence(state,row),mode:filter}));
   }
-  const cards = items.length ? items.map(({row,evidence,isComposite},index)=>{
+
+  const cards = items.length ? items.map(({row,evidence,mode},index)=>{
     const [icon,display,last,change,volume,score] = row;
     const symbol = symbolFromDisplay(display);
     const ch = Number(change);
     const strength = Number(score);
+    const isComposite = mode === 'top5';
     const reason = isComposite
-      ? `綜合 ${evidence.composite} · 市場 ${Math.round(evidence.marketScore)} · ${evidence.validatorLabel} · ${evidence.riskLabel}`
-      : filter==='gain' ? `24h 漲幅 ${ch.toFixed(2)}%`
-      : filter==='loss' ? `24h 跌幅 ${ch.toFixed(2)}%`
-      : `24h 成交額 ${compactVolume(volume)} USDT`;
-    const source = isComposite ? 'Market Scout · 綜合強勢 Top 5' : 'Market Scout';
+      ? `Research ${evidence.composite} · ${evidence.strategyMatch} · ${evidence.validatorLabel} · ${evidence.riskLabel}`
+      : mode==='universe'
+        ? `Tradability ${evidence.tradabilityStatus} · 流動性 #${evidence.liquidityRank}/${evidence.universeSize} · ${evidence.strategyMatch}`
+        : filter==='gain' ? `24h 漲幅 ${ch.toFixed(2)}%`
+        : filter==='loss' ? `24h 跌幅 ${ch.toFixed(2)}%`
+        : `24h 成交額 ${compactVolume(volume)} USDT`;
+    const source = isComposite
+      ? 'Market Scout · Dynamic Top 5'
+      : mode === 'universe'
+        ? 'Universe Scanner'
+        : 'Market Scout';
     const scoreValue = isComposite ? evidence.composite : (Number.isFinite(strength) ? strength : '');
-    return `<article class="agent-result-row" data-search="${symbol}">
+    return `<article class="agent-result-row" data-search="${symbol} ${evidence.strategyMatch} ${evidence.tradabilityStatus}">
       <span class="agent-rank">#${index+1}</span>
       ${coinLogo(display,icon)}
       <div class="agent-result-main"><strong>${display}</strong><span>${reason}</span></div>
@@ -823,9 +841,16 @@ function marketScoutPanel(state){
       ${agentCandidateButton(symbol,source,reason,`data-candidate-score="${scoreValue}" data-candidate-direction="${ch>=0?'偏多':'偏空'}"`)}
     </article>`;
   }).join('') : '<div class="empty-state"><strong>市場資料讀取中</strong></div>';
+
   return `<div class="agent-panel-stack">
-    ${agentFilterTabs(state,[['strong','綜合 Top 5'],['gain','漲幅'],['loss','跌幅'],['liquidity','流動性']])}
-    <div class="agent-intro"><strong>Market Scout</strong><span>「綜合 Top 5」以市場強勢為主，疊加既有 Technical / Validator / Risk 證據；缺資料採中性值。其他分頁維持純市場型篩選。</span></div>
+    ${agentFilterTabs(state,[['strong','Dynamic Top 5'],['universe','Universe'],['gain','漲幅'],['loss','跌幅'],['liquidity','流動性']])}
+    <div class="playbook-top">
+      <div><span>Universe</span><strong>${universe.length}</strong></div>
+      <div><span>Top 5</span><strong>${topFive.length}</strong></div>
+      <div><span>Blocked</span><strong>${blockedCount}</strong></div>
+      <div><span>Source</span><strong>USD-M</strong></div>
+    </div>
+    <div class="agent-intro"><strong>Universe Scanner</strong><span>先從 Binance USD-M 高流動性市場池建立 Universe，再由 Market / Tradability / Technical / Validator / Risk 產生 Dynamic Top 5。Strategy Match 是待驗證方向，不是盈利保證。</span></div>
     <div class="agent-results">${cards}</div>
   </div>`;
 }
