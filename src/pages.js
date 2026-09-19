@@ -434,14 +434,14 @@ function strongCoinDetail(state, strong){
       <div><span>市場強度</span><strong>${scoreNum.toFixed(0)} / 100</strong></div>
       <div><span>Research Score</span><strong>${evidence.composite} / 100</strong></div>
       <div><span>Strategy Match</span><strong>${evidence.strategyMatch}</strong></div>
-      <div><span>Risk Gate</span><strong>${evidence.riskLabel}</strong></div>
+      <div><span>Exposure Gate</span><strong>${evidence.riskLabel}</strong></div>
     </div>
     <div class="strong-reasons">
       <div><span>Tradability Gate</span><p>${evidence.tradabilityReason}。目前流動性排名 #${evidence.liquidityRank} / ${evidence.universeSize}，權重 20%。</p></div>
       <div><span>Strategy Match</span><p>${evidence.strategyMatch}。這是待驗證的策略族群，不等於該策略已經盈利。</p></div>
       <div><span>Technical</span><p>${evidence.technicalLabel} · 權重 12%。未分析時採中性分，不假設方向。</p></div>
       <div><span>Strategy Validator</span><p>${evidence.validatorLabel} · 權重 10%。只有實際回測資料才可能成為 PASS。</p></div>
-      <div><span>Risk Gate</span><p>${evidence.riskLabel} · 權重 8%。BLOCKED 不得進入 Top 5，但仍保留在 Universe 研究資料。</p></div>
+      <div><span>Exposure Gate</span><p>${evidence.riskLabel} · 權重 8%。BLOCKED 不得進入 Top 5，但仍保留在 Universe 研究資料。</p></div>
       <div><span>市場基礎</span><p>市場強勢權重 50%；Research Top 5 是研究優先序，不是買進排名。</p></div>
     </div>
     <div class="strong-actions strong-actions-three">
@@ -718,14 +718,14 @@ function candidatePoolPanel(state){
         <div><span>MARKET</span><strong>${item.signal?.score != null ? `Score ${item.signal.score}` : '已加入'}</strong><small>${item.signal?.direction || item.source || '—'}</small></div>
         <div><span>TECHNICAL</span><strong>${item.technical?.consensus || '待分析'}</strong><small>${item.technical?.status || '—'}</small></div>
         <div><span>VALIDATOR</span><strong class="decision-text-${validator.tone}">${validator.label}</strong><small>${item.validator?.result ? `${Number(vr.trades)||0} trades · PF ${vr.profitFactor == null ? '—' : Number(vr.profitFactor).toFixed(2)} · DD ${pct(vr.maxDrawdownPct)}` : '尚未回測'}</small></div>
-        <div><span>RISK GATE</span><strong class="decision-text-${riskTone(item.risk?.status)}">${riskStatus}</strong><small>${item.risk ? `${Number(item.risk.portfolioRiskPct||0).toFixed(2)}% / 1.50%` : '待檢查'}</small></div>
+        <div><span>EXPOSURE GATE</span><strong class="decision-text-${riskTone(item.risk?.status)}">${riskStatus}</strong><small>${item.risk ? `${Number(item.risk.portfolioRiskPct||0).toFixed(2)}% / 1.50%` : '待檢查'}</small></div>
       </div>
       ${candidateTechnical(item)}
       ${item.risk?.reasons?.length ? `<div class="risk-reasons">${item.risk.reasons.map(reason=>`<p>• ${reason}</p>`).join('')}</div>` : ''}
       <div class="candidate-actions">
         <button type="button" class="secondary-btn" data-candidate-analyze="${item.symbol}">多週期分析</button>
         <button type="button" class="secondary-btn" data-candidate-validate="${item.symbol}">策略驗證</button>
-        <button type="button" class="secondary-btn" data-candidate-risk="${item.symbol}">Risk Gate</button>
+        <button type="button" class="secondary-btn" data-candidate-risk="${item.symbol}">Exposure Gate</button>
         <button type="button" class="danger-btn" data-candidate-remove="${item.symbol}">移出候選</button>
       </div>
     </article>`;
@@ -738,7 +738,7 @@ function candidatePoolPanel(state){
     </form>
     <div class="candidate-pool-summary">
       <div><span>候選數</span><strong>${items.length}</strong></div>
-      <p>Agent 可獨立分析；只有你選擇的標的才會進入候選池。Risk Gate 具有阻擋權，但不會送出真實訂單。</p>
+      <p>Agent 可獨立分析；只有你選擇的標的才會進入候選池。Exposure Gate 目前以 Paper 保證金 / NAV 代理曝險，具有阻擋權但不會送出真實訂單。</p>
     </div>
     <div class="candidate-list">${rows}</div>
   </div>`;
@@ -848,7 +848,7 @@ function topFiveResearchPanel(state){
         </div>
       </div>
     </details>`;
-  }).join('') : '<div class="empty-state research-empty"><strong>尚未執行 Top 5 Research</strong><span>按下驗證後，系統會逐隻執行 Technical、固定 baseline 回測、Strategy Guard 與 Risk Gate。</span></div>';
+  }).join('') : '<div class="empty-state research-empty"><strong>尚未執行 Top 5 Research</strong><span>按下驗證後，系統會逐隻執行 Technical、固定 baseline 回測、Strategy Guard 與 Exposure Gate。</span></div>';
 
   return `<section class="agent-research-panel research-cockpit">
     <div class="agent-research-head research-cockpit-head">
@@ -1079,14 +1079,14 @@ function riskAgentPanel(state){
   const rows = items.length ? items.map(item=>{
     const status = item.risk?.status || '未檢查';
     return `<article class="agent-risk-row">
-      <div class="agent-result-main"><strong>${item.symbol}</strong><span>${item.risk ? `Portfolio Risk ${Number(item.risk.portfolioRiskPct||0).toFixed(2)}% · 同向 ${item.risk.sameDirectionCount||0}` : '尚未執行 Risk Gate'}</span></div>
+      <div class="agent-result-main"><strong>${item.symbol}</strong><span>${item.risk ? `Paper Margin ${Number(item.risk.portfolioRiskPct||0).toFixed(2)}% · 同向 ${item.risk.sameDirectionCount||0}` : '尚未執行 Exposure Gate'}</span></div>
       <span class="decision-badge decision-${riskTone(item.risk?.status)}">${status}</span>
-      <button type="button" class="secondary-btn" data-candidate-risk="${item.symbol}">執行 Risk Gate</button>
+      <button type="button" class="secondary-btn" data-candidate-risk="${item.symbol}">執行 Exposure Gate</button>
     </article>`;
   }).join('') : '<div class="empty-state"><strong>候選池中沒有符合此風險分類的標的</strong></div>';
   return `<div class="agent-panel-stack">
     ${agentFilterTabs(state,[['all','全部'],['unscanned','未檢查'],['pass','PASS'],['caution','CAUTION'],['blocked','BLOCKED']])}
-    <div class="agent-risk-summary"><div><span>目前 Portfolio Risk</span><strong>${pct(summary.portfolioRiskPct)}</strong></div><div><span>風險上限</span><strong>1.50%</strong></div><div><span>持倉</span><strong>${summary.openPositions || 0}</strong></div></div>
+    <div class="agent-risk-summary"><div><span>目前 Paper Margin</span><strong>${pct(summary.portfolioRiskPct)}</strong></div><div><span>曝險上限</span><strong>1.50%</strong></div><div><span>持倉</span><strong>${summary.openPositions || 0}</strong></div></div>
     <div class="agent-validator-list">${rows}</div>
   </div>`;
 }
@@ -1136,7 +1136,7 @@ function playbookAgentPanel(state){
       <div><span>持倉</span><strong>${state.paper?.summary?.openPositions || 0}</strong></div>
       <div><span>事件</span><strong>${mock.calendar?.length || 0}</strong></div>
     </div>
-    <div class="agent-intro"><strong>Trading Playbook</strong><span>把候選、驗證、Risk Gate 與持倉整合成每日執行清單；仍不具備真實下單權。</span></div>
+    <div class="agent-intro"><strong>Trading Playbook</strong><span>把候選、驗證、Exposure Gate 與持倉整合成每日執行清單；仍不具備真實下單權。</span></div>
     <div class="playbook-list">${cards}</div>
   </div>`;
 }
@@ -1208,7 +1208,7 @@ function strategyDevelopmentPanel(){
     ['03','Entry','明確定義觸發條件，不使用事後判讀。'],
     ['04','Stop','定義失效點、ATR 或結構停損。'],
     ['05','Take Profit','TP1 / TP2、移動停利與離場規則。'],
-    ['06','Risk','每筆風險、Portfolio Risk、槓桿與成本。'],
+    ['06','Risk','每筆風險、Paper Margin、槓桿與成本。'],
     ['07','Validation','Backtest → OOS → Forward Paper → Control。']
   ];
   return `<div class="rd-stack">
