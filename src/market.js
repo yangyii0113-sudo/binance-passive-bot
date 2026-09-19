@@ -80,7 +80,7 @@ function normalizeUniverse(payload) {
     if (seen.has(ticker.symbol)) continue;
     seen.add(ticker.symbol);
     merged.push(ticker);
-    if (merged.length >= MARKET_MAX_ROWS) break;
+    if (merged.length >= MARKET_LIQUIDITY_POOL) break;
   }
 
   const liquidityIndex = new Map(liquid.map((ticker, index) => [ticker.symbol, index]));
@@ -125,6 +125,8 @@ export function cachedMarketSnapshot() {
     status: STATUS.STALE,
     updatedAt: cached.updatedAt,
     rows: cached.rows,
+    universeRows: Array.isArray(cached.universeRows) ? cached.universeRows : cached.rows,
+    universeSize: Number(cached.universeSize) || (Array.isArray(cached.universeRows) ? cached.universeRows.length : cached.rows.length),
     direction: cached.direction || summary.direction,
     sentiment: cached.sentiment || summary.sentiment
   };
@@ -133,15 +135,18 @@ export function cachedMarketSnapshot() {
 export async function loadMarketSnapshot() {
   try {
     const payload = await fetchAllTickers();
-    const rows = normalizeUniverse(payload);
-    if (rows.length < CORE_MARKET_SYMBOLS.length) {
+    const universeRows = normalizeUniverse(payload);
+    if (universeRows.length < CORE_MARKET_SYMBOLS.length) {
       throw new Error('Liquid universe too small');
     }
+    const rows = universeRows.slice(0, MARKET_MAX_ROWS);
     const summary = deriveMarketSummary(rows);
     const snapshot = {
       status: STATUS.LIVE,
       updatedAt: new Date().toISOString(),
       rows,
+      universeRows,
+      universeSize: universeRows.length,
       direction: summary.direction,
       sentiment: summary.sentiment
     };
@@ -150,12 +155,15 @@ export async function loadMarketSnapshot() {
   } catch (error) {
     const cached = cachedMarketSnapshot();
     if (cached) return { ...cached, error };
+    const fallbackRows = MARKET_SYMBOLS.map(({ icon, display }) => [icon, display, '—', null, null, null]);
     return {
       status: STATUS.ERROR,
       updatedAt: null,
       direction: '無資料',
       sentiment: '無資料',
-      rows: MARKET_SYMBOLS.map(({ icon, display }) => [icon, display, '—', null, null, null]),
+      rows: fallbackRows.slice(0, MARKET_MAX_ROWS),
+      universeRows: fallbackRows,
+      universeSize: fallbackRows.length,
       error
     };
   }
