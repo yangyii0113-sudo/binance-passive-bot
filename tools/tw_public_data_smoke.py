@@ -12,11 +12,13 @@ if str(ROOT) not in sys.path:
 
 from research.tw.acquisition import DatasetPolicy, SnapshottingJsonTransport, latest_row_date
 from research.tw.intelligence.institutional_flow import build_institutional_flow
+from research.tw.intelligence.margin_short import build_margin_short_context
 from research.tw.providers.http import UrllibJsonTransport
 from research.tw.providers.institutional import (
     TPExInstitutionalSummaryProvider,
     TWSEInstitutionalSummaryProvider,
 )
+from research.tw.providers.margin import TPExMarginProvider, TWSEMarginProvider
 from research.tw.providers.tpex import TPExProvider
 from research.tw.providers.twse import TWSEProvider
 from research.tw.providers.twse_calendar import TWSEHolidayCalendarProvider
@@ -137,6 +139,38 @@ def main() -> int:
                     f"{snapshot.coverage_ratio:.2f}"
                 )
 
+        twse_margin_raw = tuple(TWSEMarginProvider(http_transport).fetch())
+        tpex_margin_raw = tuple(TPExMarginProvider(http_transport).fetch())
+
+        if not twse_margin_raw:
+            raise RuntimeError("TWSE margin dataset normalized no observations")
+        if not tpex_margin_raw:
+            raise RuntimeError("TPEx margin dataset normalized no observations")
+
+        twse_margin = build_margin_short_context(
+            twse_margin_raw,
+            venue="TWSE",
+        )
+        tpex_margin = build_margin_short_context(
+            tpex_margin_raw,
+            venue="TPEX",
+        )
+
+        for snapshot in (twse_margin, tpex_margin):
+            if snapshot.margin_balance is None:
+                raise RuntimeError(
+                    f"{snapshot.venue} margin balance unavailable"
+                )
+            if snapshot.short_balance is None:
+                raise RuntimeError(
+                    f"{snapshot.venue} short balance unavailable"
+                )
+            if snapshot.coverage_ratio < 0.70:
+                raise RuntimeError(
+                    f"{snapshot.venue} margin coverage too low: "
+                    f"{snapshot.coverage_ratio:.2f}"
+                )
+
         print(
             json.dumps(
                 {
@@ -153,6 +187,12 @@ def main() -> int:
                     "tpex_institutional_date": tpex_inst.observed_at,
                     "twse_foreign_net": twse_inst.by_group("foreign").net_amount,
                     "tpex_foreign_net": tpex_inst.by_group("foreign").net_amount,
+                    "twse_margin_date": twse_margin.observed_at,
+                    "tpex_margin_date": tpex_margin.observed_at,
+                    "twse_margin_balance": twse_margin.margin_balance,
+                    "tpex_margin_balance": tpex_margin.margin_balance,
+                    "twse_short_balance": twse_margin.short_balance,
+                    "tpex_short_balance": tpex_margin.short_balance,
                     "raw_snapshot_root": temp,
                     "execution_allowed": False,
                 },
