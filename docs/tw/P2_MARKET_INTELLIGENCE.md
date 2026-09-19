@@ -21,14 +21,24 @@ Gate:
 - [x] no provider/network access from intelligence layer
 - [x] architecture CI green
 
-## P2.2 Institutional Flow — ACTIVE
+## P2.2 Institutional Flow — COMPLETE
 
-Future:
-- TWSE market institutional summary
-- TPEx institutional summary
-- foreign / investment trust / dealer canonical flow contracts
+Build:
+- TWSE BFI82U market institutional summary
+- TPEx `tpex_3insti_summary` market institutional summary
+- canonical foreign / investment trust / dealer / total flow contracts
+- evidence/provenance on all derived flow outputs
+- degraded coverage rather than fabricated zero
+- official live smoke validation
 
-## P2.3 Margin / Short Context — LOCKED
+Gate:
+- [x] deterministic institutional fixtures green
+- [x] TWSE foreign-dealer rows normalized into foreign-capital bucket
+- [x] intelligence layer has no provider/network dependency
+- [x] official TWSE / TPEx institutional live smoke green
+- [x] transient non-JSON responses retry before hard failure
+
+## P2.3 Margin / Short Context — ACTIVE
 
 Future:
 - financing balance
