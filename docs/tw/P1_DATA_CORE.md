@@ -16,45 +16,65 @@
 - [x] listed-company registry adapter
 - [x] latest daily OHLCV snapshot adapter
 - [x] canonical Observation mapping
-- [ ] market index observations
-- [ ] historical accumulator / snapshot persistence
+- [x] TAIEX market index observations via FMTQIK
+- [ ] live official-provider smoke validation in CI/manual gate
+- [ ] historical accumulator wiring
 
 ### P1.3 TPEx OTC market
 - [x] OTC-company registry adapter
 - [x] latest daily OHLCV snapshot adapter
 - [x] canonical Observation mapping
-- [ ] OTC index observations
-- [ ] historical accumulator / snapshot persistence
+- [x] OTC index canonicalization adapter + deterministic fixture
+- [ ] verify current live TPEx index field schema against official endpoint
+- [ ] historical accumulator wiring
 
 ### P1.4 Market calendar/session
 - [x] canonical Taiwan timezone/session definition
 - [x] weekday baseline helper
-- [ ] official holiday calendar source
-- [ ] session validation against official calendar
+- [x] official TWSE holiday calendar source
+- [x] distinguish holiday closure from first/last-trading-day notices
+- [x] session validation against official calendar
+- [ ] define unscheduled closure reconciliation policy
 
 ### P1.5 Data persistence
-- [ ] raw immutable snapshot store
-- [ ] normalized observation store
-- [ ] de-duplication by source/date/instrument/field
-- [ ] snapshot manifest and hashes
+- [x] content-addressed raw immutable snapshot store
+- [x] append-only snapshot manifest + SHA-256
+- [x] append-only normalized SQLite observation store
+- [x] exact-record de-duplication
+- [ ] wire provider acquisition to exact raw response-byte capture
+- [ ] add retention/backup policy for Research Staging
 
 ### P1.6 P1 exit gate
 P1 may become COMPLETE only when:
-- [ ] TWSE + TPEx registry works from official public data
-- [ ] TWSE + TPEx daily market snapshot normalizes deterministically
-- [ ] index observations exist for both markets
-- [ ] official holiday/session logic exists
-- [ ] raw snapshots can be persisted without destructive overwrite
-- [ ] fixture tests and architecture gates are green
-- [ ] no raw provider payload reaches UI/read models directly
+- [ ] TWSE + TPEx registry passes official live smoke validation
+- [ ] TWSE + TPEx daily market snapshot passes official live smoke validation
+- [ ] index observations are live-verified for both markets
+- [x] official holiday/session logic exists
+- [x] raw snapshots can be persisted without destructive overwrite
+- [x] deterministic fixture tests cover normalization/storage/calendar
+- [ ] all P1 live-smoke and architecture gates are green
+- [x] no raw provider payload reaches UI/read models directly
 
 ## Official public sources
 
 - TWSE OpenAPI base: `https://openapi.twse.com.tw/v1`
 - TWSE listed daily quote: `/exchangeReport/STOCK_DAY_ALL`
+- TWSE market statistics / TAIEX: `/exchangeReport/FMTQIK`
 - TWSE listed company profile: `/opendata/t187ap03_L`
+- TWSE holiday schedule: `/holidaySchedule/holidaySchedule`
 - TPEx OpenAPI base: `https://www.tpex.org.tw/openapi/v1`
 - TPEx OTC daily quote: `/tpex_mainboard_daily_close_quotes`
+- TPEx OTC index dataset: `/tpex_daily_trading_index`
 - TPEx OTC company profile: `/mopsfin_t187ap03_O`
 
-These OpenAPI datasets are treated as latest-snapshot sources. History must be accumulated separately; callers must not pretend that adding a date parameter produces historical data.
+## Data-history rule
+
+The latest-snapshot datasets are not treated as arbitrary historical APIs.
+
+History will be built by:
+1. capturing exact provider response bytes,
+2. storing immutable content-addressed raw snapshots,
+3. normalizing canonical observations,
+4. appending observations without destructive overwrite.
+
+No caller may fabricate history by adding undocumented date parameters.
