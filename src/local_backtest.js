@@ -134,15 +134,18 @@ function simulate(candles, strategy){
   const trades = [];
   const curve = [{time:candles[0].time,balance:1000}];
   for(let i=1;i<candles.length;i++){
-    if(fast[i] == null || slow[i] == null || fast[i-1] == null || slow[i-1] == null) continue;
-    const nextSide = fast[i] > slow[i] ? 1 : fast[i] < slow[i] ? -1 : side;
+    const signalIndex = i - 1;
+    if(fast[signalIndex] == null || slow[signalIndex] == null) continue;
+    const nextSide = fast[signalIndex] > slow[signalIndex] ? 1 : fast[signalIndex] < slow[signalIndex] ? -1 : side;
+    const fill = Number(candles[i].open);
+    if(!Number.isFinite(fill) || !(fill > 0)) continue;
     if(side === 0 && nextSide !== 0){
       side = nextSide;
-      entry = candles[i].close;
+      entry = fill;
       continue;
     }
     if(nextSide !== side){
-      const exit = candles[i].close;
+      const exit = fill;
       const raw = side === 1 ? exit / entry - 1 : entry / exit - 1;
       const ret = raw - COST_PER_TRADE;
       equity *= Math.max(0.01,1 + ret);
@@ -151,7 +154,7 @@ function simulate(candles, strategy){
       maxDd = Math.max(maxDd,(peak-equity)/peak);
       curve.push({time:candles[i].time,balance:1000*equity});
       side = nextSide;
-      entry = exit;
+      entry = fill;
     }
   }
   if(side !== 0 && entry){
@@ -192,7 +195,7 @@ export async function runLiteBacktest({symbol='BTCUSDT',range='90D',strategy='A'
     status: STATUS.LIVE,
     updatedAt: new Date().toISOString(),
     local: true,
-    input:{symbol,range:resolved.range,strategy,timeframe:interval,samples:candles.length,dataSource:fetched.source,costModel:'單次來回成本 0.08%'},
+    input:{symbol,range:resolved.range,strategy,timeframe:interval,samples:candles.length,dataSource:fetched.source,costModel:'單次來回成本 0.08%',executionModel:'Fully Closed Signal → Next Bar Open'},
     result:{
       trades:result.trades,
       winRatePct:result.winRatePct,
