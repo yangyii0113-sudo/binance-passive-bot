@@ -188,7 +188,7 @@ for (const [name, renderer] of Object.entries(pages)) {
 }
 
 const homeHtml = pages.home(renderState);
-assert.ok(homeHtml.includes('綜合強勢加密貨幣 Top 5'), 'Home must expose composite strong crypto Top 5');
+assert.ok(homeHtml.includes('市場機會加密貨幣 Top 5'), 'Home must expose market opportunity crypto Top 5');
 assert.equal(
   (homeHtml.match(/class="strong-card/g) || []).length,
   5,
@@ -207,7 +207,7 @@ for (const [hash, route] of [
 }
 
 console.log('GATE_A_SMOKE_OK');
-console.log('market: dynamic liquid universe + strength score; LIVE -> STALE -> ERROR');
+console.log('market: dynamic liquid universe + symmetric opportunity strength; LIVE -> STALE -> ERROR');
 console.log('snapshot sources: missing -> EMPTY');
 console.log('runtime bridge: strategy/paper/results/backtest canonicalization');
 console.log('routes: 5/5');
