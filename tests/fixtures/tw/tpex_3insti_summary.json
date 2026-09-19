@@ -1,0 +1,30 @@
+[
+  {
+    "Date": "1150918",
+    "Investor": "外資及陸資",
+    "PurchaseAmount": "90",
+    "SaleAmount": "100",
+    "Net": "-10"
+  },
+  {
+    "Date": "1150918",
+    "Investor": "投信",
+    "PurchaseAmount": "20",
+    "SaleAmount": "12",
+    "Net": "8"
+  },
+  {
+    "Date": "1150918",
+    "Investor": "自營商",
+    "PurchaseAmount": "15",
+    "SaleAmount": "18",
+    "Net": "-3"
+  },
+  {
+    "Date": "1150918",
+    "Investor": "合計",
+    "PurchaseAmount": "125",
+    "SaleAmount": "130",
+    "Net": "-5"
+  }
+]
