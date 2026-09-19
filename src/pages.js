@@ -549,10 +549,23 @@ function validatorVerdict(validator){
   if(!result) return {label:'待驗證',tone:'pending'};
   const trades = Number(result.trades) || 0;
   const pf = Number(result.profitFactor);
-  const expectancy = Number(result.expectancyR);
-  if(trades < 20) return {label:'樣本不足',tone:'caution'};
-  if(Number.isFinite(pf) && Number.isFinite(expectancy) && pf > 1 && expectancy > 0) return {label:'PASS',tone:'pass'};
-  return {label:'REVIEW',tone:'review'};
+  const avgTrade = Number(result.avgTradePct);
+  const netReturn = Number(result.netReturnPct);
+  const maxDd = Number(result.maxDrawdownPct);
+  const validationLevel = String(result.validation?.level || '');
+  if(trades < 20 || validationLevel.startsWith('INSUFFICIENT')) return {label:'樣本不足',tone:'caution'};
+  if(
+    !Number.isFinite(pf) ||
+    !Number.isFinite(avgTrade) ||
+    !Number.isFinite(netReturn) ||
+    !Number.isFinite(maxDd) ||
+    pf < 1 ||
+    avgTrade <= 0 ||
+    netReturn <= 0
+  ) return {label:'REVIEW',tone:'review'};
+  const enoughEvidence = validationLevel === 'INITIAL' || validationLevel === 'REFERENCE';
+  if(enoughEvidence && pf >= 1.2 && maxDd <= 35) return {label:'PASS',tone:'pass'};
+  return {label:'CAUTION',tone:'caution'};
 }
 function riskTone(status){
   const key = String(status || 'PENDING').toUpperCase();
@@ -595,7 +608,7 @@ function candidatePoolPanel(state){
       <div class="evidence-matrix">
         <div><span>MARKET</span><strong>${item.signal?.score != null ? `Score ${item.signal.score}` : '已加入'}</strong><small>${item.signal?.direction || item.source || '—'}</small></div>
         <div><span>TECHNICAL</span><strong>${item.technical?.consensus || '待分析'}</strong><small>${item.technical?.status || '—'}</small></div>
-        <div><span>VALIDATOR</span><strong class="decision-text-${validator.tone}">${validator.label}</strong><small>${item.validator?.result ? `${Number(vr.trades)||0} trades · PF ${vr.profitFactor == null ? '—' : Number(vr.profitFactor).toFixed(2)}` : '尚未回測'}</small></div>
+        <div><span>VALIDATOR</span><strong class="decision-text-${validator.tone}">${validator.label}</strong><small>${item.validator?.result ? `${Number(vr.trades)||0} trades · PF ${vr.profitFactor == null ? '—' : Number(vr.profitFactor).toFixed(2)} · DD ${pct(vr.maxDrawdownPct)}` : '尚未回測'}</small></div>
         <div><span>RISK GATE</span><strong class="decision-text-${riskTone(item.risk?.status)}">${riskStatus}</strong><small>${item.risk ? `${Number(item.risk.portfolioRiskPct||0).toFixed(2)}% / 1.50%` : '待檢查'}</small></div>
       </div>
       ${candidateTechnical(item)}
@@ -756,6 +769,7 @@ function validatorAgentPanel(state){
     if(filter==='pending') return verdict.label==='待驗證' || verdict.label==='樣本不足';
     if(filter==='pass') return verdict.label==='PASS';
     if(filter==='review') return verdict.label==='REVIEW';
+    if(filter==='caution') return verdict.label==='CAUTION' || verdict.label==='樣本不足';
     return true;
   }).slice(0,12);
   const html = rows.length ? rows.map(({symbol,item,verdict})=>{
@@ -767,7 +781,7 @@ function validatorAgentPanel(state){
     </article>`;
   }).join('') : '<div class="empty-state"><strong>目前沒有符合篩選的標的</strong></div>';
   return `<div class="agent-panel-stack">
-    ${agentFilterTabs(state,[['all','全部'],['pending','待驗證'],['pass','PASS'],['review','REVIEW']])}
+    ${agentFilterTabs(state,[['all','全部'],['pending','待驗證'],['pass','PASS'],['caution','CAUTION'],['review','REVIEW']])}
     <div class="agent-intro"><strong>Strategy Validator</strong><span>任何標的都可獨立送入歷史回測；若尚未在候選池，開始驗證時會自動建立候選紀錄。</span></div>
     <div class="agent-validator-list">${html}</div>
   </div>`;
@@ -1084,6 +1098,7 @@ export function backtestPage(state) {
       ${metric('獲利因子',result.profitFactor == null ? '—' : Number(result.profitFactor).toFixed(2))}
       ${metric('淨報酬率',pct(result.netReturnPct))}${metric('最大回撤',pct(result.maxDrawdownPct))}
       ${metric('樣本數',input.samples || '—')}${metric('驗證層級',result.validation?.label || '—')}
+      ${metric('平均每筆',result.avgTradePct == null ? '—' : pct(result.avgTradePct))}
     </div>
     <div class="backtest-summary">
       <div><span>樣本</span><strong>${input.samples || '—'} K</strong></div>
@@ -1138,6 +1153,7 @@ export function strategyLabPage(state) {
       ${metric('獲利因子',result.profitFactor == null ? '—' : Number(result.profitFactor).toFixed(2))}
       ${metric('淨報酬率',pct(result.netReturnPct))}${metric('最大回撤',pct(result.maxDrawdownPct))}
       ${metric('樣本數',input.samples || '—')}${metric('驗證層級',result.validation?.label || '—')}
+      ${metric('平均每筆',result.avgTradePct == null ? '—' : pct(result.avgTradePct))}
     </div>
     <div class="backtest-summary">
       <div><span>樣本</span><strong>${input.samples || '—'} K</strong></div>
