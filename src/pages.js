@@ -778,6 +778,16 @@ function topFiveResearchPanel(state){
   const running = research.status === 'LOADING';
   const progress = Number(research.progress) || 0;
   const total = Number(research.total) || rows.length || 5;
+  const updated = research.updatedAt
+    ? new Date(research.updatedAt).toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'})
+    : '尚未執行';
+
+  const counts = {
+    validated: rows.filter(item=>item.decision?.label === 'VALIDATED').length,
+    caution: rows.filter(item=>['CAUTION','INSUFFICIENT'].includes(item.decision?.label)).length,
+    review: rows.filter(item=>['REVIEW','ERROR'].includes(item.decision?.label)).length,
+    blocked: rows.filter(item=>item.decision?.label === 'BLOCKED').length
+  };
 
   const resultRows = rows.length ? rows.map(item=>{
     const result = item.backtest?.result || {};
@@ -787,59 +797,91 @@ function topFiveResearchPanel(state){
     const guard = item.guard || {label:'待驗證',tone:'pending'};
     const risk = item.risk?.status || '待檢查';
     const technical = item.technical?.consensus || (item.technicalError ? 'Technical ERROR' : '待分析');
+    const changeClass = Number(result.netReturnPct) >= 0 ? 'up' : 'down';
+
     const metrics = item.backtest ? `
       <div class="agent-research-metrics">
         <span><small>Trades</small><strong>${result.trades ?? '—'}</strong></span>
-        <span><small>Win</small><strong>${pct(result.winRatePct)}</strong></span>
+        <span><small>Win Rate</small><strong>${pct(result.winRatePct)}</strong></span>
         <span><small>PF</small><strong>${result.profitFactor == null ? '—' : Number(result.profitFactor).toFixed(2)}</strong></span>
         <span><small>Avg Trade</small><strong>${pct(result.avgTradePct)}</strong></span>
-        <span><small>Net</small><strong>${pct(result.netReturnPct)}</strong></span>
-        <span><small>MDD</small><strong>${pct(result.maxDrawdownPct)}</strong></span>
+        <span><small>Net Return</small><strong class="${changeClass}">${pct(result.netReturnPct)}</strong></span>
+        <span><small>Max DD</small><strong>${pct(result.maxDrawdownPct)}</strong></span>
       </div>`
       : `<div class="candidate-empty-line">${spec.supported === false ? spec.reason : item.error || '尚未完成 baseline 回測'}</div>`;
 
-    return `<article class="agent-research-card" data-search="${item.symbol} ${item.strategyMatch} ${guard.label} ${decision.label}">
-      <div class="candidate-head">
-        <div class="candidate-symbol-wrap">
-          ${coinLogo(item.symbol,item.symbol?.slice(0,1),true)}
-          <div>
-            <strong>#${item.rank} ${item.symbol}</strong>
-            <span>Research ${item.researchScore ?? '—'} · Market ${Math.round(Number(item.marketScore)||0)}</span>
+    const strategyChip = item.strategyMatch || '待配對';
+    const guardChip = guard.label || '待驗證';
+
+    return `<details class="agent-research-card research-compact-card" data-search="${item.symbol} ${item.strategyMatch} ${guard.label} ${decision.label}">
+      <summary class="agent-research-summary">
+        <span class="research-rank">#${item.rank}</span>
+        ${coinLogo(item.symbol,item.symbol?.slice(0,1),true)}
+        <div class="research-summary-main">
+          <strong>${item.symbol}</strong>
+          <div class="research-chip-row">
+            <span class="research-chip">${strategyChip}</span>
+            <span class="research-chip research-chip-${guard.tone || 'pending'}">${guardChip}</span>
+            <span class="research-chip research-chip-${riskTone(item.risk?.status)}">${risk}</span>
           </div>
         </div>
+        <div class="research-score"><small>Research</small><b>${item.researchScore ?? '—'}</b></div>
         <span class="decision-badge decision-${decision.tone || 'pending'}">${decision.label || 'PENDING'}</span>
+        <span class="research-chevron">⌄</span>
+      </summary>
+      <div class="research-detail-body">
+        <div class="agent-research-evidence">
+          <div><span>TECHNICAL</span><strong>${technical}</strong></div>
+          <div><span>STRATEGY MATCH</span><strong>${item.strategyMatch || '—'}</strong></div>
+          <div><span>BASELINE</span><strong>${spec.supported ? `${spec.strategyLabel} · ${String(spec.timeframe||'').toUpperCase()} · ${spec.range}` : '未支援'}</strong></div>
+          <div><span>GUARD</span><strong class="decision-text-${guard.tone || 'pending'}">${guard.label || '—'}</strong></div>
+          <div><span>RISK</span><strong class="decision-text-${riskTone(item.risk?.status)}">${risk}</strong></div>
+          <div><span>DATA</span><strong>${input.dataSource || '—'}</strong></div>
+        </div>
+        ${metrics}
+        <div class="research-detail-footer">
+          <span>${guard.reason || spec.reason || '固定 baseline 驗證'}</span>
+          ${item.status === 'DONE' || item.status === 'ERROR' ? `
+            <button type="button" class="candidate-add-btn" data-research-promote="${item.symbol}">升格 Candidate</button>
+          ` : ''}
+        </div>
       </div>
-      <div class="agent-research-evidence">
-        <div><span>TECHNICAL</span><strong>${technical}</strong></div>
-        <div><span>STRATEGY MATCH</span><strong>${item.strategyMatch || '—'}</strong></div>
-        <div><span>BASELINE</span><strong>${spec.supported ? `${spec.strategyLabel} · ${String(spec.timeframe||'').toUpperCase()} · ${spec.range}` : '未支援'}</strong></div>
-        <div><span>GUARD</span><strong class="decision-text-${guard.tone || 'pending'}">${guard.label || '—'}</strong></div>
-        <div><span>RISK</span><strong class="decision-text-${riskTone(item.risk?.status)}">${risk}</strong></div>
-        <div><span>DATA</span><strong>${input.dataSource || '—'}</strong></div>
-      </div>
-      ${metrics}
-      ${item.status === 'DONE' || item.status === 'ERROR' ? `
-        <button type="button" class="candidate-add-btn" data-research-promote="${item.symbol}">升格 Candidate</button>
-      ` : ''}
-    </article>`;
-  }).join('') : '<div class="empty-state"><strong>尚未執行 Top 5 Research</strong><span>啟動後會逐隻執行 Multi-Timeframe、固定 baseline 回測、Strategy Guard 與 Risk Gate。</span></div>';
+    </details>`;
+  }).join('') : '<div class="empty-state research-empty"><strong>尚未執行 Top 5 Research</strong><span>按下驗證後，系統會逐隻執行 Technical、固定 baseline 回測、Strategy Guard 與 Risk Gate。</span></div>';
 
-  return `<section class="agent-research-panel">
-    <div class="agent-research-head">
+  return `<section class="agent-research-panel research-cockpit">
+    <div class="agent-research-head research-cockpit-head">
       <div>
-        <strong>Dynamic Top 5 Research Pipeline</strong>
-        <span>固定規則驗證，不為單一標的調參。</span>
+        <span class="research-eyebrow">RESEARCH PIPELINE</span>
+        <strong>Top 5 全套驗證</strong>
+        <small>固定規則 · 不針對單一標的調參 · 更新 ${updated}</small>
       </div>
-      <button type="button" class="primary-inline-btn" data-top5-research-run ${running?'disabled':''}>
-        ${running ? `執行中 ${progress}/${total}` : '執行 Top 5 全套驗證'}
+      <button type="button" class="primary-inline-btn research-run-btn" data-top5-research-run ${running?'disabled':''}>
+        ${running ? `執行中 ${progress}/${total}` : '開始全套驗證'}
       </button>
     </div>
-    ${running ? `<div class="agent-research-progress"><span style="width:${total ? Math.round(progress/total*100) : 0}%"></span></div>` : ''}
+
+    <div class="research-status-grid">
+      <div class="research-status-pass"><span>VALIDATED</span><strong>${counts.validated}</strong></div>
+      <div class="research-status-caution"><span>CAUTION</span><strong>${counts.caution}</strong></div>
+      <div class="research-status-review"><span>REVIEW</span><strong>${counts.review}</strong></div>
+      <div class="research-status-blocked"><span>BLOCKED</span><strong>${counts.blocked}</strong></div>
+    </div>
+
+    ${running ? `
+      <div class="research-progress-wrap">
+        <div><span>驗證進度</span><strong>${progress} / ${total}</strong></div>
+        <div class="agent-research-progress"><span style="width:${total ? Math.round(progress/total*100) : 0}%"></span></div>
+      </div>
+    ` : ''}
+
     <div class="agent-research-list">${resultRows}</div>
-    <div class="agent-system-note">Trend 使用固定 EMA20/50 · 4H · 2Y；Momentum/Breakout Watch 使用固定 EMA10/30 · 1H · 1Y；Range 尚未實作 Mean Reversion baseline，因此只研究、不偽裝成已驗證策略。</div>
+    <details class="research-rule-note">
+      <summary>查看固定驗證規則</summary>
+      <p>Trend：EMA20/50 · 4H · 2Y；Momentum / Breakout Watch：EMA10/30 · 1H · 1Y；Range 尚未實作 Mean Reversion baseline，因此只研究、不偽裝成已驗證策略。</p>
+    </details>
   </section>`;
 }
-
 function marketScoutPanel(state){
   const filter = state.ui?.agentFilter || 'strong';
   const universe = researchUniverseRows(state);
