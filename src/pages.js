@@ -924,25 +924,54 @@ function marketScoutPanel(state){
         ? 'Universe Scanner'
         : 'Market Scout';
     const scoreValue = isComposite ? evidence.composite : (Number.isFinite(strength) ? strength : '');
-    return `<article class="agent-result-row" data-search="${symbol} ${evidence.strategyMatch} ${evidence.tradabilityStatus}">
+    const validatorTone = evidence.validatorLabel === 'PASS' ? 'pass'
+      : evidence.validatorLabel === 'REVIEW' ? 'review'
+      : evidence.validatorLabel === 'CAUTION' || evidence.validatorLabel === '樣本不足' ? 'caution'
+      : 'pending';
+    const tradTone = String(evidence.tradabilityStatus || '').toLowerCase() === 'pass' ? 'pass'
+      : String(evidence.tradabilityStatus || '').toLowerCase() === 'blocked' ? 'blocked'
+      : 'caution';
+    const chips = isComposite || mode === 'universe' ? `
+      <div class="agent-result-chips">
+        <span class="research-chip">${evidence.strategyMatch}</span>
+        <span class="research-chip research-chip-${tradTone}">${evidence.tradabilityStatus}</span>
+        <span class="research-chip research-chip-${validatorTone}">${evidence.validatorLabel}</span>
+        <span class="research-chip research-chip-${riskTone(evidence.riskLabel)}">${evidence.riskLabel}</span>
+      </div>` : '';
+
+    return `<article class="agent-result-row ${isComposite?'agent-top5-row':''}" data-search="${symbol} ${evidence.strategyMatch} ${evidence.tradabilityStatus}">
       <span class="agent-rank">#${index+1}</span>
       ${coinLogo(display,icon)}
-      <div class="agent-result-main"><strong>${display}</strong><span>${reason}</span></div>
-      <div class="agent-result-metric"><strong>${last}</strong><span class="${ch>=0?'up':'down'}">${ch>=0?'+':''}${ch.toFixed(2)}%</span></div>
-      ${agentCandidateButton(symbol,source,reason,`data-candidate-score="${scoreValue}" data-candidate-direction="${ch>=0?'偏多':'偏空'}"`)}
+      <div class="agent-result-main">
+        <div class="agent-result-title">
+          <strong>${display}</strong>
+          <span>${last}</span>
+        </div>
+        ${chips || `<span>${reason}</span>`}
+        <small class="agent-market-move ${ch>=0?'up':'down'}">${ch>=0?'+':''}${ch.toFixed(2)}% · ${mode==='universe' ? `流動性 #${evidence.liquidityRank}` : compactVolume(volume)}</small>
+      </div>
+      ${isComposite
+        ? `<div class="agent-score-block"><small>RESEARCH</small><strong>${evidence.composite}</strong></div>`
+        : `<div class="agent-result-metric"><strong>${last}</strong><span class="${ch>=0?'up':'down'}">${ch>=0?'+':''}${ch.toFixed(2)}%</span></div>`}
+      <button type="button" class="candidate-add-btn agent-quick-add"
+        data-candidate-add="${symbol}"
+        data-candidate-source="${source}"
+        data-candidate-reason="${reason}"
+        data-candidate-score="${scoreValue}"
+        data-candidate-direction="${ch>=0?'偏多':'偏空'}">＋ 候選</button>
     </article>`;
   }).join('') : '<div class="empty-state"><strong>市場資料讀取中</strong></div>';
 
   return `<div class="agent-panel-stack">
     ${agentFilterTabs(state,[['strong','Dynamic Top 5'],['universe','Universe'],['gain','漲幅'],['loss','跌幅'],['liquidity','流動性']])}
-    <div class="playbook-top">
-      <div><span>Universe</span><strong>${universe.length}</strong></div>
+    <div class="playbook-top market-scout-stats">
+      <div><span>市場池</span><strong>${universe.length}</strong></div>
       <div><span>Top 5</span><strong>${topFive.length}</strong></div>
-      <div><span>Blocked</span><strong>${blockedCount}</strong></div>
-      <div><span>Source</span><strong>USD-M</strong></div>
+      <div><span>阻擋</span><strong>${blockedCount}</strong></div>
+      <div><span>資料源</span><strong>USD-M</strong></div>
     </div>
-    <div class="agent-intro"><strong>Universe Scanner</strong><span>先從 Binance USD-M 高流動性市場池建立 Universe，再由 Market / Tradability / Technical / Validator / Risk 產生 Dynamic Top 5。Strategy Match 是待驗證方向，不是盈利保證。</span></div>
-    <div class="agent-results">${cards}</div>
+    <div class="agent-intro agent-intro-compact"><strong>Universe Scanner</strong><span>先找可交易市場，再驗證 Technical / Strategy Edge / Risk。Top 5 是研究順位，不是買進順位。</span></div>
+    <div class="agent-results market-scout-results">${cards}</div>
     ${filter === 'strong' ? topFiveResearchPanel(state) : ''}
   </div>`;
 }
