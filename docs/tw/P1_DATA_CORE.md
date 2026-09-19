@@ -1,6 +1,6 @@
 # P1 — Taiwan Data Core
 
-**Status:** ACTIVE  
+**Status:** COMPLETE  
 **Purpose:** Build the official-data foundation before intelligence, AI scoring or deployment.
 
 ## P1 slices
@@ -17,7 +17,7 @@
 - [x] latest daily OHLCV snapshot adapter
 - [x] canonical Observation mapping
 - [x] TAIEX market index observations via FMTQIK
-- [ ] live official-provider smoke validation in CI/manual gate
+- [x] live official-provider smoke validation
 - [x] historical accumulator wiring
 
 ### P1.3 TPEx OTC market
@@ -46,13 +46,13 @@
 
 ### P1.6 P1 exit gate
 P1 may become COMPLETE only when:
-- [ ] TWSE + TPEx registry passes official live smoke validation
-- [ ] TWSE + TPEx daily market snapshot passes official live smoke validation
-- [ ] index observations are live-verified for both markets
+- [x] TWSE + TPEx registry passes official live smoke validation
+- [x] TWSE + TPEx daily market snapshot passes official live smoke validation
+- [x] index observations are live-verified for both markets
 - [x] official holiday/session logic exists
 - [x] raw snapshots can be persisted without destructive overwrite
 - [x] deterministic fixture tests cover normalization/storage/calendar
-- [ ] all P1 live-smoke and architecture gates are green
+- [x] all P1 live-smoke and architecture gates are green
 - [x] no raw provider payload reaches UI/read models directly
 
 ## Official public sources
