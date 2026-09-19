@@ -7,9 +7,26 @@ import { loadResultsSnapshot } from './services/results.js';
 import { loadBacktestSnapshot } from './services/backtest.js';
 import { openLocalPaperPosition, closeLocalPaperPosition } from './local_paper.js';
 import { runLiteBacktest } from './local_backtest.js';
+import { loadCandidatePool, upsertCandidate, removeCandidate, updateCandidate } from './candidate_pool.js';
+import { analyzeMultiTimeframe } from './multi_timeframe.js';
+import { evaluatePortfolioRisk } from './risk_gate.js';
 import { STATUS } from './status.js';
 import { pages } from './pages.js';
 import { currentRoute, markActiveNav } from './router.js';
+
+function syncCandidates() {
+  const book = loadCandidatePool();
+  setStateSlice('candidates', {
+    status: book.items.length ? STATUS.LIVE : STATUS.EMPTY,
+    updatedAt: book.updatedAt,
+    items: book.items
+  });
+}
+
+function candidateBySymbol(symbol) {
+  const target = String(symbol || '').toUpperCase();
+  return (appState.candidates?.items || []).find(item => item.symbol === target) || null;
+}
 
 function render() {
   const route = currentRoute();
@@ -97,6 +114,19 @@ async function handleBacktest(form) {
       timeframe: data.get('timeframe')
     });
     setStateSlice('backtest', snapshot);
+    const validatorTarget = appState.ui.validatorTargetSymbol;
+    if (validatorTarget && validatorTarget === snapshot.input.symbol) {
+      updateCandidate(validatorTarget, {
+        validator: {
+          status: 'LIVE',
+          updatedAt: snapshot.updatedAt,
+          input: snapshot.input,
+          result: snapshot.result
+        }
+      });
+      syncCandidates();
+      appState.ui.validatorTargetSymbol = null;
+    }
     appState.ui.message = `回測完成：${snapshot.input.samples} 根 K 線 / ${snapshot.result.trades} 筆交易`;
   } catch (error) {
     setStateSlice('backtest', {
@@ -163,6 +193,91 @@ function initEvents() {
     if (strategyFilter) {
       appState.ui.strategyFilter = strategyFilter.dataset.strategyFilter;
       render();
+      return;
+    }
+    const candidateManualAdd = event.target.closest?.('[data-candidate-manual-add]');
+    if (candidateManualAdd) {
+      const form = document.getElementById('candidate-manual-form');
+      const data = form ? new FormData(form) : null;
+      const symbol = data?.get('symbol');
+      try {
+        upsertCandidate({ symbol, assetClass: 'crypto', source: '手動加入', reason: 'Candidate Pool 手動加入' });
+        syncCandidates();
+        appState.ui.message = `${symbol} 已加入候選池`;
+      } catch (error) {
+        appState.ui.message = error?.message || '加入候選失敗';
+      }
+      render();
+      return;
+    }
+    const candidateAdd = event.target.closest?.('[data-candidate-add]');
+    if (candidateAdd) {
+      const symbol = candidateAdd.dataset.candidateAdd;
+      try {
+        upsertCandidate({
+          symbol,
+          assetClass: candidateAdd.dataset.candidateAsset || 'crypto',
+          source: candidateAdd.dataset.candidateSource || 'FOXYYA',
+          reason: candidateAdd.dataset.candidateReason || '',
+          signal: {
+            status: candidateAdd.dataset.candidateStatus || null,
+            score: candidateAdd.dataset.candidateScore ? Number(candidateAdd.dataset.candidateScore) : null,
+            direction: candidateAdd.dataset.candidateDirection || null
+          }
+        });
+        syncCandidates();
+        appState.ui.message = `${symbol} 已加入候選池`;
+      } catch (error) {
+        appState.ui.message = error?.message || '加入候選失敗';
+      }
+      render();
+      return;
+    }
+    const candidateRemove = event.target.closest?.('[data-candidate-remove]');
+    if (candidateRemove) {
+      removeCandidate(candidateRemove.dataset.candidateRemove);
+      syncCandidates();
+      appState.ui.message = `${candidateRemove.dataset.candidateRemove} 已移出候選池`;
+      render();
+      return;
+    }
+    const candidateAnalyze = event.target.closest?.('[data-candidate-analyze]');
+    if (candidateAnalyze) {
+      const symbol = candidateAnalyze.dataset.candidateAnalyze;
+      appState.ui.message = `${symbol} 多週期技術分析中…`;
+      render();
+      try {
+        const technical = await analyzeMultiTimeframe(symbol);
+        updateCandidate(symbol, { technical });
+        syncCandidates();
+        appState.ui.message = `${symbol} 多週期分析完成：${technical.consensus}`;
+      } catch (error) {
+        appState.ui.message = `多週期分析失敗：${error?.message || '未知錯誤'}`;
+      }
+      render();
+      return;
+    }
+    const candidateRisk = event.target.closest?.('[data-candidate-risk]');
+    if (candidateRisk) {
+      const symbol = candidateRisk.dataset.candidateRisk;
+      const candidate = candidateBySymbol(symbol);
+      if (candidate) {
+        const risk = evaluatePortfolioRisk(candidate, appState.paper);
+        updateCandidate(symbol, { risk });
+        syncCandidates();
+        appState.ui.message = `${symbol} Risk Gate：${risk.status}`;
+      }
+      render();
+      return;
+    }
+    const candidateValidate = event.target.closest?.('[data-candidate-validate]');
+    if (candidateValidate) {
+      const symbol = candidateValidate.dataset.candidateValidate;
+      appState.ui.selectedSymbol = symbol;
+      appState.ui.validatorTargetSymbol = symbol;
+      appState.ui.labTab = 'backtest';
+      appState.ui.message = `已帶入 ${symbol}；完成回測後結果會回寫候選池。`;
+      location.hash = '#/lab';
       return;
     }
     const strongCoin = event.target.closest?.('[data-strong-symbol]');
@@ -251,6 +366,7 @@ function init() {
   ensureHomeOnFreshOpen();
   const cached = cachedMarketSnapshot();
   if (cached) setMarketState(cached);
+  syncCandidates();
   initEvents();
   render();
   refreshMarket();
