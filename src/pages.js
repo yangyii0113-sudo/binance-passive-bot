@@ -530,6 +530,7 @@ function strategyWorkspaceTabs(state){
   const active = state.ui?.strategyWorkspace || 'signals';
   const items = [
     ['signals','訊號'],
+    ['agents','AI Agents'],
     ['candidates','候選池'],
     ['library','策略庫'],
     ['develop','策略開發'],
@@ -618,6 +619,245 @@ function candidatePoolPanel(state){
       <p>Agent 可獨立分析；只有你選擇的標的才會進入候選池。Risk Gate 具有阻擋權，但不會送出真實訂單。</p>
     </div>
     <div class="candidate-list">${rows}</div>
+  </div>`;
+}
+
+
+function agentTabs(state){
+  const active = state.ui?.agentKey || 'market';
+  const agents = [
+    ['market','01','Market Scout'],
+    ['technical','02','Technical'],
+    ['news','03','News Impact'],
+    ['validator','04','Validator'],
+    ['risk','05','Risk Manager'],
+    ['review','06','Trade Review'],
+    ['playbook','07','Playbook']
+  ];
+  return `<div class="agent-tabs" role="tablist" aria-label="FOXYYA AI Agents">
+    ${agents.map(([key,no,label])=>`
+      <button type="button" class="agent-tab ${active===key?'active':''}" data-agent-key="${key}" role="tab" aria-selected="${active===key}">
+        <span>${no}</span><strong>${label}</strong>
+      </button>
+    `).join('')}
+  </div>`;
+}
+function agentFilterTabs(state, items){
+  const active = state.ui?.agentFilter || items?.[0]?.[0] || 'all';
+  return `<div class="agent-filter-tabs">
+    ${items.map(([key,label])=>`<button type="button" class="agent-filter-btn ${active===key?'active':''}" data-agent-filter="${key}">${label}</button>`).join('')}
+  </div>`;
+}
+function agentCandidateButton(symbol, source, reason, extra=''){
+  return `<button type="button" class="candidate-add-btn" data-candidate-add="${symbol}" data-candidate-source="${source}" data-candidate-reason="${reason}" ${extra}>＋ 加入候選</button>`;
+}
+function marketScoutPanel(state){
+  const filter = state.ui?.agentFilter || 'strong';
+  let rows = [...(state.market?.rows || [])].filter(row=>Number.isFinite(Number(row?.[3])));
+  if(filter==='strong') rows.sort((a,b)=>(Number(b[5])||0)-(Number(a[5])||0));
+  if(filter==='gain') rows.sort((a,b)=>(Number(b[3])||-999)-(Number(a[3])||-999));
+  if(filter==='loss') rows.sort((a,b)=>(Number(a[3])||999)-(Number(b[3])||999));
+  if(filter==='liquidity') rows.sort((a,b)=>(Number(b[4])||0)-(Number(a[4])||0));
+  rows = rows.slice(0,10);
+  const cards = rows.length ? rows.map((row,index)=>{
+    const [icon,display,last,change,volume,score] = row;
+    const symbol = symbolFromDisplay(display);
+    const ch = Number(change);
+    const strength = Number(score);
+    const reason = filter==='strong' ? `強勢分數 ${Number.isFinite(strength)?strength.toFixed(0):'—'}`
+      : filter==='gain' ? `24h 漲幅 ${ch.toFixed(2)}%`
+      : filter==='loss' ? `24h 跌幅 ${ch.toFixed(2)}%`
+      : `24h 成交額 ${compactVolume(volume)} USDT`;
+    return `<article class="agent-result-row" data-search="${symbol}">
+      <span class="agent-rank">#${index+1}</span>
+      ${coinLogo(display,icon)}
+      <div class="agent-result-main"><strong>${display}</strong><span>${reason}</span></div>
+      <div class="agent-result-metric"><strong>${last}</strong><span class="${ch>=0?'up':'down'}">${ch>=0?'+':''}${ch.toFixed(2)}%</span></div>
+      ${agentCandidateButton(symbol,'Market Scout',reason,`data-candidate-score="${Number.isFinite(strength)?strength:''}" data-candidate-direction="${ch>=0?'偏多':'偏空'}"`)}
+    </article>`;
+  }).join('') : '<div class="empty-state"><strong>市場資料讀取中</strong></div>';
+  return `<div class="agent-panel-stack">
+    ${agentFilterTabs(state,[['strong','強勢'],['gain','漲幅'],['loss','跌幅'],['liquidity','流動性']])}
+    <div class="agent-intro"><strong>Market Scout</strong><span>從即時市場池獨立掃描候選；結果只代表優先研究，不等於買進訊號。</span></div>
+    <div class="agent-results">${cards}</div>
+  </div>`;
+}
+function technicalAgentPanel(state){
+  const filter = state.ui?.agentFilter || 'all';
+  const technical = state.agents?.technical;
+  const groups = {
+    all:['15m','1h','4h','12h','1d','1w','1M'],
+    intraday:['15m','1h','4h'],
+    swing:['4h','12h','1d'],
+    position:['1d','1w','1M']
+  };
+  const allowed = groups[filter] || groups.all;
+  const frames = (technical?.frames || []).filter(frame=>allowed.includes(frame.interval));
+  const frameHtml = technical?.status === 'LIVE'
+    ? `<div class="agent-technical-grid">${frames.map(frame=>{
+        const direction = String(frame.direction || '');
+        const tone = direction.includes('多') ? 'up' : direction.includes('空') ? 'down' : '';
+        return `<div class="agent-tech-card"><span>${frame.label}</span><strong class="${tone}">${direction}</strong><small>EMA20 ${price(frame.ema20)} · EMA50 ${price(frame.ema50)}</small><b>${Number.isFinite(Number(frame.momentumPct)) ? `${Number(frame.momentumPct)>=0?'+':''}${Number(frame.momentumPct).toFixed(2)}%` : '—'}</b></div>`;
+      }).join('')}</div>`
+    : '<div class="empty-state"><strong>選擇標的後執行多週期分析</strong><span>資料直接使用 Binance USD-M Fully Closed Bar。</span></div>';
+  const add = technical?.status === 'LIVE'
+    ? agentCandidateButton(technical.symbol,'Technical Analyst',technical.consensus,`data-candidate-direction="${technical.consensus}"`)
+    : '';
+  return `<div class="agent-panel-stack">
+    ${agentFilterTabs(state,[['all','全部週期'],['intraday','短線'],['swing','波段'],['position','中長線']])}
+    <form id="agent-technical-form" class="agent-inline-form">
+      <label>分析標的<select name="symbol">${marketSymbolOptions(state)}</select></label>
+      <button type="button" class="primary-inline-btn" data-agent-technical-run>執行分析</button>
+    </form>
+    ${technical?.status==='LIVE' ? `<div class="agent-consensus"><span>多週期共識</span><strong>${technical.consensus}</strong><small>${technical.source}</small></div>` : ''}
+    ${frameHtml}
+    ${add ? `<div class="agent-single-action">${add}</div>` : ''}
+  </div>`;
+}
+function newsAgentPanel(state){
+  const filter = state.ui?.agentFilter || 'all';
+  const themes = (mock.focusAnalysis || []).map((item,index)=>({...item,index,category:index===0?'macro':index===1?'geopolitics':'liquidity'}))
+    .filter(item=>filter==='all' || item.category===filter);
+  const rows = themes.map(item=>{
+    const tradable = item.index===0 ? ['BTCUSDT','ETHUSDT'] : item.index===1 ? ['BTCUSDT','ETHUSDT'] : ['BTCUSDT','ETHUSDT'];
+    return `<article class="agent-news-card">
+      <div class="agent-news-head"><div><span>${item.horizon}</span><strong>${item.title}</strong></div><b>FRAMEWORK</b></div>
+      <p>${item.summary}</p>
+      <div class="impact-direction-grid">
+        <div class="impact-positive"><span>偏利多條件</span><p>${item.bullishCondition}</p></div>
+        <div class="impact-negative"><span>偏利空條件</span><p>${item.bearishCondition}</p></div>
+      </div>
+      <div class="agent-asset-tags">${(item.affectedAssets||[]).map(x=>`<span>${x}</span>`).join('')}</div>
+      <div class="agent-news-actions">${tradable.map(symbol=>agentCandidateButton(symbol,`News Impact · ${item.title}`,`受 ${item.title} 影響，方向需等待實際事件確認`)).join('')}</div>
+    </article>`;
+  }).join('');
+  return `<div class="agent-panel-stack">
+    ${agentFilterTabs(state,[['all','全部'],['macro','通膨 / 利率'],['geopolitics','地緣 / 能源'],['liquidity','流動性']])}
+    <div class="agent-intro"><strong>News Impact Analyst</strong><span>目前使用事件分析框架，不把尚未公布或未接入的新聞偽裝成即時利多／利空。</span></div>
+    <div class="agent-news-list">${rows}</div>
+  </div>`;
+}
+function validatorAgentPanel(state){
+  const filter = state.ui?.agentFilter || 'all';
+  const candidateMap = new Map((state.candidates?.items || []).map(item=>[item.symbol,item]));
+  const baseSymbols = [];
+  for(const row of state.market?.rows || []){
+    const symbol = symbolFromDisplay(row?.[1]);
+    if(symbol && !baseSymbols.includes(symbol)) baseSymbols.push(symbol);
+    if(baseSymbols.length>=12) break;
+  }
+  for(const symbol of candidateMap.keys()) if(!baseSymbols.includes(symbol)) baseSymbols.unshift(symbol);
+  const rows = baseSymbols.map(symbol=>{
+    const item = candidateMap.get(symbol);
+    const verdict = validatorVerdict(item?.validator);
+    return {symbol,item,verdict};
+  }).filter(({verdict})=>{
+    if(filter==='all') return true;
+    if(filter==='pending') return verdict.label==='待驗證' || verdict.label==='樣本不足';
+    if(filter==='pass') return verdict.label==='PASS';
+    if(filter==='review') return verdict.label==='REVIEW';
+    return true;
+  }).slice(0,12);
+  const html = rows.length ? rows.map(({symbol,item,verdict})=>{
+    const result = item?.validator?.result;
+    return `<article class="agent-validator-row">
+      <div class="agent-result-main"><strong>${symbol}</strong><span>${result ? `${result.trades} trades · PF ${result.profitFactor==null?'—':Number(result.profitFactor).toFixed(2)} · DD ${pct(result.maxDrawdownPct)}` : '尚未執行候選回測'}</span></div>
+      <span class="decision-badge decision-${verdict.tone}">${verdict.label}</span>
+      <button type="button" class="secondary-btn" data-candidate-validate="${symbol}">策略驗證</button>
+    </article>`;
+  }).join('') : '<div class="empty-state"><strong>目前沒有符合篩選的標的</strong></div>';
+  return `<div class="agent-panel-stack">
+    ${agentFilterTabs(state,[['all','全部'],['pending','待驗證'],['pass','PASS'],['review','REVIEW']])}
+    <div class="agent-intro"><strong>Strategy Validator</strong><span>任何標的都可獨立送入歷史回測；若尚未在候選池，開始驗證時會自動建立候選紀錄。</span></div>
+    <div class="agent-validator-list">${html}</div>
+  </div>`;
+}
+function riskAgentPanel(state){
+  const filter = state.ui?.agentFilter || 'all';
+  const items = (state.candidates?.items || []).filter(item=>{
+    const status = String(item.risk?.status || 'UNSCANNED').toLowerCase();
+    if(filter==='all') return true;
+    if(filter==='unscanned') return !item.risk;
+    return status===filter;
+  });
+  const summary = state.paper?.summary || {};
+  const rows = items.length ? items.map(item=>{
+    const status = item.risk?.status || '未檢查';
+    return `<article class="agent-risk-row">
+      <div class="agent-result-main"><strong>${item.symbol}</strong><span>${item.risk ? `Portfolio Risk ${Number(item.risk.portfolioRiskPct||0).toFixed(2)}% · 同向 ${item.risk.sameDirectionCount||0}` : '尚未執行 Risk Gate'}</span></div>
+      <span class="decision-badge decision-${riskTone(item.risk?.status)}">${status}</span>
+      <button type="button" class="secondary-btn" data-candidate-risk="${item.symbol}">執行 Risk Gate</button>
+    </article>`;
+  }).join('') : '<div class="empty-state"><strong>候選池中沒有符合此風險分類的標的</strong></div>';
+  return `<div class="agent-panel-stack">
+    ${agentFilterTabs(state,[['all','全部'],['unscanned','未檢查'],['pass','PASS'],['caution','CAUTION'],['blocked','BLOCKED']])}
+    <div class="agent-risk-summary"><div><span>目前 Portfolio Risk</span><strong>${pct(summary.portfolioRiskPct)}</strong></div><div><span>風險上限</span><strong>1.50%</strong></div><div><span>持倉</span><strong>${summary.openPositions || 0}</strong></div></div>
+    <div class="agent-validator-list">${rows}</div>
+  </div>`;
+}
+function tradeReviewAgentPanel(state){
+  const filter = state.ui?.agentFilter || 'all';
+  let trades = [...(state.results?.recentTrades || [])];
+  trades = trades.filter(trade=>{
+    const pnl = Number(trade.netPnl ?? trade.net_pnl_usdt);
+    if(filter==='win') return pnl>0;
+    if(filter==='loss') return pnl<0;
+    return true;
+  });
+  const rows = trades.length ? trades.map(trade=>{
+    const pnl = Number(trade.netPnl ?? trade.net_pnl_usdt);
+    const symbol = String(trade.symbol || '');
+    const reason = `Trade Review · ${pnl>=0?'獲利':'虧損'}交易 ${money(pnl)}`;
+    return `<article class="agent-review-row">
+      <div class="agent-result-main"><strong>${symbol || '—'}</strong><span>${trade.side || '—'} · ${trade.closedAt ? new Date(trade.closedAt).toLocaleString('zh-TW') : ''}</span></div>
+      <strong class="${pnl>=0?'up':'down'}">${money(pnl)}</strong>
+      ${symbol ? agentCandidateButton(symbol,'Trade Review Analyst',reason) : ''}
+    </article>`;
+  }).join('') : '<div class="empty-state"><strong>此分類目前沒有交易紀錄</strong><span>Trade Review 只使用已平倉 Paper 交易。</span></div>';
+  return `<div class="agent-panel-stack">
+    ${agentFilterTabs(state,[['all','全部'],['win','獲利交易'],['loss','虧損交易']])}
+    <div class="agent-intro"><strong>Trade Review Analyst</strong><span>從真實 Paper 交易紀錄找重複模式；可把值得重新研究的標的再次加入候選池。</span></div>
+    <div class="agent-review-list">${rows}</div>
+  </div>`;
+}
+function playbookAgentPanel(state){
+  const filter = state.ui?.agentFilter || 'all';
+  const all = (state.candidates?.items || []).map(item=>({...item,final:candidateFinalState(item)}));
+  const items = all.filter(item=>filter==='all' || item.final.label.toLowerCase()===filter);
+  const cards = items.length ? items.map(item=>`<article class="playbook-row">
+    <div class="agent-result-main"><strong>${item.symbol}</strong><span>${item.technical?.consensus || '技術待分析'} · ${item.risk?.status || 'Risk 待檢查'}</span></div>
+    <span class="decision-badge decision-${item.final.tone}">${item.final.label}</span>
+    <div class="playbook-actions">
+      <button class="secondary-btn" type="button" data-candidate-analyze="${item.symbol}">Technical</button>
+      <button class="secondary-btn" type="button" data-candidate-risk="${item.symbol}">Risk</button>
+      <button class="secondary-btn" type="button" data-candidate-validate="${item.symbol}">Validate</button>
+    </div>
+  </article>`).join('') : '<div class="empty-state"><strong>目前沒有符合此狀態的候選</strong></div>';
+  return `<div class="agent-panel-stack">
+    ${agentFilterTabs(state,[['all','全部'],['watch','WATCH'],['setup','SETUP'],['ready','READY'],['blocked','BLOCKED']])}
+    <div class="playbook-top">
+      <div><span>候選池</span><strong>${all.length}</strong></div>
+      <div><span>READY</span><strong>${all.filter(x=>x.final.label==='READY').length}</strong></div>
+      <div><span>持倉</span><strong>${state.paper?.summary?.openPositions || 0}</strong></div>
+      <div><span>事件</span><strong>${mock.calendar?.length || 0}</strong></div>
+    </div>
+    <div class="agent-intro"><strong>Trading Playbook</strong><span>把候選、驗證、Risk Gate 與持倉整合成每日執行清單；仍不具備真實下單權。</span></div>
+    <div class="playbook-list">${cards}</div>
+  </div>`;
+}
+function aiAgentsPanel(state){
+  const key = state.ui?.agentKey || 'market';
+  let content = marketScoutPanel(state);
+  if(key==='technical') content = technicalAgentPanel(state);
+  if(key==='news') content = newsAgentPanel(state);
+  if(key==='validator') content = validatorAgentPanel(state);
+  if(key==='risk') content = riskAgentPanel(state);
+  if(key==='review') content = tradeReviewAgentPanel(state);
+  if(key==='playbook') content = playbookAgentPanel(state);
+  return `<div class="ai-agents-wrap">
+    <div class="agent-system-note"><strong>FOXYYA AI Agents v1</strong><span>Agent 彼此獨立；篩選結果可自由加入 Candidate Pool。現階段分析只使用已接入的市場、Paper、回測與事件框架資料。</span></div>
+    ${agentTabs(state)}
+    ${content}
   </div>`;
 }
 
@@ -756,6 +996,7 @@ export function strategiesPage(state) {
   ` : stockEmptyState('股市策略資料源尚未接入');
 
   let content = signalsHtml;
+  if(workspace === 'agents') content = aiAgentsPanel(state);
   if(workspace === 'candidates') content = candidatePoolPanel(state);
   if(workspace === 'library') content = strategyLibraryPanel(state);
   if(workspace === 'develop') content = strategyDevelopmentPanel();
@@ -766,7 +1007,7 @@ export function strategiesPage(state) {
     ${assetClassSwitcher(state)}
     ${strategyWorkspaceTabs(state)}
     ${workspace === 'signals' ? strategyTimeframeTabs(state) : ''}
-    ${section(workspace === 'signals' ? '交易訊號' : workspace === 'candidates' ? 'Candidate Pool' : '策略研發', content, badge(workspace === 'signals' ? (isCrypto ? 'LIVE SIGNALS' : 'EMPTY') : workspace === 'candidates' ? `${state.candidates?.items?.length || 0} CANDIDATES` : 'R&D'))}
+    ${section(workspace === 'signals' ? '交易訊號' : workspace === 'agents' ? 'AI Agents' : workspace === 'candidates' ? 'Candidate Pool' : '策略研發', content, badge(workspace === 'signals' ? (isCrypto ? 'LIVE SIGNALS' : 'EMPTY') : workspace === 'agents' ? '7 AGENTS' : workspace === 'candidates' ? `${state.candidates?.items?.length || 0} CANDIDATES` : 'R&D'))}
   </div>`;
 }
 
