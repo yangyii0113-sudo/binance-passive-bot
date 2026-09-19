@@ -268,16 +268,18 @@ function promoteResearchCandidate(symbol){
     }
   });
 
-  updateCandidate(target,{
-    technical:research.technical || null,
-    validator:research.backtest ? {
+  const patch = {};
+  if(research.technical) patch.technical = research.technical;
+  if(research.backtest){
+    patch.validator = {
       status:'LIVE',
       updatedAt:research.backtest.updatedAt,
       input:research.backtest.input,
       result:research.backtest.result
-    } : null,
-    risk:research.risk || null
-  });
+    };
+  }
+  if(research.risk) patch.risk = research.risk;
+  if(Object.keys(patch).length) updateCandidate(target,patch);
   syncCandidates();
 }
 
