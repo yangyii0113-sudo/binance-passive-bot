@@ -24,19 +24,40 @@ globalThis.fetch = async (url) => {
   };
 };
 
-const { runLiteBacktest } = await import('../src/local_backtest.js');
+const { runLiteBacktest, BACKTEST_RANGE_OPTIONS } = await import('../src/local_backtest.js');
+
+const validRanges = {
+  '15m':'30D',
+  '1h':'90D',
+  '4h':'180D',
+  '12h':'1Y',
+  '1d':'1Y',
+  '1w':'3Y',
+  '1M':'5Y'
+};
 
 for (const timeframe of ['15m','1h','4h','12h','1d','1w','1M']) {
   const snapshot = await runLiteBacktest({
     symbol:'BTCUSDT',
-    range:'90D',
+    range:validRanges[timeframe],
     strategy:'A',
     timeframe
   });
   assert.equal(snapshot.input.timeframe, timeframe, `timeframe ${timeframe} must be preserved`);
+  assert.equal(snapshot.input.range, validRanges[timeframe], `timeframe ${timeframe} must retain a valid range`);
   assert.equal(snapshot.input.samples, 79, `timeframe ${timeframe} must exclude the still-open candle`);
+  assert.equal(snapshot.result.validation.label, '交易樣本不足', '80 bars with one open bar removed should not be overstated');
 }
+
+assert.deepEqual(BACKTEST_RANGE_OPTIONS['1M'].map(([key])=>key), ['5Y','10Y','MAX']);
+await assert.rejects(
+  runLiteBacktest({symbol:'BTCUSDT',range:'90D',strategy:'A',timeframe:'1M'}),
+  /1M 不支援 90D/,
+  'monthly backtest must reject short ranges'
+);
 
 console.log('BACKTEST_TIMEFRAMES_OK');
 console.log('timeframes: 15m/1h/4h/12h/1d/1w/1M');
+console.log('timeframe-aware ranges: enforced');
 console.log('fully closed bar: enforced');
+console.log('validation tiers: enforced');
