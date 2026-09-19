@@ -4,9 +4,9 @@ from collections.abc import Sequence
 
 from ..contracts import Availability, Instrument, Observation
 from .http import JsonTransport, ProviderError, UrllibJsonTransport
+from ..calculations import derive_change_percent
 from .parsing import (
     clean_text,
-    derive_change_percent,
     parse_decimal,
     parse_int,
     parse_roc_date,
