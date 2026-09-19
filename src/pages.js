@@ -2,11 +2,37 @@ import { mock } from './mock.js';
 import { badge, metric, section } from './ui.js';
 import { evaluateStrategyGuard } from './strategy_guard.js';
 
+const DISPLAY_STATUS_ZH = Object.freeze({
+  PASS:'通過', CAUTION:'注意', BLOCKED:'阻擋', REVIEW:'需複核',
+  READY:'就緒', SETUP:'條件形成中', WATCH:'觀察中', LIVE:'即時',
+  STALE:'已過期', ERROR:'錯誤', LOADING:'載入中', PENDING:'待處理',
+  VALIDATED:'已驗證', INSUFFICIENT:'樣本不足', DONE:'完成',
+  TRIGGERED:'已觸發', HIGH:'高強度', EMPTY:'無資料', UNSCANNED:'未檢查',
+  RESEARCH:'研究中', RUNNING:'執行中', UNKNOWN:'未知'
+});
+function displayStatus(value){
+  const raw = String(value ?? '').trim();
+  if(!raw) return '待檢查';
+  return DISPLAY_STATUS_ZH[raw.toUpperCase()] || raw;
+}
+function displayStrategyMatch(value){
+  const raw = String(value ?? '').trim();
+  const labels = {
+    'NO TRADE':'不交易',
+    'Trend':'趨勢策略',
+    'Momentum / Breakout Watch':'動能／突破觀察',
+    'Trend / Momentum':'趨勢／動能',
+    'Range Watch':'區間觀察',
+    'Momentum Watch':'動能觀察'
+  };
+  return labels[raw] || raw || '待判定';
+}
+
 function marketStatusLabel(market) {
   const time = market.updatedAt
     ? new Date(market.updatedAt).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })
     : '尚未更新';
-  return `${market.status} · ${time}`;
+  return `${displayStatus(market.status)} · ${time}`;
 }
 function money(value) {
   const n = Number(value);
@@ -318,10 +344,10 @@ function tradabilityEvidence(state, row){
     liquidityRank: rank + 1,
     universeSize: size,
     reason: status === 'BLOCKED'
-      ? '24h 波動極端，暫不進入 Top 5'
+      ? '24 小時波動極端，暫不進入前五名'
       : status === 'CAUTION'
-        ? '24h 波動偏高，需提高滑價與追價風險警戒'
-        : '位於高流動性 USD-M Universe'
+        ? '24 小時波動偏高，需提高滑價與追價風險警戒'
+        : '位於高流動性 U 本位永續合約全市場標的池'
   };
 }
 function strategyMatch(row, evidence){
@@ -428,26 +454,26 @@ function strongCoinDetail(state, strong){
     </div>
     <div class="strong-detail-grid">
       <div><span>最新價格</span><strong>${lastPrice}</strong></div>
-      <div><span>24h 動能</span><strong class="${changeNum>=0?'up':'down'}">${changeNum>=0?'+':''}${changeNum.toFixed(2)}%</strong></div>
-      <div><span>Universe 流動性</span><strong>#${evidence.liquidityRank} / ${evidence.universeSize}</strong></div>
-      <div><span>Tradability</span><strong>${evidence.tradabilityStatus} · ${evidence.tradabilityScore}</strong></div>
+      <div><span>24 小時動能</span><strong class="${changeNum>=0?'up':'down'}">${changeNum>=0?'+':''}${changeNum.toFixed(2)}%</strong></div>
+      <div><span>全市場流動性排名</span><strong>#${evidence.liquidityRank} / ${evidence.universeSize}</strong></div>
+      <div><span>交易適宜度</span><strong>${displayStatus(evidence.tradabilityStatus)} · ${evidence.tradabilityScore}</strong></div>
       <div><span>市場強度</span><strong>${scoreNum.toFixed(0)} / 100</strong></div>
-      <div><span>Research Score</span><strong>${evidence.composite} / 100</strong></div>
-      <div><span>Strategy Match</span><strong>${evidence.strategyMatch}</strong></div>
-      <div><span>Exposure Gate</span><strong>${evidence.riskLabel}</strong></div>
+      <div><span>研究評分</span><strong>${evidence.composite} / 100</strong></div>
+      <div><span>策略匹配</span><strong>${displayStrategyMatch(evidence.strategyMatch)}</strong></div>
+      <div><span>曝險檢查</span><strong>${displayStatus(evidence.riskLabel)}</strong></div>
     </div>
     <div class="strong-reasons">
-      <div><span>Tradability Gate</span><p>${evidence.tradabilityReason}。目前流動性排名 #${evidence.liquidityRank} / ${evidence.universeSize}，權重 20%。</p></div>
-      <div><span>Strategy Match</span><p>${evidence.strategyMatch}。這是待驗證的策略族群，不等於該策略已經盈利。</p></div>
-      <div><span>Technical</span><p>${evidence.technicalLabel} · 權重 12%。未分析時採中性分，不假設方向。</p></div>
-      <div><span>Strategy Validator</span><p>${evidence.validatorLabel} · 權重 10%。只有實際回測資料才可能成為 PASS。</p></div>
-      <div><span>Exposure Gate</span><p>${evidence.riskLabel} · 權重 8%。BLOCKED 不得進入 Top 5，但仍保留在 Universe 研究資料。</p></div>
-      <div><span>市場基礎</span><p>市場強勢權重 50%；Research Top 5 是研究優先序，不是買進排名。</p></div>
+      <div><span>交易條件檢查</span><p>${evidence.tradabilityReason}。目前流動性排名 #${evidence.liquidityRank} / ${evidence.universeSize}，權重 20%。</p></div>
+      <div><span>策略匹配</span><p>${displayStrategyMatch(evidence.strategyMatch)}。這是待驗證的策略族群，不等於該策略已經獲利。</p></div>
+      <div><span>技術面分析</span><p>${evidence.technicalLabel} · 權重 12%。未分析時採中性分，不假設方向。</p></div>
+      <div><span>策略驗證</span><p>${displayStatus(evidence.validatorLabel)} · 權重 10%。只有實際回測資料才可能判定為「通過」。</p></div>
+      <div><span>曝險檢查</span><p>${displayStatus(evidence.riskLabel)} · 權重 8%。判定為「阻擋」時不得進入前五名，但仍保留在全市場研究資料。</p></div>
+      <div><span>市場基礎</span><p>市場強勢權重 50%；研究前五名代表研究優先序，不是買進排名。</p></div>
     </div>
     <div class="strong-actions strong-actions-three">
       <button class="candidate-add-btn" data-candidate-add="${selected}"
-        data-candidate-source="Market Scout · 綜合強勢 Top 5"
-        data-candidate-reason="市場機會 Top 5 · Research ${evidence.composite} · 市場強度 ${scoreNum.toFixed(0)}"
+        data-candidate-source="市場偵察 · 綜合強勢前五名"
+        data-candidate-reason="市場機會前五名 · 研究評分 ${evidence.composite} · 市場強度 ${scoreNum.toFixed(0)}"
         data-candidate-score="${scoreNum.toFixed(0)}"
         data-candidate-direction="${changeNum >= 0 ? '偏多' : '偏空'}" type="button">＋ 加入候選</button>
       <button class="secondary-btn" data-use-backtest="${selected}" type="button">歷史回測</button>
@@ -468,7 +494,7 @@ function strongCoinCards(state){
       ${coinLogo(display, icon)}
       <div class="strong-main">
         <strong>${display}</strong>
-        <span>#${evidence.liquidityRank}/${evidence.universeSize} · ${evidence.strategyMatch} · ${evidence.validatorLabel}</span>
+        <span>#${evidence.liquidityRank}/${evidence.universeSize} · ${displayStrategyMatch(evidence.strategyMatch)} · ${displayStatus(evidence.validatorLabel)}</span>
       </div>
       <div class="strong-score"><small>綜合分數</small><b>${evidence.composite}</b></div>
       <div class="strong-change ${changeNum>=0?'up':'down'}">${changeNum>=0?'+':''}${changeNum.toFixed(2)}%</div>
@@ -476,7 +502,7 @@ function strongCoinCards(state){
     </button>`;
   }).join('')}</div>
   ${strongCoinDetail(state,strong)}
-  <div class="strong-note">Dynamic Top 5 從完整高流動性 Universe 中產生：Market 50% + Tradability 20% + Technical 12% + Validator 10% + Risk 8%。缺資料採中性值；Risk 或 Tradability BLOCKED 不進 Top 5。僅作研究優先序。</div>`;
+  <div class="strong-note">動態前五名從完整高流動性全市場標的池中產生：市場強度 50%＋交易適宜度 20%＋技術面 12%＋策略驗證 10%＋風險 8%。缺資料採中性值；風險或交易適宜度判定為「阻擋」者不進前五名。僅作研究優先序。</div>`;
 }
 function tab(label,key,active,attr){
   return `<button type="button" class="tab-btn ${active===key?'active':''}" ${attr}="${key}">${label}</button>`;
@@ -582,7 +608,7 @@ export function homePage(state) {
     <section class="panel ranking-panel home-section-panel ${homeSection==='market'?'is-active':''}">
       <div class="section-head premium-head">
         <div class="section-title"><span class="section-symbol">◉</span>市場排行</div>
-        <div class="section-meta">${market.source} · ${badge(market.status, market.status)}</div>
+        <div class="section-meta">${market.source} · ${badge(displayStatus(market.status), market.status)}</div>
       </div>
       ${isCrypto ? `
         <div class="tabs interactive premium-tabs">
@@ -591,15 +617,15 @@ export function homePage(state) {
           ${tab('漲幅','gain',sort,'data-market-sort')}
           ${tab('跌幅','loss',sort,'data-market-sort')}
         </div>
-        <div class="table-head"><span>幣種</span><span>最新價格</span><span>24h</span></div>
+        <div class="table-head"><span>幣種</span><span>最新價格</span><span>24 小時</span></div>
         <div class="coin-list">${coins}</div>
       ` : stockEmptyState('股市行情尚未接入')}
     </section>
 
     <section class="panel strong-panel home-section-panel ${homeSection==='strong'?'is-active':''}">
       <div class="section-head premium-head">
-        <div class="section-title"><span class="section-symbol">◆</span>${isCrypto ? '市場機會加密貨幣 Top 5' : '強勢股票 Top 10'}</div>
-        <span class="section-quiet">${isCrypto ? '24H MOMENTUM + LIQUIDITY' : 'STOCKS · SEPARATE MODULE'}</span>
+        <div class="section-title"><span class="section-symbol">◆</span>${isCrypto ? '市場機會加密貨幣前五名' : '強勢股票前十名'}</div>
+        <span class="section-quiet">${isCrypto ? '24 小時動能＋流動性' : '股票 · 獨立模組'}</span>
       </div>
       ${isCrypto ? strongCoinCards(state) : stockEmptyState('強勢股票排行待接入')}
     </section>
@@ -607,7 +633,7 @@ export function homePage(state) {
     <section class="panel focus-panel home-section-panel ${homeSection==='focus'?'is-active':''}">
       <div class="section-head premium-head">
         <div class="section-title"><span class="section-symbol">◌</span>國際焦點</div>
-        <span class="section-quiet">STATIC</span>
+        <span class="section-quiet">靜態資料</span>
       </div>
       <div class="focus-layout">
         ${focusCard(focusA, 0, true)}
