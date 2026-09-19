@@ -752,7 +752,7 @@ function agentTabs(state){
     ['technical','02','Technical'],
     ['news','03','News Impact'],
     ['validator','04','Validator'],
-    ['risk','05','Risk Manager'],
+    ['risk','05','Exposure'],
     ['review','06','Trade Review'],
     ['playbook','07','Playbook']
   ];
@@ -1086,7 +1086,8 @@ function riskAgentPanel(state){
   }).join('') : '<div class="empty-state"><strong>候選池中沒有符合此風險分類的標的</strong></div>';
   return `<div class="agent-panel-stack">
     ${agentFilterTabs(state,[['all','全部'],['unscanned','未檢查'],['pass','PASS'],['caution','CAUTION'],['blocked','BLOCKED']])}
-    <div class="agent-risk-summary"><div><span>目前 Paper Margin</span><strong>${pct(summary.portfolioRiskPct)}</strong></div><div><span>曝險上限</span><strong>1.50%</strong></div><div><span>持倉</span><strong>${summary.openPositions || 0}</strong></div></div>
+    <div class="agent-risk-summary"><div><span>目前 Paper Margin</span><strong>${pct(summary.marginUsagePct ?? summary.portfolioRiskPct)}</strong></div><div><span>曝險上限</span><strong>1.50%</strong></div><div><span>持倉</span><strong>${summary.openPositions || 0}</strong></div></div>
+    <div class="agent-intro"><strong>Exposure Manager</strong><span>Lite 目前以「Paper 保證金 / NAV」代理曝險；尚未有每筆 Stop，因此這不是正式 Portfolio Risk 或 R-multiple。</span></div>
     <div class="agent-validator-list">${rows}</div>
   </div>`;
 }
