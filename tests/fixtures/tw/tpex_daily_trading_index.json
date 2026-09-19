@@ -2,17 +2,17 @@
   {
     "Date": "1150917",
     "TradeVolume": "900000000",
-    "TradeValue": "80000000000",
-    "Transaction": "600000",
-    "Index": "298.10",
+    "TradeAmount": "80000000000",
+    "NumberOfTransactions": "600000",
+    "TPExIndex": "298.10",
     "Change": "1.25"
   },
   {
     "Date": "1150918",
     "TradeVolume": "980000000",
-    "TradeValue": "85000000000",
-    "Transaction": "650000",
-    "Index": "300.25",
+    "TradeAmount": "85000000000",
+    "NumberOfTransactions": "650000",
+    "TPExIndex": "300.25",
     "Change": "2.15"
   }
 ]
