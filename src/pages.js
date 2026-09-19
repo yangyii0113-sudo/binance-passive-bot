@@ -730,32 +730,39 @@ function agentCandidateButton(symbol, source, reason, extra=''){
 }
 function marketScoutPanel(state){
   const filter = state.ui?.agentFilter || 'strong';
-  let rows = [...(state.market?.rows || [])].filter(row=>Number.isFinite(Number(row?.[3])));
-  if(filter==='strong') rows.sort((a,b)=>(Number(b[5])||0)-(Number(a[5])||0));
-  if(filter==='gain') rows.sort((a,b)=>(Number(b[3])||-999)-(Number(a[3])||-999));
-  if(filter==='loss') rows.sort((a,b)=>(Number(a[3])||999)-(Number(b[3])||999));
-  if(filter==='liquidity') rows.sort((a,b)=>(Number(b[4])||0)-(Number(a[4])||0));
-  rows = rows.slice(0,10);
-  const cards = rows.length ? rows.map((row,index)=>{
+  let items = [];
+  if(filter === 'strong'){
+    items = strongTopFive(state).map(item => ({...item, isComposite:true}));
+  } else {
+    let rows = [...(state.market?.rows || [])].filter(row=>Number.isFinite(Number(row?.[3])));
+    if(filter==='gain') rows.sort((a,b)=>(Number(b[3])||-999)-(Number(a[3])||-999));
+    if(filter==='loss') rows.sort((a,b)=>(Number(a[3])||999)-(Number(b[3])||999));
+    if(filter==='liquidity') rows.sort((a,b)=>(Number(b[4])||0)-(Number(a[4])||0));
+    items = rows.slice(0,10).map(row => ({row,evidence:strongEvidence(state,row),isComposite:false}));
+  }
+  const cards = items.length ? items.map(({row,evidence,isComposite},index)=>{
     const [icon,display,last,change,volume,score] = row;
     const symbol = symbolFromDisplay(display);
     const ch = Number(change);
     const strength = Number(score);
-    const reason = filter==='strong' ? `強勢分數 ${Number.isFinite(strength)?strength.toFixed(0):'—'}`
+    const reason = isComposite
+      ? `綜合 ${evidence.composite} · 市場 ${Math.round(evidence.marketScore)} · ${evidence.validatorLabel} · ${evidence.riskLabel}`
       : filter==='gain' ? `24h 漲幅 ${ch.toFixed(2)}%`
       : filter==='loss' ? `24h 跌幅 ${ch.toFixed(2)}%`
       : `24h 成交額 ${compactVolume(volume)} USDT`;
+    const source = isComposite ? 'Market Scout · 綜合強勢 Top 5' : 'Market Scout';
+    const scoreValue = isComposite ? evidence.composite : (Number.isFinite(strength) ? strength : '');
     return `<article class="agent-result-row" data-search="${symbol}">
       <span class="agent-rank">#${index+1}</span>
       ${coinLogo(display,icon)}
       <div class="agent-result-main"><strong>${display}</strong><span>${reason}</span></div>
       <div class="agent-result-metric"><strong>${last}</strong><span class="${ch>=0?'up':'down'}">${ch>=0?'+':''}${ch.toFixed(2)}%</span></div>
-      ${agentCandidateButton(symbol,'Market Scout',reason,`data-candidate-score="${Number.isFinite(strength)?strength:''}" data-candidate-direction="${ch>=0?'偏多':'偏空'}"`)}
+      ${agentCandidateButton(symbol,source,reason,`data-candidate-score="${scoreValue}" data-candidate-direction="${ch>=0?'偏多':'偏空'}"`)}
     </article>`;
   }).join('') : '<div class="empty-state"><strong>市場資料讀取中</strong></div>';
   return `<div class="agent-panel-stack">
-    ${agentFilterTabs(state,[['strong','強勢'],['gain','漲幅'],['loss','跌幅'],['liquidity','流動性']])}
-    <div class="agent-intro"><strong>Market Scout</strong><span>從即時市場池獨立掃描候選；結果只代表優先研究，不等於買進訊號。</span></div>
+    ${agentFilterTabs(state,[['strong','綜合 Top 5'],['gain','漲幅'],['loss','跌幅'],['liquidity','流動性']])}
+    <div class="agent-intro"><strong>Market Scout</strong><span>「綜合 Top 5」以市場強勢為主，疊加既有 Technical / Validator / Risk 證據；缺資料採中性值。其他分頁維持純市場型篩選。</span></div>
     <div class="agent-results">${cards}</div>
   </div>`;
 }
