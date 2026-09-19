@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from datetime import date
+from urllib.parse import urlencode
 
 from ..calculations import derive_change_percent
 from ..contracts import Availability, Observation
@@ -77,11 +79,96 @@ def _obs(
 
 class TWSEMarginProvider:
     URL = "https://openapi.twse.com.tw/v1/exchangeReport/MI_MARGN"
+    RWD_BASE_URL = "https://www.twse.com.tw/rwd/zh/marginTrading/MI_MARGN"
 
     def __init__(self, transport: JsonTransport | None = None) -> None:
         self.transport = transport or UrllibJsonTransport()
 
-    def fetch(self) -> Sequence[Observation]:
+    @staticmethod
+    def url_for_date(observed_date: str) -> str:
+        iso = date.fromisoformat(observed_date)
+        query = urlencode(
+            {
+                "date": iso.strftime("%Y%m%d"),
+                "selectType": "ALL",
+                "response": "json",
+            }
+        )
+        return f"{TWSEMarginProvider.RWD_BASE_URL}?{query}"
+
+    def _row_observations(
+        self,
+        *,
+        row: dict,
+        observed_at: str | None,
+        source: str,
+    ) -> tuple[Observation, ...]:
+        symbol = clean_text(
+            _first(
+                row,
+                "股票代號",
+                "SecuritiesCompanyCode",
+                "Code",
+            )
+        )
+        if not symbol:
+            return ()
+
+        margin_balance = parse_int(
+            _first(row, "融資今日餘額", "MarginPurchaseBalance")
+        )
+        margin_previous = parse_int(
+            _first(row, "融資前日餘額", "MarginPurchaseBalancePreviousDay")
+        )
+        margin_quota = parse_int(
+            _first(row, "融資限額", "MarginPurchaseQuota")
+        )
+        short_balance = parse_int(
+            _first(row, "融券今日餘額", "ShortSaleBalance")
+        )
+        short_previous = parse_int(
+            _first(row, "融券前日餘額", "ShortSaleBalancePreviousDay")
+        )
+        short_quota = parse_int(
+            _first(row, "融券限額", "ShortSaleQuota")
+        )
+
+        values = (
+            (MARGIN_BALANCE, margin_balance),
+            (MARGIN_PREVIOUS_BALANCE, margin_previous),
+            (MARGIN_CHANGE, _safe_delta(margin_balance, margin_previous)),
+            (MARGIN_QUOTA, margin_quota),
+            (
+                MARGIN_USAGE_PERCENT,
+                _safe_usage(margin_balance, margin_quota),
+            ),
+            (SHORT_BALANCE, short_balance),
+            (SHORT_PREVIOUS_BALANCE, short_previous),
+            (SHORT_CHANGE, _safe_delta(short_balance, short_previous)),
+            (SHORT_QUOTA, short_quota),
+            (
+                SHORT_USAGE_PERCENT,
+                _safe_usage(short_balance, short_quota),
+            ),
+            (
+                MARGIN_SHORT_RATIO_PERCENT,
+                _safe_ratio(short_balance, margin_balance),
+            ),
+        )
+        return tuple(
+            _obs(
+                instrument_id=f"twse:{symbol}",
+                field=field,
+                value=value,
+                source=source,
+                observed_at=observed_at,
+                venue="TWSE",
+                symbol=symbol,
+            )
+            for field, value in values
+        )
+
+    def _fetch_openapi(self) -> Sequence[Observation]:
         payload = self.transport.get_json(self.URL)
         if not isinstance(payload, list):
             raise ProviderError("TWSE MI_MARGN payload is not a list")
@@ -90,75 +177,87 @@ class TWSEMarginProvider:
         for row in payload:
             if not isinstance(row, dict):
                 continue
-
-            symbol = clean_text(
-                _first(
-                    row,
-                    "股票代號",
-                    "SecuritiesCompanyCode",
-                    "Code",
-                )
-            )
-            if not symbol:
-                continue
-
             observed_at = parse_roc_date(
                 _first(row, "Date", "日期", "資料日期")
             )
-            margin_balance = parse_int(
-                _first(row, "融資今日餘額", "MarginPurchaseBalance")
+            result.extend(
+                self._row_observations(
+                    row=row,
+                    observed_at=observed_at,
+                    source="TWSE:MI_MARGN_OPENAPI",
+                )
             )
-            margin_previous = parse_int(
-                _first(row, "融資前日餘額", "MarginPurchaseBalancePreviousDay")
-            )
-            margin_quota = parse_int(
-                _first(row, "融資限額", "MarginPurchaseQuota")
-            )
-            short_balance = parse_int(
-                _first(row, "融券今日餘額", "ShortSaleBalance")
-            )
-            short_previous = parse_int(
-                _first(row, "融券前日餘額", "ShortSaleBalancePreviousDay")
-            )
-            short_quota = parse_int(
-                _first(row, "融券限額", "ShortSaleQuota")
+        return tuple(result)
+
+    def _fetch_rwd(self, observed_at: str) -> Sequence[Observation]:
+        payload = self.transport.get_json(self.url_for_date(observed_at))
+        if not isinstance(payload, dict):
+            raise ProviderError("TWSE MI_MARGN RWD payload is not an object")
+        if payload.get("stat") != "OK":
+            raise ProviderError(
+                f"TWSE MI_MARGN unavailable for {observed_at}: "
+                f"{payload.get('stat')!r}"
             )
 
-            values = (
-                (MARGIN_BALANCE, margin_balance),
-                (MARGIN_PREVIOUS_BALANCE, margin_previous),
-                (MARGIN_CHANGE, _safe_delta(margin_balance, margin_previous)),
-                (MARGIN_QUOTA, margin_quota),
-                (
-                    MARGIN_USAGE_PERCENT,
-                    _safe_usage(margin_balance, margin_quota),
-                ),
-                (SHORT_BALANCE, short_balance),
-                (SHORT_PREVIOUS_BALANCE, short_previous),
-                (SHORT_CHANGE, _safe_delta(short_balance, short_previous)),
-                (SHORT_QUOTA, short_quota),
-                (
-                    SHORT_USAGE_PERCENT,
-                    _safe_usage(short_balance, short_quota),
-                ),
-                (
-                    MARGIN_SHORT_RATIO_PERCENT,
-                    _safe_ratio(short_balance, margin_balance),
-                ),
-            )
-            for field, value in values:
-                result.append(
-                    _obs(
-                        instrument_id=f"twse:{symbol}",
-                        field=field,
-                        value=value,
-                        source="TWSE:MI_MARGN",
-                        observed_at=observed_at,
-                        venue="TWSE",
-                        symbol=symbol,
-                    )
+        tables = payload.get("tables")
+        if not isinstance(tables, list):
+            raise ProviderError("TWSE MI_MARGN RWD tables missing")
+
+        detail = None
+        for table in tables:
+            if not isinstance(table, dict):
+                continue
+            fields = table.get("fields")
+            if isinstance(fields, list) and "股票代號" in fields:
+                detail = table
+                break
+        if detail is None and len(tables) >= 2 and isinstance(tables[1], dict):
+            detail = tables[1]
+        if detail is None:
+            raise ProviderError("TWSE MI_MARGN detail table missing")
+
+        fields = detail.get("fields")
+        rows = detail.get("data")
+        if not isinstance(rows, list):
+            raise ProviderError("TWSE MI_MARGN detail rows missing")
+
+        result: list[Observation] = []
+        for raw in rows:
+            if not isinstance(raw, list):
+                continue
+            if isinstance(fields, list) and len(fields) <= len(raw):
+                row = {
+                    str(fields[index]): raw[index]
+                    for index in range(len(fields))
+                }
+            elif len(raw) >= 13:
+                row = {
+                    "股票代號": raw[0],
+                    "股票名稱": raw[1],
+                    "融資前日餘額": raw[5],
+                    "融資今日餘額": raw[6],
+                    "融券前日餘額": raw[11],
+                    "融券今日餘額": raw[12],
+                }
+            else:
+                continue
+
+            result.extend(
+                self._row_observations(
+                    row=row,
+                    observed_at=observed_at,
+                    source="TWSE:MI_MARGN_RWD",
                 )
+            )
         return tuple(result)
+
+    def fetch(
+        self,
+        observed_at: str | None = None,
+    ) -> Sequence[Observation]:
+        if observed_at is not None:
+            return self._fetch_rwd(observed_at)
+        return self._fetch_openapi()
 
 
 class TPExMarginProvider:
