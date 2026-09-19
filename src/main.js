@@ -189,6 +189,47 @@ function initEvents() {
       render();
       return;
     }
+    const agentKey = event.target.closest?.('[data-agent-key]');
+    if (agentKey) {
+      appState.ui.agentKey = agentKey.dataset.agentKey;
+      const defaults = {
+        market: 'strong',
+        technical: 'all',
+        news: 'all',
+        validator: 'all',
+        risk: 'all',
+        review: 'all',
+        playbook: 'all'
+      };
+      appState.ui.agentFilter = defaults[appState.ui.agentKey] || 'all';
+      render();
+      return;
+    }
+    const agentFilter = event.target.closest?.('[data-agent-filter]');
+    if (agentFilter) {
+      appState.ui.agentFilter = agentFilter.dataset.agentFilter;
+      render();
+      return;
+    }
+    const agentTechnicalRun = event.target.closest?.('[data-agent-technical-run]');
+    if (agentTechnicalRun) {
+      const form = document.getElementById('agent-technical-form');
+      const data = form ? new FormData(form) : null;
+      const symbol = data?.get('symbol');
+      if (!symbol) return;
+      appState.ui.message = `${symbol} Technical Analyst 多週期分析中…`;
+      render();
+      try {
+        const technical = await analyzeMultiTimeframe(symbol);
+        setStateSlice('agents', { technical });
+        appState.ui.message = `${symbol} Technical Analyst：${technical.consensus}`;
+      } catch (error) {
+        setStateSlice('agents', { technical: { symbol, status: 'ERROR', error: String(error?.message || error) } });
+        appState.ui.message = `Technical Analyst 失敗：${error?.message || '未知錯誤'}`;
+      }
+      render();
+      return;
+    }
     const strategyFilter = event.target.closest?.('[data-strategy-filter]');
     if (strategyFilter) {
       appState.ui.strategyFilter = strategyFilter.dataset.strategyFilter;
