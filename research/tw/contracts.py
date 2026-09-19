@@ -47,6 +47,7 @@ class EvidenceRef:
     field: str
     source: str
     observed_at: str
+    instrument_id: str | None = None
 
 
 @dataclass(frozen=True)
