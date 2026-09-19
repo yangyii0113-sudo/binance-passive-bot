@@ -139,7 +139,7 @@ def main() -> int:
                     f"{snapshot.coverage_ratio:.2f}"
                 )
 
-        twse_margin_raw = tuple(TWSEMarginProvider(http_transport).fetch())
+        twse_margin_raw = tuple(TWSEMarginProvider(http_transport).fetch(target_date))
         tpex_margin_raw = tuple(TPExMarginProvider(http_transport).fetch())
 
         if not twse_margin_raw:
