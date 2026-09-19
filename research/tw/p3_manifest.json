@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
-  "active_slice": "P3.1",
+  "active_slice": "P3.2",
   "slices": [
-    {"id": "P3.1", "name": "Stock Workspace Core", "status": "ACTIVE", "depends_on": []},
-    {"id": "P3.2", "name": "Historical Research Window", "status": "LOCKED", "depends_on": ["P3.1"]},
+    {"id": "P3.1", "name": "Stock Workspace Core", "status": "COMPLETE", "depends_on": []},
+    {"id": "P3.2", "name": "Historical Research Window", "status": "ACTIVE", "depends_on": ["P3.1"]},
     {"id": "P3.3", "name": "Technical Research", "status": "LOCKED", "depends_on": ["P3.2"]},
     {"id": "P3.4", "name": "Fundamentals and Events", "status": "LOCKED", "depends_on": ["P3.3"]},
     {"id": "P3.5", "name": "Research Candidate Engine", "status": "LOCKED", "depends_on": ["P3.4"]},
