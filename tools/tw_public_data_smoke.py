@@ -39,7 +39,7 @@ def main() -> int:
 
     with tempfile.TemporaryDirectory(prefix="foxyya-tw-smoke-") as temp:
         transport = SnapshottingJsonTransport(
-            transport=UrllibJsonTransport(timeout_seconds=30),
+            transport=UrllibJsonTransport(timeout_seconds=90, attempts=2, retry_backoff_seconds=2),
             store=RawSnapshotStore(Path(temp)),
             policies=policies,
         )
