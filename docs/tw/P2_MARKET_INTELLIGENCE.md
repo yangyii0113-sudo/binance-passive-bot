@@ -38,15 +38,26 @@ Gate:
 - [x] official TWSE / TPEx institutional live smoke green
 - [x] transient non-JSON responses retry before hard failure
 
-## P2.3 Margin / Short Context — ACTIVE
+## P2.3 Margin / Short Context — COMPLETE
 
-Future:
-- financing balance
-- short balance
-- day-over-day changes
-- market-level leverage pressure context
+Build:
+- TWSE exact-date MI_MARGN RWD normalization
+- TPEx `tpex_mainboard_margin_balance` normalization
+- financing / short balances
+- previous-day balances and day-over-day changes
+- margin / short ratio and usage fields
+- market-level leverage context
+- degraded coverage instead of fabricated zero
+- transient invalid-JSON retry before snapshot persistence
 
-## P2.4 Sector Rotation — LOCKED
+Gate:
+- [x] deterministic TWSE / TPEx margin fixtures green
+- [x] grouped TWSE RWD fields parsed with official positional layout
+- [x] architecture test suite green
+- [x] exact-date TWSE margin session validation green
+- [x] official TWSE / TPEx margin live smoke green
+
+## P2.4 Sector Rotation — ACTIVE
 
 Future:
 - canonical sector mapping
