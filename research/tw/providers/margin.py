@@ -37,13 +37,13 @@ def _safe_delta(today: int | None, previous: int | None) -> int | None:
 def _safe_ratio(numerator: int | None, denominator: int | None) -> float | None:
     if numerator is None or denominator in {None, 0}:
         return None
-    return numerator / denominator * 100.0
+    return round(numerator / denominator * 100.0, 6)
 
 
 def _safe_usage(balance: int | None, quota: int | None) -> float | None:
     if balance is None or quota in {None, 0}:
         return None
-    return balance / quota * 100.0
+    return round(balance / quota * 100.0, 6)
 
 
 def _obs(
