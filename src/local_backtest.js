@@ -17,13 +17,33 @@ function ema(values, period){
   }
   return out;
 }
+function maxBatches(interval, days){
+  const candlesPerDay = {
+    '15m': 96,
+    '1h': 24,
+    '4h': 6,
+    '12h': 2,
+    '1d': 1,
+    '1w': 1 / 7,
+    '1M': 1 / 30
+  };
+  const estimate = Math.ceil((days * (candlesPerDay[interval] || 24)) / 1000) + 2;
+  return Math.min(40, Math.max(2, estimate));
+}
+function normalizeTimeframe(value){
+  const raw = String(value || '1h').trim();
+  if(raw === '1M') return '1M';
+  const lower = raw.toLowerCase();
+  return ['15m','1h','4h','12h','1d','1w'].includes(lower) ? lower : '1h';
+}
 async function fetchKlines(symbol, interval, days){
   const end = Date.now();
   const start = end - days * 86400000;
   let cursor = start;
   const rows = [];
   let guard = 0;
-  while(cursor < end && guard < 20){
+  const guardLimit = maxBatches(interval, days);
+  while(cursor < end && guard < guardLimit){
     guard++;
     const url = `${BASE}?symbol=${encodeURIComponent(symbol)}&interval=${encodeURIComponent(interval)}&startTime=${cursor}&endTime=${end}&limit=1000`;
     const response = await fetch(url,{cache:'no-store'});
@@ -31,7 +51,16 @@ async function fetchKlines(symbol, interval, days){
     const batch = await response.json();
     if(!Array.isArray(batch) || !batch.length) break;
     for(const k of batch){
-      rows.push({time:Number(k[0]),open:Number(k[1]),high:Number(k[2]),low:Number(k[3]),close:Number(k[4])});
+      const closeTime = Number(k[6]);
+      if(!(closeTime < end)) continue;
+      rows.push({
+        time:Number(k[0]),
+        closeTime,
+        open:Number(k[1]),
+        high:Number(k[2]),
+        low:Number(k[3]),
+        close:Number(k[4])
+      });
     }
     const next = Number(batch[batch.length-1][0]) + 1;
     if(!Number.isFinite(next) || next <= cursor) break;
@@ -101,7 +130,7 @@ function simulate(candles, strategy){
 }
 export async function runLiteBacktest({symbol='BTCUSDT',range='90D',strategy='A',timeframe='1h'} = {}){
   const days = range === '1Y' ? 365 : range === '180D' ? 180 : 90;
-  const interval = String(timeframe).toLowerCase() === '4h' ? '4h' : '1h';
+  const interval = normalizeTimeframe(timeframe);
   const candles = await fetchKlines(symbol,interval,days);
   const result = simulate(candles,strategy);
   return {
