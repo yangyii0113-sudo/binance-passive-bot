@@ -174,6 +174,14 @@ for (const [name, renderer] of Object.entries(pages)) {
   assert.ok(html.length > 20, `${name} renderer must return non-empty content`);
 }
 
+const homeHtml = pages.home(renderState);
+assert.ok(homeHtml.includes('綜合強勢加密貨幣 Top 5'), 'Home must expose composite strong crypto Top 5');
+assert.equal(
+  (homeHtml.match(/class="strong-card/g) || []).length,
+  5,
+  'Home strong screener must render exactly five ranked cards'
+);
+
 for (const [hash, route] of [
   ['#/', 'home'],
   ['#/strategies', 'strategies'],
