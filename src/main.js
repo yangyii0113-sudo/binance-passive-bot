@@ -543,7 +543,7 @@ function initEvents() {
         const risk = evaluatePortfolioRisk(candidate, appState.paper);
         updateCandidate(symbol, { risk });
         syncCandidates();
-        appState.ui.message = `${symbol} Risk Gate：${risk.status}`;
+        appState.ui.message = `${symbol} Exposure Gate：${risk.status}`;
       }
       render();
       return;
