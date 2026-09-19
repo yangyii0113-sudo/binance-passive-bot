@@ -39,10 +39,16 @@ function compactVolume(value){
 function symbolFromDisplay(display){
   return String(display || '').replace(/\s|\//g,'');
 }
-function marketSymbolOptions(state, limit = 20){
+function marketSymbolOptions(state, limit = 40){
   const symbols = [];
   const seen = new Set();
-  for(const row of state.market?.rows || []){
+  const source = state.market?.universeRows?.length ? state.market.universeRows : (state.market?.rows || []);
+  const selected = String(state.ui?.selectedSymbol || '').toUpperCase();
+  if(selected){
+    seen.add(selected);
+    symbols.push(selected);
+  }
+  for(const row of source){
     const symbol = symbolFromDisplay(row?.[1]);
     if(!symbol || seen.has(symbol)) continue;
     seen.add(symbol);
@@ -50,7 +56,7 @@ function marketSymbolOptions(state, limit = 20){
     if(symbols.length >= limit) break;
   }
   if(!symbols.length) symbols.push('BTCUSDT','ETHUSDT','SOLUSDT');
-  return symbols.map(symbol => `<option value="${symbol}" ${state.ui?.selectedSymbol === symbol ? 'selected' : ''}>${symbol.replace(/USDT$/,' / USDT')}</option>`).join('');
+  return symbols.map(symbol => `<option value="${symbol}" ${selected === symbol ? 'selected' : ''}>${symbol.replace(/USDT$/,' / USDT')}</option>`).join('');
 }
 function coinCode(symbol){
   const normalized = String(symbol || '').toUpperCase().replace(/[^A-Z0-9]/g,'').replace(/USDT$/,'');
@@ -285,6 +291,50 @@ function sortedRows(state){
   if(sort === 'strong') rows.sort((a,b)=>(Number(b[5])||-1)-(Number(a[5])||-1));
   return rows;
 }
+function researchUniverseRows(state){
+  const source = state.market?.universeRows?.length ? state.market.universeRows : (state.market?.rows || []);
+  return source.filter(row =>
+    Number.isFinite(Number(row?.[3])) &&
+    Number.isFinite(Number(row?.[4])) &&
+    Number(row?.[4]) > 0 &&
+    Number.isFinite(Number(row?.[5]))
+  );
+}
+function tradabilityEvidence(state, row){
+  const universe = [...researchUniverseRows(state)]
+    .sort((a,b)=>Number(b?.[4]||0)-Number(a?.[4]||0));
+  const symbol = symbolFromDisplay(row?.[1]);
+  const rank = Math.max(0, universe.findIndex(item => symbolFromDisplay(item?.[1]) === symbol));
+  const size = Math.max(1, universe.length);
+  const liquidityScore = size > 1 ? 100 - (rank / (size - 1)) * 80 : 100;
+  const absChange = Math.abs(Number(row?.[3]) || 0);
+  const extremePenalty = absChange >= 30 ? 45 : absChange >= 20 ? 25 : absChange >= 15 ? 12 : 0;
+  const score = Math.max(0, Math.min(100, Math.round(liquidityScore - extremePenalty)));
+  const status = absChange >= 30 ? 'BLOCKED' : absChange >= 15 ? 'CAUTION' : 'PASS';
+  return {
+    score,
+    status,
+    liquidityRank: rank + 1,
+    universeSize: size,
+    reason: status === 'BLOCKED'
+      ? '24h 波動極端，暫不進入 Top 5'
+      : status === 'CAUTION'
+        ? '24h 波動偏高，需提高滑價與追價風險警戒'
+        : '位於高流動性 USD-M Universe'
+  };
+}
+function strategyMatch(row, evidence){
+  const change = Number(row?.[3]) || 0;
+  const absChange = Math.abs(change);
+  const marketScore = Number(row?.[5]) || 0;
+  const consensus = String(evidence?.technicalLabel || '');
+  if(String(evidence?.riskLabel || '').toUpperCase() === 'BLOCKED') return 'NO TRADE';
+  if(consensus === '多週期偏多' || consensus === '多週期偏空') return 'Trend';
+  if(absChange >= 6 && marketScore >= 72) return 'Momentum / Breakout Watch';
+  if(absChange >= 2 && marketScore >= 58) return 'Trend / Momentum';
+  if(absChange <= 1.2) return 'Range Watch';
+  return 'Momentum Watch';
+}
 function strongEvidence(state, row){
   const symbol = symbolFromDisplay(row?.[1]);
   const marketScore = Number(row?.[5]);
@@ -311,24 +361,26 @@ function strongEvidence(state, row){
   else if(risk === 'CAUTION') riskScore = 42;
   else if(risk === 'BLOCKED') riskScore = 0;
 
-  const momentumScore = Number.isFinite(change)
-    ? Math.max(0, Math.min(100, 50 + change * 5))
-    : 50;
   const baseMarket = Number.isFinite(marketScore) ? marketScore : 50;
+  const tradability = tradabilityEvidence(state, row);
 
   const composite = Math.max(0, Math.min(100, Math.round(
-    baseMarket * 0.60 +
-    momentumScore * 0.15 +
-    technicalScore * 0.10 +
+    baseMarket * 0.50 +
+    tradability.score * 0.20 +
+    technicalScore * 0.12 +
     validatorScore * 0.10 +
-    riskScore * 0.05
+    riskScore * 0.08
   )));
 
-  return {
+  const result = {
     symbol,
     candidate,
     marketScore: baseMarket,
-    momentumScore,
+    tradabilityScore: tradability.score,
+    tradabilityStatus: tradability.status,
+    tradabilityReason: tradability.reason,
+    liquidityRank: tradability.liquidityRank,
+    universeSize: tradability.universeSize,
     technicalScore,
     validatorScore,
     riskScore,
@@ -337,11 +389,16 @@ function strongEvidence(state, row){
     technicalLabel: candidate?.technical?.consensus || '待分析',
     riskLabel: candidate?.risk?.status || '待檢查'
   };
+  result.strategyMatch = strategyMatch(row, result);
+  return result;
 }
 function strongTopFive(state){
-  return [...(state.market?.rows || [])]
-    .filter(row => Number.isFinite(Number(row?.[5])))
+  return researchUniverseRows(state)
     .map(row => ({ row, evidence: strongEvidence(state, row) }))
+    .filter(item =>
+      item.evidence.tradabilityStatus !== 'BLOCKED' &&
+      String(item.evidence.riskLabel || '').toUpperCase() !== 'BLOCKED'
+    )
     .sort((a,b)=>
       b.evidence.composite - a.evidence.composite ||
       Number(b.row?.[5] || 0) - Number(a.row?.[5] || 0)
