@@ -38,7 +38,7 @@ def test_twse_margin_normalizes_balance_change_and_ratio():
     assert rows[("twse:2330", "margin_balance")].value == 1100
     assert rows[("twse:2330", "margin_change")].value == 100
     assert rows[("twse:2330", "short_change")].value == -10
-    assert rows[("twse:2330", "margin_short_ratio_percent")].value == 90 / 1100 * 100
+    assert rows[("twse:2330", "margin_short_ratio_percent")].value == 8.181818
 
 
 def test_tpex_margin_normalizes_same_canonical_fields():
