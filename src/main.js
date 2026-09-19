@@ -266,6 +266,14 @@ function initEvents() {
             direction: candidateAdd.dataset.candidateDirection || null
           }
         });
+        const technical = appState.agents?.technical;
+        if (
+          String(candidateAdd.dataset.candidateSource || '').startsWith('Technical Analyst') &&
+          technical?.status === 'LIVE' &&
+          technical?.symbol === symbol
+        ) {
+          updateCandidate(symbol, { technical });
+        }
         syncCandidates();
         appState.ui.message = `${symbol} 已加入候選池`;
       } catch (error) {
@@ -406,14 +414,19 @@ function initEvents() {
   });
 }
 
-function ensureHomeOnFreshOpen() {
-  if (location.hash !== '#/') {
+function ensureValidRouteOnFreshOpen() {
+  if (!location.hash) {
+    history.replaceState(null, '', `${location.pathname}${location.search}#/`);
+    return;
+  }
+  const route = currentRoute();
+  if (!pages[route]) {
     history.replaceState(null, '', `${location.pathname}${location.search}#/`);
   }
 }
 
 function init() {
-  ensureHomeOnFreshOpen();
+  ensureValidRouteOnFreshOpen();
   const cached = cachedMarketSnapshot();
   if (cached) setMarketState(cached);
   syncCandidates();
