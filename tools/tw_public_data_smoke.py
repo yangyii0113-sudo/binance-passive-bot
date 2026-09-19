@@ -13,6 +13,7 @@ if str(ROOT) not in sys.path:
 from research.tw.acquisition import DatasetPolicy, SnapshottingJsonTransport, latest_row_date
 from research.tw.intelligence.institutional_flow import build_institutional_flow
 from research.tw.intelligence.margin_short import build_margin_short_context
+from research.tw.intelligence.sector_rotation import build_sector_rotation
 from research.tw.providers.http import UrllibJsonTransport
 from research.tw.providers.institutional import (
     TPExInstitutionalSummaryProvider,
@@ -67,7 +68,12 @@ def main() -> int:
         if missing:
             raise RuntimeError(f"TWSE acceptance instruments missing: {missing}")
 
-        twse_quote = {item.field: item for item in twse.fetch_instrument_observations("twse:2330")}
+        twse_daily = tuple(twse.fetch_all_instrument_observations())
+        twse_quote = {
+            item.field: item
+            for item in twse_daily
+            if item.instrument_id == "twse:2330"
+        }
         if not twse_quote.get("close") or twse_quote["close"].value is None:
             raise RuntimeError("TWSE 2330 close unavailable")
 
@@ -171,6 +177,41 @@ def main() -> int:
                     f"{snapshot.coverage_ratio:.2f}"
                 )
 
+        twse_rotation = build_sector_rotation(
+            twse_daily,
+            twse_registry.values(),
+            venue="TWSE",
+            observed_at=target_date,
+            top_n=3,
+        )
+        tpex_rotation = build_sector_rotation(
+            tpex_daily,
+            tpex_registry.values(),
+            venue="TPEX",
+            observed_at=target_date,
+            top_n=3,
+        )
+
+        for snapshot in (twse_rotation, tpex_rotation):
+            if snapshot.observed_at != target_date:
+                raise RuntimeError(
+                    f"{snapshot.venue} sector rotation date mismatch: "
+                    f"{snapshot.observed_at} != {target_date}"
+                )
+            if not snapshot.sectors:
+                raise RuntimeError(
+                    f"{snapshot.venue} sector rotation has no sectors"
+                )
+            if not snapshot.leaders or not snapshot.laggards:
+                raise RuntimeError(
+                    f"{snapshot.venue} sector rotation ranking unavailable"
+                )
+            if snapshot.coverage_ratio < 0.60:
+                raise RuntimeError(
+                    f"{snapshot.venue} sector rotation coverage too low: "
+                    f"{snapshot.coverage_ratio:.2f}"
+                )
+
         print(
             json.dumps(
                 {
@@ -193,6 +234,12 @@ def main() -> int:
                     "tpex_margin_balance": tpex_margin.margin_balance,
                     "twse_short_balance": twse_margin.short_balance,
                     "tpex_short_balance": tpex_margin.short_balance,
+                    "twse_sector_count": len(twse_rotation.sectors),
+                    "tpex_sector_count": len(tpex_rotation.sectors),
+                    "twse_sector_coverage": twse_rotation.coverage_ratio,
+                    "tpex_sector_coverage": tpex_rotation.coverage_ratio,
+                    "twse_sector_leaders": twse_rotation.leaders,
+                    "tpex_sector_leaders": tpex_rotation.leaders,
                     "raw_snapshot_root": temp,
                     "execution_allowed": False,
                 },
