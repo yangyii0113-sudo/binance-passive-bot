@@ -4,6 +4,11 @@ This layer consumes canonical observations only. It must not fetch providers
 or authorize execution.
 """
 
+from .institutional_flow import (
+    InstitutionalFlowSnapshot,
+    InstitutionalGroupFlow,
+    build_institutional_flow,
+)
 from .market_structure import (
     IndexContext,
     MarketBreadth,
@@ -13,6 +18,9 @@ from .market_structure import (
 )
 
 __all__ = [
+    "InstitutionalFlowSnapshot",
+    "InstitutionalGroupFlow",
+    "build_institutional_flow",
     "IndexContext",
     "MarketBreadth",
     "MarketStructureSnapshot",
