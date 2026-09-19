@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>FOXYYA 台股研究平台</title>
+<link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">FOXYYA<span>TW</span></div>
+    <nav>
+      <button class="active">首頁</button>
+      <button>市場雷達</button>
+      <button>AI 點子</button>
+      <button>技術分析</button>
+      <button>新聞事件</button>
+      <button>策略回測</button>
+      <button>組合風險</button>
+      <button>交易日誌</button>
+    </nav>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div>
+        <div class="eyebrow">TAIWAN EQUITY RESEARCH</div>
+        <h1>台股研究平台</h1>
+      </div>
+      <div class="status">
+        <span class="dot"></span>
+        <span>Research Only</span>
+      </div>
+    </header>
+
+    <section class="kpis">
+      <article><span>加權指數</span><b id="taiex">--</b><small>等待資料</small></article>
+      <article><span>櫃買指數</span><b>--</b><small>等待資料</small></article>
+      <article><span>成交金額</span><b>--</b><small>等待資料</small></article>
+      <article><span>三大法人</span><b>--</b><small>等待資料</small></article>
+    </section>
+
+    <section class="grid hero">
+      <article class="card chart">
+        <div class="cardhead">
+          <div>
+            <div class="eyebrow">MARKET TREND</div>
+            <h2>台股市場趨勢</h2>
+          </div>
+          <span class="pill">UNAVAILABLE</span>
+        </div>
+        <div class="placeholder">K 線 / 成交量 / 市場廣度圖表區</div>
+      </article>
+
+      <article class="card">
+        <div class="eyebrow">MARKET STATE</div>
+        <h2>今日市場狀態</h2>
+        <div class="state">等待資料接入</div>
+        <p>將整合趨勢、動能、法人、融資融券與產業輪動。</p>
+      </article>
+    </section>
+
+    <section class="grid three">
+      <article class="card">
+        <div class="eyebrow">SECTOR ROTATION</div>
+        <h3>產業輪動</h3>
+        <div class="list">
+          <div><span>半導體</span><b>--</b></div>
+          <div><span>AI / 伺服器</span><b>--</b></div>
+          <div><span>金融</span><b>--</b></div>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="eyebrow">INSTITUTIONAL FLOW</div>
+        <h3>法人資金</h3>
+        <div class="list">
+          <div><span>外資</span><b>--</b></div>
+          <div><span>投信</span><b>--</b></div>
+          <div><span>自營商</span><b>--</b></div>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="eyebrow">RISK EVENTS</div>
+        <h3>風險事件</h3>
+        <p>法說、財報、月營收、重大訊息與海外連動事件。</p>
+      </article>
+    </section>
+
+    <section class="card">
+      <div class="cardhead">
+        <div>
+          <div class="eyebrow">AI RESEARCH CANDIDATES</div>
+          <h2>今日 AI 候選股</h2>
+        </div>
+        <button id="scan">開始研究掃描</button>
+      </div>
+      <div id="candidates" class="candidates"></div>
+    </section>
+
+    <section class="modules">
+      <article>交易點子生成器</article>
+      <article>自動技術分析</article>
+      <article>新聞轉策略</article>
+      <article>策略回測</article>
+      <article>組合風險</article>
+      <article>交易日誌</article>
+      <article>每日交易計畫</article>
+    </section>
+  </main>
+</div>
+
+<nav class="mobile-nav">
+  <button class="active">首頁</button>
+  <button>雷達</button>
+  <button>AI</button>
+  <button>回測</button>
+  <button>日誌</button>
+</nav>
+<script src="./app.js"></script>
+</body>
+</html>
