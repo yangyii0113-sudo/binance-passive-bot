@@ -41,7 +41,7 @@
 - [x] append-only snapshot manifest + SHA-256
 - [x] append-only normalized SQLite observation store
 - [x] exact-record de-duplication
-- [ ] wire provider acquisition to exact raw response-byte capture
+- [x] wire provider acquisition to exact raw response-byte capture
 - [ ] add retention/backup policy for Research Staging
 
 ### P1.6 P1 exit gate
