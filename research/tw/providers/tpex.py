@@ -180,6 +180,14 @@ class TPExProvider:
         _, latest = max(dated, key=lambda item: item[0])
         return self._index_observations(latest)
 
+    def fetch_all_instrument_observations(self) -> Sequence[Observation]:
+        observations: list[Observation] = []
+        for row in self._rows(self.QUOTES_URL):
+            if not clean_text(row.get("SecuritiesCompanyCode")):
+                continue
+            observations.extend(self._quote_observations(row))
+        return tuple(observations)
+
     def fetch_instrument_observations(
         self,
         instrument_id: str,
