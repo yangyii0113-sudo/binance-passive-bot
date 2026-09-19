@@ -1473,3 +1473,86 @@ select:focus,.form-grid input:focus{border-color:rgba(241,184,75,.35)}
   .agent-news-actions{display:grid;grid-template-columns:1fr 1fr}
   .agent-news-actions .candidate-add-btn{width:100%}
 }
+
+
+/* Dynamic Top 5 Research Pipeline */
+.agent-research-panel{
+  display:grid;
+  gap:10px;
+  margin-top:12px;
+  padding:12px;
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:16px;
+  background:rgba(255,255,255,.025);
+}
+.agent-research-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+.agent-research-head>div{display:grid;gap:3px}
+.agent-research-head strong{font-size:14px}
+.agent-research-head span{font-size:11px;color:var(--muted)}
+.agent-research-progress{
+  height:4px;
+  border-radius:999px;
+  overflow:hidden;
+  background:rgba(255,255,255,.08);
+}
+.agent-research-progress span{
+  display:block;
+  height:100%;
+  border-radius:999px;
+  background:currentColor;
+  transition:width .2s ease;
+}
+.agent-research-list{display:grid;gap:8px}
+.agent-research-card{
+  display:grid;
+  gap:10px;
+  padding:12px;
+  border:1px solid rgba(255,255,255,.07);
+  border-radius:14px;
+  background:rgba(0,0,0,.18);
+}
+.agent-research-evidence{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:6px;
+}
+.agent-research-evidence>div,
+.agent-research-metrics>span{
+  display:grid;
+  gap:3px;
+  min-width:0;
+  padding:8px;
+  border-radius:10px;
+  background:rgba(255,255,255,.035);
+}
+.agent-research-evidence span,
+.agent-research-metrics small{
+  font-size:9px;
+  letter-spacing:.05em;
+  color:var(--muted);
+}
+.agent-research-evidence strong,
+.agent-research-metrics strong{
+  font-size:11px;
+  overflow-wrap:anywhere;
+}
+.agent-research-metrics{
+  display:grid;
+  grid-template-columns:repeat(6,minmax(0,1fr));
+  gap:6px;
+}
+
+@media (max-width:720px){
+  .agent-research-head{
+    align-items:stretch;
+    flex-direction:column;
+  }
+  .agent-research-head .primary-inline-btn{width:100%}
+  .agent-research-evidence{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .agent-research-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
