@@ -8,6 +8,7 @@ on:
       - 'research/tw/**'
       - 'tw_platform/**'
       - 'tests/test_tw_*.py'
+      - 'tests/fixtures/tw/**'
       - 'docs/tw/**'
       - '.github/workflows/tw-research-ci.yml'
   pull_request:
@@ -15,6 +16,7 @@ on:
       - 'research/tw/**'
       - 'tw_platform/**'
       - 'tests/test_tw_*.py'
+      - 'tests/fixtures/tw/**'
       - 'docs/tw/**'
       - '.github/workflows/tw-research-ci.yml'
   workflow_dispatch:
@@ -38,8 +40,8 @@ jobs:
       - name: Compile Taiwan research modules
         run: python -m compileall -q research/tw
 
-      - name: Run Taiwan architecture gates
+      - name: Run Taiwan architecture and P1 data-core gates
         env:
           PYTHONPATH: .
         run: |
-          python -m pytest             tests/test_tw_research_architecture.py             tests/test_tw_dependency_boundaries.py             tests/test_tw_phase_manifest.py -v
+          python -m pytest             tests/test_tw_research_architecture.py             tests/test_tw_dependency_boundaries.py             tests/test_tw_phase_manifest.py             tests/test_tw_provider_normalization.py -v
