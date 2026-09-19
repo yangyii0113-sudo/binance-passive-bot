@@ -4,11 +4,19 @@ from dataclasses import dataclass
 from typing import Iterable
 
 from ..contracts import Availability, EvidenceRef, Observation
-from ..providers.institutional import BUY_FIELD, NET_FIELD, SELL_FIELD
+from ..fields import (
+    INSTITUTIONAL_BUY_AMOUNT,
+    INSTITUTIONAL_NET_AMOUNT,
+    INSTITUTIONAL_SELL_AMOUNT,
+)
 
 
 GROUPS = ("foreign", "investment_trust", "dealer", "total")
-FIELDS = (BUY_FIELD, SELL_FIELD, NET_FIELD)
+FIELDS = (
+    INSTITUTIONAL_BUY_AMOUNT,
+    INSTITUTIONAL_SELL_AMOUNT,
+    INSTITUTIONAL_NET_AMOUNT,
+)
 
 
 @dataclass(frozen=True)
@@ -104,9 +112,9 @@ def _aggregate_group(
 
     return InstitutionalGroupFlow(
         group=group,
-        buy_amount=values[BUY_FIELD],
-        sell_amount=values[SELL_FIELD],
-        net_amount=values[NET_FIELD],
+        buy_amount=values[INSTITUTIONAL_BUY_AMOUNT],
+        sell_amount=values[INSTITUTIONAL_SELL_AMOUNT],
+        net_amount=values[INSTITUTIONAL_NET_AMOUNT],
         component_count=len(component_names),
         coverage_ratio=available_fields / len(FIELDS),
         evidence=tuple(evidence),
