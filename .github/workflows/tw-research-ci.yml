@@ -40,7 +40,7 @@ jobs:
       - name: Compile Taiwan research modules
         run: python -m compileall -q research/tw
 
-      - name: Run Taiwan architecture and P1 data-core gates
+      - name: Run Taiwan architecture, P1 and active P2 gates
         env:
           PYTHONPATH: .
         run: |
@@ -55,4 +55,6 @@ jobs:
             tests/test_tw_acquisition.py \
             tests/test_tw_daily_pipeline.py \
             tests/test_tw_reconciliation.py \
+            tests/test_tw_p2_manifest.py \
+            tests/test_tw_market_structure.py \
             -v
