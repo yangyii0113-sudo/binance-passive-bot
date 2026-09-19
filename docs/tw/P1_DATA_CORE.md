@@ -18,7 +18,7 @@
 - [x] canonical Observation mapping
 - [x] TAIEX market index observations via FMTQIK
 - [ ] live official-provider smoke validation in CI/manual gate
-- [ ] historical accumulator wiring
+- [x] historical accumulator wiring
 
 ### P1.3 TPEx OTC market
 - [x] OTC-company registry adapter
@@ -26,7 +26,7 @@
 - [x] canonical Observation mapping
 - [x] OTC index canonicalization adapter + deterministic fixture
 - [ ] verify current live TPEx index field schema against official endpoint
-- [ ] historical accumulator wiring
+- [x] historical accumulator wiring
 
 ### P1.4 Market calendar/session
 - [x] canonical Taiwan timezone/session definition
