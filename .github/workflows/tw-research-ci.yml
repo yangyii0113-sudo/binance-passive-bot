@@ -53,4 +53,5 @@ jobs:
             tests/test_tw_calendar.py \
             tests/test_tw_storage.py \
             tests/test_tw_acquisition.py \
+            tests/test_tw_daily_pipeline.py \
             -v
