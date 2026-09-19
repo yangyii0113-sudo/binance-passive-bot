@@ -92,9 +92,9 @@ class TPExProvider:
         )
 
     def _index_observations(self, row: dict) -> tuple[Observation, ...]:
-        # TPEx public OpenAPI field labels have changed across dataset
-        # generations. Keep acquisition isolated and normalize known aliases.
-        # Production-live schema verification remains a P1 exit-gate item.
+        # Live official schema verified 2026-09-19:
+        # Date, TradeVolume, TradeAmount, NumberOfTransactions,
+        # TPExIndex, Change. Historical aliases remain accepted defensively.
         observed_at = parse_roc_date(
             _first(row, "Date", "TradeDate", "資料日期", "交易日期")
         )
@@ -105,6 +105,7 @@ class TPExProvider:
                 parse_decimal(
                     _first(
                         row,
+                        "TPExIndex",
                         "Index",
                         "Close",
                         "OTCIndex",
@@ -132,6 +133,7 @@ class TPExProvider:
                 parse_int(
                     _first(
                         row,
+                        "TradeAmount",
                         "TradeValue",
                         "TransactionAmount",
                         "成交金額",
@@ -143,6 +145,7 @@ class TPExProvider:
                 parse_int(
                     _first(
                         row,
+                        "NumberOfTransactions",
                         "Transaction",
                         "TransactionNumber",
                         "筆數",
