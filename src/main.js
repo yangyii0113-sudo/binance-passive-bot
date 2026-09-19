@@ -102,7 +102,7 @@ async function handleTopFiveResearch(){
 
   const topFive = strongTopFive(appState);
   if(!topFive.length){
-    appState.ui.message = '目前沒有可執行的 Dynamic Top 5 標的';
+    appState.ui.message = '目前沒有可執行的動態前五名標的';
     render();
     return;
   }
@@ -137,7 +137,7 @@ async function handleTopFiveResearch(){
       error:null
     }
   });
-  appState.ui.message = `Dynamic Top 5 Research 啟動：0 / ${initialRows.length}`;
+  appState.ui.message = `動態前五名研究啟動：0 / ${initialRows.length}`;
   render();
 
   const rows = [...initialRows];
@@ -247,22 +247,22 @@ async function handleTopFiveResearch(){
     }
   });
   const validated = rows.filter(item=>item.decision?.label === 'VALIDATED').length;
-  appState.ui.message = `Dynamic Top 5 Research 完成：${rows.length} 組，VALIDATED ${validated} 組`;
+  appState.ui.message = `動態前五名研究完成：${rows.length} 組，已驗證 ${validated} 組`;
   render();
 }
 
 function promoteResearchCandidate(symbol){
   const target = String(symbol || '').toUpperCase();
   const research = (appState.agents?.topFiveResearch?.rows || []).find(item=>item.symbol === target);
-  if(!research) throw new Error('找不到 Research 結果');
+  if(!research) throw new Error('找不到研究結果');
 
   upsertCandidate({
     symbol:target,
     assetClass:'crypto',
-    source:'Dynamic Top 5 Research',
-    reason:`${research.decision?.label || 'RESEARCH'} · ${research.strategyMatch || 'Strategy Match'} · ${research.guard?.label || '未驗證'}`,
+    source:'動態前五名研究',
+    reason:`${research.decision?.label || '研究中'} · ${research.strategyMatch || '策略匹配'} · ${research.guard?.label || '未驗證'}`,
     signal:{
-      status:research.decision?.label || 'RESEARCH',
+      status:research.decision?.label || '研究中',
       score:Number(research.researchScore) || null,
       direction:research.technical?.consensus || null
     }
@@ -433,7 +433,7 @@ function initEvents() {
     if (researchPromote) {
       try {
         promoteResearchCandidate(researchPromote.dataset.researchPromote);
-        appState.ui.message = `${researchPromote.dataset.researchPromote} 已從 Research 升格 Candidate`;
+        appState.ui.message = `${researchPromote.dataset.researchPromote} 已從研究結果升格為候選`;
       } catch (error) {
         appState.ui.message = error?.message || '升格候選失敗';
       }
@@ -446,15 +446,15 @@ function initEvents() {
       const data = form ? new FormData(form) : null;
       const symbol = data?.get('symbol');
       if (!symbol) return;
-      appState.ui.message = `${symbol} Technical Analyst 多週期分析中…`;
+      appState.ui.message = `${symbol} 多週期技術分析中…`;
       render();
       try {
         const technical = await analyzeMultiTimeframe(symbol);
         setStateSlice('agents', { technical });
-        appState.ui.message = `${symbol} Technical Analyst：${technical.consensus}`;
+        appState.ui.message = `${symbol} 技術分析：${technical.consensus}`;
       } catch (error) {
         setStateSlice('agents', { technical: { symbol, status: 'ERROR', error: String(error?.message || error) } });
-        appState.ui.message = `Technical Analyst 失敗：${error?.message || '未知錯誤'}`;
+        appState.ui.message = `技術分析失敗：${error?.message || '未知錯誤'}`;
       }
       render();
       return;
@@ -471,7 +471,7 @@ function initEvents() {
       const data = form ? new FormData(form) : null;
       const symbol = data?.get('symbol');
       try {
-        upsertCandidate({ symbol, assetClass: 'crypto', source: '手動加入', reason: 'Candidate Pool 手動加入' });
+        upsertCandidate({ symbol, assetClass: 'crypto', source: '手動加入', reason: '候選池手動加入' });
         syncCandidates();
         appState.ui.message = `${symbol} 已加入候選池`;
       } catch (error) {
@@ -543,7 +543,7 @@ function initEvents() {
         const risk = evaluatePortfolioRisk(candidate, appState.paper);
         updateCandidate(symbol, { risk });
         syncCandidates();
-        appState.ui.message = `${symbol} Exposure Gate：${risk.status}`;
+        appState.ui.message = `${symbol} 曝險檢查：${risk.status === 'PASS' ? '通過' : risk.status === 'CAUTION' ? '注意' : risk.status === 'BLOCKED' ? '阻擋' : risk.status}`;
       }
       render();
       return;
@@ -555,8 +555,8 @@ function initEvents() {
         upsertCandidate({
           symbol,
           assetClass: 'crypto',
-          source: 'Strategy Validator',
-          reason: '由 Strategy Validator 建立候選，等待歷史回測驗證'
+          source: '策略驗證',
+          reason: '由策略驗證建立候選，等待歷史回測驗證'
         });
         syncCandidates();
       }
