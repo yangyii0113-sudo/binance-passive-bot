@@ -6,7 +6,7 @@ import { loadPaperSnapshot } from './services/paper.js';
 import { loadResultsSnapshot } from './services/results.js';
 import { loadBacktestSnapshot } from './services/backtest.js';
 import { openLocalPaperPosition, closeLocalPaperPosition } from './local_paper.js';
-import { runLiteBacktest } from './local_backtest.js';
+import { runLiteBacktest, BACKTEST_RANGE_OPTIONS, normalizeTimeframe } from './local_backtest.js';
 import { loadCandidatePool, upsertCandidate, removeCandidate, updateCandidate } from './candidate_pool.js';
 import { analyzeMultiTimeframe } from './multi_timeframe.js';
 import { evaluatePortfolioRisk } from './risk_gate.js';
@@ -74,6 +74,19 @@ function applySearch(value) {
   document.querySelectorAll('[data-search]').forEach((el) => {
     el.hidden = Boolean(q) && !String(el.dataset.search || '').toLowerCase().includes(q);
   });
+}
+
+function syncBacktestRangeSelect(timeframeSelect) {
+  const form = timeframeSelect?.closest?.('form');
+  const rangeSelect = form?.querySelector?.('select[name="range"]');
+  if (!rangeSelect) return;
+  const timeframe = normalizeTimeframe(timeframeSelect.value);
+  const options = BACKTEST_RANGE_OPTIONS[timeframe] || BACKTEST_RANGE_OPTIONS['1h'];
+  const previous = rangeSelect.value;
+  rangeSelect.innerHTML = options.map(([value,label]) =>
+    `<option value="${value}">${label}</option>`
+  ).join('');
+  if (options.some(([value]) => value === previous)) rangeSelect.value = previous;
 }
 
 async function handlePaperOpen(form) {
@@ -145,6 +158,12 @@ async function handleBacktest(form) {
 function initEvents() {
   document.addEventListener('input', (event) => {
     if (event.target?.id === 'global-search') applySearch(event.target.value);
+  });
+
+  document.addEventListener('change', (event) => {
+    if (event.target?.matches?.('select[name="timeframe"]')) {
+      syncBacktestRangeSelect(event.target);
+    }
   });
 
   document.addEventListener('click', async (event) => {
