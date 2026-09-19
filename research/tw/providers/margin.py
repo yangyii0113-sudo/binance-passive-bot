@@ -222,10 +222,27 @@ class TWSEMarginProvider:
             raise ProviderError("TWSE MI_MARGN detail rows missing")
 
         result: list[Observation] = []
+        prefixed_fields = {
+            "股票代號",
+            "融資前日餘額",
+            "融資今日餘額",
+            "融券前日餘額",
+            "融券今日餘額",
+        }
         for raw in rows:
             if not isinstance(raw, list):
                 continue
-            if isinstance(fields, list) and len(fields) <= len(raw):
+
+            # Some RWD responses expose generic repeated field labels such as
+            # 前日餘額 / 今日餘額 under grouped 融資/融券 headers. In that
+            # shape, dict(zip(fields, row)) loses meaning due duplicate keys.
+            # Prefer named mapping only when the response has fully prefixed
+            # canonical labels; otherwise use the official positional layout.
+            if (
+                isinstance(fields, list)
+                and prefixed_fields.issubset({str(item) for item in fields})
+                and len(fields) <= len(raw)
+            ):
                 row = {
                     str(fields[index]): raw[index]
                     for index in range(len(fields))
