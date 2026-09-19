@@ -1,6 +1,6 @@
 # P2 — Taiwan Market Intelligence
 
-**Status:** ACTIVE  
+**Status:** COMPLETE  
 **Top-level phase:** P2  
 **Rule:** Only the active slice may be implemented. Later slices remain design-only until the previous gate is green.
 
@@ -92,11 +92,22 @@ Gate:
 - [x] intelligence has no provider or execution dependency
 - [x] official live regime fusion green for TWSE and TPEx
 
-## P2.6 Read Models / Exit Gate — ACTIVE
+## P2.6 Read Models / Exit Gate — COMPLETE
 
-P2 COMPLETE requires:
-- market intelligence built only from canonical observations
-- every derived output exposes evidence/provenance
-- partial inputs yield degraded/insufficient states rather than fabricated values
-- deterministic fixtures render a complete dashboard read model without network
-- P2 architecture and intelligence CI gates green
+Build:
+- stable `tw-market-intelligence.v1` read model
+- TWSE / TPEx venue bundles
+- compact provenance summaries
+- quality / coverage state on every module
+- raw provider field isolation
+- read-only API contract `/api/tw/market-intelligence`
+
+Exit Gate:
+- [x] market intelligence built only from canonical observations
+- [x] derived outputs expose timestamp / coverage / provenance
+- [x] partial inputs degrade instead of fabricating values
+- [x] deterministic fixtures render a complete JSON dashboard model without network
+- [x] provider-native field names do not leak into UI contract
+- [x] official live read-model smoke green
+- [x] Research Architecture Gate green
+- [x] execution_allowed remains false
