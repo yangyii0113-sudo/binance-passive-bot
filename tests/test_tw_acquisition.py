@@ -77,3 +77,45 @@ def test_json_transport_retries_transient_non_json_response():
 
     assert payload == {"ok": True}
     assert transport.calls == 2
+
+
+class SequenceBytesFixture:
+    def __init__(self, payloads: tuple[bytes, ...]) -> None:
+        self.payloads = iter(payloads)
+        self.calls = 0
+
+    def get_bytes(self, url: str) -> bytes:
+        self.calls += 1
+        return next(self.payloads)
+
+
+def test_snapshotting_transport_retries_transient_invalid_json(tmp_path):
+    url = "https://example.invalid/snapshot"
+    source = SequenceBytesFixture(
+        (
+            b"<html>temporary edge page</html>",
+            b'[{"Date":"1150918","Code":"2330"}]',
+        )
+    )
+    transport = SnapshottingJsonTransport(
+        transport=source,
+        store=RawSnapshotStore(tmp_path),
+        policies=(
+            DatasetPolicy(
+                "fixture",
+                url,
+                latest_row_date("Date"),
+            ),
+        ),
+        attempts=2,
+        retry_backoff_seconds=0,
+        now=lambda: datetime(2026, 9, 19, tzinfo=timezone.utc),
+    )
+
+    parsed = transport.get_json(url)
+
+    assert parsed[0]["Code"] == "2330"
+    assert source.calls == 2
+    raw_files = list((tmp_path / "raw" / "fixture").rglob("*.json"))
+    assert len(raw_files) == 1
+    assert raw_files[0].read_bytes().startswith(b"[")
