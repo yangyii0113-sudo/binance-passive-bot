@@ -4,7 +4,7 @@ from collections.abc import Sequence
 
 from ..contracts import Availability, Instrument, Observation
 from .http import JsonTransport, ProviderError, UrllibJsonTransport
-from .parsing import clean_text, parse_decimal, parse_int, parse_roc_date
+from .parsing import (\n    clean_text,\n    derive_change_percent,\n    parse_decimal,\n    parse_int,\n    parse_roc_date,\n)
 
 
 class TWSEProvider:
@@ -58,12 +58,15 @@ class TWSEProvider:
         instrument_id = f"twse:{symbol}"
         source = "TWSE:STOCK_DAY_ALL"
 
+        close = parse_decimal(row.get("ClosingPrice"))
+        change = parse_decimal(row.get("Change"))
         fields = (
             ("open", parse_decimal(row.get("OpeningPrice"))),
             ("high", parse_decimal(row.get("HighestPrice"))),
             ("low", parse_decimal(row.get("LowestPrice"))),
-            ("close", parse_decimal(row.get("ClosingPrice"))),
-            ("change", parse_decimal(row.get("Change"))),
+            ("close", close),
+            ("change", change),
+            ("change_percent", derive_change_percent(close, change)),
             ("trade_volume", parse_int(row.get("TradeVolume"))),
             ("trade_value", parse_int(row.get("TradeValue"))),
             ("transaction_count", parse_int(row.get("Transaction"))),
