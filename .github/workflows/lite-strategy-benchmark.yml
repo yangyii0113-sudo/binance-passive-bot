@@ -6,6 +6,7 @@ on:
       - foxyya-lite-railway-deploy
     paths:
       - 'scripts/strategy-benchmark-live.mjs'
+      - 'src/local_backtest.js'
       - '.github/workflows/lite-strategy-benchmark.yml'
   workflow_dispatch:
 
