@@ -10,6 +10,7 @@ from .parsing import clean_text, parse_decimal, parse_int, parse_roc_date
 class TWSEProvider:
     BASE_URL = "https://openapi.twse.com.tw/v1"
     QUOTES_URL = BASE_URL + "/exchangeReport/STOCK_DAY_ALL"
+    INDEX_URL = BASE_URL + "/exchangeReport/FMTQIK"
     COMPANY_URL = BASE_URL + "/opendata/t187ap03_L"
 
     def __init__(self, transport: JsonTransport | None = None) -> None:
@@ -43,6 +44,14 @@ class TWSEProvider:
             )
         return instruments
 
+    @staticmethod
+    def _availability(value: object, observed_at: str | None) -> Availability:
+        return (
+            Availability.AVAILABLE
+            if value is not None and observed_at is not None
+            else Availability.UNAVAILABLE
+        )
+
     def _quote_observations(self, row: dict) -> tuple[Observation, ...]:
         symbol = clean_text(row.get("Code"))
         observed_at = parse_roc_date(row.get("Date"))
@@ -66,19 +75,46 @@ class TWSEProvider:
                 value=value,
                 source=source,
                 observed_at=observed_at,
-                availability=(
-                    Availability.AVAILABLE
-                    if value is not None and observed_at is not None
-                    else Availability.UNAVAILABLE
-                ),
+                availability=self._availability(value, observed_at),
                 metadata={"venue": "TWSE", "symbol": symbol},
             )
             for field, value in fields
         )
 
+    def _index_observations(self, row: dict) -> tuple[Observation, ...]:
+        observed_at = parse_roc_date(row.get("Date"))
+        source = "TWSE:FMTQIK"
+        fields = (
+            ("index_close", parse_decimal(row.get("TAIEX"))),
+            ("index_change", parse_decimal(row.get("Change"))),
+            ("trade_volume", parse_int(row.get("TradeVolume"))),
+            ("trade_value", parse_int(row.get("TradeValue"))),
+            ("transaction_count", parse_int(row.get("Transaction"))),
+        )
+        return tuple(
+            Observation(
+                instrument_id="twse:TAIEX",
+                field=field,
+                value=value,
+                source=source,
+                observed_at=observed_at,
+                availability=self._availability(value, observed_at),
+                metadata={"venue": "TWSE", "symbol": "TAIEX"},
+            )
+            for field, value in fields
+        )
+
     def fetch_market_observations(self) -> Sequence[Observation]:
-        # P1.2 index normalization is intentionally a separate slice.
-        return ()
+        rows = self._rows(self.INDEX_URL)
+        dated = [
+            (parse_roc_date(row.get("Date")), row)
+            for row in rows
+            if parse_roc_date(row.get("Date")) is not None
+        ]
+        if not dated:
+            return ()
+        _, latest = max(dated, key=lambda item: item[0])
+        return self._index_observations(latest)
 
     def fetch_instrument_observations(
         self,
