@@ -86,8 +86,15 @@ def main() -> int:
 
         tpex_market = {item.field: item for item in tpex.fetch_market_observations()}
         if not tpex_market.get("index_close") or tpex_market["index_close"].value is None:
+            raw_index = transport.get_json(TPExProvider.INDEX_URL)
+            sample_keys = (
+                sorted(raw_index[-1].keys())
+                if isinstance(raw_index, list) and raw_index and isinstance(raw_index[-1], dict)
+                else []
+            )
             raise RuntimeError(
-                "TPEx index unavailable; current official field schema may need adapter update"
+                "TPEx index unavailable; official row keys="
+                + ",".join(sample_keys)
             )
 
         calendar_entries = calendar.entries()
