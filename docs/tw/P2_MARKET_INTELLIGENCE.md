@@ -74,17 +74,25 @@ Gate:
 - [x] official live sector coverage exceeds minimum threshold
 - [x] TWSE / TPEx leader-laggard ranking available
 
-## P2.5 Market Regime Fusion — ACTIVE
+## P2.5 Market Regime Fusion — COMPLETE
 
-Future:
-- index direction
-- breadth confirmation/divergence
-- flow confirmation
-- leverage context
-- sector diffusion
-- conservative research-state output
+Build:
+- index-direction vote with deadband
+- market-breadth confirmation
+- foreign institutional-flow confirmation
+- sector-diffusion confirmation
+- leverage retained as context rather than forced directional vote
+- fail-closed date/coverage checks
+- descriptive market-regime state only; no execution authority
 
-## P2.6 Read Models / Exit Gate — LOCKED
+Gate:
+- [x] deterministic fusion tests green
+- [x] venue/date mismatch fails closed
+- [x] missing foreign flow fails closed
+- [x] intelligence has no provider or execution dependency
+- [x] official live regime fusion green for TWSE and TPEx
+
+## P2.6 Read Models / Exit Gate — ACTIVE
 
 P2 COMPLETE requires:
 - market intelligence built only from canonical observations
