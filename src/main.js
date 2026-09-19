@@ -171,7 +171,7 @@ async function handleTopFiveResearch(){
       const strategyMatch = batchStrategyMatch(row.baseStrategyMatch, technical);
       const spec = validationSpecForMatch(strategyMatch);
       let backtest = null;
-      let guard = {label:'待驗證',tone:'pending',reason:'未執行 baseline'};
+      let guard = {label:'待驗證',tone:'pending',reason:'未執行基準回測'};
       let backtestError = null;
 
       if(spec.supported){
@@ -293,7 +293,7 @@ async function handlePaperOpen(form) {
       margin: Number(data.get('margin')),
       marketRows: appState.market.rows
     });
-    appState.ui.message = '模擬倉位已建立（PAPER ONLY）';
+    appState.ui.message = '模擬倉位已建立（僅模擬交易）';
     await syncPaperAndResults();
     render();
   } catch (error) {
