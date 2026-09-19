@@ -18,6 +18,9 @@ class TaiwanMarketProvider(Protocol):
     def fetch_market_observations(self) -> Sequence[Observation]:
         ...
 
+    def fetch_all_instrument_observations(self) -> Sequence[Observation]:
+        ...
+
     def fetch_instrument_observations(
         self,
         instrument_id: str,
