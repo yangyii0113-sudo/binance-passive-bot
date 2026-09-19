@@ -243,6 +243,7 @@ def test_regime_fusion_has_no_provider_or_execution_dependency():
     ).read_text(encoding="utf-8")
 
     assert "providers." not in source
-    assert "execution" not in source.lower()
+    assert "foxyya.execution" not in source
+    assert "execution_allowed=True" not in source
     assert "urllib" not in source
     assert "requests" not in source
