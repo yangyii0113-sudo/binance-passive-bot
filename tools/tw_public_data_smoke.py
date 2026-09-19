@@ -62,13 +62,23 @@ def main() -> int:
         if not tpex_registry:
             raise RuntimeError("TPEx registry empty")
 
-        sample_tpex = next(iter(tpex_registry.values()))
-        tpex_quote = {
-            item.field: item
-            for item in tpex.fetch_instrument_observations(sample_tpex.instrument_id)
-        }
-        if not tpex_quote.get("close") or tpex_quote["close"].value is None:
-            raise RuntimeError(f"TPEx sample close unavailable: {sample_tpex.instrument_id}")
+        tpex_daily = tuple(tpex.fetch_all_instrument_observations())
+        tpex_closes = [
+            item
+            for item in tpex_daily
+            if item.field == "close" and item.value is not None
+        ]
+        if not tpex_closes:
+            raise RuntimeError("TPEx daily close dataset normalized no usable closes")
+
+        registry_ids = {item.instrument_id for item in tpex_registry.values()}
+        matched_closes = [
+            item for item in tpex_closes if item.instrument_id in registry_ids
+        ]
+        if not matched_closes:
+            raise RuntimeError("TPEx registry and daily quote universe do not intersect")
+
+        sample_tpex_close = matched_closes[0]
 
         twse_market = {item.field: item for item in twse.fetch_market_observations()}
         if not twse_market.get("index_close") or twse_market["index_close"].value is None:
@@ -89,9 +99,9 @@ def main() -> int:
                 {
                     "ok": True,
                     "twse_instruments": len(twse_registry),
-                    "tpex_instruments": len(tpex_registry),
+                    "tpex_instruments": len(tpex_registry),\n                    "tpex_daily_closes": len(tpex_closes),
                     "twse_quote_date": twse_quote["close"].observed_at,
-                    "tpex_quote_date": tpex_quote["close"].observed_at,
+                    "tpex_quote_date": sample_tpex_close.observed_at,
                     "twse_index_date": twse_market["index_close"].observed_at,
                     "tpex_index_date": tpex_market["index_close"].observed_at,
                     "holiday_entries": len(calendar_entries),
