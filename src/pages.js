@@ -428,14 +428,20 @@ function strongCoinDetail(state, strong){
     <div class="strong-detail-grid">
       <div><span>最新價格</span><strong>${lastPrice}</strong></div>
       <div><span>24h 動能</span><strong class="${changeNum>=0?'up':'down'}">${changeNum>=0?'+':''}${changeNum.toFixed(2)}%</strong></div>
+      <div><span>Universe 流動性</span><strong>#${evidence.liquidityRank} / ${evidence.universeSize}</strong></div>
+      <div><span>Tradability</span><strong>${evidence.tradabilityStatus} · ${evidence.tradabilityScore}</strong></div>
       <div><span>市場強勢</span><strong>${scoreNum.toFixed(0)} / 100</strong></div>
-      <div><span>綜合分數</span><strong>${evidence.composite} / 100</strong></div>
+      <div><span>Research Score</span><strong>${evidence.composite} / 100</strong></div>
+      <div><span>Strategy Match</span><strong>${evidence.strategyMatch}</strong></div>
+      <div><span>Risk Gate</span><strong>${evidence.riskLabel}</strong></div>
     </div>
     <div class="strong-reasons">
-      <div><span>Technical</span><p>${evidence.technicalLabel} · 權重 10%。未分析時採中性分，不假設方向。</p></div>
-      <div><span>Strategy Validator</span><p>${evidence.validatorLabel} · 權重 10%。PASS 只代表通過目前 Strategy Guard。</p></div>
-      <div><span>Risk Gate</span><p>${evidence.riskLabel} · 權重 5%。BLOCKED 會大幅降權，但保留在研究資料中。</p></div>
-      <div><span>市場基礎</span><p>市場強勢與流動性仍佔主要權重；Top 5 是研究優先序，不等於買進建議。</p></div>
+      <div><span>Tradability Gate</span><p>${evidence.tradabilityReason}。目前流動性排名 #${evidence.liquidityRank} / ${evidence.universeSize}，權重 20%。</p></div>
+      <div><span>Strategy Match</span><p>${evidence.strategyMatch}。這是待驗證的策略族群，不等於該策略已經盈利。</p></div>
+      <div><span>Technical</span><p>${evidence.technicalLabel} · 權重 12%。未分析時採中性分，不假設方向。</p></div>
+      <div><span>Strategy Validator</span><p>${evidence.validatorLabel} · 權重 10%。只有實際回測資料才可能成為 PASS。</p></div>
+      <div><span>Risk Gate</span><p>${evidence.riskLabel} · 權重 8%。BLOCKED 不得進入 Top 5，但仍保留在 Universe 研究資料。</p></div>
+      <div><span>市場基礎</span><p>市場強勢權重 50%；Research Top 5 是研究優先序，不是買進排名。</p></div>
     </div>
     <div class="strong-actions strong-actions-three">
       <button class="candidate-add-btn" data-candidate-add="${selected}"
@@ -461,7 +467,7 @@ function strongCoinCards(state){
       ${coinLogo(display, icon)}
       <div class="strong-main">
         <strong>${display}</strong>
-        <span>${evidence.technicalLabel} · ${evidence.validatorLabel} · ${evidence.riskLabel}</span>
+        <span>#${evidence.liquidityRank}/${evidence.universeSize} · ${evidence.strategyMatch} · ${evidence.validatorLabel}</span>
       </div>
       <div class="strong-score"><small>綜合分數</small><b>${evidence.composite}</b></div>
       <div class="strong-change ${changeNum>=0?'up':'down'}">${changeNum>=0?'+':''}${changeNum.toFixed(2)}%</div>
@@ -469,7 +475,7 @@ function strongCoinCards(state){
     </button>`;
   }).join('')}</div>
   ${strongCoinDetail(state,strong)}
-  <div class="strong-note">Top 5 綜合市場強勢、動能與已存在的 Technical / Validator / Risk 證據。缺資料採中性值；僅作研究優先序，不代表未來報酬或買進建議。</div>`;
+  <div class="strong-note">Dynamic Top 5 從完整高流動性 Universe 中產生：Market 50% + Tradability 20% + Technical 12% + Validator 10% + Risk 8%。缺資料採中性值；Risk 或 Tradability BLOCKED 不進 Top 5。僅作研究優先序。</div>`;
 }
 function tab(label,key,active,attr){
   return `<button type="button" class="tab-btn ${active===key?'active':''}" ${attr}="${key}">${label}</button>`;
