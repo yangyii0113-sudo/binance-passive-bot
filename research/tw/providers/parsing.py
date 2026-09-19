@@ -62,3 +62,22 @@ def parse_int(value: object) -> int | None:
     if not float(number).is_integer():
         return None
     return int(number)
+
+
+def derive_change_percent(
+    close: float | None,
+    change: float | None,
+) -> float | None:
+    """Derive daily percent change from close and absolute change.
+
+    previous_close = close - change
+    change_percent = change / previous_close * 100
+
+    Returns None when either input is unavailable or previous close is zero.
+    """
+    if close is None or change is None:
+        return None
+    previous_close = close - change
+    if previous_close == 0:
+        return None
+    return (change / previous_close) * 100.0
