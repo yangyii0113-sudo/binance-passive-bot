@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
-  "active_slice": "P2.6",
+  "active_slice": null,
   "slices": [
     {"id": "P2.1", "name": "Market Structure", "status": "COMPLETE", "depends_on": []},
     {"id": "P2.2", "name": "Institutional Flow", "status": "COMPLETE", "depends_on": ["P2.1"]},
     {"id": "P2.3", "name": "Margin and Short Context", "status": "COMPLETE", "depends_on": ["P2.2"]},
     {"id": "P2.4", "name": "Sector Rotation", "status": "COMPLETE", "depends_on": ["P2.3"]},
     {"id": "P2.5", "name": "Market Regime Fusion", "status": "COMPLETE", "depends_on": ["P2.4"]},
-    {"id": "P2.6", "name": "Read Models and Exit Gate", "status": "ACTIVE", "depends_on": ["P2.5"]}
+    {"id": "P2.6", "name": "Read Models and Exit Gate", "status": "COMPLETE", "depends_on": ["P2.5"]}
   ]
 }
