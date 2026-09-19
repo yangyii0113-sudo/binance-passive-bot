@@ -33,6 +33,7 @@ from research.tw.providers.margin import TPExMarginProvider, TWSEMarginProvider
 from research.tw.providers.tpex import TPExProvider
 from research.tw.providers.twse import TWSEProvider
 from research.tw.providers.twse_calendar import TWSEHolidayCalendarProvider
+from research.tw.services.stock_workspace import build_stock_workspace
 from research.tw.storage import RawSnapshotStore
 
 
@@ -314,6 +315,58 @@ def main() -> int:
                     f"provider-native key leaked into read model: {raw_key}"
                 )
 
+        acceptance_workspaces = tuple(
+            build_stock_workspace(
+                instrument=twse_registry[symbol],
+                observations=twse_daily,
+                market_regime=twse_regime,
+            )
+            for symbol in sorted(required_twse)
+        )
+        for workspace in acceptance_workspaces:
+            if workspace.observed_at != target_date:
+                raise RuntimeError(
+                    f"{workspace.instrument.symbol} workspace date mismatch"
+                )
+            if workspace.quote.close is None:
+                raise RuntimeError(
+                    f"{workspace.instrument.symbol} workspace close unavailable"
+                )
+            if workspace.quote.coverage_ratio < 0.80:
+                raise RuntimeError(
+                    f"{workspace.instrument.symbol} workspace quote coverage too low"
+                )
+            if workspace.market_regime_state is None:
+                raise RuntimeError(
+                    f"{workspace.instrument.symbol} workspace regime unavailable"
+                )
+            if workspace.execution_allowed:
+                raise RuntimeError(
+                    f"{workspace.instrument.symbol} workspace execution boundary violated"
+                )
+
+        sample_tpex_symbol = sample_tpex_close.instrument_id.split(":", 1)[1]
+        sample_tpex_instrument = tpex_registry.get(sample_tpex_symbol)
+        if sample_tpex_instrument is None:
+            raise RuntimeError(
+                f"TPEx workspace registry missing sample {sample_tpex_symbol}"
+            )
+        sample_tpex_workspace = build_stock_workspace(
+            instrument=sample_tpex_instrument,
+            observations=tpex_daily,
+            market_regime=tpex_regime,
+        )
+        if (
+            sample_tpex_workspace.observed_at != target_date
+            or sample_tpex_workspace.quote.close is None
+            or sample_tpex_workspace.quote.coverage_ratio < 0.80
+            or sample_tpex_workspace.market_regime_state is None
+            or sample_tpex_workspace.execution_allowed
+        ):
+            raise RuntimeError(
+                f"TPEx sample workspace failed: {sample_tpex_symbol}"
+            )
+
         print(
             json.dumps(
                 {
@@ -351,6 +404,14 @@ def main() -> int:
                     "read_model_schema": market_read_model["schema_version"],
                     "read_model_quality": market_read_model["quality"]["status"],
                     "read_model_bytes": len(encoded_read_model.encode("utf-8")),
+                    "stock_workspace_acceptance_count": len(acceptance_workspaces),
+                    "stock_workspace_min_coverage": min(
+                        item.quote.coverage_ratio
+                        for item in acceptance_workspaces
+                    ),
+                    "tpex_workspace_sample": sample_tpex_symbol,
+                    "tpex_workspace_coverage":
+                        sample_tpex_workspace.quote.coverage_ratio,
                     "raw_snapshot_root": temp,
                     "execution_allowed": False,
                 },
