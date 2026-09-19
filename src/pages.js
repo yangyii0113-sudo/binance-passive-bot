@@ -1097,9 +1097,18 @@ export function backtestPage(state) {
       <label>幣種<select name="symbol">${marketSymbolOptions(state)}</select></label>
       <label>測試期間<select name="range"><option value="90D">90 天</option><option value="180D">180 天</option><option value="1Y">1 年</option></select></label>
       <label>策略<select name="strategy"><option value="A">策略 A · EMA20/50</option><option value="B">策略 B · EMA10/30</option></select></label>
-      <label>時間週期<select name="timeframe"><option value="1h">1 小時</option><option value="4h">4 小時</option></select></label>
+      <label>時間週期<select name="timeframe">
+        <option value="15m">15 分鐘</option>
+        <option value="1h">1 小時</option>
+        <option value="4h">4 小時</option>
+        <option value="12h">12 小時</option>
+        <option value="1d">日線</option>
+        <option value="1w">週線</option>
+        <option value="1M">月線</option>
+      </select></label>
     </form>
     <button class="primary-btn" data-backtest-run type="button" ${b.status==='LOADING'?'disabled':''}>開始歷史測試</button>
+    <p class="guard-note">回測僅使用 Fully Closed Bar；較長週期若歷史 K 線不足，系統會直接顯示樣本不足，不會補造資料。</p>
     ${resultHtml}`, badge('歷史回測'))}</div>`;
 }
 
@@ -1142,9 +1151,18 @@ export function strategyLabPage(state) {
       <label>幣種<select name="symbol">${marketSymbolOptions(state)}</select></label>
       <label>測試期間<select name="range"><option value="90D">90 天</option><option value="180D">180 天</option><option value="1Y">1 年</option></select></label>
       <label>策略<select name="strategy"><option value="A">趨勢策略 · EMA20/50</option><option value="B">快速趨勢 · EMA10/30</option></select></label>
-      <label>時間週期<select name="timeframe"><option value="1h">1 小時</option><option value="4h">4 小時</option></select></label>
+      <label>時間週期<select name="timeframe">
+        <option value="15m">15 分鐘</option>
+        <option value="1h">1 小時</option>
+        <option value="4h">4 小時</option>
+        <option value="12h">12 小時</option>
+        <option value="1d">日線</option>
+        <option value="1w">週線</option>
+        <option value="1M">月線</option>
+      </select></label>
     </form>
     <button class="primary-btn" data-backtest-run type="button" ${b.status==='LOADING'?'disabled':''}>開始歷史測試</button>
+    <p class="guard-note">支援 15m / 1H / 4H / 12H / 日 / 週 / 月；僅使用已收盤 K 線。長週期若樣本不足會直接停止。</p>
     ${backtestResult}
   `;
 
