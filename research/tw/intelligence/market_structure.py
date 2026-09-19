@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Iterable
 
 from ..contracts import Availability, EvidenceRef, Observation
-from ..providers.parsing import derive_change_percent
+from ..calculations import derive_change_percent
 
 
 @dataclass(frozen=True)
@@ -156,11 +156,7 @@ def build_market_breadth(
         if denominator
         else None
     )
-    ad_ratio = (
-        advancers / decliners
-        if decliners
-        else (float("inf") if advancers else None)
-    )
+    ad_ratio = advancers / decliners if decliners else None
 
     evidence = tuple(
         ref
