@@ -3,6 +3,28 @@ import { STATUS } from './status.js';
 const BASE = 'https://fapi.binance.com/fapi/v1/klines';
 const COST_PER_TRADE = 0.0008;
 
+export const BACKTEST_RANGE_OPTIONS = Object.freeze({
+  '15m': [['30D','30 天'],['90D','90 天'],['180D','180 天']],
+  '1h': [['90D','90 天'],['180D','180 天'],['1Y','1 年']],
+  '4h': [['180D','180 天'],['1Y','1 年'],['2Y','2 年']],
+  '12h': [['1Y','1 年'],['2Y','2 年'],['3Y','3 年']],
+  '1d': [['1Y','1 年'],['3Y','3 年'],['5Y','5 年'],['MAX','MAX']],
+  '1w': [['3Y','3 年'],['5Y','5 年'],['10Y','10 年'],['MAX','MAX']],
+  '1M': [['5Y','5 年'],['10Y','10 年'],['MAX','MAX']]
+});
+
+const RANGE_DAYS = Object.freeze({
+  '30D': 30,
+  '90D': 90,
+  '180D': 180,
+  '1Y': 365,
+  '2Y': 730,
+  '3Y': 1095,
+  '5Y': 1825,
+  '10Y': 3650,
+  'MAX': 3650
+});
+
 function ema(values, period){
   const out = Array(values.length).fill(null);
   if(values.length < period) return out;
@@ -30,11 +52,27 @@ function maxBatches(interval, days){
   const estimate = Math.ceil((days * (candlesPerDay[interval] || 24)) / 1000) + 2;
   return Math.min(40, Math.max(2, estimate));
 }
-function normalizeTimeframe(value){
+export function normalizeTimeframe(value){
   const raw = String(value || '1h').trim();
   if(raw === '1M') return '1M';
   const lower = raw.toLowerCase();
   return ['15m','1h','4h','12h','1d','1w'].includes(lower) ? lower : '1h';
+}
+function resolveRange(interval, range){
+  const allowed = BACKTEST_RANGE_OPTIONS[interval] || BACKTEST_RANGE_OPTIONS['1h'];
+  const allowedKeys = allowed.map(([key])=>key);
+  const requested = String(range || '').toUpperCase();
+  if(!allowedKeys.includes(requested)){
+    throw new Error(`${interval.toUpperCase()} 不支援 ${requested || '未指定'} 回測範圍；可選：${allowedKeys.join(' / ')}`);
+  }
+  return { range: requested, days: RANGE_DAYS[requested] };
+}
+function classifyValidation(samples, trades){
+  if(samples < 60) return { level:'INSUFFICIENT_BARS', label:'K 線樣本不足', reliable:false };
+  if(trades < 20) return { level:'INSUFFICIENT_TRADES', label:'交易樣本不足', reliable:false };
+  if(trades < 50) return { level:'PRELIMINARY', label:'Preliminary', reliable:false };
+  if(trades < 100) return { level:'INITIAL', label:'可初步分析', reliable:false };
+  return { level:'REFERENCE', label:'較有統計參考性', reliable:true };
 }
 async function fetchKlines(symbol, interval, days){
   const end = Date.now();
@@ -129,22 +167,24 @@ function simulate(candles, strategy){
   };
 }
 export async function runLiteBacktest({symbol='BTCUSDT',range='90D',strategy='A',timeframe='1h'} = {}){
-  const days = range === '1Y' ? 365 : range === '180D' ? 180 : 90;
   const interval = normalizeTimeframe(timeframe);
-  const candles = await fetchKlines(symbol,interval,days);
+  const resolved = resolveRange(interval, range);
+  const candles = await fetchKlines(symbol,interval,resolved.days);
   const result = simulate(candles,strategy);
+  const validation = classifyValidation(candles.length, result.trades);
   return {
     status: STATUS.LIVE,
     updatedAt: new Date().toISOString(),
     local: true,
-    input:{symbol,range,strategy,timeframe:interval,samples:candles.length,costModel:'單次來回成本 0.08%'},
+    input:{symbol,range:resolved.range,strategy,timeframe:interval,samples:candles.length,costModel:'單次來回成本 0.08%'},
     result:{
       trades:result.trades,
       winRatePct:result.winRatePct,
       expectancyR:result.expectancyR,
       profitFactor:result.profitFactor,
       netReturnPct:result.netReturnPct,
-      maxDrawdownPct:result.maxDrawdownPct
+      maxDrawdownPct:result.maxDrawdownPct,
+      validation
     },
     equityCurve:result.equityCurve,
     recentTrades:result.tradesList.slice(-10).reverse()
