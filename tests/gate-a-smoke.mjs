@@ -21,7 +21,7 @@ globalThis.window = {
 };
 
 const { STATUS } = await import('../src/status.js');
-const { loadMarketSnapshot } = await import('../src/market.js');
+const { loadMarketSnapshot, normalizeUniverse } = await import('../src/market.js');
 const { loadStrategySnapshot, normalizeSnapshot: normalizeStrategySnapshot } = await import('../src/services/strategy.js');
 const { loadPaperSnapshot, normalizePaperSnapshot } = await import('../src/services/paper.js');
 const { loadResultsSnapshot, normalizeResultsSnapshot } = await import('../src/services/results.js');
@@ -59,11 +59,24 @@ assert.equal(live.rows.some((row) => row[1] === 'XRP / USDT'), true, 'Dynamic un
 assert.equal(live.rows.some((row) => row[1] === 'USDC / USDT'), false, 'Stablecoin bases must be excluded');
 assert.equal(live.rows.every((row) => row.length >= 6), true, 'Market rows must include liquidity and strength metadata');
 assert.equal(live.rows.every((row) => Number.isFinite(Number(row[5]))), true, 'LIVE market rows must expose strength score');
+assert.equal(Array.isArray(live.universeRows), true, 'Market snapshot must expose a research universe');
+assert.equal(live.universeRows.length, 7, 'Research universe must retain every eligible ticker in this fixture');
+assert.equal(live.universeSize, 7, 'Universe size metadata must match eligible ticker count');
+
+const broadPayload = Array.from({length:45}, (_,index) => ({
+  symbol: `T${String(index+1).padStart(2,'0')}USDT`,
+  lastPrice: String(100 + index),
+  priceChangePercent: String((index % 9) - 4),
+  quoteVolume: String(10_000_000_000 - index * 100_000_000)
+}));
+const broadUniverse = normalizeUniverse(broadPayload);
+assert.equal(broadUniverse.length, 40, 'Research universe must retain up to 40 liquid USD-M symbols');
 
 globalThis.fetch = async () => { throw new Error('offline'); };
 const stale = await loadMarketSnapshot();
 assert.equal(stale.status, STATUS.STALE, 'Market must degrade to STALE when Last Known Good exists');
 assert.deepEqual(stale.rows, live.rows, 'STALE must retain Last Known Good rows');
+assert.deepEqual(stale.universeRows, live.universeRows, 'STALE must retain Last Known Good research universe');
 
 localStorage.clear();
 const error = await loadMarketSnapshot();
