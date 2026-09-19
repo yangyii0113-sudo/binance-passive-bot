@@ -1,5 +1,6 @@
 import { mock } from './mock.js';
 import { badge, metric, section } from './ui.js';
+import { evaluateStrategyGuard } from './strategy_guard.js';
 
 function marketStatusLabel(market) {
   const time = market.updatedAt
@@ -392,7 +393,7 @@ function strongEvidence(state, row){
   result.strategyMatch = strategyMatch(row, result);
   return result;
 }
-function strongTopFive(state){
+export function strongTopFive(state){
   return researchUniverseRows(state)
     .map(row => ({ row, evidence: strongEvidence(state, row) }))
     .filter(item =>
@@ -672,27 +673,7 @@ function strategyWorkspaceTabs(state){
 }
 
 function validatorVerdict(validator){
-  const result = validator?.result;
-  if(!result) return {label:'待驗證',tone:'pending'};
-  const trades = Number(result.trades) || 0;
-  const pf = Number(result.profitFactor);
-  const avgTrade = Number(result.avgTradePct);
-  const netReturn = Number(result.netReturnPct);
-  const maxDd = Number(result.maxDrawdownPct);
-  const validationLevel = String(result.validation?.level || '');
-  if(trades < 20 || validationLevel.startsWith('INSUFFICIENT')) return {label:'樣本不足',tone:'caution'};
-  if(
-    !Number.isFinite(pf) ||
-    !Number.isFinite(avgTrade) ||
-    !Number.isFinite(netReturn) ||
-    !Number.isFinite(maxDd) ||
-    pf < 1 ||
-    avgTrade <= 0 ||
-    netReturn <= 0
-  ) return {label:'REVIEW',tone:'review'};
-  const enoughEvidence = validationLevel === 'INITIAL' || validationLevel === 'REFERENCE';
-  if(enoughEvidence && pf >= 1.2 && maxDd <= 35) return {label:'PASS',tone:'pass'};
-  return {label:'CAUTION',tone:'caution'};
+  return evaluateStrategyGuard(validator?.result);
 }
 function riskTone(status){
   const key = String(status || 'PENDING').toUpperCase();
