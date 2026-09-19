@@ -4,7 +4,7 @@ from collections.abc import Sequence
 
 from ..contracts import Availability, Instrument, Observation
 from .http import JsonTransport, ProviderError, UrllibJsonTransport
-from .parsing import clean_text, parse_decimal, parse_int, parse_roc_date
+from .parsing import (\n    clean_text,\n    derive_change_percent,\n    parse_decimal,\n    parse_int,\n    parse_roc_date,\n)
 
 
 def _first(row: dict, *keys: str):
@@ -68,12 +68,15 @@ class TPExProvider:
         instrument_id = f"tpex:{symbol}"
         source = "TPEx:tpex_mainboard_daily_close_quotes"
 
+        close = parse_decimal(row.get("Close"))
+        change = parse_decimal(row.get("Change"))
         fields = (
             ("open", parse_decimal(row.get("Open"))),
             ("high", parse_decimal(row.get("High"))),
             ("low", parse_decimal(row.get("Low"))),
-            ("close", parse_decimal(row.get("Close"))),
-            ("change", parse_decimal(row.get("Change"))),
+            ("close", close),
+            ("change", change),
+            ("change_percent", derive_change_percent(close, change)),
             ("trade_volume", parse_int(row.get("TradingShares"))),
             ("trade_value", parse_int(row.get("TransactionAmount"))),
             ("transaction_count", parse_int(row.get("TransactionNumber"))),
