@@ -13,6 +13,11 @@ if str(ROOT) not in sys.path:
 from research.tw.acquisition import DatasetPolicy, SnapshottingJsonTransport, latest_row_date
 from research.tw.intelligence.institutional_flow import build_institutional_flow
 from research.tw.intelligence.margin_short import build_margin_short_context
+from research.tw.intelligence.market_regime import (
+    MarketRegimeState,
+    build_market_regime,
+)
+from research.tw.intelligence.market_structure import build_market_structure
 from research.tw.intelligence.sector_rotation import build_sector_rotation
 from research.tw.providers.http import UrllibJsonTransport
 from research.tw.providers.institutional import (
@@ -212,6 +217,49 @@ def main() -> int:
                     f"{snapshot.coverage_ratio:.2f}"
                 )
 
+        twse_structure = build_market_structure(
+            twse_daily + tuple(twse_market.values()),
+            venue="TWSE",
+            observed_at=target_date,
+        )
+        tpex_structure = build_market_structure(
+            tpex_daily + tuple(tpex_market.values()),
+            venue="TPEX",
+            observed_at=target_date,
+        )
+
+        twse_regime = build_market_regime(
+            structure=twse_structure,
+            institutional=twse_inst,
+            leverage=twse_margin,
+            sectors=twse_rotation,
+        )
+        tpex_regime = build_market_regime(
+            structure=tpex_structure,
+            institutional=tpex_inst,
+            leverage=tpex_margin,
+            sectors=tpex_rotation,
+        )
+
+        for snapshot in (twse_regime, tpex_regime):
+            if snapshot.state == MarketRegimeState.INSUFFICIENT_DATA:
+                raise RuntimeError(
+                    f"{snapshot.venue} market regime insufficient data"
+                )
+            if snapshot.directional_score is None:
+                raise RuntimeError(
+                    f"{snapshot.venue} market regime score unavailable"
+                )
+            if snapshot.confidence < 0.60:
+                raise RuntimeError(
+                    f"{snapshot.venue} market regime confidence too low: "
+                    f"{snapshot.confidence:.2f}"
+                )
+            if snapshot.execution_allowed:
+                raise RuntimeError(
+                    f"{snapshot.venue} market regime execution boundary violated"
+                )
+
         print(
             json.dumps(
                 {
@@ -240,6 +288,12 @@ def main() -> int:
                     "tpex_sector_coverage": tpex_rotation.coverage_ratio,
                     "twse_sector_leaders": twse_rotation.leaders,
                     "tpex_sector_leaders": tpex_rotation.leaders,
+                    "twse_regime_state": twse_regime.state.value,
+                    "tpex_regime_state": tpex_regime.state.value,
+                    "twse_regime_score": twse_regime.directional_score,
+                    "tpex_regime_score": tpex_regime.directional_score,
+                    "twse_regime_confidence": twse_regime.confidence,
+                    "tpex_regime_confidence": tpex_regime.confidence,
                     "raw_snapshot_root": temp,
                     "execution_allowed": False,
                 },
