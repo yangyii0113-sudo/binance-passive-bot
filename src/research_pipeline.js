@@ -37,8 +37,8 @@ export function validationSpecForMatch(strategyMatch){
 }
 
 export function researchDecision({technical, guard, risk, spec} = {}){
-  if(!spec?.supported) return { label:'RESEARCH', tone:'pending' };
   if(String(risk?.status || '').toUpperCase() === 'BLOCKED') return { label:'BLOCKED', tone:'blocked' };
+  if(!spec?.supported) return { label:'RESEARCH', tone:'pending' };
   if(guard?.label === 'PASS' && technical?.status === 'LIVE') return { label:'VALIDATED', tone:'pass' };
   if(guard?.label === 'REVIEW') return { label:'REVIEW', tone:'review' };
   if(guard?.label === '樣本不足') return { label:'INSUFFICIENT', tone:'caution' };
