@@ -66,7 +66,7 @@ assert.equal(results.summary.expectancyR,null,'Local Paper must not fabricate R 
 const { emptyStrategySnapshot, emptyPaperSnapshot, emptyResultsSnapshot, emptyBacktestSnapshot } = await import('../src/contracts.js');
 const { pages } = await import('../src/pages.js');
 const state = {
-  ui:{assetClass:'crypto',strategyWorkspace:'signals',strategyFilter:'all'},
+  ui:{assetClass:'crypto',strategyWorkspace:'signals',strategyFilter:'all',labTab:'backtest'},
   market:{rows:[['₿','BTC / USDT','100.000',1,1000000,80]],universeRows:[['₿','BTC / USDT','100.000',1,1000000,80]],source:'TEST',status:'LIVE'},
   strategy:emptyStrategySnapshot(),
   paper:emptyPaperSnapshot(),
