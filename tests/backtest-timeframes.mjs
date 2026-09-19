@@ -51,7 +51,12 @@ for (const timeframe of ['15m','1h','4h','12h','1d','1w','1M']) {
   assert.equal(snapshot.result.validation.label, '交易樣本不足', '80 bars with one open bar removed should not be overstated');
 }
 
-assert.deepEqual(BACKTEST_RANGE_OPTIONS['1M'].map(([key])=>key), ['5Y','10Y','MAX']);
+assert.deepEqual(BACKTEST_RANGE_OPTIONS['1M'].map(([key])=>key), ['5Y','10Y']);
+assert.equal(
+  Object.values(BACKTEST_RANGE_OPTIONS).flat().some(([key])=>key === 'MAX'),
+  false,
+  'UI must not expose fake MAX range'
+);
 await assert.rejects(
   runLiteBacktest({symbol:'BTCUSDT',range:'90D',strategy:'A',timeframe:'1M'}),
   /1M 不支援 90D/,
@@ -85,3 +90,10 @@ assert.ok(futuresRequests >= 1, 'USD-M endpoint must be attempted first');
 assert.equal(fallbackSnapshot.input.dataSource, 'Binance Spot public klines · fallback');
 assert.equal(fallbackSnapshot.input.samples, 79, 'fallback must still enforce fully closed bars');
 console.log('binance 451 fallback: enforced');
+
+
+await assert.rejects(
+  runLiteBacktest({symbol:'BTCUSDT',range:'MAX',strategy:'A',timeframe:'1M'}),
+  /1M 不支援 MAX/,
+  'engine must reject fake MAX range'
+);
