@@ -27,6 +27,17 @@ function displayStrategyMatch(value){
   };
   return labels[raw] || raw || '待判定';
 }
+function displayCandidateSource(value){
+  return String(value || '候選池')
+    .replaceAll('Market Scout','市場偵察')
+    .replaceAll('動態前五名','動態前五名')
+    .replaceAll('全市場掃描','全市場掃描')
+    .replaceAll('Technical Analyst','技術分析')
+    .replaceAll('Strategy Validator','策略驗證')
+    .replaceAll('Trade Review Analyst','交易檢討')
+    .replaceAll('News Impact','新聞影響')
+    .replaceAll('Research','研究');
+}
 
 function marketStatusLabel(market) {
   const time = market.updatedAt
@@ -685,7 +696,7 @@ function strategyWorkspaceTabs(state){
   const active = state.ui?.strategyWorkspace || 'signals';
   const items = [
     ['signals','訊號'],
-    ['agents','AI Agents'],
+    ['agents','AI 分析代理'],
     ['candidates','候選池'],
     ['library','策略庫'],
     ['develop','策略開發'],
@@ -735,27 +746,27 @@ function candidatePoolPanel(state){
       <div class="candidate-head">
         <div class="candidate-symbol-wrap">
           ${coinLogo(item.symbol,item.symbol.slice(0,1),true)}
-          <div><strong>${item.symbol}</strong><span>${item.source || '候選池'} · ${added}</span></div>
+          <div><strong>${item.symbol}</strong><span>${displayCandidateSource(item.source)} · ${added}</span></div>
         </div>
         <span class="decision-badge decision-${finalState.tone}">${finalState.label}</span>
       </div>
       <p class="candidate-reason">${item.reason || '手動加入候選池'}</p>
       <div class="evidence-matrix">
-        <div><span>MARKET</span><strong>${item.signal?.score != null ? `Score ${item.signal.score}` : '已加入'}</strong><small>${item.signal?.direction || item.source || '—'}</small></div>
-        <div><span>TECHNICAL</span><strong>${item.technical?.consensus || '待分析'}</strong><small>${item.technical?.status || '—'}</small></div>
-        <div><span>VALIDATOR</span><strong class="decision-text-${validator.tone}">${validator.label}</strong><small>${item.validator?.result ? `${Number(vr.trades)||0} trades · PF ${vr.profitFactor == null ? '—' : Number(vr.profitFactor).toFixed(2)} · DD ${pct(vr.maxDrawdownPct)}` : '尚未回測'}</small></div>
-        <div><span>EXPOSURE GATE</span><strong class="decision-text-${riskTone(item.risk?.status)}">${riskStatus}</strong><small>${item.risk ? `${Number(item.risk.portfolioRiskPct||0).toFixed(2)}% / 1.50%` : '待檢查'}</small></div>
+        <div><span>市場</span><strong>${item.signal?.score != null ? `評分 ${item.signal.score}` : '已加入'}</strong><small>${item.signal?.direction || displayCandidateSource(item.source) || '—'}</small></div>
+        <div><span>技術面</span><strong>${item.technical?.consensus || '待分析'}</strong><small>${displayStatus(item.technical?.status || '—')}</small></div>
+        <div><span>策略驗證</span><strong class="decision-text-${validator.tone}">${displayStatus(validator.label)}</strong><small>${item.validator?.result ? `交易 ${Number(vr.trades)||0} 筆 · 獲利因子 ${vr.profitFactor == null ? '—' : Number(vr.profitFactor).toFixed(2)} · 最大回撤 ${pct(vr.maxDrawdownPct)}` : '尚未回測'}</small></div>
+        <div><span>曝險檢查</span><strong class="decision-text-${riskTone(item.risk?.status)}">${displayStatus(riskStatus)}</strong><small>${item.risk ? `${Number(item.risk.portfolioRiskPct||0).toFixed(2)}% / 1.50%` : '待檢查'}</small></div>
       </div>
       ${candidateTechnical(item)}
       ${item.risk?.reasons?.length ? `<div class="risk-reasons">${item.risk.reasons.map(reason=>`<p>• ${reason}</p>`).join('')}</div>` : ''}
       <div class="candidate-actions">
         <button type="button" class="secondary-btn" data-candidate-analyze="${item.symbol}">多週期分析</button>
         <button type="button" class="secondary-btn" data-candidate-validate="${item.symbol}">策略驗證</button>
-        <button type="button" class="secondary-btn" data-candidate-risk="${item.symbol}">Exposure Gate</button>
+        <button type="button" class="secondary-btn" data-candidate-risk="${item.symbol}">曝險檢查</button>
         <button type="button" class="danger-btn" data-candidate-remove="${item.symbol}">移出候選</button>
       </div>
     </article>`;
-  }).join('') : '<div class="empty-state"><strong>候選池目前是空的</strong><span>可從 Dynamic Top 5、Universe Scanner、交易訊號，或下方手動加入標的。</span></div>';
+  }).join('') : '<div class="empty-state"><strong>候選池目前是空的</strong><span>可從動態前五名、全市場掃描、交易訊號，或下方手動加入標的。</span></div>';
 
   return `<div class="candidate-pool-wrap">
     <form id="candidate-manual-form" class="candidate-manual-form">
@@ -764,7 +775,7 @@ function candidatePoolPanel(state){
     </form>
     <div class="candidate-pool-summary">
       <div><span>候選數</span><strong>${items.length}</strong></div>
-      <p>Agent 可獨立分析；只有你選擇的標的才會進入候選池。Exposure Gate 目前以 Paper 保證金 / NAV 代理曝險，具有阻擋權但不會送出真實訂單。</p>
+      <p>AI 分析代理可獨立分析；只有你選擇的標的才會進入候選池。曝險檢查目前以模擬保證金／淨值代理曝險，具有阻擋權但不會送出真實訂單。</p>
     </div>
     <div class="candidate-list">${rows}</div>
   </div>`;
@@ -774,15 +785,15 @@ function candidatePoolPanel(state){
 function agentTabs(state){
   const active = state.ui?.agentKey || 'market';
   const agents = [
-    ['market','01','Market Scout'],
-    ['technical','02','Technical'],
-    ['news','03','News Impact'],
-    ['validator','04','Validator'],
-    ['risk','05','Exposure'],
-    ['review','06','Trade Review'],
-    ['playbook','07','Playbook']
+    ['market','01','市場偵察'],
+    ['technical','02','技術分析'],
+    ['news','03','新聞影響'],
+    ['validator','04','策略驗證'],
+    ['risk','05','曝險管理'],
+    ['review','06','交易檢討'],
+    ['playbook','07','交易手冊']
   ];
-  return `<div class="agent-tabs" role="tablist" aria-label="FOXYYA AI Agents">
+  return `<div class="agent-tabs" role="tablist" aria-label="FOXYYA AI 分析代理">
     ${agents.map(([key,no,label])=>`
       <button type="button" class="agent-tab ${active===key?'active':''}" data-agent-key="${key}" role="tab" aria-selected="${active===key}">
         <span>${no}</span><strong>${label}</strong>
@@ -858,8 +869,8 @@ function topFiveResearchPanel(state){
       </summary>
       <div class="research-detail-body">
         <div class="agent-research-evidence">
-          <div><span>TECHNICAL</span><strong>${technical}</strong></div>
-          <div><span>STRATEGY MATCH</span><strong>${item.strategyMatch || '—'}</strong></div>
+          <div><span>技術面</span><strong>${technical}</strong></div>
+          <div><span>策略匹配</span><strong>${displayStrategyMatch(item.strategyMatch)}</strong></div>
           <div><span>BASELINE</span><strong>${spec.supported ? `${spec.strategyLabel} · ${String(spec.timeframe||'').toUpperCase()} · ${spec.range}` : '未支援'}</strong></div>
           <div><span>GUARD</span><strong class="decision-text-${guard.tone || 'pending'}">${guard.label || '—'}</strong></div>
           <div><span>RISK</span><strong class="decision-text-${riskTone(item.risk?.status)}">${risk}</strong></div>
@@ -880,7 +891,7 @@ function topFiveResearchPanel(state){
     <div class="agent-research-head research-cockpit-head">
       <div>
         <span class="research-eyebrow">RESEARCH PIPELINE</span>
-        <strong>Top 5 全套驗證</strong>
+        <strong>前五名全套驗證</strong>
         <small>固定規則 · 不針對單一標的調參 · 更新 ${updated}</small>
       </div>
       <button type="button" class="primary-inline-btn research-run-btn" data-top5-research-run ${running?'disabled':''}>
@@ -889,10 +900,10 @@ function topFiveResearchPanel(state){
     </div>
 
     <div class="research-status-grid">
-      <div class="research-status-pass"><span>VALIDATED</span><strong>${counts.validated}</strong></div>
-      <div class="research-status-caution"><span>CAUTION</span><strong>${counts.caution}</strong></div>
-      <div class="research-status-review"><span>REVIEW</span><strong>${counts.review}</strong></div>
-      <div class="research-status-blocked"><span>BLOCKED</span><strong>${counts.blocked}</strong></div>
+      <div class="research-status-pass"><span>已驗證</span><strong>${counts.validated}</strong></div>
+      <div class="research-status-caution"><span>注意</span><strong>${counts.caution}</strong></div>
+      <div class="research-status-review"><span>需複核</span><strong>${counts.review}</strong></div>
+      <div class="research-status-blocked"><span>阻擋</span><strong>${counts.blocked}</strong></div>
     </div>
 
     ${running ? `
@@ -946,9 +957,9 @@ function marketScoutPanel(state){
         : filter==='loss' ? `24h 跌幅 ${ch.toFixed(2)}%`
         : `24h 成交額 ${compactVolume(volume)} USDT`;
     const source = isComposite
-      ? 'Market Scout · Dynamic Top 5'
+      ? 'Market Scout · 動態前五名'
       : mode === 'universe'
-        ? 'Universe Scanner'
+        ? '全市場掃描'
         : 'Market Scout';
     const scoreValue = isComposite ? evidence.composite : (Number.isFinite(strength) ? strength : '');
     const validatorTone = evidence.validatorLabel === 'PASS' ? 'pass'
@@ -978,7 +989,7 @@ function marketScoutPanel(state){
         <small class="agent-market-move ${ch>=0?'up':'down'}">${ch>=0?'+':''}${ch.toFixed(2)}% · ${mode==='universe' ? `流動性 #${evidence.liquidityRank}` : compactVolume(volume)}</small>
       </div>
       ${isComposite
-        ? `<div class="agent-score-block"><small>RESEARCH</small><strong>${evidence.composite}</strong></div>`
+        ? `<div class="agent-score-block"><small>研究</small><strong>${evidence.composite}</strong></div>`
         : `<div class="agent-result-metric"><strong>${last}</strong><span class="${ch>=0?'up':'down'}">${ch>=0?'+':''}${ch.toFixed(2)}%</span></div>`}
       <button type="button" class="candidate-add-btn agent-quick-add"
         data-candidate-add="${symbol}"
@@ -990,14 +1001,14 @@ function marketScoutPanel(state){
   }).join('') : '<div class="empty-state"><strong>市場資料讀取中</strong></div>';
 
   return `<div class="agent-panel-stack">
-    ${agentFilterTabs(state,[['strong','Dynamic Top 5'],['universe','Universe'],['gain','漲幅'],['loss','跌幅'],['liquidity','流動性']])}
+    ${agentFilterTabs(state,[['strong','動態前五名'],['universe','Universe'],['gain','漲幅'],['loss','跌幅'],['liquidity','流動性']])}
     <div class="playbook-top market-scout-stats">
       <div><span>市場池</span><strong>${universe.length}</strong></div>
       <div><span>Top 5</span><strong>${topFive.length}</strong></div>
       <div><span>阻擋</span><strong>${blockedCount}</strong></div>
       <div><span>資料源</span><strong>USD-M</strong></div>
     </div>
-    <div class="agent-intro agent-intro-compact"><strong>Universe Scanner</strong><span>先找可交易市場，再驗證 Technical / Strategy Edge / Risk。Top 5 是研究順位，不是買進順位。</span></div>
+    <div class="agent-intro agent-intro-compact"><strong>全市場掃描</strong><span>先找可交易市場，再驗證 技術面／策略優勢／風險。前五名是研究順位，不是買進順位。</span></div>
     <div class="agent-results market-scout-results">${cards}</div>
     ${filter === 'strong' ? topFiveResearchPanel(state) : ''}
   </div>`;
@@ -1019,7 +1030,7 @@ function technicalAgentPanel(state){
         const tone = direction.includes('多') ? 'up' : direction.includes('空') ? 'down' : '';
         return `<div class="agent-tech-card"><span>${frame.label}</span><strong class="${tone}">${direction}</strong><small>EMA20 ${price(frame.ema20)} · EMA50 ${price(frame.ema50)}</small><b>${Number.isFinite(Number(frame.momentumPct)) ? `${Number(frame.momentumPct)>=0?'+':''}${Number(frame.momentumPct).toFixed(2)}%` : '—'}</b></div>`;
       }).join('')}</div>`
-    : '<div class="empty-state"><strong>選擇標的後執行多週期分析</strong><span>資料直接使用 Binance USD-M Fully Closed Bar。</span></div>';
+    : '<div class="empty-state"><strong>選擇標的後執行多週期分析</strong><span>資料直接使用 Binance U 本位永續合約的完整收盤 K 棒。</span></div>';
   const add = technical?.status === 'LIVE'
     ? agentCandidateButton(technical.symbol,'Technical Analyst',technical.consensus,`data-candidate-direction="${technical.consensus}"`)
     : '';
@@ -1041,7 +1052,7 @@ function newsAgentPanel(state){
   const rows = themes.map(item=>{
     const tradable = item.index===0 ? ['BTCUSDT','ETHUSDT'] : item.index===1 ? ['BTCUSDT','ETHUSDT'] : ['BTCUSDT','ETHUSDT'];
     return `<article class="agent-news-card">
-      <div class="agent-news-head"><div><span>${item.horizon}</span><strong>${item.title}</strong></div><b>FRAMEWORK</b></div>
+      <div class="agent-news-head"><div><span>${item.horizon}</span><strong>${item.title}</strong></div><b>分析框架</b></div>
       <p>${item.summary}</p>
       <div class="impact-direction-grid">
         <div class="impact-positive"><span>偏利多條件</span><p>${item.bullishCondition}</p></div>
@@ -1053,7 +1064,7 @@ function newsAgentPanel(state){
   }).join('');
   return `<div class="agent-panel-stack">
     ${agentFilterTabs(state,[['all','全部'],['macro','通膨 / 利率'],['geopolitics','地緣 / 能源'],['liquidity','流動性']])}
-    <div class="agent-intro"><strong>News Impact Analyst</strong><span>目前使用事件分析框架，不把尚未公布或未接入的新聞偽裝成即時利多／利空。</span></div>
+    <div class="agent-intro"><strong>新聞影響分析</strong><span>目前使用事件分析框架，不把尚未公布或未接入的新聞偽裝成即時利多／利空。</span></div>
     <div class="agent-news-list">${rows}</div>
   </div>`;
 }
@@ -1082,14 +1093,14 @@ function validatorAgentPanel(state){
   const html = rows.length ? rows.map(({symbol,item,verdict})=>{
     const result = item?.validator?.result;
     return `<article class="agent-validator-row">
-      <div class="agent-result-main"><strong>${symbol}</strong><span>${result ? `${result.trades} trades · PF ${result.profitFactor==null?'—':Number(result.profitFactor).toFixed(2)} · DD ${pct(result.maxDrawdownPct)}` : '尚未執行候選回測'}</span></div>
+      <div class="agent-result-main"><strong>${symbol}</strong><span>${result ? `交易 ${result.trades} 筆 · 獲利因子 ${result.profitFactor==null?'—':Number(result.profitFactor).toFixed(2)} · 最大回撤 ${pct(result.maxDrawdownPct)}` : '尚未執行候選回測'}</span></div>
       <span class="decision-badge decision-${verdict.tone}">${verdict.label}</span>
       <button type="button" class="secondary-btn" data-candidate-validate="${symbol}">策略驗證</button>
     </article>`;
   }).join('') : '<div class="empty-state"><strong>目前沒有符合篩選的標的</strong></div>';
   return `<div class="agent-panel-stack">
-    ${agentFilterTabs(state,[['all','全部'],['pending','待驗證'],['pass','PASS'],['caution','CAUTION'],['review','REVIEW']])}
-    <div class="agent-intro"><strong>Strategy Validator</strong><span>任何標的都可獨立送入歷史回測；若尚未在候選池，開始驗證時會自動建立候選紀錄。</span></div>
+    ${agentFilterTabs(state,[['all','全部'],['pending','待驗證'],['pass','通過'],['caution','注意'],['review','需複核']])}
+    <div class="agent-intro"><strong>策略驗證</strong><span>任何標的都可獨立送入歷史回測；若尚未在候選池，開始驗證時會自動建立候選紀錄。</span></div>
     <div class="agent-validator-list">${html}</div>
   </div>`;
 }
@@ -1105,15 +1116,15 @@ function riskAgentPanel(state){
   const rows = items.length ? items.map(item=>{
     const status = item.risk?.status || '未檢查';
     return `<article class="agent-risk-row">
-      <div class="agent-result-main"><strong>${item.symbol}</strong><span>${item.risk ? `Paper Margin ${Number(item.risk.portfolioRiskPct||0).toFixed(2)}% · 同向 ${item.risk.sameDirectionCount||0}` : '尚未執行 Exposure Gate'}</span></div>
+      <div class="agent-result-main"><strong>${item.symbol}</strong><span>${item.risk ? `模擬保證金 ${Number(item.risk.portfolioRiskPct||0).toFixed(2)}% · 同向 ${item.risk.sameDirectionCount||0}` : '尚未執行曝險檢查'}</span></div>
       <span class="decision-badge decision-${riskTone(item.risk?.status)}">${status}</span>
-      <button type="button" class="secondary-btn" data-candidate-risk="${item.symbol}">執行 Exposure Gate</button>
+      <button type="button" class="secondary-btn" data-candidate-risk="${item.symbol}">執行曝險檢查</button>
     </article>`;
   }).join('') : '<div class="empty-state"><strong>候選池中沒有符合此風險分類的標的</strong></div>';
   return `<div class="agent-panel-stack">
-    ${agentFilterTabs(state,[['all','全部'],['unscanned','未檢查'],['pass','PASS'],['caution','CAUTION'],['blocked','BLOCKED']])}
-    <div class="agent-risk-summary"><div><span>目前 Paper Margin</span><strong>${pct(summary.marginUsagePct ?? summary.portfolioRiskPct)}</strong></div><div><span>曝險上限</span><strong>1.50%</strong></div><div><span>持倉</span><strong>${summary.openPositions || 0}</strong></div></div>
-    <div class="agent-intro"><strong>Exposure Manager</strong><span>Lite 目前以「Paper 保證金 / NAV」代理曝險；尚未有每筆 Stop，因此這不是正式 Portfolio Risk 或 R-multiple。</span></div>
+    ${agentFilterTabs(state,[['all','全部'],['unscanned','未檢查'],['pass','通過'],['caution','注意'],['blocked','阻擋']])}
+    <div class="agent-risk-summary"><div><span>目前模擬保證金</span><strong>${pct(summary.marginUsagePct ?? summary.portfolioRiskPct)}</strong></div><div><span>曝險上限</span><strong>1.50%</strong></div><div><span>持倉</span><strong>${summary.openPositions || 0}</strong></div></div>
+    <div class="agent-intro"><strong>曝險管理</strong><span>輕量版目前以「模擬保證金／淨值」代理曝險；尚未有每筆停損，因此這不是正式的投資組合風險或 R 倍數。</span></div>
     <div class="agent-validator-list">${rows}</div>
   </div>`;
 }
@@ -1138,7 +1149,7 @@ function tradeReviewAgentPanel(state){
   }).join('') : '<div class="empty-state"><strong>此分類目前沒有交易紀錄</strong><span>Trade Review 只使用已平倉 Paper 交易。</span></div>';
   return `<div class="agent-panel-stack">
     ${agentFilterTabs(state,[['all','全部'],['win','獲利交易'],['loss','虧損交易']])}
-    <div class="agent-intro"><strong>Trade Review Analyst</strong><span>從真實 Paper 交易紀錄找重複模式；可把值得重新研究的標的再次加入候選池。</span></div>
+    <div class="agent-intro"><strong>交易檢討分析</strong><span>從真實模擬交易紀錄找重複模式；可把值得重新研究的標的再次加入候選池。</span></div>
     <div class="agent-review-list">${rows}</div>
   </div>`;
 }
@@ -1147,23 +1158,23 @@ function playbookAgentPanel(state){
   const all = (state.candidates?.items || []).map(item=>({...item,final:candidateFinalState(item)}));
   const items = all.filter(item=>filter==='all' || item.final.label.toLowerCase()===filter);
   const cards = items.length ? items.map(item=>`<article class="playbook-row">
-    <div class="agent-result-main"><strong>${item.symbol}</strong><span>${item.technical?.consensus || '技術待分析'} · ${item.risk?.status || 'Risk 待檢查'}</span></div>
+    <div class="agent-result-main"><strong>${item.symbol}</strong><span>${item.technical?.consensus || '技術待分析'} · ${item.risk?.status || '風險待檢查'}</span></div>
     <span class="decision-badge decision-${item.final.tone}">${item.final.label}</span>
     <div class="playbook-actions">
-      <button class="secondary-btn" type="button" data-candidate-analyze="${item.symbol}">Technical</button>
-      <button class="secondary-btn" type="button" data-candidate-risk="${item.symbol}">Risk</button>
-      <button class="secondary-btn" type="button" data-candidate-validate="${item.symbol}">Validate</button>
+      <button class="secondary-btn" type="button" data-candidate-analyze="${item.symbol}">技術分析</button>
+      <button class="secondary-btn" type="button" data-candidate-risk="${item.symbol}">風險檢查</button>
+      <button class="secondary-btn" type="button" data-candidate-validate="${item.symbol}">策略驗證</button>
     </div>
   </article>`).join('') : '<div class="empty-state"><strong>目前沒有符合此狀態的候選</strong></div>';
   return `<div class="agent-panel-stack">
-    ${agentFilterTabs(state,[['all','全部'],['watch','WATCH'],['setup','SETUP'],['ready','READY'],['blocked','BLOCKED']])}
+    ${agentFilterTabs(state,[['all','全部'],['watch','觀察中'],['setup','條件形成中'],['ready','就緒'],['blocked','阻擋']])}
     <div class="playbook-top">
       <div><span>候選池</span><strong>${all.length}</strong></div>
-      <div><span>READY</span><strong>${all.filter(x=>x.final.label==='READY').length}</strong></div>
+      <div><span>就緒</span><strong>${all.filter(x=>x.final.label==='READY').length}</strong></div>
       <div><span>持倉</span><strong>${state.paper?.summary?.openPositions || 0}</strong></div>
       <div><span>事件</span><strong>${mock.calendar?.length || 0}</strong></div>
     </div>
-    <div class="agent-intro"><strong>Trading Playbook</strong><span>把候選、驗證、Exposure Gate 與持倉整合成每日執行清單；仍不具備真實下單權。</span></div>
+    <div class="agent-intro"><strong>交易執行手冊</strong><span>把候選、驗證、曝險檢查與持倉整合成每日執行清單；仍不具備真實下單權。</span></div>
     <div class="playbook-list">${cards}</div>
   </div>`;
 }
@@ -1177,7 +1188,7 @@ function aiAgentsPanel(state){
   if(key==='review') content = tradeReviewAgentPanel(state);
   if(key==='playbook') content = playbookAgentPanel(state);
   return `<div class="ai-agents-wrap">
-    <div class="agent-system-note"><strong>FOXYYA AI Agents v1</strong><span>Agent 彼此獨立；篩選結果可自由加入 Candidate Pool。現階段分析只使用已接入的市場、Paper、回測與事件框架資料。</span></div>
+    <div class="agent-system-note"><strong>FOXYYA AI 分析代理 v1</strong><span>各分析代理彼此獨立；篩選結果可自由加入候選池。現階段分析只使用已接入的市場、模擬交易、回測與事件框架資料。</span></div>
     ${agentTabs(state)}
     ${content}
   </div>`;
@@ -1235,7 +1246,7 @@ function strategyDevelopmentPanel(){
     ['03','Entry','明確定義觸發條件，不使用事後判讀。'],
     ['04','Stop','定義失效點、ATR 或結構停損。'],
     ['05','Take Profit','TP1 / TP2、移動停利與離場規則。'],
-    ['06','Risk','每筆風險、Paper Margin、槓桿與成本。'],
+    ['06','風險','每筆風險、模擬保證金、槓桿與成本。'],
     ['07','Validation','Backtest → OOS → Forward Paper → Control。']
   ];
   return `<div class="rd-stack">
@@ -1328,8 +1339,8 @@ export function strategiesPage(state) {
   return `<div class="page-stack">${messageBar(state)}
     ${assetClassSwitcher(state)}
     ${strategyWorkspaceTabs(state)}
-    ${workspace === 'signals' && isCrypto ? '<div class="signal-source-note">目前訊號基準：24h Market Radar；多週期判讀請使用 AI Agents → Technical。</div>' : ''}
-    ${section(workspace === 'signals' ? '交易訊號' : workspace === 'agents' ? 'AI Agents' : workspace === 'candidates' ? 'Candidate Pool' : '策略研發', content, badge(workspace === 'signals' ? (isCrypto ? 'LITE SIGNALS' : 'EMPTY') : workspace === 'agents' ? '7 AGENTS' : workspace === 'candidates' ? `${state.candidates?.items?.length || 0} CANDIDATES` : 'R&D'))}
+    ${workspace === 'signals' && isCrypto ? '<div class="signal-source-note">目前訊號基準：24 小時市場雷達；多週期判讀請使用 AI 分析代理 → 技術分析。</div>' : ''}
+    ${section(workspace === 'signals' ? '交易訊號' : workspace === 'agents' ? 'AI 分析代理' : workspace === 'candidates' ? '候選池' : '策略研發', content, badge(workspace === 'signals' ? (isCrypto ? '輕量版訊號' : '無資料') : workspace === 'agents' ? '7 個分析代理' : workspace === 'candidates' ? `${state.candidates?.items?.length || 0} 個候選` : '策略研發'))}
   </div>`;
 }
 
@@ -1343,9 +1354,9 @@ function paperPositions(paper){
       </div>
       <div class="position-stats">
         <span><small>Entry</small><strong>${price(p.entry ?? p.entry_fill)}</strong></span>
-        <span><small>Mark</small><strong>${price(p.mark)}</strong></span>
-        <span><small>Margin</small><strong>${money(p.margin)}</strong></span>
-        <span><small>Notional</small><strong>${money(p.notional)}</strong></span>
+        <span><small>標記價格</small><strong>${price(p.mark)}</strong></span>
+        <span><small>保證金</small><strong>${money(p.margin)}</strong></span>
+        <span><small>名目價值</small><strong>${money(p.notional)}</strong></span>
       </div>
       ${p.id ? `<button class="danger-btn full-width" data-paper-close="${p.id}" type="button">模擬平倉</button>` : ''}
     </article>`).join('')}</div>`;
@@ -1366,9 +1377,9 @@ export function ordersPage(state) {
       <label>槓桿<select name="leverage"><option value="5">5x</option><option value="8">8x</option><option value="10">10x</option></select></label>
       <label>模擬保證金 USDT<input name="margin" type="number" min="1" step="1" value="100" /></label>
     </form>
-    <button class="primary-btn" data-paper-open type="button">建立 PAPER 倉位</button>
+    <button class="primary-btn" data-paper-open type="button">建立模擬倉位</button>
     <p class="guard-note">風險限制：總模擬保證金 ≤ 淨值 1.5%；不會送出任何真實訂單。</p>
-    ${paperPositions(paper)}`, `${badge('PAPER ONLY')} ${badge('REAL ORDER LOCKED')}`)}</div>`;
+    ${paperPositions(paper)}`, `${badge('僅模擬交易')} ${badge('真實下單已鎖定')}`)}</div>`;
 }
 
 function tradeRows(results){
@@ -1433,7 +1444,7 @@ export function backtestPage(state) {
       </select></label>
     </form>
     <button class="primary-btn" data-backtest-run type="button" ${b.status==='LOADING'?'disabled':''}>開始歷史測試</button>
-    <p class="guard-note">回測僅使用 Fully Closed Bar；較長週期若歷史 K 線不足，系統會直接顯示樣本不足，不會補造資料。</p>
+    <p class="guard-note">回測僅使用完整收盤 K 棒；較長週期若歷史 K 線不足，系統會直接顯示樣本不足，不會補造資料。</p>
     ${resultHtml}`, badge('歷史回測'))}</div>`;
 }
 
@@ -1502,7 +1513,7 @@ export function strategyLabPage(state) {
         ${tab('交易明細','trades',tabKey,'data-lab-tab')}
       </div>
       ${tabKey==='backtest' ? backtestHtml : tabKey==='trades' ? tradeRows(results) : forwardHtml}
-    `, `${badge('PAPER ONLY')} ${badge('NO REAL ORDERS')}`)}
+    `, `${badge('僅模擬交易')} ${badge('禁止真實下單')}`)}
   </div>`;
 }
 
