@@ -46,6 +46,8 @@ for (const timeframe of ['15m','1h','4h','12h','1d','1w','1M']) {
   assert.equal(snapshot.input.timeframe, timeframe, `timeframe ${timeframe} must be preserved`);
   assert.equal(snapshot.input.range, validRanges[timeframe], `timeframe ${timeframe} must retain a valid range`);
   assert.equal(snapshot.input.samples, 79, `timeframe ${timeframe} must exclude the still-open candle`);
+  assert.equal(snapshot.result.expectancyR, null, 'EMA crossover must not fabricate R expectancy without a stop-risk definition');
+  assert.ok(Number.isFinite(Number(snapshot.result.avgTradePct)), 'EMA crossover must expose average trade return percent');
   assert.equal(snapshot.result.validation.label, '交易樣本不足', '80 bars with one open bar removed should not be overstated');
 }
 
@@ -61,3 +63,25 @@ console.log('timeframes: 15m/1h/4h/12h/1d/1w/1M');
 console.log('timeframe-aware ranges: enforced');
 console.log('fully closed bar: enforced');
 console.log('validation tiers: enforced');
+
+
+let futuresRequests = 0;
+globalThis.fetch = async (url) => {
+  const parsed = new URL(String(url));
+  if(parsed.hostname === 'fapi.binance.com'){
+    futuresRequests++;
+    return { ok:false, status:451, json: async () => ({}) };
+  }
+  assert.equal(parsed.hostname, 'data-api.binance.vision');
+  return { ok:true, status:200, json: async () => fakeBatch() };
+};
+const fallbackSnapshot = await runLiteBacktest({
+  symbol:'BTCUSDT',
+  range:'90D',
+  strategy:'A',
+  timeframe:'1h'
+});
+assert.ok(futuresRequests >= 1, 'USD-M endpoint must be attempted first');
+assert.equal(fallbackSnapshot.input.dataSource, 'Binance Spot public klines · fallback');
+assert.equal(fallbackSnapshot.input.samples, 79, 'fallback must still enforce fully closed bars');
+console.log('binance 451 fallback: enforced');
