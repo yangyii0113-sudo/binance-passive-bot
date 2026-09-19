@@ -99,7 +99,8 @@ def main() -> int:
                 {
                     "ok": True,
                     "twse_instruments": len(twse_registry),
-                    "tpex_instruments": len(tpex_registry),\n                    "tpex_daily_closes": len(tpex_closes),
+                    "tpex_instruments": len(tpex_registry),
+                    "tpex_daily_closes": len(tpex_closes),
                     "twse_quote_date": twse_quote["close"].observed_at,
                     "tpex_quote_date": sample_tpex_close.observed_at,
                     "twse_index_date": twse_market["index_close"].observed_at,
