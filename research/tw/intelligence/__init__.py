@@ -14,6 +14,11 @@ from .margin_short import (
     MarginShortContext,
     build_margin_short_context,
 )
+from .sector_rotation import (
+    SectorRotationRow,
+    SectorRotationSnapshot,
+    build_sector_rotation,
+)
 from .market_structure import (
     IndexContext,
     MarketBreadth,
@@ -26,6 +31,9 @@ __all__ = [
     "InstitutionalFlowSnapshot",
     "InstitutionalGroupFlow",
     "build_institutional_flow",
+    "SectorRotationRow",
+    "SectorRotationSnapshot",
+    "build_sector_rotation",
     "LeverageContextState",
     "MarginShortContext",
     "build_margin_short_context",
