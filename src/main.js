@@ -314,6 +314,15 @@ function initEvents() {
     const candidateValidate = event.target.closest?.('[data-candidate-validate]');
     if (candidateValidate) {
       const symbol = candidateValidate.dataset.candidateValidate;
+      if (!candidateBySymbol(symbol)) {
+        upsertCandidate({
+          symbol,
+          assetClass: 'crypto',
+          source: 'Strategy Validator',
+          reason: '由 Strategy Validator 建立候選，等待歷史回測驗證'
+        });
+        syncCandidates();
+      }
       appState.ui.selectedSymbol = symbol;
       appState.ui.validatorTargetSymbol = symbol;
       appState.ui.labTab = 'backtest';
