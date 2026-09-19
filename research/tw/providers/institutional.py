@@ -5,13 +5,13 @@ from datetime import date
 from urllib.parse import urlencode
 
 from ..contracts import Availability, Observation
+from ..fields import (
+    INSTITUTIONAL_BUY_AMOUNT,
+    INSTITUTIONAL_NET_AMOUNT,
+    INSTITUTIONAL_SELL_AMOUNT,
+)
 from .http import JsonTransport, ProviderError, UrllibJsonTransport
 from .parsing import clean_text, parse_int, parse_roc_date
-
-
-BUY_FIELD = "institutional_buy_amount"
-SELL_FIELD = "institutional_sell_amount"
-NET_FIELD = "institutional_net_amount"
 
 
 def _canonical_group(name: str) -> str:
@@ -41,9 +41,9 @@ def _observations(
     group = _canonical_group(investor_name)
     instrument_id = f"{venue.lower()}:MARKET"
     values = (
-        (BUY_FIELD, buy),
-        (SELL_FIELD, sell),
-        (NET_FIELD, net),
+        (INSTITUTIONAL_BUY_AMOUNT, buy),
+        (INSTITUTIONAL_SELL_AMOUNT, sell),
+        (INSTITUTIONAL_NET_AMOUNT, net),
     )
     return tuple(
         Observation(
