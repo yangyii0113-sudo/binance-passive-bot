@@ -10,8 +10,10 @@ import { runLiteBacktest, BACKTEST_RANGE_OPTIONS, normalizeTimeframe } from './l
 import { loadCandidatePool, upsertCandidate, removeCandidate, updateCandidate } from './candidate_pool.js';
 import { analyzeMultiTimeframe } from './multi_timeframe.js';
 import { evaluatePortfolioRisk } from './risk_gate.js';
+import { evaluateStrategyGuard } from './strategy_guard.js';
+import { validationSpecForMatch, researchDecision } from './research_pipeline.js';
 import { STATUS } from './status.js';
-import { pages } from './pages.js';
+import { pages, strongTopFive } from './pages.js';
 import { currentRoute, markActiveNav } from './router.js';
 
 function syncCandidates() {
@@ -87,6 +89,196 @@ function syncBacktestRangeSelect(timeframeSelect) {
     `<option value="${value}">${label}</option>`
   ).join('');
   if (options.some(([value]) => value === previous)) rangeSelect.value = previous;
+}
+
+function batchStrategyMatch(baseMatch, technical){
+  const consensus = String(technical?.consensus || '');
+  if(consensus === '多週期偏多' || consensus === '多週期偏空') return 'Trend';
+  return baseMatch || 'Momentum Watch';
+}
+
+async function handleTopFiveResearch(){
+  if(appState.agents?.topFiveResearch?.status === STATUS.LOADING) return;
+
+  const topFive = strongTopFive(appState);
+  if(!topFive.length){
+    appState.ui.message = '目前沒有可執行的 Dynamic Top 5 標的';
+    render();
+    return;
+  }
+
+  const startedAt = new Date().toISOString();
+  const initialRows = topFive.map(({row,evidence},index)=>({
+    rank:index + 1,
+    symbol:String(row?.[1] || '').replace(/\s|\//g,''),
+    researchScore:evidence.composite,
+    marketScore:evidence.marketScore,
+    tradabilityStatus:evidence.tradabilityStatus,
+    baseStrategyMatch:evidence.strategyMatch,
+    strategyMatch:evidence.strategyMatch,
+    technical:null,
+    spec:null,
+    backtest:null,
+    guard:{label:'待驗證',tone:'pending'},
+    risk:null,
+    decision:{label:'PENDING',tone:'pending'},
+    status:'PENDING',
+    error:null
+  }));
+
+  setStateSlice('agents',{
+    topFiveResearch:{
+      status:STATUS.LOADING,
+      startedAt,
+      updatedAt:startedAt,
+      progress:0,
+      total:initialRows.length,
+      rows:initialRows,
+      error:null
+    }
+  });
+  appState.ui.message = `Dynamic Top 5 Research 啟動：0 / ${initialRows.length}`;
+  render();
+
+  const rows = [...initialRows];
+
+  for(let index=0; index<rows.length; index++){
+    const row = {...rows[index], status:'RUNNING'};
+    rows[index] = row;
+    setStateSlice('agents',{
+      topFiveResearch:{
+        status:STATUS.LOADING,
+        startedAt,
+        updatedAt:new Date().toISOString(),
+        progress:index,
+        total:rows.length,
+        rows:[...rows],
+        error:null
+      }
+    });
+    appState.ui.message = `研究 ${row.symbol}：${index + 1} / ${rows.length}`;
+    render();
+
+    try{
+      let technical = null;
+      let technicalError = null;
+      try{
+        technical = await analyzeMultiTimeframe(row.symbol);
+      }catch(error){
+        technicalError = String(error?.message || error);
+      }
+
+      const strategyMatch = batchStrategyMatch(row.baseStrategyMatch, technical);
+      const spec = validationSpecForMatch(strategyMatch);
+      let backtest = null;
+      let guard = {label:'待驗證',tone:'pending',reason:'未執行 baseline'};
+      let backtestError = null;
+
+      if(spec.supported){
+        try{
+          backtest = await runLiteBacktest({
+            symbol:row.symbol,
+            range:spec.range,
+            strategy:spec.strategy,
+            timeframe:spec.timeframe
+          });
+          guard = evaluateStrategyGuard(backtest.result);
+        }catch(error){
+          backtestError = String(error?.message || error);
+          guard = {label:'ERROR',tone:'review',reason:backtestError};
+        }
+      }else{
+        guard = {label:'RESEARCH',tone:'pending',reason:spec.reason};
+      }
+
+      const direction = technical?.consensus || 'UNKNOWN';
+      const risk = evaluatePortfolioRisk({
+        symbol:row.symbol,
+        signal:{direction}
+      }, appState.paper);
+      const decision = researchDecision({technical,guard,risk,spec});
+
+      rows[index] = {
+        ...row,
+        strategyMatch,
+        technical,
+        technicalError,
+        spec,
+        backtest,
+        guard,
+        risk,
+        decision,
+        status:'DONE',
+        error:backtestError
+      };
+    }catch(error){
+      rows[index] = {
+        ...row,
+        status:'ERROR',
+        error:String(error?.message || error),
+        decision:{label:'ERROR',tone:'review'}
+      };
+    }
+
+    setStateSlice('agents',{
+      topFiveResearch:{
+        status:STATUS.LOADING,
+        startedAt,
+        updatedAt:new Date().toISOString(),
+        progress:index + 1,
+        total:rows.length,
+        rows:[...rows],
+        error:null
+      }
+    });
+    render();
+  }
+
+  const completedAt = new Date().toISOString();
+  setStateSlice('agents',{
+    topFiveResearch:{
+      status:STATUS.LIVE,
+      startedAt,
+      updatedAt:completedAt,
+      progress:rows.length,
+      total:rows.length,
+      rows,
+      error:null
+    }
+  });
+  const validated = rows.filter(item=>item.decision?.label === 'VALIDATED').length;
+  appState.ui.message = `Dynamic Top 5 Research 完成：${rows.length} 組，VALIDATED ${validated} 組`;
+  render();
+}
+
+function promoteResearchCandidate(symbol){
+  const target = String(symbol || '').toUpperCase();
+  const research = (appState.agents?.topFiveResearch?.rows || []).find(item=>item.symbol === target);
+  if(!research) throw new Error('找不到 Research 結果');
+
+  upsertCandidate({
+    symbol:target,
+    assetClass:'crypto',
+    source:'Dynamic Top 5 Research',
+    reason:`${research.decision?.label || 'RESEARCH'} · ${research.strategyMatch || 'Strategy Match'} · ${research.guard?.label || '未驗證'}`,
+    signal:{
+      status:research.decision?.label || 'RESEARCH',
+      score:Number(research.researchScore) || null,
+      direction:research.technical?.consensus || null
+    }
+  });
+
+  updateCandidate(target,{
+    technical:research.technical || null,
+    validator:research.backtest ? {
+      status:'LIVE',
+      updatedAt:research.backtest.updatedAt,
+      input:research.backtest.input,
+      result:research.backtest.result
+    } : null,
+    risk:research.risk || null
+  });
+  syncCandidates();
 }
 
 async function handlePaperOpen(form) {
@@ -227,6 +419,22 @@ function initEvents() {
     const agentFilter = event.target.closest?.('[data-agent-filter]');
     if (agentFilter) {
       appState.ui.agentFilter = agentFilter.dataset.agentFilter;
+      render();
+      return;
+    }
+    const topFiveResearchRun = event.target.closest?.('[data-top5-research-run]');
+    if (topFiveResearchRun) {
+      await handleTopFiveResearch();
+      return;
+    }
+    const researchPromote = event.target.closest?.('[data-research-promote]');
+    if (researchPromote) {
+      try {
+        promoteResearchCandidate(researchPromote.dataset.researchPromote);
+        appState.ui.message = `${researchPromote.dataset.researchPromote} 已從 Research 升格 Candidate`;
+      } catch (error) {
+        appState.ui.message = error?.message || '升格候選失敗';
+      }
       render();
       return;
     }
