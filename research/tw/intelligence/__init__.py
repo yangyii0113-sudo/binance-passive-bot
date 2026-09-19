@@ -19,6 +19,12 @@ from .sector_rotation import (
     SectorRotationSnapshot,
     build_sector_rotation,
 )
+from .market_regime import (
+    MarketRegimeSnapshot,
+    MarketRegimeState,
+    RegimeComponent,
+    build_market_regime,
+)
 from .market_structure import (
     IndexContext,
     MarketBreadth,
@@ -31,6 +37,10 @@ __all__ = [
     "InstitutionalFlowSnapshot",
     "InstitutionalGroupFlow",
     "build_institutional_flow",
+    "MarketRegimeSnapshot",
+    "MarketRegimeState",
+    "RegimeComponent",
+    "build_market_regime",
     "SectorRotationRow",
     "SectorRotationSnapshot",
     "build_sector_rotation",
