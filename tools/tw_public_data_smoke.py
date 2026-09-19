@@ -11,7 +11,12 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from research.tw.acquisition import DatasetPolicy, SnapshottingJsonTransport, latest_row_date
+from research.tw.intelligence.institutional_flow import build_institutional_flow
 from research.tw.providers.http import UrllibJsonTransport
+from research.tw.providers.institutional import (
+    TPExInstitutionalSummaryProvider,
+    TWSEInstitutionalSummaryProvider,
+)
 from research.tw.providers.tpex import TPExProvider
 from research.tw.providers.twse import TWSEProvider
 from research.tw.providers.twse_calendar import TWSEHolidayCalendarProvider
@@ -38,8 +43,13 @@ def main() -> int:
     )
 
     with tempfile.TemporaryDirectory(prefix="foxyya-tw-smoke-") as temp:
+        http_transport = UrllibJsonTransport(
+            timeout_seconds=90,
+            attempts=2,
+            retry_backoff_seconds=2,
+        )
         transport = SnapshottingJsonTransport(
-            transport=UrllibJsonTransport(timeout_seconds=90, attempts=2, retry_backoff_seconds=2),
+            transport=http_transport,
             store=RawSnapshotStore(Path(temp)),
             policies=policies,
         )
@@ -101,6 +111,32 @@ def main() -> int:
         if not calendar_entries:
             raise RuntimeError("TWSE holiday calendar empty")
 
+        target_date = twse_market["index_close"].observed_at
+        if target_date is None:
+            raise RuntimeError("TWSE index date unavailable for institutional smoke")
+
+        twse_inst = build_institutional_flow(
+            TWSEInstitutionalSummaryProvider(http_transport).fetch(target_date),
+            venue="TWSE",
+        )
+        tpex_inst = build_institutional_flow(
+            TPExInstitutionalSummaryProvider(http_transport).fetch(),
+            venue="TPEX",
+        )
+
+        for snapshot in (twse_inst, tpex_inst):
+            for group in ("foreign", "investment_trust", "dealer"):
+                flow = snapshot.by_group(group)
+                if flow is None or flow.net_amount is None:
+                    raise RuntimeError(
+                        f"{snapshot.venue} institutional group unavailable: {group}"
+                    )
+            if snapshot.coverage_ratio < 0.75:
+                raise RuntimeError(
+                    f"{snapshot.venue} institutional coverage too low: "
+                    f"{snapshot.coverage_ratio:.2f}"
+                )
+
         print(
             json.dumps(
                 {
@@ -113,6 +149,10 @@ def main() -> int:
                     "twse_index_date": twse_market["index_close"].observed_at,
                     "tpex_index_date": tpex_market["index_close"].observed_at,
                     "holiday_entries": len(calendar_entries),
+                    "twse_institutional_date": twse_inst.observed_at,
+                    "tpex_institutional_date": tpex_inst.observed_at,
+                    "twse_foreign_net": twse_inst.by_group("foreign").net_amount,
+                    "tpex_foreign_net": tpex_inst.by_group("foreign").net_amount,
                     "raw_snapshot_root": temp,
                     "execution_allowed": False,
                 },
