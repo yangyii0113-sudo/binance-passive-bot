@@ -60,9 +60,9 @@ function isEligibleTicker(item) {
 }
 
 function strengthScore(changePct, liquidityRank, poolSize) {
-  const momentum = Math.max(-12, Math.min(12, Number(changePct) || 0));
+  const momentumMagnitude = Math.min(12, Math.abs(Number(changePct) || 0));
   const liquidityPoints = poolSize > 1 ? (1 - liquidityRank / (poolSize - 1)) * 20 : 20;
-  return Math.max(0, Math.min(100, 40 + momentum * 3.3 + liquidityPoints));
+  return Math.max(0, Math.min(100, 40 + momentumMagnitude * 3.3 + liquidityPoints));
 }
 
 function normalizeUniverse(payload) {
