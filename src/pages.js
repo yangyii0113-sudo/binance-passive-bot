@@ -1083,7 +1083,7 @@ export function backtestPage(state) {
       ${metric('交易筆數',result.trades)}${metric('勝率',pct(result.winRatePct))}
       ${metric('獲利因子',result.profitFactor == null ? '—' : Number(result.profitFactor).toFixed(2))}
       ${metric('淨報酬率',pct(result.netReturnPct))}${metric('最大回撤',pct(result.maxDrawdownPct))}
-      ${metric('樣本數',input.samples || '—')}
+      ${metric('樣本數',input.samples || '—')}${metric('驗證層級',result.validation?.label || '—')}
     </div>
     <div class="backtest-summary">
       <div><span>樣本</span><strong>${input.samples || '—'} K</strong></div>
@@ -1136,7 +1136,7 @@ export function strategyLabPage(state) {
       ${metric('交易筆數',result.trades)}${metric('勝率',pct(result.winRatePct))}
       ${metric('獲利因子',result.profitFactor == null ? '—' : Number(result.profitFactor).toFixed(2))}
       ${metric('淨報酬率',pct(result.netReturnPct))}${metric('最大回撤',pct(result.maxDrawdownPct))}
-      ${metric('樣本數',input.samples || '—')}
+      ${metric('樣本數',input.samples || '—')}${metric('驗證層級',result.validation?.label || '—')}
     </div>
     <div class="backtest-summary">
       <div><span>樣本</span><strong>${input.samples || '—'} K</strong></div>
