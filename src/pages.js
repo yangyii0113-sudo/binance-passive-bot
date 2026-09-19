@@ -1387,6 +1387,7 @@ export function backtestPage(state) {
       <div><span>成本模型</span><strong>${input.costModel || '—'}</strong></div>
       <div><span>時間週期</span><strong>${String(input.timeframe || '—').toUpperCase()}</strong></div>
       <div><span>資料來源</span><strong>${input.dataSource || '—'}</strong></div>
+      <div><span>成交模型</span><strong>${input.executionModel || '—'}</strong></div>
     </div>
     <div class="chart-placeholder"><span>權益曲線</span><strong>${b.equityCurve?.length || 0} 個權益節點</strong></div>`
     : `<div class="empty-state"><strong>${b.status==='LOADING'?'歷史回測執行中…':'尚未執行歷史回測'}</strong><span>使用 Binance USD-M 歷史 K 線；模擬交易與歷史回測完全分離。</span></div>`;
@@ -1442,6 +1443,7 @@ export function strategyLabPage(state) {
       <div><span>成本模型</span><strong>${input.costModel || '—'}</strong></div>
       <div><span>時間週期</span><strong>${String(input.timeframe || '—').toUpperCase()}</strong></div>
       <div><span>資料來源</span><strong>${input.dataSource || '—'}</strong></div>
+      <div><span>成交模型</span><strong>${input.executionModel || '—'}</strong></div>
     </div>
     <div class="chart-placeholder"><span>權益曲線</span><strong>${b.equityCurve?.length || 0} 個權益節點</strong></div>
   ` : `<div class="empty-state"><strong>${b.status==='LOADING'?'歷史回測執行中…':'尚未執行歷史回測'}</strong><span>使用 Binance USD-M 歷史 K 線；模擬交易與歷史回測完全分離。</span></div>`;
