@@ -34,7 +34,7 @@
 - [x] official TWSE holiday calendar source
 - [x] distinguish holiday closure from first/last-trading-day notices
 - [x] session validation against official calendar
-- [ ] define unscheduled closure reconciliation policy
+- [x] define unscheduled closure reconciliation policy
 
 ### P1.5 Data persistence
 - [x] content-addressed raw immutable snapshot store
@@ -42,7 +42,7 @@
 - [x] append-only normalized SQLite observation store
 - [x] exact-record de-duplication
 - [x] wire provider acquisition to exact raw response-byte capture
-- [ ] add retention/backup policy for Research Staging
+- [x] define P1 non-destructive retention/recovery boundary; P7 backup target remains deferred
 
 ### P1.6 P1 exit gate
 P1 may become COMPLETE only when:
