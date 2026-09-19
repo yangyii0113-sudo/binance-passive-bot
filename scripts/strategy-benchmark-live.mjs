@@ -38,6 +38,7 @@ for (const symbol of SYMBOLS) {
           winRatePct: r.winRatePct ?? null,
           profitFactor: r.profitFactor ?? null,
           expectancyR: r.expectancyR ?? null,
+          avgTradePct: r.avgTradePct ?? null,
           netReturnPct: r.netReturnPct ?? null,
           maxDrawdownPct: r.maxDrawdownPct ?? null,
           validation: r.validation?.label ?? null,
@@ -64,12 +65,21 @@ const successful = rows.filter(row => !row.error);
 const failed = rows.filter(row => row.error);
 const safe = (value, digits=2) => Number.isFinite(Number(value)) ? Number(value).toFixed(digits) : '—';
 
-const ranked = successful
-  .filter(row => Number.isFinite(Number(row.profitFactor)) && Number.isFinite(Number(row.expectancyR)))
-  .sort((a,b) =>
-    Number(b.expectancyR) - Number(a.expectancyR) ||
-    Number(b.profitFactor) - Number(a.profitFactor)
-  );
+function guardStatus(row){
+  if(row.error) return 'ERROR';
+  if(String(row.validationLevel || '').startsWith('INSUFFICIENT')) return 'INSUFFICIENT';
+  const pf = Number(row.profitFactor);
+  const avg = Number(row.avgTradePct);
+  const net = Number(row.netReturnPct);
+  const dd = Number(row.maxDrawdownPct);
+  if(!Number.isFinite(pf) || !Number.isFinite(avg) || !Number.isFinite(net) || !Number.isFinite(dd)) return 'REVIEW';
+  if(pf < 1 || avg <= 0 || net <= 0) return 'REVIEW';
+  const enoughEvidence = ['INITIAL','REFERENCE'].includes(String(row.validationLevel || ''));
+  if(enoughEvidence && pf >= 1.2 && dd <= 35) return 'PASS';
+  return 'CAUTION';
+}
+for(const row of rows) row.guardStatus = guardStatus(row);
+const guardPass = rows.filter(row => row.guardStatus === 'PASS');
 
 const markdown = [
   '# FOXYYA Live Strategy Benchmark',
@@ -79,15 +89,17 @@ const markdown = [
   `Successful cases: ${successful.length} / ${rows.length}`,
   `Failed cases: ${failed.length}`,
   '',
-  '| Symbol | TF | Range | Strategy | Source | Bars | Trades | Win % | PF | Exp R | Net % | MDD % | Validation |',
-  '|---|---:|---:|---|---|---:|---:|---:|---:|---:|---:|---:|---|',
-  ...rows.map(row => `| ${row.symbol} | ${row.timeframe} | ${row.range} | ${row.strategyLabel} | ${row.dataSource || '—'} | ${row.samples ?? '—'} | ${row.trades ?? '—'} | ${safe(row.winRatePct)} | ${safe(row.profitFactor)} | ${safe(row.expectancyR,3)} | ${safe(row.netReturnPct)} | ${safe(row.maxDrawdownPct)} | ${row.error ? 'ERROR: '+row.error.replaceAll('|','/') : row.validation || '—'} |`),
+  '| Symbol | TF | Range | Strategy | Source | Bars | Trades | Win % | PF | Avg Trade % | Net % | MDD % | Validation | Guard |',
+  '|---|---:|---:|---|---|---:|---:|---:|---:|---:|---:|---:|---|---|',
+  ...rows.map(row => `| ${row.symbol} | ${row.timeframe} | ${row.range} | ${row.strategyLabel} | ${row.dataSource || '—'} | ${row.samples ?? '—'} | ${row.trades ?? '—'} | ${safe(row.winRatePct)} | ${safe(row.profitFactor)} | ${safe(row.avgTradePct,3)} | ${safe(row.netReturnPct)} | ${safe(row.maxDrawdownPct)} | ${row.error ? 'ERROR: '+row.error.replaceAll('|','/') : row.validation || '—'} | ${row.guardStatus} |`),
   '',
-  '## Ranking by Expectancy then Profit Factor',
+  '## FOXYYA Strategy Guard PASS set',
   '',
-  '| # | Symbol | TF | Strategy | Trades | PF | Exp R | Net % | MDD % | Validation |',
-  '|---:|---|---:|---|---:|---:|---:|---:|---:|---|',
-  ...ranked.slice(0,15).map((row,index)=>`| ${index+1} | ${row.symbol} | ${row.timeframe} | ${row.strategyLabel} | ${row.trades} | ${safe(row.profitFactor)} | ${safe(row.expectancyR,3)} | ${safe(row.netReturnPct)} | ${safe(row.maxDrawdownPct)} | ${row.validation} |`)
+  'This is a rule-based screen, not an investment recommendation or a ranking.',
+  '',
+  '| Symbol | TF | Strategy | Trades | PF | Avg Trade % | Net % | MDD % | Validation |',
+  '|---|---:|---|---:|---:|---:|---:|---:|---|',
+  ...guardPass.map(row=>`| ${row.symbol} | ${row.timeframe} | ${row.strategyLabel} | ${row.trades} | ${safe(row.profitFactor)} | ${safe(row.avgTradePct,3)} | ${safe(row.netReturnPct)} | ${safe(row.maxDrawdownPct)} | ${row.validation} |`)
 ].join('\n');
 
 await writeFile('benchmark-result.json', JSON.stringify({
@@ -97,7 +109,7 @@ await writeFile('benchmark-result.json', JSON.stringify({
   successfulCases:successful.length,
   failedCases:failed.length,
   rows,
-  ranked
+  guardPass
 }, null, 2));
 await writeFile('benchmark-result.md', markdown);
 
