@@ -247,6 +247,12 @@ function strategyCards(state) {
         <span><em>TP2</em><strong>${price(strategy.tp2)}</strong></span>
       </div>
       <p class="strategy-note">${strategy.note || '策略快照僅供觀察，不提供真實下單。'}</p>
+      <button class="candidate-add-btn" data-candidate-add="${strategy.symbol}"
+        data-candidate-source="交易訊號 · ${strategy.strategy}"
+        data-candidate-reason="${strategy.statusLabel || strategy.status} · 訊號分數 ${valueOrDash(strategy.signalScore)}"
+        data-candidate-status="${strategy.status || ''}"
+        data-candidate-score="${valueOrDash(strategy.signalScore)}"
+        data-candidate-direction="${strategy.direction || ''}" type="button">＋ 加入候選池</button>
     </article>`;
   }).join('')}</div>`;
 }
@@ -307,9 +313,14 @@ function strongCoinDetail(state, strong){
       <div><span>流動性</span><p>已通過 FOXYYA 高成交額市場池篩選，降低極低流動性幣種干擾。</p></div>
       <div><span>風險提醒</span><p>強勢排行是市場雷達，不等同進場訊號；需再經策略、停損與風險額度確認。</p></div>
     </div>
-    <div class="strong-actions">
-      <button class="secondary-btn" data-use-backtest="${selected}" type="button">用此幣歷史回測</button>
-      <button class="primary-inline-btn" data-use-paper="${selected}" type="button">帶入模擬交易</button>
+    <div class="strong-actions strong-actions-three">
+      <button class="candidate-add-btn" data-candidate-add="${selected}"
+        data-candidate-source="Market Scout · 強勢 Top 10"
+        data-candidate-reason="${tier} · 強勢分數 ${scoreNum.toFixed(0)}"
+        data-candidate-score="${scoreNum.toFixed(0)}"
+        data-candidate-direction="${changeNum >= 0 ? '偏多' : '偏空'}" type="button">＋ 加入候選</button>
+      <button class="secondary-btn" data-use-backtest="${selected}" type="button">歷史回測</button>
+      <button class="primary-inline-btn" data-use-paper="${selected}" type="button">帶入模擬</button>
     </div>
   </div>`;
 }
@@ -519,6 +530,7 @@ function strategyWorkspaceTabs(state){
   const active = state.ui?.strategyWorkspace || 'signals';
   const items = [
     ['signals','訊號'],
+    ['candidates','候選池'],
     ['library','策略庫'],
     ['develop','策略開發'],
     ['review','策略檢討'],
@@ -528,6 +540,84 @@ function strategyWorkspaceTabs(state){
     ${items.map(([key,label])=>`
       <button type="button" class="strategy-workspace-btn ${active===key?'active':''}" data-strategy-workspace="${key}" role="tab" aria-selected="${active===key}">${label}</button>
     `).join('')}
+  </div>`;
+}
+
+function validatorVerdict(validator){
+  const result = validator?.result;
+  if(!result) return {label:'待驗證',tone:'pending'};
+  const trades = Number(result.trades) || 0;
+  const pf = Number(result.profitFactor);
+  const expectancy = Number(result.expectancyR);
+  if(trades < 20) return {label:'樣本不足',tone:'caution'};
+  if(Number.isFinite(pf) && Number.isFinite(expectancy) && pf > 1 && expectancy > 0) return {label:'PASS',tone:'pass'};
+  return {label:'REVIEW',tone:'review'};
+}
+function riskTone(status){
+  const key = String(status || 'PENDING').toUpperCase();
+  return key === 'PASS' ? 'pass' : key === 'BLOCKED' ? 'blocked' : key === 'CAUTION' ? 'caution' : 'pending';
+}
+function candidateFinalState(item){
+  const risk = String(item.risk?.status || '').toUpperCase();
+  const validator = validatorVerdict(item.validator);
+  if(risk === 'BLOCKED') return {label:'BLOCKED',tone:'blocked'};
+  if(validator.label === 'PASS' && item.technical?.status === 'LIVE' && risk === 'PASS') return {label:'READY',tone:'pass'};
+  if(item.technical?.status === 'LIVE' || item.validator?.result) return {label:'SETUP',tone:'caution'};
+  return {label:'WATCH',tone:'pending'};
+}
+function candidateTechnical(item){
+  const tech = item.technical;
+  if(!tech?.frames?.length) return '<div class="candidate-empty-line">尚未執行多週期分析</div>';
+  return `<div class="candidate-timeframes">${tech.frames.map(frame=>{
+    const dir = String(frame.direction || '');
+    const tone = dir.includes('多') ? 'up' : dir.includes('空') ? 'down' : '';
+    return `<div class="candidate-tf"><span>${frame.label}</span><strong class="${tone}">${dir}</strong><small>${frame.status==='LIVE' && Number.isFinite(Number(frame.momentumPct)) ? `${Number(frame.momentumPct)>=0?'+':''}${Number(frame.momentumPct).toFixed(2)}%` : frame.status}</small></div>`;
+  }).join('')}</div>`;
+}
+function candidatePoolPanel(state){
+  const items = state.candidates?.items || [];
+  const rows = items.length ? items.map(item=>{
+    const validator = validatorVerdict(item.validator);
+    const finalState = candidateFinalState(item);
+    const riskStatus = item.risk?.status || '待檢查';
+    const added = item.addedAt ? new Date(item.addedAt).toLocaleString('zh-TW',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
+    const vr = item.validator?.result || {};
+    return `<article class="candidate-card" data-search="${item.symbol} ${item.source} ${item.reason}">
+      <div class="candidate-head">
+        <div class="candidate-symbol-wrap">
+          ${coinLogo(item.symbol,item.symbol.slice(0,1),true)}
+          <div><strong>${item.symbol}</strong><span>${item.source || '候選池'} · ${added}</span></div>
+        </div>
+        <span class="decision-badge decision-${finalState.tone}">${finalState.label}</span>
+      </div>
+      <p class="candidate-reason">${item.reason || '手動加入候選池'}</p>
+      <div class="evidence-matrix">
+        <div><span>MARKET</span><strong>${item.signal?.score != null ? `Score ${item.signal.score}` : '已加入'}</strong><small>${item.signal?.direction || item.source || '—'}</small></div>
+        <div><span>TECHNICAL</span><strong>${item.technical?.consensus || '待分析'}</strong><small>${item.technical?.status || '—'}</small></div>
+        <div><span>VALIDATOR</span><strong class="decision-text-${validator.tone}">${validator.label}</strong><small>${item.validator?.result ? `${Number(vr.trades)||0} trades · PF ${vr.profitFactor == null ? '—' : Number(vr.profitFactor).toFixed(2)}` : '尚未回測'}</small></div>
+        <div><span>RISK GATE</span><strong class="decision-text-${riskTone(item.risk?.status)}">${riskStatus}</strong><small>${item.risk ? `${Number(item.risk.portfolioRiskPct||0).toFixed(2)}% / 1.50%` : '待檢查'}</small></div>
+      </div>
+      ${candidateTechnical(item)}
+      ${item.risk?.reasons?.length ? `<div class="risk-reasons">${item.risk.reasons.map(reason=>`<p>• ${reason}</p>`).join('')}</div>` : ''}
+      <div class="candidate-actions">
+        <button type="button" class="secondary-btn" data-candidate-analyze="${item.symbol}">多週期分析</button>
+        <button type="button" class="secondary-btn" data-candidate-validate="${item.symbol}">策略驗證</button>
+        <button type="button" class="secondary-btn" data-candidate-risk="${item.symbol}">Risk Gate</button>
+        <button type="button" class="danger-btn" data-candidate-remove="${item.symbol}">移出候選</button>
+      </div>
+    </article>`;
+  }).join('') : '<div class="empty-state"><strong>候選池目前是空的</strong><span>可從強勢 Top 10、交易訊號，或下方手動加入標的。</span></div>';
+
+  return `<div class="candidate-pool-wrap">
+    <form id="candidate-manual-form" class="candidate-manual-form">
+      <label>手動加入<select name="symbol">${marketSymbolOptions(state)}</select></label>
+      <button type="button" class="primary-inline-btn" data-candidate-manual-add>＋ 加入候選</button>
+    </form>
+    <div class="candidate-pool-summary">
+      <div><span>候選數</span><strong>${items.length}</strong></div>
+      <p>Agent 可獨立分析；只有你選擇的標的才會進入候選池。Risk Gate 具有阻擋權，但不會送出真實訂單。</p>
+    </div>
+    <div class="candidate-list">${rows}</div>
   </div>`;
 }
 
@@ -666,6 +756,7 @@ export function strategiesPage(state) {
   ` : stockEmptyState('股市策略資料源尚未接入');
 
   let content = signalsHtml;
+  if(workspace === 'candidates') content = candidatePoolPanel(state);
   if(workspace === 'library') content = strategyLibraryPanel(state);
   if(workspace === 'develop') content = strategyDevelopmentPanel();
   if(workspace === 'review') content = strategyReviewPanel(state);
@@ -674,8 +765,8 @@ export function strategiesPage(state) {
   return `<div class="page-stack">${messageBar(state)}
     ${assetClassSwitcher(state)}
     ${strategyWorkspaceTabs(state)}
-    ${strategyTimeframeTabs(state)}
-    ${section(workspace === 'signals' ? '交易訊號' : '策略研發', content, badge(workspace === 'signals' ? (isCrypto ? 'LIVE SIGNALS' : 'EMPTY') : 'R&D'))}
+    ${workspace === 'signals' ? strategyTimeframeTabs(state) : ''}
+    ${section(workspace === 'signals' ? '交易訊號' : workspace === 'candidates' ? 'Candidate Pool' : '策略研發', content, badge(workspace === 'signals' ? (isCrypto ? 'LIVE SIGNALS' : 'EMPTY') : workspace === 'candidates' ? `${state.candidates?.items?.length || 0} CANDIDATES` : 'R&D'))}
   </div>`;
 }
 
