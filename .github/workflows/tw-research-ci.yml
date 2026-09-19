@@ -1,0 +1,45 @@
+name: FOXYYA TW Research Architecture Gate
+
+on:
+  push:
+    branches:
+      - tw-research-platform-v1-20260919
+    paths:
+      - 'research/tw/**'
+      - 'tw_platform/**'
+      - 'tests/test_tw_*.py'
+      - 'docs/tw/**'
+      - '.github/workflows/tw-research-ci.yml'
+  pull_request:
+    paths:
+      - 'research/tw/**'
+      - 'tw_platform/**'
+      - 'tests/test_tw_*.py'
+      - 'docs/tw/**'
+      - '.github/workflows/tw-research-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  architecture-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install test runner
+        run: python -m pip install --disable-pip-version-check pytest
+
+      - name: Compile Taiwan research modules
+        run: python -m compileall -q research/tw
+
+      - name: Run Taiwan architecture gates
+        env:
+          PYTHONPATH: .
+        run: |
+          python -m pytest             tests/test_tw_research_architecture.py             tests/test_tw_dependency_boundaries.py             tests/test_tw_phase_manifest.py -v
