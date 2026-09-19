@@ -41,11 +41,11 @@ def test_daily_pipeline_fetches_each_market_dataset_once_per_cycle(tmp_path):
 
     first = pipeline.run()
 
-    assert first.twse_quote_count == 16
-    assert first.tpex_quote_count == 8
+    assert first.twse_quote_count == 18
+    assert first.tpex_quote_count == 9
     assert first.market_count == 10
-    assert first.normalized_count == 34
-    assert first.inserted_count == 34
+    assert first.normalized_count == 37
+    assert first.inserted_count == 37
     assert first.observed_dates == ("2026-09-18",)
     assert transport.calls[TWSEProvider.QUOTES_URL] == 1
     assert transport.calls[TWSEProvider.INDEX_URL] == 1
