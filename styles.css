@@ -2062,3 +2062,29 @@ select:focus,.form-grid input:focus{border-color:rgba(241,184,75,.35)}
     }
   }
 }
+
+
+/* Self-audit truthfulness + disabled modules */
+.asset-switch-disabled{
+  opacity:.48;
+  cursor:not-allowed;
+  filter:saturate(.55);
+}
+.asset-switch-disabled:hover{
+  background:transparent;
+}
+.signal-source-note{
+  border:1px solid var(--line);
+  background:#0d0e0f;
+  color:#777b80;
+  border-radius:12px;
+  padding:9px 11px;
+  font-size:.57rem;
+  line-height:1.45;
+}
+@media(max-width:700px){
+  .signal-source-note{
+    padding:8px 9px;
+    font-size:.52rem;
+  }
+}
