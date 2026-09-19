@@ -431,7 +431,7 @@ function strongCoinDetail(state, strong){
       <div><span>24h 動能</span><strong class="${changeNum>=0?'up':'down'}">${changeNum>=0?'+':''}${changeNum.toFixed(2)}%</strong></div>
       <div><span>Universe 流動性</span><strong>#${evidence.liquidityRank} / ${evidence.universeSize}</strong></div>
       <div><span>Tradability</span><strong>${evidence.tradabilityStatus} · ${evidence.tradabilityScore}</strong></div>
-      <div><span>市場強勢</span><strong>${scoreNum.toFixed(0)} / 100</strong></div>
+      <div><span>市場強度</span><strong>${scoreNum.toFixed(0)} / 100</strong></div>
       <div><span>Research Score</span><strong>${evidence.composite} / 100</strong></div>
       <div><span>Strategy Match</span><strong>${evidence.strategyMatch}</strong></div>
       <div><span>Risk Gate</span><strong>${evidence.riskLabel}</strong></div>
@@ -447,7 +447,7 @@ function strongCoinDetail(state, strong){
     <div class="strong-actions strong-actions-three">
       <button class="candidate-add-btn" data-candidate-add="${selected}"
         data-candidate-source="Market Scout · 綜合強勢 Top 5"
-        data-candidate-reason="綜合 Top 5 · 綜合分數 ${evidence.composite} · 市場強勢 ${scoreNum.toFixed(0)}"
+        data-candidate-reason="市場機會 Top 5 · Research ${evidence.composite} · 市場強度 ${scoreNum.toFixed(0)}"
         data-candidate-score="${scoreNum.toFixed(0)}"
         data-candidate-direction="${changeNum >= 0 ? '偏多' : '偏空'}" type="button">＋ 加入候選</button>
       <button class="secondary-btn" data-use-backtest="${selected}" type="button">歷史回測</button>
@@ -487,7 +487,7 @@ function assetClassSwitcher(state){
     <button type="button" class="asset-switch ${active==='crypto'?'active':''}" data-asset-class="crypto" role="tab" aria-selected="${active==='crypto'}">
       <span>₿</span><div><strong>加密貨幣</strong><small>Crypto</small></div>
     </button>
-    <button type="button" class="asset-switch ${active==='stocks'?'active':''}" data-asset-class="stocks" role="tab" aria-selected="${active==='stocks'}">
+    <button type="button" class="asset-switch asset-switch-disabled" role="tab" aria-selected="false" aria-disabled="true" disabled>
       <span>▥</span><div><strong>股市</strong><small>待接資料源</small></div>
     </button>
   </div>`;
@@ -504,7 +504,7 @@ function homeSectionTabs(state){
   const active = state.ui?.homeSection || 'market';
   const items = [
     ['market','市場排行','◉'],
-    ['strong','強勢 Top 5','◆'],
+    ['strong','市場機會 Top 5','◆'],
     ['focus','國際焦點','◌'],
     ['strategy','策略機會','◎']
   ];
@@ -598,7 +598,7 @@ export function homePage(state) {
 
     <section class="panel strong-panel home-section-panel ${homeSection==='strong'?'is-active':''}">
       <div class="section-head premium-head">
-        <div class="section-title"><span class="section-symbol">◆</span>${isCrypto ? '綜合強勢加密貨幣 Top 5' : '強勢股票 Top 10'}</div>
+        <div class="section-title"><span class="section-symbol">◆</span>${isCrypto ? '市場機會加密貨幣 Top 5' : '強勢股票 Top 10'}</div>
         <span class="section-quiet">${isCrypto ? '24H MOMENTUM + LIQUIDITY' : 'STOCKS · SEPARATE MODULE'}</span>
       </div>
       ${isCrypto ? strongCoinCards(state) : stockEmptyState('強勢股票排行待接入')}
@@ -1301,8 +1301,8 @@ export function strategiesPage(state) {
   return `<div class="page-stack">${messageBar(state)}
     ${assetClassSwitcher(state)}
     ${strategyWorkspaceTabs(state)}
-    ${workspace === 'signals' && isCrypto ? strategyTimeframeTabs(state) : ''}
-    ${section(workspace === 'signals' ? '交易訊號' : workspace === 'agents' ? 'AI Agents' : workspace === 'candidates' ? 'Candidate Pool' : '策略研發', content, badge(workspace === 'signals' ? (isCrypto ? 'LIVE SIGNALS' : 'EMPTY') : workspace === 'agents' ? '7 AGENTS' : workspace === 'candidates' ? `${state.candidates?.items?.length || 0} CANDIDATES` : 'R&D'))}
+    ${workspace === 'signals' && isCrypto ? '<div class="signal-source-note">目前訊號基準：24h Market Radar；多週期判讀請使用 AI Agents → Technical。</div>' : ''}
+    ${section(workspace === 'signals' ? '交易訊號' : workspace === 'agents' ? 'AI Agents' : workspace === 'candidates' ? 'Candidate Pool' : '策略研發', content, badge(workspace === 'signals' ? (isCrypto ? 'LITE SIGNALS' : 'EMPTY') : workspace === 'agents' ? '7 AGENTS' : workspace === 'candidates' ? `${state.candidates?.items?.length || 0} CANDIDATES` : 'R&D'))}
   </div>`;
 }
 
@@ -1392,7 +1392,7 @@ export function backtestPage(state) {
   return `<div class="page-stack">${messageBar(state)}${section('策略測試', `
     <form id="backtest-form" class="form-grid">
       <label>幣種<select name="symbol">${marketSymbolOptions(state)}</select></label>
-      <label>測試期間<select name="range"><option value="90D">90 天</option><option value="180D">180 天</option><option value="1Y">1 年</option></select></label>
+      <label>測試期間<select name="range"><option value="30D">30 天</option><option value="90D">90 天</option><option value="180D">180 天</option></select></label>
       <label>策略<select name="strategy"><option value="A">策略 A · EMA20/50</option><option value="B">策略 B · EMA10/30</option></select></label>
       <label>時間週期<select name="timeframe">
         <option value="15m">15 分鐘</option>
@@ -1448,7 +1448,7 @@ export function strategyLabPage(state) {
   const backtestHtml = `
     <form id="backtest-form" class="form-grid">
       <label>幣種<select name="symbol">${marketSymbolOptions(state)}</select></label>
-      <label>測試期間<select name="range"><option value="90D">90 天</option><option value="180D">180 天</option><option value="1Y">1 年</option></select></label>
+      <label>測試期間<select name="range"><option value="30D">30 天</option><option value="90D">90 天</option><option value="180D">180 天</option></select></label>
       <label>策略<select name="strategy"><option value="A">趨勢策略 · EMA20/50</option><option value="B">快速趨勢 · EMA10/30</option></select></label>
       <label>時間週期<select name="timeframe">
         <option value="15m">15 分鐘</option>
