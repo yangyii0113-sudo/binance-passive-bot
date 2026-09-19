@@ -6,7 +6,7 @@ import json
 import pytest
 
 from research.tw.acquisition import DatasetPolicy, SnapshottingJsonTransport, latest_row_date
-from research.tw.providers.http import ProviderError
+from research.tw.providers.http import ProviderError, UrllibJsonTransport
 from research.tw.storage import RawSnapshotStore
 
 
@@ -54,3 +54,26 @@ def test_snapshotting_transport_rejects_unregistered_dataset(tmp_path):
     )
     with pytest.raises(ProviderError, match="no snapshot policy"):
         transport.get_json("https://example.invalid/unregistered")
+
+
+class FlakyJsonTransport(UrllibJsonTransport):
+    def __init__(self) -> None:
+        super().__init__(
+            timeout_seconds=1,
+            attempts=2,
+            retry_backoff_seconds=0,
+        )
+        self.payloads = iter((b"<html>edge error</html>", b'{"ok": true}'))
+        self.calls = 0
+
+    def get_bytes(self, url: str) -> bytes:
+        self.calls += 1
+        return next(self.payloads)
+
+
+def test_json_transport_retries_transient_non_json_response():
+    transport = FlakyJsonTransport()
+    payload = transport.get_json("https://example.invalid/data")
+
+    assert payload == {"ok": True}
+    assert transport.calls == 2
