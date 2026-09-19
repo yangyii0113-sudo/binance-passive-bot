@@ -1,0 +1,35 @@
+name: FOXYYA Lite Strategy Benchmark
+
+on:
+  push:
+    branches:
+      - foxyya-lite-railway-deploy
+    paths:
+      - 'scripts/strategy-benchmark-live.mjs'
+      - '.github/workflows/lite-strategy-benchmark.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run live strategy benchmark
+        run: node ./scripts/strategy-benchmark-live.mjs | tee benchmark-run.log
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: foxyya-strategy-benchmark
+          path: |
+            benchmark-result.json
+            benchmark-result.md
+            benchmark-run.log
+          if-no-files-found: error
+          retention-days: 14
