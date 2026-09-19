@@ -19,10 +19,12 @@ def _canonical_group(name: str) -> str:
     lowered = text.lower()
     if "投信" in text or "investment trust" in lowered:
         return "investment_trust"
-    if "自營" in text or "dealer" in lowered:
-        return "dealer"
+    # Foreign dealer rows contain the word 自營商 but belong to the
+    # foreign-capital bucket in the TWSE BFI82U market summary.
     if "外資" in text or "陸資" in text or "foreign" in lowered:
         return "foreign"
+    if "自營" in text or "dealer" in lowered:
+        return "dealer"
     if "合計" in text or "total" in lowered:
         return "total"
     return "other"
