@@ -39,6 +39,28 @@ function displayCandidateSource(value){
     .replaceAll('Research','研究');
 }
 
+function displaySide(value){
+  const raw = String(value || '').toUpperCase();
+  if(raw === 'LONG') return '做多';
+  if(raw === 'SHORT') return '做空';
+  return value || '—';
+}
+function displayMarketSource(value){
+  return String(value || '—')
+    .replaceAll('Binance USD-M Public Data','Binance U 本位永續合約公開資料')
+    .replaceAll('Binance USD-M public klines','Binance U 本位永續合約公開 K 線')
+    .replaceAll('Binance Spot public klines','Binance 現貨公開 K 線')
+    .replaceAll('public klines','公開 K 線')
+    .replaceAll('fallback','備援');
+}
+function displayExecutionModel(value){
+  const raw = String(value || '—');
+  if(raw === 'Fully Closed Signal → Next Bar Open') return '完整收盤訊號 → 下一根 K 棒開盤';
+  return raw
+    .replaceAll('Fully Closed','完整收盤')
+    .replaceAll('Next Bar Open','下一根 K 棒開盤');
+}
+
 function marketStatusLabel(market) {
   const time = market.updatedAt
     ? new Date(market.updatedAt).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })
@@ -156,7 +178,7 @@ function focusAnalysisPanel(state){
   return `<div class="focus-analysis-detail" id="focus-analysis-detail">
     <div class="analysis-detail-head">
       <div>
-        <span class="focus-tag">${item.status || 'ANALYSIS'}</span>
+        <span class="focus-tag">${item.status || '分析中'}</span>
         <h2>${item.title}</h2>
         <p>分析視窗：${item.horizon || '—'}</p>
       </div>
@@ -186,7 +208,7 @@ function focusAnalysisPanel(state){
     </section>
 
     <section class="analysis-block">
-      <span class="analysis-eyebrow">對 Crypto 的影響</span>
+      <span class="analysis-eyebrow">對加密市場的影響</span>
       <ul class="analysis-bullets">${crypto}</ul>
     </section>
 
@@ -209,7 +231,7 @@ function focusAnalysisPanel(state){
       <p>${item.invalidate || '—'}</p>
     </section>
 
-    <div class="analysis-disclaimer">目前為 FOXYYA 分析框架內容，非即時新聞 feed；待新聞與經濟數據來源接入後，再以最新事件覆寫這個分析層。</div>
+    <div class="analysis-disclaimer">目前為 FOXYYA 分析框架內容，非即時新聞資訊流；待新聞與經濟數據來源接入後，再以最新事件覆寫這個分析層。</div>
   </div>`;
 }
 function derivedStrategies(state){
@@ -240,7 +262,7 @@ function derivedStrategies(state){
     const stop = price ? price * (side === 'LONG' ? 0.988 : 1.012) : null;
     return {
       symbol,
-      strategy:'動能策略 · Lite v1',
+      strategy:'動能策略 · 輕量版 v1',
       direction: side === 'LONG' ? '偏多觀察' : '偏空觀察',
       status,
       statusLabel,
@@ -251,7 +273,7 @@ function derivedStrategies(state){
       tp2: price ? price * (side === 'LONG' ? 1.035 : 0.965) : null,
       rr: 1.67,
       confidence: status === 'HIGH' || status === 'TRIGGERED' ? '高' : status === 'READY' || status === 'SETUP' ? '中' : '低',
-      note:'Lite 動能訊號依 24h 動能與流動性分級；高強度代表條件共振較高，不等同保證獲利或自動買進。'
+      note:'輕量版動能訊號依 24 小時動能與流動性分級；高強度代表條件共振較高，不等同保證獲利或自動買進。'
     };
   });
 }
@@ -283,12 +305,12 @@ function strategyCards(state) {
         <span>訊號分數 <b>${valueOrDash(strategy.signalScore)}</b>/100</span>
       </div>
       <div class="mini-grid strategy-metrics">
-        <span><em>R:R</em><strong>${valueOrDash(strategy.rr)}</strong></span>
+        <span><em>風報比</em><strong>${valueOrDash(strategy.rr)}</strong></span>
         <span><em>信心</em><strong>${valueOrDash(strategy.confidence)}</strong></span>
-        <span><em>Entry</em><strong>${price(strategy.entry)}</strong></span>
-        <span><em>Stop</em><strong>${price(strategy.stop)}</strong></span>
-        <span><em>TP1</em><strong>${price(strategy.tp1)}</strong></span>
-        <span><em>TP2</em><strong>${price(strategy.tp2)}</strong></span>
+        <span><em>進場價</em><strong>${price(strategy.entry)}</strong></span>
+        <span><em>停損價</em><strong>${price(strategy.stop)}</strong></span>
+        <span><em>第一止盈</em><strong>${price(strategy.tp1)}</strong></span>
+        <span><em>第二止盈</em><strong>${price(strategy.tp2)}</strong></span>
       </div>
       <p class="strategy-note">${strategy.note || '策略快照僅供觀察，不提供真實下單。'}</p>
       <button class="candidate-add-btn" data-candidate-add="${strategy.symbol}"
@@ -522,7 +544,7 @@ function assetClassSwitcher(state){
   const active = state.ui?.assetClass || 'crypto';
   return `<div class="asset-switcher" role="tablist" aria-label="資產分類">
     <button type="button" class="asset-switch ${active==='crypto'?'active':''}" data-asset-class="crypto" role="tab" aria-selected="${active==='crypto'}">
-      <span>₿</span><div><strong>加密貨幣</strong><small>Crypto</small></div>
+      <span>₿</span><div><strong>加密貨幣</strong><small>數位資產</small></div>
     </button>
     <button type="button" class="asset-switch asset-switch-disabled" role="tab" aria-selected="false" aria-disabled="true" disabled>
       <span>▥</span><div><strong>股市</strong><small>待接資料源</small></div>
@@ -533,7 +555,7 @@ function stockEmptyState(title='股市資料源尚未接入'){
   return `<div class="asset-empty">
     <div class="asset-empty-icon">▥</div>
     <strong>${title}</strong>
-    <span>目前 Stocks 尚未接入正式行情與策略資料，因此不會用 Crypto 資料代替。</span>
+    <span>目前股市尚未接入正式行情與策略資料，因此不會用加密貨幣資料代替。</span>
     <button type="button" class="secondary-btn asset-empty-action" data-asset-class="crypto">切回加密貨幣</button>
   </div>`;
 }
@@ -541,7 +563,7 @@ function homeSectionTabs(state){
   const active = state.ui?.homeSection || 'market';
   const items = [
     ['market','市場排行','◉'],
-    ['strong','市場機會 Top 5','◆'],
+    ['strong','市場機會前五名','◆'],
     ['focus','國際焦點','◌'],
     ['strategy','策略機會','◎']
   ];
@@ -609,7 +631,7 @@ export function homePage(state) {
       <section class="panel hero-card event-card" data-event-calendar role="button" tabindex="0" aria-expanded="${Boolean(state.ui?.calendarOpen)}">
         <div class="hero-label"><span class="hero-icon">▣</span>事件日曆</div>
         <p>追蹤重要經濟數據與市場事件。</p>
-        <div class="event-bottom"><span class="focus-tag">TEMPLATE</span><span>${state.ui?.calendarOpen ? '收合' : '查看本週'} ›</span></div>
+        <div class="event-bottom"><span class="focus-tag">模板</span><span>${state.ui?.calendarOpen ? '收合' : '查看本週'} ›</span></div>
       </section>
     </div>
 
@@ -619,7 +641,7 @@ export function homePage(state) {
     <section class="panel ranking-panel home-section-panel ${homeSection==='market'?'is-active':''}">
       <div class="section-head premium-head">
         <div class="section-title"><span class="section-symbol">◉</span>市場排行</div>
-        <div class="section-meta">${market.source} · ${badge(displayStatus(market.status), market.status)}</div>
+        <div class="section-meta">${displayMarketSource(market.source)} · ${badge(displayStatus(market.status), market.status)}</div>
       </div>
       ${isCrypto ? `
         <div class="tabs interactive premium-tabs">
@@ -675,10 +697,10 @@ export function homePage(state) {
 function strategyTimeframeTabs(state){
   const active = state.ui?.strategyTimeframe || '1h';
   const frames = [
-    ['15m','15分'],
-    ['1h','1H'],
-    ['4h','4H'],
-    ['12h','12H'],
+    ['15m','15 分鐘'],
+    ['1h','1 小時'],
+    ['4h','4 小時'],
+    ['12h','12 小時'],
     ['1d','日線'],
     ['1w','週線'],
     ['1M','月線']
@@ -834,19 +856,19 @@ function topFiveResearchPanel(state){
     const spec = item.spec || {};
     const guard = item.guard || {label:'待驗證',tone:'pending'};
     const risk = item.risk?.status || '待檢查';
-    const technical = item.technical?.consensus || (item.technicalError ? 'Technical ERROR' : '待分析');
+    const technical = item.technical?.consensus || (item.technicalError ? '技術分析錯誤' : '待分析');
     const changeClass = Number(result.netReturnPct) >= 0 ? 'up' : 'down';
 
     const metrics = item.backtest ? `
       <div class="agent-research-metrics">
-        <span><small>Trades</small><strong>${result.trades ?? '—'}</strong></span>
-        <span><small>Win Rate</small><strong>${pct(result.winRatePct)}</strong></span>
-        <span><small>PF</small><strong>${result.profitFactor == null ? '—' : Number(result.profitFactor).toFixed(2)}</strong></span>
-        <span><small>Avg Trade</small><strong>${pct(result.avgTradePct)}</strong></span>
-        <span><small>Net Return</small><strong class="${changeClass}">${pct(result.netReturnPct)}</strong></span>
-        <span><small>Max DD</small><strong>${pct(result.maxDrawdownPct)}</strong></span>
+        <span><small>交易筆數</small><strong>${result.trades ?? '—'}</strong></span>
+        <span><small>勝率</small><strong>${pct(result.winRatePct)}</strong></span>
+        <span><small>獲利因子</small><strong>${result.profitFactor == null ? '—' : Number(result.profitFactor).toFixed(2)}</strong></span>
+        <span><small>平均每筆</small><strong>${pct(result.avgTradePct)}</strong></span>
+        <span><small>淨報酬率</small><strong class="${changeClass}">${pct(result.netReturnPct)}</strong></span>
+        <span><small>最大回撤</small><strong>${pct(result.maxDrawdownPct)}</strong></span>
       </div>`
-      : `<div class="candidate-empty-line">${spec.supported === false ? spec.reason : item.error || '尚未完成 baseline 回測'}</div>`;
+      : `<div class="candidate-empty-line">${spec.supported === false ? spec.reason : item.error || '尚未完成基準回測'}</div>`;
 
     const strategyChip = item.strategyMatch || '待配對';
     const guardChip = guard.label || '待驗證';
@@ -878,7 +900,7 @@ function topFiveResearchPanel(state){
         </div>
         ${metrics}
         <div class="research-detail-footer">
-          <span>${guard.reason || spec.reason || '固定 baseline 驗證'}</span>
+          <span>${guard.reason || spec.reason || '固定基準驗證'}</span>
           ${item.status === 'DONE' || item.status === 'ERROR' ? `
             <button type="button" class="candidate-add-btn" data-research-promote="${item.symbol}">升格 Candidate</button>
           ` : ''}
@@ -916,7 +938,7 @@ function topFiveResearchPanel(state){
     <div class="agent-research-list">${resultRows}</div>
     <details class="research-rule-note">
       <summary>查看固定驗證規則</summary>
-      <p>Trend：EMA20/50 · 4H · 2Y；Momentum / Breakout Watch：EMA10/30 · 1H · 1Y；Range 尚未實作 Mean Reversion baseline，因此只研究、不偽裝成已驗證策略。</p>
+      <p>趨勢策略：EMA20/50 · 4 小時 · 2 年；動能／突破觀察：EMA10/30 · 1 小時 · 1 年；區間策略尚未實作均值回歸基準，因此只研究、不偽裝成已驗證策略。</p>
     </details>
   </section>`;
 }
@@ -1205,13 +1227,13 @@ function profitabilityPanel(state){
   const dd = trades > 0 ? pct(s.maxDrawdownPct) : '—';
   const backtestReturn = backtest?.netReturnPct == null ? '—' : pct(backtest.netReturnPct);
   return `<div class="profit-panel">
-    <div class="rd-panel-head"><div><span>收益架構</span><strong>以正期望值與風險控制為核心</strong></div><small>REAL DATA ONLY</small></div>
+    <div class="rd-panel-head"><div><span>收益架構</span><strong>以正期望值與風險控制為核心</strong></div><small>僅使用實際資料</small></div>
     <div class="profit-grid">
-      <div><span>Expectancy</span><strong>${expectancy}</strong><small>Forward Paper</small></div>
-      <div><span>設計 R:R</span><strong>${valueOrDash(top.rr)}</strong><small>目前訊號模型</small></div>
+      <div><span>期望值</span><strong>${expectancy}</strong><small>前向模擬交易</small></div>
+      <div><span>設計風報比</span><strong>${valueOrDash(top.rr)}</strong><small>目前訊號模型</small></div>
       <div><span>勝率</span><strong>${winRate}</strong><small>${trades} 筆已平倉</small></div>
-      <div><span>Profit Factor</span><strong>${pf}</strong><small>Forward Paper</small></div>
-      <div><span>最大回撤</span><strong>${dd}</strong><small>Forward Paper</small></div>
+      <div><span>獲利因子</span><strong>${pf}</strong><small>前向模擬交易</small></div>
+      <div><span>最大回撤</span><strong>${dd}</strong><small>前向模擬交易</small></div>
       <div><span>最新回測報酬</span><strong>${backtestReturn}</strong><small>${backtest ? '歷史回測' : '待執行'}</small></div>
     </div>
     <p class="rd-note">無足夠樣本時顯示「—」，不以臨時訊號或推估值冒充策略績效。</p>
@@ -1220,12 +1242,12 @@ function profitabilityPanel(state){
 
 function strategyLibraryPanel(state){
   const entries = [
-    {name:'動能策略',version:'Lite v1',type:'Momentum',status:'訊號運作中',tone:'live',desc:'24h 動能＋流動性分級，負責目前市場雷達與訊號分類。'},
-    {name:'趨勢策略',version:'EMA20 / 50',type:'Trend',status:'可回測',tone:'ready',desc:'較慢的趨勢跟隨版本，現有歷史回測引擎可驗證。'},
-    {name:'快速趨勢',version:'EMA10 / 30',type:'Trend',status:'可回測',tone:'ready',desc:'反應較快的趨勢版本，用來和慢速版本進行比較。'},
-    {name:'ICT 結構策略',version:'Planned',type:'Structure',status:'規劃中',tone:'planned',desc:'BOS、CHoCH、Liquidity Sweep、OTE 等結構邏輯。'},
-    {name:'均值回歸',version:'Planned',type:'Mean Reversion',status:'規劃中',tone:'planned',desc:'震盪市場用，後續驗證 RSI、VWAP deviation 等條件。'},
-    {name:'突破策略',version:'Planned',type:'Breakout',status:'規劃中',tone:'planned',desc:'區間突破、成交量與波動擴張的方向性策略。'}
+    {name:'動能策略',version:'輕量版 v1',type:'動能',status:'訊號運作中',tone:'live',desc:'24 小時動能＋流動性分級，負責目前市場雷達與訊號分類。'},
+    {name:'趨勢策略',version:'EMA20 / 50',type:'趨勢',status:'可回測',tone:'ready',desc:'較慢的趨勢跟隨版本，現有歷史回測引擎可驗證。'},
+    {name:'快速趨勢',version:'EMA10 / 30',type:'趨勢',status:'可回測',tone:'ready',desc:'反應較快的趨勢版本，用來和慢速版本進行比較。'},
+    {name:'ICT 結構策略',version:'規劃中',type:'結構',status:'規劃中',tone:'planned',desc:'BOS、CHoCH、Liquidity Sweep、OTE 等結構邏輯。'},
+    {name:'均值回歸',version:'規劃中',type:'均值回歸',status:'規劃中',tone:'planned',desc:'震盪市場用，後續驗證 RSI、VWAP deviation 等條件。'},
+    {name:'突破策略',version:'規劃中',type:'突破',status:'規劃中',tone:'planned',desc:'區間突破、成交量與波動擴張的方向性策略。'}
   ];
   return `<div class="rd-stack">
     ${profitabilityPanel(state)}
@@ -1241,28 +1263,28 @@ function strategyLibraryPanel(state){
 
 function strategyDevelopmentPanel(){
   const steps = [
-    ['01','交易假設','先說明為什麼這個 edge 應該存在。'],
-    ['02','市場狀態','定義 Trend / Range / High Volatility 等 Regime。'],
-    ['03','Entry','明確定義觸發條件，不使用事後判讀。'],
-    ['04','Stop','定義失效點、ATR 或結構停損。'],
-    ['05','Take Profit','TP1 / TP2、移動停利與離場規則。'],
+    ['01','交易假設','先說明為什麼這個策略優勢應該存在。'],
+    ['02','市場狀態','定義趨勢／區間／高波動等市場狀態。'],
+    ['03','進場','明確定義觸發條件，不使用事後判讀。'],
+    ['04','停損','定義失效點、ATR 或結構停損。'],
+    ['05','止盈','第一止盈／第二止盈、移動停利與離場規則。'],
     ['06','風險','每筆風險、模擬保證金、槓桿與成本。'],
-    ['07','Validation','Backtest → OOS → Forward Paper → Control。']
+    ['07','驗證','歷史回測 → 樣本外測試 → 前向模擬交易 → 對照組。']
   ];
   return `<div class="rd-stack">
-    <div class="rd-intro"><strong>Strategy Builder</strong><span>開發規則先固定，再進入歷史驗證；避免看到結果後反向調參。</span></div>
+    <div class="rd-intro"><strong>策略建構器</strong><span>開發規則先固定，再進入歷史驗證；避免看到結果後反向調參。</span></div>
     <div class="rd-flow">${steps.map(([no,title,text])=>`
       <div class="rd-step"><span>${no}</span><div><strong>${title}</strong><p>${text}</p></div></div>
     `).join('')}</div>
     <div class="rd-template">
-      <div class="rd-panel-head"><div><span>新策略規格</span><strong>開發模板</strong></div><small>DRAFT</small></div>
+      <div class="rd-panel-head"><div><span>新策略規格</span><strong>開發模板</strong></div><small>草稿</small></div>
       <div class="rd-spec-grid">
         <div><span>策略名稱</span><strong>尚未命名</strong></div>
-        <div><span>適用資產</span><strong>Crypto / Stocks</strong></div>
-        <div><span>Regime</span><strong>待定義</strong></div>
-        <div><span>Risk / Trade</span><strong>待定義</strong></div>
-        <div><span>Entry</span><strong>待定義</strong></div>
-        <div><span>Exit</span><strong>待定義</strong></div>
+        <div><span>適用資產</span><strong>加密貨幣／股票</strong></div>
+        <div><span>市場狀態</span><strong>待定義</strong></div>
+        <div><span>單筆風險</span><strong>待定義</strong></div>
+        <div><span>進場</span><strong>待定義</strong></div>
+        <div><span>出場</span><strong>待定義</strong></div>
       </div>
     </div>
   </div>`;
@@ -1273,21 +1295,21 @@ function strategyReviewPanel(state){
   const trades = Number(s.trades) || 0;
   const notes = [];
   if(!trades){
-    notes.push('目前沒有足夠已平倉 Forward Paper 樣本，暫不對策略好壞下結論。');
+    notes.push('目前沒有足夠已平倉前向模擬交易樣本，暫不對策略好壞下結論。');
   } else {
     const wr = Number(s.winRatePct);
     const pf = Number(s.profitFactor);
     const dd = Number(s.maxDrawdownPct);
     if(Number.isFinite(wr) && wr < 45) notes.push('勝率低於 45%，需要檢查是否依靠高 R:R 才維持正期望值。');
-    if(Number.isFinite(pf) && pf < 1) notes.push('Profit Factor 低於 1，現有樣本的總獲利尚未覆蓋總虧損。');
+    if(Number.isFinite(pf) && pf < 1) notes.push('獲利因子低於 1，現有樣本的總獲利尚未覆蓋總虧損。');
     if(Number.isFinite(dd) && dd > 5) notes.push('最大回撤超過 5%，需要檢查部位風險與連續虧損集中度。');
-    if(!notes.length) notes.push('目前樣本未觸發基礎警示，但仍需增加樣本並拆解 Regime、Long / Short 與交易成本。');
+    if(!notes.length) notes.push('目前樣本未觸發基礎警示，但仍需增加樣本並拆解 市場狀態、做多／做空與交易成本。');
   }
   return `<div class="rd-stack">
     ${profitabilityPanel(state)}
     <div class="review-grid">
       <div class="rd-card"><span class="rd-eyebrow">樣本完整性</span><strong>${trades} 筆已平倉</strong><p>${trades >= 30 ? '可開始做初步分層檢討。' : '樣本仍偏少，避免過早優化。'}</p></div>
-      <div class="rd-card"><span class="rd-eyebrow">檢討維度</span><strong>Regime / Direction / Cost</strong><p>後續拆解趨勢盤、震盪盤、Long / Short、手續費與滑價。</p></div>
+      <div class="rd-card"><span class="rd-eyebrow">檢討維度</span><strong>市場狀態／方向／成本</strong><p>後續拆解趨勢盤、震盪盤、做多／做空、手續費與滑價。</p></div>
     </div>
     <div class="review-notes"><strong>檢討提示</strong>${notes.map(n=>`<p>• ${n}</p>`).join('')}</div>
   </div>`;
@@ -1297,16 +1319,16 @@ function strategyOptimizationPanel(state){
   const b = state.backtest;
   return `<div class="rd-stack">
     <div class="optimization-lanes">
-      <article class="opt-card"><span>CONTROL</span><strong>正式策略基準</strong><p>沿用既有 Control Freeze 原則。Lite 訊號不會自動升格成正式策略。</p><small>保持不動，作為比較基準</small></article>
-      <article class="opt-card"><span>CANDIDATE</span><strong>EMA20 / 50</strong><p>可使用現有歷史回測驗證；需再加入 OOS 與 Forward Paper。</p><small>${b?.result ? '已有最新回測結果' : '尚未執行最新回測'}</small></article>
-      <article class="opt-card"><span>CHALLENGER</span><strong>EMA10 / 30</strong><p>反應較快，需比較交易頻率、成本侵蝕與最大回撤。</p><small>不可只用最高報酬選參數</small></article>
+      <article class="opt-card"><span>對照組</span><strong>正式策略基準</strong><p>沿用既有 對照組凍結原則。輕量版訊號不會自動升格成正式策略。</p><small>保持不動，作為比較基準</small></article>
+      <article class="opt-card"><span>候選版本</span><strong>EMA20 / 50</strong><p>可使用現有歷史回測驗證；需再加入 樣本外測試與前向模擬交易。</p><small>${b?.result ? '已有最新回測結果' : '尚未執行最新回測'}</small></article>
+      <article class="opt-card"><span>挑戰版本</span><strong>EMA10 / 30</strong><p>反應較快，需比較交易頻率、成本侵蝕與最大回撤。</p><small>不可只用最高報酬選參數</small></article>
     </div>
     <div class="optimization-rules">
       <strong>優化門檻</strong>
       <div><span>01</span>先增加樣本，不用少量交易調參。</div>
-      <div><span>02</span>Historical Backtest 與 Forward Paper 必須分離。</div>
-      <div><span>03</span>比較 Expectancy、PF、Drawdown、成本後報酬與 Equity Curve 品質。</div>
-      <div><span>04</span>新版本先成為 Candidate / Challenger，通過驗證才考慮替換 Control。</div>
+      <div><span>02</span>歷史回測與前向模擬交易必須分離。</div>
+      <div><span>03</span>比較期望值、獲利因子、最大回撤、成本後報酬與權益曲線品質。</div>
+      <div><span>04</span>新版本先成為 候選版本／挑戰版本，通過驗證才考慮替換對照組。</div>
     </div>
   </div>`;
 }
@@ -1349,11 +1371,11 @@ function paperPositions(paper){
   return `<div class="position-list">${paper.positions.map(p=>`
     <article class="position-card">
       <div class="position-card-head">
-        <div><strong>${p.symbol}</strong><span>${p.side} · ${p.leverage || '-'}x</span></div>
+        <div><strong>${p.symbol}</strong><span>${displaySide(p.side)} · ${p.leverage || '-'} 倍</span></div>
         <b class="${Number(p.unrealizedPnl)>=0?'up':'down'}">${money(p.unrealizedPnl)}</b>
       </div>
       <div class="position-stats">
-        <span><small>Entry</small><strong>${price(p.entry ?? p.entry_fill)}</strong></span>
+        <span><small>進場價</small><strong>${price(p.entry ?? p.entry_fill)}</strong></span>
         <span><small>標記價格</small><strong>${price(p.mark)}</strong></span>
         <span><small>保證金</small><strong>${money(p.margin)}</strong></span>
         <span><small>名目價值</small><strong>${money(p.notional)}</strong></span>
@@ -1388,7 +1410,7 @@ function tradeRows(results){
     const pnl = Number(t.netPnl ?? t.net_pnl_usdt);
     return `
     <article class="trade-card">
-      <div class="trade-card-head"><strong>${t.symbol || '-'}</strong><span>${t.side || '-'}</span></div>
+      <div class="trade-card-head"><strong>${t.symbol || '-'}</strong><span>${displaySide(t.side)}</span></div>
       <b class="${pnl>=0?'up':'down'}">${money(pnl)}</b>
       <small>${t.closedAt ? new Date(t.closedAt).toLocaleString('zh-TW') : ''}</small>
     </article>`;
@@ -1416,18 +1438,18 @@ export function backtestPage(state) {
       ${metric('交易筆數',result.trades)}${metric('勝率',pct(result.winRatePct))}
       ${metric('獲利因子',result.profitFactor == null ? '—' : Number(result.profitFactor).toFixed(2))}
       ${metric('淨報酬率',pct(result.netReturnPct))}${metric('最大回撤',pct(result.maxDrawdownPct))}
-      ${metric('樣本數',input.samples || '—')}${metric('驗證層級',result.validation?.label || '—')}
+      ${metric('樣本數',input.samples || '—')}${metric('驗證層級',displayStatus(result.validation?.label || '—'))}
       ${metric('平均每筆',result.avgTradePct == null ? '—' : pct(result.avgTradePct))}
     </div>
     <div class="backtest-summary">
       <div><span>樣本</span><strong>${input.samples || '—'} K</strong></div>
       <div><span>成本模型</span><strong>${input.costModel || '—'}</strong></div>
       <div><span>時間週期</span><strong>${String(input.timeframe || '—').toUpperCase()}</strong></div>
-      <div><span>資料來源</span><strong>${input.dataSource || '—'}</strong></div>
-      <div><span>成交模型</span><strong>${input.executionModel || '—'}</strong></div>
+      <div><span>資料來源</span><strong>${displayMarketSource(input.dataSource)}</strong></div>
+      <div><span>成交模型</span><strong>${displayExecutionModel(input.executionModel)}</strong></div>
     </div>
     <div class="chart-placeholder"><span>權益曲線</span><strong>${b.equityCurve?.length || 0} 個權益節點</strong></div>`
-    : `<div class="empty-state"><strong>${b.status==='LOADING'?'歷史回測執行中…':'尚未執行歷史回測'}</strong><span>使用 Binance USD-M 歷史 K 線；模擬交易與歷史回測完全分離。</span></div>`;
+    : `<div class="empty-state"><strong>${b.status==='LOADING'?'歷史回測執行中…':'尚未執行歷史回測'}</strong><span>使用 Binance U 本位永續合約歷史 K 線；模擬交易與歷史回測完全分離。</span></div>`;
   return `<div class="page-stack">${messageBar(state)}${section('策略測試', `
     <form id="backtest-form" class="form-grid">
       <label>幣種<select name="symbol">${marketSymbolOptions(state)}</select></label>
@@ -1472,18 +1494,18 @@ export function strategyLabPage(state) {
       ${metric('交易筆數',result.trades)}${metric('勝率',pct(result.winRatePct))}
       ${metric('獲利因子',result.profitFactor == null ? '—' : Number(result.profitFactor).toFixed(2))}
       ${metric('淨報酬率',pct(result.netReturnPct))}${metric('最大回撤',pct(result.maxDrawdownPct))}
-      ${metric('樣本數',input.samples || '—')}${metric('驗證層級',result.validation?.label || '—')}
+      ${metric('樣本數',input.samples || '—')}${metric('驗證層級',displayStatus(result.validation?.label || '—'))}
       ${metric('平均每筆',result.avgTradePct == null ? '—' : pct(result.avgTradePct))}
     </div>
     <div class="backtest-summary">
       <div><span>樣本</span><strong>${input.samples || '—'} K</strong></div>
       <div><span>成本模型</span><strong>${input.costModel || '—'}</strong></div>
       <div><span>時間週期</span><strong>${String(input.timeframe || '—').toUpperCase()}</strong></div>
-      <div><span>資料來源</span><strong>${input.dataSource || '—'}</strong></div>
-      <div><span>成交模型</span><strong>${input.executionModel || '—'}</strong></div>
+      <div><span>資料來源</span><strong>${displayMarketSource(input.dataSource)}</strong></div>
+      <div><span>成交模型</span><strong>${displayExecutionModel(input.executionModel)}</strong></div>
     </div>
     <div class="chart-placeholder"><span>權益曲線</span><strong>${b.equityCurve?.length || 0} 個權益節點</strong></div>
-  ` : `<div class="empty-state"><strong>${b.status==='LOADING'?'歷史回測執行中…':'尚未執行歷史回測'}</strong><span>使用 Binance USD-M 歷史 K 線；模擬交易與歷史回測完全分離。</span></div>`;
+  ` : `<div class="empty-state"><strong>${b.status==='LOADING'?'歷史回測執行中…':'尚未執行歷史回測'}</strong><span>使用 Binance U 本位永續合約歷史 K 線；模擬交易與歷史回測完全分離。</span></div>`;
 
   const backtestHtml = `
     <form id="backtest-form" class="form-grid">
@@ -1501,7 +1523,7 @@ export function strategyLabPage(state) {
       </select></label>
     </form>
     <button class="primary-btn" data-backtest-run type="button" ${b.status==='LOADING'?'disabled':''}>開始歷史測試</button>
-    <p class="guard-note">支援 15m / 1H / 4H / 12H / 日 / 週 / 月；僅使用已收盤 K 線。長週期若樣本不足會直接停止。</p>
+    <p class="guard-note">支援 15 分鐘／1 小時／4 小時／12 小時／日／週／月；僅使用已收盤 K 線。長週期若樣本不足會直接停止。</p>
     ${backtestResult}
   `;
 
