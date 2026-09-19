@@ -34,7 +34,7 @@ try {
 
   const index = await fetch(`http://127.0.0.1:${port}/`);
   assert.equal(index.status, 200, 'staging server must serve the Lite shell');
-  assert.match(await index.text(), /FOXYYA Lite/);
+  assert.match(await index.text(), /FOXYYA 輕量版/);
 
   for (const path of ['/api/strategy', '/api/paper', '/api/results', '/api/backtest']) {
     const response = await fetch(`http://127.0.0.1:${port}${path}`);
