@@ -488,7 +488,7 @@ function assetClassSwitcher(state){
       <span>₿</span><div><strong>加密貨幣</strong><small>Crypto</small></div>
     </button>
     <button type="button" class="asset-switch ${active==='stocks'?'active':''}" data-asset-class="stocks" role="tab" aria-selected="${active==='stocks'}">
-      <span>▥</span><div><strong>股市</strong><small>Stocks</small></div>
+      <span>▥</span><div><strong>股市</strong><small>待接資料源</small></div>
     </button>
   </div>`;
 }
@@ -496,7 +496,8 @@ function stockEmptyState(title='股市資料源尚未接入'){
   return `<div class="asset-empty">
     <div class="asset-empty-icon">▥</div>
     <strong>${title}</strong>
-    <span>股市模組已與加密貨幣分離；目前不會使用 Crypto 行情替代股票資料。下一階段再接入正式股票行情與策略資料源。</span>
+    <span>目前 Stocks 尚未接入正式行情與策略資料，因此不會用 Crypto 資料代替。</span>
+    <button type="button" class="secondary-btn asset-empty-action" data-asset-class="crypto">切回加密貨幣</button>
   </div>`;
 }
 function homeSectionTabs(state){
@@ -1300,7 +1301,7 @@ export function strategiesPage(state) {
   return `<div class="page-stack">${messageBar(state)}
     ${assetClassSwitcher(state)}
     ${strategyWorkspaceTabs(state)}
-    ${workspace === 'signals' ? strategyTimeframeTabs(state) : ''}
+    ${workspace === 'signals' && isCrypto ? strategyTimeframeTabs(state) : ''}
     ${section(workspace === 'signals' ? '交易訊號' : workspace === 'agents' ? 'AI Agents' : workspace === 'candidates' ? 'Candidate Pool' : '策略研發', content, badge(workspace === 'signals' ? (isCrypto ? 'LIVE SIGNALS' : 'EMPTY') : workspace === 'agents' ? '7 AGENTS' : workspace === 'candidates' ? `${state.candidates?.items?.length || 0} CANDIDATES` : 'R&D'))}
   </div>`;
 }
