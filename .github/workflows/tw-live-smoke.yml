@@ -1,0 +1,31 @@
+name: FOXYYA TW Official Data Live Smoke
+
+on:
+  push:
+    branches:
+      - tw-research-platform-v1-20260919
+    paths:
+      - '.github/workflows/tw-live-smoke.yml'
+      - 'tools/tw_public_data_smoke.py'
+      - 'research/tw/providers/**'
+      - 'research/tw/acquisition.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  official-data-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Run official TWSE / TPEx public-data smoke
+        env:
+          PYTHONPATH: .
+        run: python tools/tw_public_data_smoke.py
