@@ -71,8 +71,17 @@ class UrllibJsonTransport:
         ) from last_error
 
     def get_json(self, url: str) -> Any:
-        payload = self.get_bytes(url)
-        try:
-            return json.loads(payload.decode("utf-8-sig"))
-        except Exception as exc:
-            raise ProviderError(f"provider returned invalid JSON: {url}") from exc
+        last_error: Exception | None = None
+        for attempt in range(1, self.attempts + 1):
+            payload = self.get_bytes(url)
+            try:
+                return json.loads(payload.decode("utf-8-sig"))
+            except Exception as exc:
+                last_error = exc
+                if attempt < self.attempts:
+                    time.sleep(self.retry_backoff_seconds * attempt)
+
+        raise ProviderError(
+            f"provider returned invalid JSON after "
+            f"{self.attempts} attempt(s): {url}"
+        ) from last_error
