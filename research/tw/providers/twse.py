@@ -4,7 +4,13 @@ from collections.abc import Sequence
 
 from ..contracts import Availability, Instrument, Observation
 from .http import JsonTransport, ProviderError, UrllibJsonTransport
-from .parsing import (\n    clean_text,\n    derive_change_percent,\n    parse_decimal,\n    parse_int,\n    parse_roc_date,\n)
+from .parsing import (
+    clean_text,
+    derive_change_percent,
+    parse_decimal,
+    parse_int,
+    parse_roc_date,
+)
 
 
 class TWSEProvider:
