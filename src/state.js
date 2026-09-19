@@ -14,7 +14,9 @@ export const appState = {
     updatedAt: null,
     direction: '讀取中',
     sentiment: '讀取中',
-    rows: MARKET_SYMBOLS.map(({ icon, display }) => [icon, display, '—', null])
+    rows: MARKET_SYMBOLS.map(({ icon, display }) => [icon, display, '—', null]).slice(0,20),
+    universeRows: MARKET_SYMBOLS.map(({ icon, display }) => [icon, display, '—', null, null, null]),
+    universeSize: MARKET_SYMBOLS.length
   },
   stocks: {
     status: STATUS.EMPTY,
