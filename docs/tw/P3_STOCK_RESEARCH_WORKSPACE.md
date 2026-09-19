@@ -4,7 +4,7 @@
 **Top-level phase:** P3  
 **Rule:** Build a research workspace on top of the completed P1/P2 canonical foundation. No stock order path is permitted.
 
-## P3.1 Stock Workspace Core — ACTIVE
+## P3.1 Stock Workspace Core — COMPLETE
 
 Build:
 - canonical instrument profile
@@ -15,13 +15,13 @@ Build:
 - Research-only execution boundary
 
 Exit gate:
-- [ ] deterministic workspace tests green
-- [ ] missing quote fields degrade coverage rather than invent values
-- [ ] mismatched regime date/venue is not attached
-- [ ] official live workspace smoke green
-- [ ] no provider/network dependency in workspace service
+- [x] deterministic workspace tests green
+- [x] missing quote fields degrade coverage rather than invent values
+- [x] mismatched regime date/venue is not attached
+- [x] official live workspace smoke green
+- [x] no provider/network dependency in workspace service
 
-## P3.2 Historical Research Window — LOCKED
+## P3.2 Historical Research Window — ACTIVE
 
 Future:
 - official historical daily OHLCV
