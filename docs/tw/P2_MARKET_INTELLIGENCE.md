@@ -4,7 +4,7 @@
 **Top-level phase:** P2  
 **Rule:** Only the active slice may be implemented. Later slices remain design-only until the previous gate is green.
 
-## P2.1 Market Structure — ACTIVE
+## P2.1 Market Structure — COMPLETE
 
 Build:
 - canonical daily change-percent derivation
@@ -15,13 +15,13 @@ Build:
 - partial-data coverage metrics
 
 Gate:
-- [ ] deterministic tests green
-- [ ] missing observations degrade coverage instead of crashing
-- [ ] outputs reference source + date
-- [ ] no provider/network access from intelligence layer
-- [ ] architecture CI green
+- [x] deterministic tests green
+- [x] missing observations degrade coverage instead of crashing
+- [x] outputs reference source + date
+- [x] no provider/network access from intelligence layer
+- [x] architecture CI green
 
-## P2.2 Institutional Flow — LOCKED
+## P2.2 Institutional Flow — ACTIVE
 
 Future:
 - TWSE market institutional summary
