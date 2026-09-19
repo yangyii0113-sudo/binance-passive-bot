@@ -33,6 +33,9 @@ export const appState = {
     updatedAt: null,
     items: []
   },
+  agents: {
+    technical: null
+  },
   ui: {
     search: '',
     assetClass: 'crypto',
@@ -41,6 +44,8 @@ export const appState = {
     strategyFilter: 'all',
     strategyWorkspace: 'signals',
     strategyTimeframe: '1h',
+    agentKey: 'market',
+    agentFilter: 'strong',
     labTab: 'forward',
     calendarOpen: false,
     focusAnalysisIndex: null,
