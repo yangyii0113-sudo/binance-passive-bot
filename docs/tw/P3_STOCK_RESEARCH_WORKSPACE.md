@@ -21,15 +21,29 @@ Exit gate:
 - [x] official live workspace smoke green
 - [x] no provider/network dependency in workspace service
 
-## P3.2 Historical Research Window — ACTIVE
+## P3.2 Historical Research Window — COMPLETE
 
-Future:
-- official historical daily OHLCV
-- deterministic date-window contract
-- corporate-action/session integrity
-- sufficient history for daily/weekly research
+Build:
+- official TWSE monthly STOCK_DAY historical adapter
+- official TPEx monthly tradingStock historical adapter
+- canonical HistoricalBar contract
+- deterministic 20 / 60 / 120 / 250-session research windows
+- no-lookahead cutoff
+- duplicate/conflicting-session integrity gate
+- explicit raw/unadjusted price mode
+- source provenance
+- insufficient-history state rather than fabricated bars
 
-## P3.3 Technical Research — LOCKED
+Gate:
+- [x] deterministic TWSE / TPEx historical fixtures green
+- [x] 20 / 60 / 120 / 250-session window tests green
+- [x] future bars excluded
+- [x] conflicting duplicate sessions fail closed
+- [x] historical service has no provider/execution dependency
+- [x] official TWSE / TPEx 20-session live smoke green
+- [x] live windows end exactly at 2026-09-18
+
+## P3.3 Technical Research — ACTIVE
 
 Future:
 - daily / weekly trend
