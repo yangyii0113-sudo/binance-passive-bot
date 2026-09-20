@@ -1,43 +1,40 @@
-# FOXYYA Lite V1
+# FOXYYA Lite
 
-Zero-build static MVP for the simplified FOXYYA platform.
+繁體中文、市場研究及本機模擬交易平台。主分支：`foxyya-lite-railway-deploy`。
 
-## Scope
+## 已實作
 
-- Home
-- Strategies
-- Paper Orders
-- Forward Paper Results
-- Historical Backtest shell
-- Mobile-first bottom navigation
-- Mock data only in Sprint 01
+- Binance 公開行情、全市場流動性排行及市場機會前五名。
+- 七個規則型分析代理入口：市場偵察、技術分析、新聞分析框架、策略驗證、曝險管理、交易檢討、交易手冊。
+- 候選池加入、去重、移除、多週期分析、回測結果回寫及曝險檢查。
+- 固定基準的前五名批次研究與最近 20 次本機研究儲存；重開時標明歷史研究。
+- 15 分鐘至月線歷史回測；只使用完整收盤 K 線，與模擬持倉紀錄分離。
+- 本機模擬開倉、平倉及交易績效；行情過期或缺少平倉報價時拒絕成交。
+- 手機頁籤、44px 操作按鈕、可換行的研究標籤及底部安全空間。
+- 行情重畫保留同頁表單、搜尋條件與研究詳情展開狀態。
 
-## Safety boundaries
+## 安全與資料邊界
 
-- PAPER ONLY
-- REAL ORDER LOCKED
-- No Production Execution V2 changes
-- No live-order actions in the UI
-- Forward Paper and Historical Backtest remain separate
+- **PAPER ONLY / REAL ORDER LOCKED**。不修改或呼叫 Production Execution V2。
+- 本機模擬、候選及研究歷史只保存在當前瀏覽器，未實作跨裝置同步。
+- 雲端 runtime 若有接入，只能讀取；其持倉不可透過本機模擬控制項修改。
+- 1.5% 限制目前是模擬保證金占淨值的代理曝險，並非每筆停損風險。
+- 新聞及經濟事件仍是分析框架；股票資料源尚未接入。
+- 策略建構器是規格模板；ICT、均值回歸、樣本外驗證及正式策略升格仍待實作。
+- 權益曲線目前顯示節點數，尚未繪製曲線。歷史研究只有最近一筆自動還原，尚無完整歷史瀏覽介面。
 
-## Run locally
+## 執行及驗證
 
-```bash
-python -m http.server 8765 --directory foxyya-lite
+在本專案根目錄執行：
+
+```sh
+python3 -m http.server 8765 --bind 127.0.0.1
+npm test
+npm run build
 ```
 
-Then open `http://127.0.0.1:8765/`.
+本機網址：`http://127.0.0.1:8765/`。測試包括模組、資料邊界、回測、中文顯示、模擬流程與 staging 伺服器檢查。
 
-## Routes
+部署輸出 `dist/` 僅包含公開前端檔案，以及可核對來源提交的 `version.json`。Netlify 使用 `npm run build`，發佈 `dist/`。GitHub「FOXYYA Lite Deploy Check」會測試並上傳相同內容的 artifact；CI 通過本身不代表 Netlify 已上線。
 
-The MVP uses hash routing so it can be hosted as static files without server-side routing dependencies:
-
-- `#/`
-- `#/strategies`
-- `#/orders`
-- `#/results`
-- `#/backtest`
-
-## Sprint 02
-
-Replace the Market Pulse mock rows with BTCUSDT / ETHUSDT / SOLUSDT public market snapshots and add LIVE / STALE / ERROR fallback handling.
+Netlify 純靜態部署不包含私有 runtime gateway；未接入時僅提供公開行情與本機模擬。

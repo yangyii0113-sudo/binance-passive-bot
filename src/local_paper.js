@@ -24,7 +24,7 @@ export function marketPrice(rows, symbol){
   const row = (rows || []).find((item) => item?.[1] === display || String(item?.[1] || '').replace(/\s|\//g,'') === symbol);
   if(!row) return null;
   const n = Number(String(row[2]).replace(/,/g,''));
-  return Number.isFinite(n) ? n : null;
+  return Number.isFinite(n) && n > 0 ? n : null;
 }
 function positionPnl(position, price){
   if(!Number.isFinite(price)) return 0;
@@ -131,7 +131,8 @@ export function closeLocalPaperPosition(id, marketRows = []){
   const index = book.positions.findIndex(p=>p.id === id);
   if(index < 0) throw new Error('找不到模擬持倉');
   const position = book.positions[index];
-  const exit = marketPrice(marketRows, position.symbol) ?? position.entry;
+  const exit = marketPrice(marketRows, position.symbol);
+  if (exit === null) throw new Error('目前沒有可用市場價格，模擬持倉尚未平倉');
   const grossPnl = positionPnl(position, exit);
   const fee = position.notional * 0.0008;
   const netPnl = grossPnl - fee;

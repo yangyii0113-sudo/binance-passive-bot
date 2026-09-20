@@ -2,42 +2,9 @@ import { mock } from './mock.js';
 import { badge, metric, section } from './ui.js';
 import { evaluateStrategyGuard } from './strategy_guard.js';
 
-const DISPLAY_STATUS_ZH = Object.freeze({
-  PASS:'通過', CAUTION:'注意', BLOCKED:'阻擋', REVIEW:'需複核',
-  READY:'就緒', SETUP:'條件形成中', WATCH:'觀察中', LIVE:'即時',
-  STALE:'已過期', ERROR:'錯誤', LOADING:'載入中', PENDING:'待處理',
-  VALIDATED:'已驗證', INSUFFICIENT:'樣本不足', DONE:'完成',
-  TRIGGERED:'已觸發', HIGH:'高強度', EMPTY:'無資料', UNSCANNED:'未檢查',
-  RESEARCH:'研究中', RUNNING:'執行中', UNKNOWN:'未知'
-});
-function displayStatus(value){
-  const raw = String(value ?? '').trim();
-  if(!raw) return '待檢查';
-  return DISPLAY_STATUS_ZH[raw.toUpperCase()] || raw;
-}
-function displayStrategyMatch(value){
-  const raw = String(value ?? '').trim();
-  const labels = {
-    'NO TRADE':'不交易',
-    'Trend':'趨勢策略',
-    'Momentum / Breakout Watch':'動能／突破觀察',
-    'Trend / Momentum':'趨勢／動能',
-    'Range Watch':'區間觀察',
-    'Momentum Watch':'動能觀察'
-  };
-  return labels[raw] || raw || '待判定';
-}
-function displayCandidateSource(value){
-  return String(value || '候選池')
-    .replaceAll('Market Scout','市場偵察')
-    .replaceAll('動態前五名','動態前五名')
-    .replaceAll('全市場掃描','全市場掃描')
-    .replaceAll('Technical Analyst','技術分析')
-    .replaceAll('Strategy Validator','策略驗證')
-    .replaceAll('Trade Review Analyst','交易檢討')
-    .replaceAll('News Impact','新聞影響')
-    .replaceAll('Research','研究');
-}
+import { displayStatus, displayText, displayStrategyMatch, displayTimeframe, displayRange } from './display.js';
+
+function displayCandidateSource(value){ return displayText(value || '候選池'); }
 
 function displaySide(value){
   const raw = String(value || '').toUpperCase();
@@ -46,7 +13,7 @@ function displaySide(value){
   return value || '—';
 }
 function displayMarketSource(value){
-  return String(value || '—')
+  return displayText(value || '—')
     .replaceAll('Binance USD-M Public Data','Binance U 本位永續合約公開資料')
     .replaceAll('Binance USD-M public klines','Binance U 本位永續合約公開 K 線')
     .replaceAll('Binance Spot public klines','Binance 現貨公開 K 線')
@@ -68,10 +35,12 @@ function marketStatusLabel(market) {
   return `${displayStatus(market.status)} · ${time}`;
 }
 function money(value) {
+  if (value == null || value === '') return '—';
   const n = Number(value);
   return Number.isFinite(n) ? `$${n.toLocaleString('en-US', { maximumFractionDigits: 2 })}` : '—';
 }
 function pct(value) {
+  if (value == null || value === '') return '—';
   const n = Number(value);
   return Number.isFinite(n) ? `${n.toFixed(2)}%` : '—';
 }
@@ -79,6 +48,7 @@ function valueOrDash(value) {
   return value === null || value === undefined || value === '' ? '—' : String(value);
 }
 function price(value) {
+  if (value == null || value === '') return '—';
   const n = Number(value);
   if (!Number.isFinite(n)) return '—';
   const digits = n >= 1000 ? 2 : n >= 1 ? 3 : 5;
@@ -89,6 +59,7 @@ function numberPrice(value){
   return Number.isFinite(n) ? n : null;
 }
 function compactVolume(value){
+  if (value == null || value === '') return '—';
   const n = Number(value);
   if(!Number.isFinite(n)) return '—';
   if(n >= 1e9) return `${(n/1e9).toFixed(1)}B`;
@@ -134,7 +105,7 @@ function coinLogo(symbol, fallback = '•', large = false){
   </span>`;
 }
 function messageBar(state){
-  return state.ui?.message ? `<div class="flash-message">${state.ui.message}</div>` : '';
+  return state.ui?.message ? `<div class="flash-message">${displayText(state.ui.message)}</div>` : '';
 }
 function calendarPanel(state){
   if(!state.ui?.calendarOpen) return '';
@@ -298,7 +269,7 @@ function strategyCards(state) {
             <span class="strategy-name">${strategy.strategy}</span>
           </div>
         </div>
-        <span class="signal-badge signal-${String(strategy.status||'WATCH').toLowerCase()}">${strategy.statusLabel || strategy.status}</span>
+        <span class="signal-badge signal-${String(strategy.status||'WATCH').toLowerCase()}">${displayStatus(strategy.statusLabel || strategy.status)}</span>
       </div>
       <div class="strategy-signal-line">
         <strong class="strategy-direction">${strategy.direction}</strong>
@@ -315,7 +286,7 @@ function strategyCards(state) {
       <p class="strategy-note">${strategy.note || '策略快照僅供觀察，不提供真實下單。'}</p>
       <button class="candidate-add-btn" data-candidate-add="${strategy.symbol}"
         data-candidate-source="交易訊號 · ${strategy.strategy}"
-        data-candidate-reason="${strategy.statusLabel || strategy.status} · 訊號分數 ${valueOrDash(strategy.signalScore)}"
+        data-candidate-reason="${displayStatus(strategy.statusLabel || strategy.status)} · 訊號分數 ${valueOrDash(strategy.signalScore)}"
         data-candidate-status="${strategy.status || ''}"
         data-candidate-score="${valueOrDash(strategy.signalScore)}"
         data-candidate-direction="${strategy.direction || ''}" type="button">＋ 加入候選池</button>
@@ -334,7 +305,7 @@ function strategyOpportunity(state) {
     <div class="strategy-main">
       <div class="strategy-opportunity-top">
         <div><strong>${strategy.symbol}</strong><span>${strategy.strategy}</span></div>
-        <span class="signal-badge signal-${String(strategy.status||'WATCH').toLowerCase()}">${strategy.statusLabel || strategy.status}</span>
+        <span class="signal-badge signal-${String(strategy.status||'WATCH').toLowerCase()}">${displayStatus(strategy.statusLabel || strategy.status)}</span>
       </div>
       <b class="strategy-direction">${strategy.direction}</b>
       <div class="opportunity-score">訊號分數 <strong>${valueOrDash(strategy.signalScore)}</strong>/100</div>
@@ -711,7 +682,7 @@ function strategyTimeframeTabs(state){
         <button type="button" class="timeframe-btn ${active===key?'active':''}" data-strategy-timeframe="${key}" role="tab" aria-selected="${active===key}">${label}</button>
       `).join('')}
     </div>
-    <div class="timeframe-note">目前 Lite 交易訊號仍以 24h 動能＋流動性為基準；週期按鈕先作為策略分析工作區，待多週期訊號引擎接入後再分別計算。</div>
+    <div class="timeframe-note">目前輕量版交易訊號仍以 24 小時動能＋流動性為基準；週期按鈕先作為策略分析工作區，待多週期訊號引擎接入後再分別計算。</div>
   </div>`;
 }
 function strategyWorkspaceTabs(state){
@@ -753,7 +724,7 @@ function candidateTechnical(item){
   return `<div class="candidate-timeframes">${tech.frames.map(frame=>{
     const dir = String(frame.direction || '');
     const tone = dir.includes('多') ? 'up' : dir.includes('空') ? 'down' : '';
-    return `<div class="candidate-tf"><span>${frame.label}</span><strong class="${tone}">${dir}</strong><small>${frame.status==='LIVE' && Number.isFinite(Number(frame.momentumPct)) ? `${Number(frame.momentumPct)>=0?'+':''}${Number(frame.momentumPct).toFixed(2)}%` : frame.status}</small></div>`;
+    return `<div class="candidate-tf"><span>${displayTimeframe(frame.interval || frame.label)}</span><strong class="${tone}">${dir}</strong><small>${frame.status==='LIVE' && Number.isFinite(Number(frame.momentumPct)) ? `${Number(frame.momentumPct)>=0?'+':''}${Number(frame.momentumPct).toFixed(2)}%` : displayStatus(frame.status)}</small></div>`;
   }).join('')}</div>`;
 }
 function candidatePoolPanel(state){
@@ -770,9 +741,9 @@ function candidatePoolPanel(state){
           ${coinLogo(item.symbol,item.symbol.slice(0,1),true)}
           <div><strong>${item.symbol}</strong><span>${displayCandidateSource(item.source)} · ${added}</span></div>
         </div>
-        <span class="decision-badge decision-${finalState.tone}">${finalState.label}</span>
+        <span class="decision-badge decision-${finalState.tone}">${displayStatus(finalState.label)}</span>
       </div>
-      <p class="candidate-reason">${item.reason || '手動加入候選池'}</p>
+      <p class="candidate-reason">${displayText(item.reason || '手動加入候選池')}</p>
       <div class="evidence-matrix">
         <div><span>市場</span><strong>${item.signal?.score != null ? `評分 ${item.signal.score}` : '已加入'}</strong><small>${item.signal?.direction || displayCandidateSource(item.source) || '—'}</small></div>
         <div><span>技術面</span><strong>${item.technical?.consensus || '待分析'}</strong><small>${displayStatus(item.technical?.status || '—')}</small></div>
@@ -780,7 +751,7 @@ function candidatePoolPanel(state){
         <div><span>曝險檢查</span><strong class="decision-text-${riskTone(item.risk?.status)}">${displayStatus(riskStatus)}</strong><small>${item.risk ? `${Number(item.risk.portfolioRiskPct||0).toFixed(2)}% / 1.50%` : '待檢查'}</small></div>
       </div>
       ${candidateTechnical(item)}
-      ${item.risk?.reasons?.length ? `<div class="risk-reasons">${item.risk.reasons.map(reason=>`<p>• ${reason}</p>`).join('')}</div>` : ''}
+      ${item.risk?.reasons?.length ? `<div class="risk-reasons">${item.risk.reasons.map(reason=>`<p>• ${displayText(reason)}</p>`).join('')}</div>` : ''}
       <div class="candidate-actions">
         <button type="button" class="secondary-btn" data-candidate-analyze="${item.symbol}">多週期分析</button>
         <button type="button" class="secondary-btn" data-candidate-validate="${item.symbol}">策略驗證</button>
@@ -839,7 +810,7 @@ function topFiveResearchPanel(state){
   const progress = Number(research.progress) || 0;
   const total = Number(research.total) || rows.length || 5;
   const updated = research.updatedAt
-    ? new Date(research.updatedAt).toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'})
+    ? new Date(research.updatedAt).toLocaleString('zh-TW',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})
     : '尚未執行';
 
   const counts = {
@@ -868,7 +839,7 @@ function topFiveResearchPanel(state){
         <span><small>淨報酬率</small><strong class="${changeClass}">${pct(result.netReturnPct)}</strong></span>
         <span><small>最大回撤</small><strong>${pct(result.maxDrawdownPct)}</strong></span>
       </div>`
-      : `<div class="candidate-empty-line">${spec.supported === false ? spec.reason : item.error || '尚未完成基準回測'}</div>`;
+      : `<div class="candidate-empty-line">${displayText(spec.supported === false ? spec.reason : item.error || '尚未完成基準回測')}</div>`;
 
     const strategyChip = item.strategyMatch || '待配對';
     const guardChip = guard.label || '待驗證';
@@ -880,41 +851,41 @@ function topFiveResearchPanel(state){
         <div class="research-summary-main">
           <strong>${item.symbol}</strong>
           <div class="research-chip-row">
-            <span class="research-chip">${strategyChip}</span>
-            <span class="research-chip research-chip-${guard.tone || 'pending'}">${guardChip}</span>
-            <span class="research-chip research-chip-${riskTone(item.risk?.status)}">${risk}</span>
+            <span class="research-chip">${displayStrategyMatch(strategyChip)}</span>
+            <span class="research-chip research-chip-${guard.tone || 'pending'}">${displayStatus(guardChip)}</span>
+            <span class="research-chip research-chip-${riskTone(item.risk?.status)}">${displayStatus(risk)}</span>
           </div>
         </div>
-        <div class="research-score"><small>Research</small><b>${item.researchScore ?? '—'}</b></div>
-        <span class="decision-badge decision-${decision.tone || 'pending'}">${decision.label || 'PENDING'}</span>
+        <div class="research-score"><small>研究評分</small><b>${item.researchScore ?? '—'}</b></div>
+        <span class="decision-badge decision-${decision.tone || 'pending'}">${displayStatus(decision.label || 'PENDING')}</span>
         <span class="research-chevron">⌄</span>
       </summary>
       <div class="research-detail-body">
         <div class="agent-research-evidence">
           <div><span>技術面</span><strong>${technical}</strong></div>
           <div><span>策略匹配</span><strong>${displayStrategyMatch(item.strategyMatch)}</strong></div>
-          <div><span>BASELINE</span><strong>${spec.supported ? `${spec.strategyLabel} · ${String(spec.timeframe||'').toUpperCase()} · ${spec.range}` : '未支援'}</strong></div>
-          <div><span>GUARD</span><strong class="decision-text-${guard.tone || 'pending'}">${guard.label || '—'}</strong></div>
-          <div><span>RISK</span><strong class="decision-text-${riskTone(item.risk?.status)}">${risk}</strong></div>
-          <div><span>DATA</span><strong>${input.dataSource || '—'}</strong></div>
+          <div><span>驗證基準</span><strong>${spec.supported ? `${displayText(spec.strategyLabel)} · ${displayTimeframe(spec.timeframe)} · ${displayRange(spec.range)}` : '未支援'}</strong></div>
+          <div><span>策略驗證</span><strong class="decision-text-${guard.tone || 'pending'}">${displayStatus(guard.label || '—')}</strong></div>
+          <div><span>曝險檢查</span><strong class="decision-text-${riskTone(item.risk?.status)}">${displayStatus(risk)}</strong></div>
+          <div><span>資料來源</span><strong>${displayMarketSource(input.dataSource)}</strong></div>
         </div>
         ${metrics}
         <div class="research-detail-footer">
-          <span>${guard.reason || spec.reason || '固定基準驗證'}</span>
+          <span>${displayText(guard.reason || spec.reason || '固定基準驗證')}</span>
           ${item.status === 'DONE' || item.status === 'ERROR' ? `
-            <button type="button" class="candidate-add-btn" data-research-promote="${item.symbol}">升格 Candidate</button>
+            <button type="button" class="candidate-add-btn" data-research-promote="${item.symbol}">加入候選池</button>
           ` : ''}
         </div>
       </div>
     </details>`;
-  }).join('') : '<div class="empty-state research-empty"><strong>尚未執行 Top 5 Research</strong><span>按下驗證後，系統會逐隻執行 Technical、固定 baseline 回測、Strategy Guard 與 Exposure Gate。</span></div>';
+  }).join('') : '<div class="empty-state research-empty"><strong>尚未執行前五名研究</strong><span>按下驗證後，系統會逐一執行技術分析、固定基準回測、策略驗證與曝險檢查。</span></div>';
 
   return `<section class="agent-research-panel research-cockpit">
     <div class="agent-research-head research-cockpit-head">
       <div>
-        <span class="research-eyebrow">RESEARCH PIPELINE</span>
+        <span class="research-eyebrow">研究流程</span>
         <strong>前五名全套驗證</strong>
-        <small>固定規則 · 不針對單一標的調參 · 更新 ${updated}</small>
+        <small>${research.restored ? '歷史研究 · 由本機儲存還原，請重新驗證' : '固定規則 · 不針對單一標的調參'} · 更新 ${updated}</small>
       </div>
       <button type="button" class="primary-inline-btn research-run-btn" data-top5-research-run ${running?'disabled':''}>
         ${running ? `執行中 ${progress}/${total}` : '開始全套驗證'}
@@ -993,10 +964,10 @@ function marketScoutPanel(state){
       : 'caution';
     const chips = isComposite || mode === 'universe' ? `
       <div class="agent-result-chips">
-        <span class="research-chip">${evidence.strategyMatch}</span>
-        <span class="research-chip research-chip-${tradTone}">${evidence.tradabilityStatus}</span>
-        <span class="research-chip research-chip-${validatorTone}">${evidence.validatorLabel}</span>
-        <span class="research-chip research-chip-${riskTone(evidence.riskLabel)}">${evidence.riskLabel}</span>
+        <span class="research-chip">${displayStrategyMatch(evidence.strategyMatch)}</span>
+        <span class="research-chip research-chip-${tradTone}">${displayStatus(evidence.tradabilityStatus)}</span>
+        <span class="research-chip research-chip-${validatorTone}">${displayStatus(evidence.validatorLabel)}</span>
+        <span class="research-chip research-chip-${riskTone(evidence.riskLabel)}">${displayStatus(evidence.riskLabel)}</span>
       </div>` : '';
 
     return `<article class="agent-result-row ${isComposite?'agent-top5-row':''}" data-search="${symbol} ${evidence.strategyMatch} ${evidence.tradabilityStatus}">
@@ -1023,12 +994,12 @@ function marketScoutPanel(state){
   }).join('') : '<div class="empty-state"><strong>市場資料讀取中</strong></div>';
 
   return `<div class="agent-panel-stack">
-    ${agentFilterTabs(state,[['strong','動態前五名'],['universe','Universe'],['gain','漲幅'],['loss','跌幅'],['liquidity','流動性']])}
+    ${agentFilterTabs(state,[['strong','動態前五名'],['universe','全市場'],['gain','漲幅'],['loss','跌幅'],['liquidity','流動性']])}
     <div class="playbook-top market-scout-stats">
       <div><span>市場池</span><strong>${universe.length}</strong></div>
-      <div><span>Top 5</span><strong>${topFive.length}</strong></div>
+      <div><span>前五名</span><strong>${topFive.length}</strong></div>
       <div><span>阻擋</span><strong>${blockedCount}</strong></div>
-      <div><span>資料源</span><strong>USD-M</strong></div>
+      <div><span>資料源</span><strong>U 本位永續</strong></div>
     </div>
     <div class="agent-intro agent-intro-compact"><strong>全市場掃描</strong><span>先找可交易市場，再驗證 技術面／策略優勢／風險。前五名是研究順位，不是買進順位。</span></div>
     <div class="agent-results market-scout-results">${cards}</div>
@@ -1050,7 +1021,7 @@ function technicalAgentPanel(state){
     ? `<div class="agent-technical-grid">${frames.map(frame=>{
         const direction = String(frame.direction || '');
         const tone = direction.includes('多') ? 'up' : direction.includes('空') ? 'down' : '';
-        return `<div class="agent-tech-card"><span>${frame.label}</span><strong class="${tone}">${direction}</strong><small>EMA20 ${price(frame.ema20)} · EMA50 ${price(frame.ema50)}</small><b>${Number.isFinite(Number(frame.momentumPct)) ? `${Number(frame.momentumPct)>=0?'+':''}${Number(frame.momentumPct).toFixed(2)}%` : '—'}</b></div>`;
+        return `<div class="agent-tech-card"><span>${displayTimeframe(frame.interval || frame.label)}</span><strong class="${tone}">${direction}</strong><small>EMA20 ${price(frame.ema20)} · EMA50 ${price(frame.ema50)}</small><b>${Number.isFinite(Number(frame.momentumPct)) ? `${Number(frame.momentumPct)>=0?'+':''}${Number(frame.momentumPct).toFixed(2)}%` : '—'}</b></div>`;
       }).join('')}</div>`
     : '<div class="empty-state"><strong>選擇標的後執行多週期分析</strong><span>資料直接使用 Binance U 本位永續合約的完整收盤 K 棒。</span></div>';
   const add = technical?.status === 'LIVE'
@@ -1062,7 +1033,7 @@ function technicalAgentPanel(state){
       <label>分析標的<select name="symbol">${marketSymbolOptions(state)}</select></label>
       <button type="button" class="primary-inline-btn" data-agent-technical-run>執行分析</button>
     </form>
-    ${technical?.status==='LIVE' ? `<div class="agent-consensus"><span>多週期共識</span><strong>${technical.consensus}</strong><small>${technical.source}</small></div>` : ''}
+    ${technical?.status==='LIVE' ? `<div class="agent-consensus"><span>多週期共識</span><strong>${technical.consensus}</strong><small>${displayMarketSource(technical.source)}</small></div>` : ''}
     ${frameHtml}
     ${add ? `<div class="agent-single-action">${add}</div>` : ''}
   </div>`;
@@ -1116,7 +1087,7 @@ function validatorAgentPanel(state){
     const result = item?.validator?.result;
     return `<article class="agent-validator-row">
       <div class="agent-result-main"><strong>${symbol}</strong><span>${result ? `交易 ${result.trades} 筆 · 獲利因子 ${result.profitFactor==null?'—':Number(result.profitFactor).toFixed(2)} · 最大回撤 ${pct(result.maxDrawdownPct)}` : '尚未執行候選回測'}</span></div>
-      <span class="decision-badge decision-${verdict.tone}">${verdict.label}</span>
+      <span class="decision-badge decision-${verdict.tone}">${displayStatus(verdict.label)}</span>
       <button type="button" class="secondary-btn" data-candidate-validate="${symbol}">策略驗證</button>
     </article>`;
   }).join('') : '<div class="empty-state"><strong>目前沒有符合篩選的標的</strong></div>';
@@ -1139,7 +1110,7 @@ function riskAgentPanel(state){
     const status = item.risk?.status || '未檢查';
     return `<article class="agent-risk-row">
       <div class="agent-result-main"><strong>${item.symbol}</strong><span>${item.risk ? `模擬保證金 ${Number(item.risk.portfolioRiskPct||0).toFixed(2)}% · 同向 ${item.risk.sameDirectionCount||0}` : '尚未執行曝險檢查'}</span></div>
-      <span class="decision-badge decision-${riskTone(item.risk?.status)}">${status}</span>
+      <span class="decision-badge decision-${riskTone(item.risk?.status)}">${displayStatus(status)}</span>
       <button type="button" class="secondary-btn" data-candidate-risk="${item.symbol}">執行曝險檢查</button>
     </article>`;
   }).join('') : '<div class="empty-state"><strong>候選池中沒有符合此風險分類的標的</strong></div>';
@@ -1164,11 +1135,11 @@ function tradeReviewAgentPanel(state){
     const symbol = String(trade.symbol || '');
     const reason = `Trade Review · ${pnl>=0?'獲利':'虧損'}交易 ${money(pnl)}`;
     return `<article class="agent-review-row">
-      <div class="agent-result-main"><strong>${symbol || '—'}</strong><span>${trade.side || '—'} · ${trade.closedAt ? new Date(trade.closedAt).toLocaleString('zh-TW') : ''}</span></div>
+      <div class="agent-result-main"><strong>${symbol || '—'}</strong><span>${displaySide(trade.side)} · ${trade.closedAt ? new Date(trade.closedAt).toLocaleString('zh-TW') : ''}</span></div>
       <strong class="${pnl>=0?'up':'down'}">${money(pnl)}</strong>
       ${symbol ? agentCandidateButton(symbol,'Trade Review Analyst',reason) : ''}
     </article>`;
-  }).join('') : '<div class="empty-state"><strong>此分類目前沒有交易紀錄</strong><span>Trade Review 只使用已平倉 Paper 交易。</span></div>';
+  }).join('') : '<div class="empty-state"><strong>此分類目前沒有交易紀錄</strong><span>交易檢討只使用已平倉模擬交易。</span></div>';
   return `<div class="agent-panel-stack">
     ${agentFilterTabs(state,[['all','全部'],['win','獲利交易'],['loss','虧損交易']])}
     <div class="agent-intro"><strong>交易檢討分析</strong><span>從真實模擬交易紀錄找重複模式；可把值得重新研究的標的再次加入候選池。</span></div>
@@ -1180,8 +1151,8 @@ function playbookAgentPanel(state){
   const all = (state.candidates?.items || []).map(item=>({...item,final:candidateFinalState(item)}));
   const items = all.filter(item=>filter==='all' || item.final.label.toLowerCase()===filter);
   const cards = items.length ? items.map(item=>`<article class="playbook-row">
-    <div class="agent-result-main"><strong>${item.symbol}</strong><span>${item.technical?.consensus || '技術待分析'} · ${item.risk?.status || '風險待檢查'}</span></div>
-    <span class="decision-badge decision-${item.final.tone}">${item.final.label}</span>
+    <div class="agent-result-main"><strong>${item.symbol}</strong><span>${item.technical?.consensus || '技術待分析'} · ${displayStatus(item.risk?.status || '風險待檢查')}</span></div>
+    <span class="decision-badge decision-${item.final.tone}">${displayStatus(item.final.label)}</span>
     <div class="playbook-actions">
       <button class="secondary-btn" type="button" data-candidate-analyze="${item.symbol}">技術分析</button>
       <button class="secondary-btn" type="button" data-candidate-risk="${item.symbol}">風險檢查</button>
@@ -1245,8 +1216,8 @@ function strategyLibraryPanel(state){
     {name:'動能策略',version:'輕量版 v1',type:'動能',status:'訊號運作中',tone:'live',desc:'24 小時動能＋流動性分級，負責目前市場雷達與訊號分類。'},
     {name:'趨勢策略',version:'EMA20 / 50',type:'趨勢',status:'可回測',tone:'ready',desc:'較慢的趨勢跟隨版本，現有歷史回測引擎可驗證。'},
     {name:'快速趨勢',version:'EMA10 / 30',type:'趨勢',status:'可回測',tone:'ready',desc:'反應較快的趨勢版本，用來和慢速版本進行比較。'},
-    {name:'ICT 結構策略',version:'規劃中',type:'結構',status:'規劃中',tone:'planned',desc:'BOS、CHoCH、Liquidity Sweep、OTE 等結構邏輯。'},
-    {name:'均值回歸',version:'規劃中',type:'均值回歸',status:'規劃中',tone:'planned',desc:'震盪市場用，後續驗證 RSI、VWAP deviation 等條件。'},
+    {name:'ICT 結構策略',version:'規劃中',type:'結構',status:'規劃中',tone:'planned',desc:'BOS、CHoCH、流動性掃蕩、OTE 等結構邏輯。'},
+    {name:'均值回歸',version:'規劃中',type:'均值回歸',status:'規劃中',tone:'planned',desc:'震盪市場用，後續驗證 RSI、VWAP 偏離 等條件。'},
     {name:'突破策略',version:'規劃中',type:'突破',status:'規劃中',tone:'planned',desc:'區間突破、成交量與波動擴張的方向性策略。'}
   ];
   return `<div class="rd-stack">
@@ -1300,7 +1271,7 @@ function strategyReviewPanel(state){
     const wr = Number(s.winRatePct);
     const pf = Number(s.profitFactor);
     const dd = Number(s.maxDrawdownPct);
-    if(Number.isFinite(wr) && wr < 45) notes.push('勝率低於 45%，需要檢查是否依靠高 R:R 才維持正期望值。');
+    if(Number.isFinite(wr) && wr < 45) notes.push('勝率低於 45%，需要檢查是否依靠高風報比 才維持正期望值。');
     if(Number.isFinite(pf) && pf < 1) notes.push('獲利因子低於 1，現有樣本的總獲利尚未覆蓋總虧損。');
     if(Number.isFinite(dd) && dd > 5) notes.push('最大回撤超過 5%，需要檢查部位風險與連續虧損集中度。');
     if(!notes.length) notes.push('目前樣本未觸發基礎警示，但仍需增加樣本並拆解 市場狀態、做多／做空與交易成本。');
@@ -1380,7 +1351,7 @@ function paperPositions(paper){
         <span><small>保證金</small><strong>${money(p.margin)}</strong></span>
         <span><small>名目價值</small><strong>${money(p.notional)}</strong></span>
       </div>
-      ${p.id ? `<button class="danger-btn full-width" data-paper-close="${p.id}" type="button">模擬平倉</button>` : ''}
+      ${p.id && paper.local ? `<button class="danger-btn full-width" data-paper-close="${p.id}" type="button">模擬平倉</button>` : ''}
     </article>`).join('')}</div>`;
 }
 
@@ -1396,11 +1367,11 @@ export function ordersPage(state) {
     <form id="paper-order-form" class="form-grid compact-form">
       <label>幣種<select name="symbol">${marketSymbolOptions(state)}</select></label>
       <label>方向<select name="side"><option value="LONG">做多</option><option value="SHORT">做空</option></select></label>
-      <label>槓桿<select name="leverage"><option value="5">5x</option><option value="8">8x</option><option value="10">10x</option></select></label>
+      <label>槓桿<select name="leverage"><option value="5">5 倍</option><option value="8">8 倍</option><option value="10">10 倍</option></select></label>
       <label>模擬保證金 USDT<input name="margin" type="number" min="1" step="1" value="100" /></label>
     </form>
-    <button class="primary-btn" data-paper-open type="button">建立模擬倉位</button>
-    <p class="guard-note">風險限制：總模擬保證金 ≤ 淨值 1.5%；不會送出任何真實訂單。</p>
+    <button class="primary-btn" data-paper-open type="button" ${!paper.local || state.market.status !== 'LIVE' ? 'disabled' : ''}>建立模擬倉位</button>
+    <p class="guard-note">${!paper.local ? '目前資料來源僅供查閱。' : state.market.status !== 'LIVE' ? '行情尚未更新，暫停建立模擬倉位。' : '本機模擬紀錄僅儲存於此瀏覽器。'}風險限制：總模擬保證金 ≤ 淨值 1.5%；不會送出任何真實訂單。</p>
     ${paperPositions(paper)}`, `${badge('僅模擬交易')} ${badge('真實下單已鎖定')}`)}</div>`;
 }
 
@@ -1444,7 +1415,7 @@ export function backtestPage(state) {
     <div class="backtest-summary">
       <div><span>樣本</span><strong>${input.samples || '—'} K</strong></div>
       <div><span>成本模型</span><strong>${input.costModel || '—'}</strong></div>
-      <div><span>時間週期</span><strong>${String(input.timeframe || '—').toUpperCase()}</strong></div>
+      <div><span>時間週期</span><strong>${displayTimeframe(input.timeframe)}</strong></div>
       <div><span>資料來源</span><strong>${displayMarketSource(input.dataSource)}</strong></div>
       <div><span>成交模型</span><strong>${displayExecutionModel(input.executionModel)}</strong></div>
     </div>
@@ -1500,7 +1471,7 @@ export function strategyLabPage(state) {
     <div class="backtest-summary">
       <div><span>樣本</span><strong>${input.samples || '—'} K</strong></div>
       <div><span>成本模型</span><strong>${input.costModel || '—'}</strong></div>
-      <div><span>時間週期</span><strong>${String(input.timeframe || '—').toUpperCase()}</strong></div>
+      <div><span>時間週期</span><strong>${displayTimeframe(input.timeframe)}</strong></div>
       <div><span>資料來源</span><strong>${displayMarketSource(input.dataSource)}</strong></div>
       <div><span>成交模型</span><strong>${displayExecutionModel(input.executionModel)}</strong></div>
     </div>
@@ -1535,8 +1506,8 @@ export function strategyLabPage(state) {
         ${tab('交易明細','trades',tabKey,'data-lab-tab')}
       </div>
       ${tabKey==='backtest' ? backtestHtml : tabKey==='trades' ? tradeRows(results) : forwardHtml}
-    `, `${badge('僅模擬交易')} ${badge('禁止真實下單')}`)}
+    `, `${badge('僅模擬交易')} ${badge('真實下單已鎖定')}`)}
   </div>`;
 }
 
-export const pages = Object.freeze({ home: homePage, strategies: strategiesPage, orders: ordersPage, lab: strategyLabPage, results: strategyLabPage, backtest: strategyLabPage });
+export const pages = Object.freeze({ home: homePage, strategies: strategiesPage, orders: ordersPage, lab: strategyLabPage, results: state => strategyLabPage({...state, ui:{...state.ui,labTab:'forward'}}), backtest: state => strategyLabPage({...state, ui:{...state.ui,labTab:'backtest'}}) });

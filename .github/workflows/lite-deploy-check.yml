@@ -24,14 +24,11 @@ jobs:
         run: npm test
 
       - name: Prepare deploy artifact
-        run: |
-          mkdir -p deploy-artifact
-          cp index.html styles.css netlify.toml package.json deploy-artifact/
-          cp -R src deploy-artifact/src
+        run: npm run build
       - name: Upload deploy artifact
         uses: actions/upload-artifact@v4
         with:
           name: foxyya-lite-static
-          path: deploy-artifact
+          path: dist
           if-no-files-found: error
           retention-days: 7

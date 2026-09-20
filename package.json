@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node ./tests/gate-a-smoke.mjs && node ./tests/backtest-timeframes.mjs && node ./tests/research-pipeline.mjs && node ./tests/truthfulness-regressions.mjs && node ./tests/architecture-boundaries.mjs && node ./tests/staging-server-smoke.mjs"
+    "build": "node ./scripts/build-static.mjs",
+    "test": "node ./tests/gate-a-smoke.mjs && node ./tests/backtest-timeframes.mjs && node ./tests/research-pipeline.mjs && node ./tests/truthfulness-regressions.mjs && node --test ./tests/ui-regressions.mjs ./tests/paper-flow.mjs && node ./tests/architecture-boundaries.mjs && node ./tests/staging-server-smoke.mjs"
   }
 }

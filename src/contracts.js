@@ -7,6 +7,7 @@ export function emptyStrategySnapshot() {
 export function emptyPaperSnapshot() {
   return {
     status: STATUS.EMPTY,
+    local: false,
     updatedAt: null,
     summary: {
       nav: 100000,
@@ -24,6 +25,7 @@ export function emptyPaperSnapshot() {
 export function emptyResultsSnapshot() {
   return {
     status: STATUS.EMPTY,
+    local: false,
     updatedAt: null,
     summary: {
       trades: 0,
@@ -31,7 +33,7 @@ export function emptyResultsSnapshot() {
       expectancyR: null,
       profitFactor: null,
       netPnl: 0,
-      maxDrawdownPct: 0
+      maxDrawdownPct: null
     },
     navCurve: [],
     recentTrades: []
@@ -41,6 +43,7 @@ export function emptyResultsSnapshot() {
 export function emptyBacktestSnapshot() {
   return {
     status: STATUS.EMPTY,
+    local: false,
     updatedAt: null,
     input: null,
     result: null,

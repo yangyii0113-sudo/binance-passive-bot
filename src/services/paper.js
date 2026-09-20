@@ -12,6 +12,7 @@ function normalizeCanonicalPaper(payload) {
   const rawSummary = payload.summary || {};
   return {
     status: STATUS.LIVE,
+    local: false,
     updatedAt: payload.updatedAt || payload.updated_at || new Date().toISOString(),
     summary: {
       nav: num(rawSummary.nav, 100000),
@@ -36,6 +37,7 @@ function normalizeRuntimePaper(payload) {
   const nav = num(book.equity, cash);
   return {
     status: STATUS.LIVE,
+    local: false,
     updatedAt: payload?.served_at ? new Date(payload.served_at).toISOString() : new Date().toISOString(),
     summary: {
       nav,

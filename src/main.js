@@ -37,7 +37,8 @@ function syncResearchHistory() {
   ) {
     const latest = history.runs[0];
     nextAgents.topFiveResearch = {
-      status: STATUS.LIVE,
+      status: STATUS.STALE,
+      restored: true,
       startedAt: latest.startedAt,
       updatedAt: latest.completedAt,
       progress: latest.rows.length,
@@ -55,18 +56,63 @@ function candidateBySymbol(symbol) {
   return (appState.candidates?.items || []).find(item => item.symbol === target) || null;
 }
 
+let renderedContext = null;
 function render() {
   const route = currentRoute();
+  const context = [route, appState.ui.strategyWorkspace, appState.ui.agentKey,
+    appState.ui.labTab, appState.ui.selectedSymbol].join(':');
+  const root = document.getElementById('app');
+  // Market updates must not reset a user's order/backtest inputs or collapse research details.
+  const controls = context === renderedContext
+    ? [...root.querySelectorAll('form [name]')].map(el => ({
+        form:el.form.id, name:el.name, value:el.value,
+        label:el.selectedOptions?.[0]?.textContent,
+        focused:el === document.activeElement,
+        start:el.selectionStart, end:el.selectionEnd
+      })) : [];
+  const openDetails = context === renderedContext
+    ? [...root.querySelectorAll('details[open]')].map(el => el.dataset.search || el.className) : [];
   const page = pages[route] || pages.home;
-  document.getElementById('app').innerHTML = page(appState);
+  root.innerHTML = page(appState);
+  renderedContext = context;
+  const findControl = saved => [...(document.getElementById(saved.form)?.elements || [])].find(el=>el.name===saved.name);
+  for (const saved of controls.filter(x=>x.name==='timeframe')) {
+    const el = findControl(saved);
+    if (el) { el.value = saved.value; syncBacktestRangeSelect(el); }
+  }
+  for (const saved of controls) {
+    const el = findControl(saved);
+    if (!el) continue;
+    if (el.tagName === 'SELECT' && ![...el.options].some(option=>option.value===saved.value)) {
+      if (saved.name !== 'symbol') continue;
+      const option = document.createElement('option');
+      option.value = saved.value;
+      option.textContent = saved.label || saved.value;
+      el.append(option);
+    }
+    el.value = saved.value;
+    if (saved.focused) {
+      el.focus({preventScroll:true});
+      if (saved.start != null && typeof el.setSelectionRange === 'function') el.setSelectionRange(saved.start,saved.end);
+    }
+  }
+  for (const el of root.querySelectorAll('details')) {
+    if (openDetails.includes(el.dataset.search || el.className)) el.open = true;
+  }
   markActiveNav(route, Boolean(pages[route]));
   const search = document.getElementById('global-search');
   if (search && search.value !== appState.ui.search) search.value = appState.ui.search;
+  applySearch(appState.ui.search);
+}
+
+function navigateTo(hash) {
+  if (location.hash === hash) render();
+  else location.hash = hash;
 }
 
 async function syncPaperAndResults() {
   const [paper, results] = await Promise.all([
-    loadPaperSnapshot({ marketRows: appState.market.rows }),
+    loadPaperSnapshot({ marketRows: paperMarketRows() }),
     loadResultsSnapshot({ allowLocal: true })
   ]);
   setStateSlice('paper', paper);
@@ -84,7 +130,7 @@ async function refreshMarket() {
 async function loadIndependentSnapshots() {
   const tasks = [
     ['strategy', () => loadStrategySnapshot()],
-    ['paper', () => loadPaperSnapshot({ marketRows: appState.market.rows })],
+    ['paper', () => loadPaperSnapshot({ marketRows: paperMarketRows() })],
     ['results', () => loadResultsSnapshot({ allowLocal: true })],
     ['backtest', () => loadBacktestSnapshot()]
   ];
@@ -154,6 +200,7 @@ async function handleTopFiveResearch(){
   setStateSlice('agents',{
     topFiveResearch:{
       status:STATUS.LOADING,
+      restored:false,
       startedAt,
       updatedAt:startedAt,
       progress:0,
@@ -316,7 +363,21 @@ function promoteResearchCandidate(symbol){
   syncCandidates();
 }
 
+function paperMarketRows() {
+  return [...(appState.market.universeRows || []), ...(appState.market.rows || [])];
+}
+function requireFreshPaperMarket() {
+  const age = Date.now() - Date.parse(appState.market.updatedAt);
+  if (!appState.paper.local) throw new Error('此持倉來源僅供查閱，請使用本機模擬模式');
+  if (appState.market.status !== STATUS.LIVE || !Number.isFinite(age) || age < 0 || age > MARKET_REFRESH_MS * 2) {
+    throw new Error('市場資料尚未更新或已過期，請待行情恢復後再操作模擬持倉');
+  }
+  return paperMarketRows();
+}
+let paperOpenPending = false;
 async function handlePaperOpen(form) {
+  if (paperOpenPending) return;
+  paperOpenPending = true;
   const data = new FormData(form);
   try {
     openLocalPaperPosition({
@@ -324,7 +385,7 @@ async function handlePaperOpen(form) {
       side: data.get('side'),
       leverage: Number(data.get('leverage')),
       margin: Number(data.get('margin')),
-      marketRows: appState.market.rows
+      marketRows: requireFreshPaperMarket()
     });
     appState.ui.message = '模擬倉位已建立（僅模擬交易）';
     await syncPaperAndResults();
@@ -332,6 +393,8 @@ async function handlePaperOpen(form) {
   } catch (error) {
     appState.ui.message = error?.message || '模擬下單失敗';
     render();
+  } finally {
+    paperOpenPending = false;
   }
 }
 
@@ -413,7 +476,7 @@ function initEvents() {
     const labTab = event.target.closest?.('[data-lab-tab]');
     if (labTab) {
       appState.ui.labTab = labTab.dataset.labTab;
-      render();
+      navigateTo('#/lab');
       return;
     }
     const sort = event.target.closest?.('[data-market-sort]');
@@ -597,7 +660,7 @@ function initEvents() {
       appState.ui.validatorTargetSymbol = symbol;
       appState.ui.labTab = 'backtest';
       appState.ui.message = `已帶入 ${symbol}；完成回測後結果會回寫候選池。`;
-      location.hash = '#/lab';
+      navigateTo('#/lab');
       return;
     }
     const strongCoin = event.target.closest?.('[data-strong-symbol]');
@@ -614,15 +677,16 @@ function initEvents() {
     if (usePaper) {
       appState.ui.selectedSymbol = usePaper.dataset.usePaper;
       appState.ui.message = `已帶入 ${appState.ui.selectedSymbol}，請設定方向、槓桿與模擬保證金。`;
-      location.hash = '#/orders';
+      navigateTo('#/orders');
       return;
     }
     const useBacktest = event.target.closest?.('[data-use-backtest]');
     if (useBacktest) {
       appState.ui.selectedSymbol = useBacktest.dataset.useBacktest;
+      appState.ui.validatorTargetSymbol = null;
       appState.ui.labTab = 'backtest';
       appState.ui.message = `已帶入 ${appState.ui.selectedSymbol}，可直接設定期間與策略開始回測。`;
-      location.hash = '#/lab';
+      navigateTo('#/lab');
       return;
     }
     const focus = event.target.closest?.('[data-focus-analysis]');
@@ -647,7 +711,7 @@ function initEvents() {
     }
     const goStrategies = event.target.closest?.('[data-go-strategies]');
     if (goStrategies) {
-      location.hash = '#/strategies';
+      navigateTo('#/strategies');
       return;
     }
     const open = event.target.closest?.('[data-paper-open]');
@@ -659,7 +723,7 @@ function initEvents() {
     const close = event.target.closest?.('[data-paper-close]');
     if (close) {
       try {
-        closeLocalPaperPosition(close.dataset.paperClose, appState.market.rows);
+        closeLocalPaperPosition(close.dataset.paperClose, requireFreshPaperMarket());
         appState.ui.message = '模擬持倉已平倉，交易結果已更新';
         await syncPaperAndResults();
       } catch (error) {
@@ -700,5 +764,5 @@ function init() {
   setInterval(refreshMarket, MARKET_REFRESH_MS);
 }
 
-window.addEventListener('hashchange', () => { render(); applySearch(appState.ui.search); });
+window.addEventListener('hashchange', () => { render(); window.scrollTo({top:0, behavior:'instant'}); });
 window.addEventListener('DOMContentLoaded', init);

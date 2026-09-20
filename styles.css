@@ -777,7 +777,7 @@ select:focus,.form-grid input:focus{border-color:rgba(241,184,75,.35)}
   box-shadow:0 0 0 1px rgba(241,184,75,.04),0 14px 34px rgba(0,0,0,.28),0 0 32px rgba(241,184,75,.055);
 }
 .high-signal-card::before{
-  content:"HIGH SIGNAL";
+  content:"高強度訊號";
   display:block;
   color:#c9983d;
   font-size:.52rem;
@@ -2069,6 +2069,46 @@ select:focus,.form-grid input:focus{border-color:rgba(241,184,75,.35)}
   opacity:.48;
   cursor:not-allowed;
   filter:saturate(.55);
+}
+
+/* Keep controls readable and reachable on narrow screens and above the fixed navigation. */
+html { scroll-padding-bottom:calc(110px + env(safe-area-inset-bottom, 0px)); }
+.app-shell { padding-bottom:calc(130px + env(safe-area-inset-bottom, 0px)); }
+button, a, input, select, summary { scroll-margin-block:16px 110px; }
+.section-head { flex-wrap:wrap; }
+.section-meta { flex-wrap:wrap; min-width:0; }
+@media(max-width:700px){
+  .searchbar input { font-size:16px; min-width:0; }
+  button, .strategy-workspace-btn, .timeframe-btn, .agent-tab,
+  .agent-filter-btn, .candidate-add-btn, .market-scout-results .agent-result-row .agent-quick-add,
+  .research-detail-footer .candidate-add-btn, .research-run-btn { min-height:44px; }
+  .section-link, .text-btn { padding-block:10px; }
+  .agent-tabs { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); overflow:visible; }
+  .agent-tab { min-width:0; white-space:normal; }
+  .agent-tab strong, .agent-filter-btn, .strategy-workspace-btn { font-size:.7rem; }
+  .agent-filter-tabs { display:flex; flex-wrap:wrap; overflow:visible; }
+  .agent-filter-btn { flex:1 1 70px; min-width:0; }
+  .agent-result-chips { flex-wrap:wrap; overflow:visible; }
+  .research-chip { min-width:0; white-space:normal; overflow-wrap:anywhere; font-size:.7rem; line-height:1.4; }
+  .agent-result-title { flex-wrap:wrap; }
+  .agent-result-title>span, .agent-market-move, .agent-score-block small,
+  .research-score small, .research-cockpit-head small, .research-detail-footer>span,
+  .research-status-grid span, .research-rule-note p, .research-rule-note>summary { font-size:.7rem; line-height:1.5; }
+  .agent-research-summary .decision-badge { font-size:.7rem; }
+  .research-rule-note>summary { min-height:44px; padding-block:10px; }
+  .market-scout-results .agent-result-row { grid-template-columns:20px 28px minmax(0,1fr) 38px; }
+  .agent-score-block { min-width:0; }
+  .agent-research-summary { grid-template-columns:20px 28px minmax(0,1fr) 34px 12px; gap:5px; }
+  .agent-research-summary .coin-logo.large { width:28px; height:28px; }
+  .research-cockpit-head { flex-wrap:wrap; }
+  .research-run-btn { width:100%; }
+  .agent-research-evidence strong, .agent-research-evidence p,
+  .candidate-reason, .flash-message { overflow-wrap:anywhere; }
+}
+@media(max-width:360px){
+  .agent-tabs { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .market-scout-stats { grid-template-columns:repeat(2,minmax(0,1fr)); overflow:visible; }
+  .agent-research-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); }
 }
 .asset-switch-disabled:hover{
   background:transparent;

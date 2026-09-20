@@ -18,6 +18,7 @@ function normalizeCanonicalResults(payload) {
   const rawSummary = payload.summary || {};
   return {
     status: STATUS.LIVE,
+    local: false,
     updatedAt: payload.updatedAt || payload.updated_at || new Date().toISOString(),
     summary: {
       trades: num(rawSummary.trades, 0),
@@ -47,6 +48,7 @@ function normalizeRuntimeResults(payload) {
   const wins = netValues.filter((value) => value > 0).length;
   return {
     status: STATUS.LIVE,
+    local: false,
     updatedAt: payload?.served_at ? new Date(payload.served_at).toISOString() : new Date().toISOString(),
     summary: {
       trades: closed.length,
