@@ -8,6 +8,7 @@ import { loadBacktestSnapshot } from './services/backtest.js';
 import { openLocalPaperPosition, closeLocalPaperPosition } from './local_paper.js';
 import { runLiteBacktest, BACKTEST_RANGE_OPTIONS, normalizeTimeframe } from './local_backtest.js';
 import { loadCandidatePool, upsertCandidate, removeCandidate, updateCandidate } from './candidate_pool.js';
+import { loadResearchHistory, appendResearchRun } from './research_history.js';
 import { analyzeMultiTimeframe } from './multi_timeframe.js';
 import { evaluatePortfolioRisk } from './risk_gate.js';
 import { evaluateStrategyGuard } from './strategy_guard.js';
@@ -23,6 +24,30 @@ function syncCandidates() {
     updatedAt: book.updatedAt,
     items: book.items
   });
+}
+
+function syncResearchHistory() {
+  const history = loadResearchHistory();
+  const current = appState.agents?.topFiveResearch;
+  const nextAgents = { researchHistory: history };
+
+  if (
+    current?.status === STATUS.EMPTY &&
+    history.runs?.length
+  ) {
+    const latest = history.runs[0];
+    nextAgents.topFiveResearch = {
+      status: STATUS.LIVE,
+      startedAt: latest.startedAt,
+      updatedAt: latest.completedAt,
+      progress: latest.rows.length,
+      total: latest.total || latest.rows.length,
+      rows: latest.rows,
+      error: null
+    };
+  }
+
+  setStateSlice('agents', nextAgents);
 }
 
 function candidateBySymbol(symbol) {
@@ -246,6 +271,14 @@ async function handleTopFiveResearch(){
       error:null
     }
   });
+  appendResearchRun({
+    id:completedAt,
+    startedAt,
+    completedAt,
+    total:rows.length,
+    rows
+  });
+  syncResearchHistory();
   const validated = rows.filter(item=>item.decision?.label === 'VALIDATED').length;
   appState.ui.message = `動態前五名研究完成：${rows.length} 組，已驗證 ${validated} 組`;
   render();
@@ -659,6 +692,7 @@ function init() {
   const cached = cachedMarketSnapshot();
   if (cached) setMarketState(cached);
   syncCandidates();
+  syncResearchHistory();
   initEvents();
   render();
   refreshMarket();
