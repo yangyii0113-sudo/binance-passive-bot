@@ -78,7 +78,10 @@ a claim of live freshness. Method version: `tw-technical.v1`.
 Local acceptance on 2026-09-20: 142 Taiwan tests, 286 complete Python tests,
 16 existing runtime Node tests passed. `tools/tw_technical_smoke.py --end-date
 2026-09-18` passed using 120 official sessions for each of TWSE 2330 and TPEx 6488.
-Publication and GitHub workflow acceptance remain pending; see the P3.3 handoff.
+Published implementation: `bceb6e70ee27087a8e7d21dadb50e8d00e0707ee`.
+Both [Research Architecture Gate](https://github.com/yangyii0113-sudo/binance-passive-bot/actions/runs/35487120948)
+and [Official Data Live Smoke](https://github.com/yangyii0113-sudo/binance-passive-bot/actions/runs/35487120957)
+passed for that exact commit. P3.3 is COMPLETE; see the P3.3 handoff.
 
 ## Formula references
 

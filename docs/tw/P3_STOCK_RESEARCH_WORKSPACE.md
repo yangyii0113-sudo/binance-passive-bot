@@ -43,11 +43,11 @@ Gate:
 - [x] official TWSE / TPEx 20-session live smoke green
 - [x] live windows end exactly at 2026-09-18
 
-## P3.3 Technical Research — ACTIVE
+## P3.3 Technical Research — COMPLETE
 
-Implementation and local acceptance completed on 2026-09-20. Remote publication
-and GitHub workflow acceptance are pending, so the manifest remains ACTIVE and
-P3.4 remains LOCKED. Do not promote using an earlier commit's green CI.
+Implementation, local acceptance and both GitHub gates completed on 2026-09-20.
+Verified implementation: `bceb6e70ee27087a8e7d21dadb50e8d00e0707ee`.
+Only P3.4 is now ACTIVE; P3.5 and later slices remain LOCKED.
 
 Implemented:
 - canonical HistoricalWindow-only daily / closed-week trend
@@ -64,16 +64,16 @@ Gate:
 - [x] incomplete / missing weeks, future bars, missing / invalid fields fail closed
 - [x] independent code review findings reproduced and fixed
 - [x] Production Execution V2 unchanged
-- [ ] publish this implementation and verify GitHub Research Architecture Gate
-- [ ] verify GitHub Official Data Live Smoke for the same implementation
-- [ ] promote P3.3 COMPLETE and unlock only P3.4 after those gates
+- [x] publish this implementation and verify [GitHub Research Architecture Gate](https://github.com/yangyii0113-sudo/binance-passive-bot/actions/runs/35487120948)
+- [x] verify [GitHub Official Data Live Smoke](https://github.com/yangyii0113-sudo/binance-passive-bot/actions/runs/35487120957) for the same implementation
+- [x] promote P3.3 COMPLETE and unlock only P3.4 after those gates
 
 Method: [P3_3_TECHNICAL_RESEARCH.md](P3_3_TECHNICAL_RESEARCH.md).
 Continuation: [HANDOFF_2026-09-20_P3.3.md](HANDOFF_2026-09-20_P3.3.md).
 
-## P3.4 Fundamentals & Events — LOCKED
+## P3.4 Fundamentals & Events — ACTIVE
 
-Future:
+Next work:
 - monthly revenue
 - financial events
 - material information
