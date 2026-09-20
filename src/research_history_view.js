@@ -1,5 +1,6 @@
 import { escapeHtml, displayDate, finiteNumber } from './ui.js';
 import { displayStatus, displayStrategyMatch, displayTimeframe, displayRange } from './display.js';
+import { backtestAmountFields, backtestAmountNote } from './backtest_amounts.js';
 
 const number = value => finiteNumber(value)?.toLocaleString('zh-TW',{maximumFractionDigits:2}) ?? '—';
 const percent = value => number(value) === '—' ? '—' : `${number(value)}%`;
@@ -31,7 +32,9 @@ export function researchHistoryPanel(history, selectedId) {
           ${field('交易筆數',number(result.trades))}${field('勝率',percent(result.winRatePct))}
           ${field('獲利因子',number(result.profitFactor))}${field('淨報酬率',percent(result.netReturnPct))}
           ${field('最大回撤',percent(result.maxDrawdownPct))}
+          ${backtestAmountFields(item.backtest).map(([label,value])=>field(label,value)).join('')}
         </dl>
+        ${item.backtest ? `<p class="guard-note">${escapeHtml(backtestAmountNote(item.backtest))}</p>` : ''}
       </article>`;
     }).join('')}</div>
   </details>`;

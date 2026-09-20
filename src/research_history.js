@@ -1,4 +1,5 @@
 import { displayStatus, displayStrategyMatch, displayTimeframe, displayRange } from './display.js';
+import { backtestAmounts } from './backtest_amounts.js';
 
 const KEY = 'foxyya.research.history.v1';
 const MAX_RUNS = 20;
@@ -109,11 +110,12 @@ export function researchExport(history, {format = 'json', id} = {}) {
   if (format !== 'csv') throw new Error('不支援的匯出格式');
   const run = runs.find(item => item.id === id);
   if (!run) throw new Error('找不到指定的研究紀錄');
-  const table = [['完成時間','幣種','研究評分','歷史結論（非即時）','策略匹配','回測週期','回測期間','交易筆數','勝率（%）','獲利因子','淨報酬率（%）','最大回撤（%）','曝險狀態','資料來源']];
+  const table = [['完成時間','幣種','研究評分','歷史結論（非即時）','策略匹配','回測週期','回測期間','交易筆數','勝率（%）','獲利因子','淨報酬率（%）','最大回撤（%）','起始資金','淨損益金額','期末資金','計價幣別','計算版本','曝險狀態','資料來源']];
   for (const item of run.rows || []) {
     const result = item.backtest?.result || {};
     const input = item.backtest?.input || {};
-    table.push([run.completedAt,item.symbol,item.researchScore,displayStatus(item.decision?.label || item.status),displayStrategyMatch(item.strategyMatch),displayTimeframe(input.timeframe),displayRange(input.range),result.trades,result.winRatePct,result.profitFactor,result.netReturnPct,result.maxDrawdownPct,displayStatus(item.risk?.status),input.dataSource]);
+    const amounts = backtestAmounts(item.backtest);
+    table.push([run.completedAt,item.symbol,item.researchScore,displayStatus(item.decision?.label || item.status),displayStrategyMatch(item.strategyMatch),displayTimeframe(input.timeframe),displayRange(input.range),result.trades,result.winRatePct,result.profitFactor,result.netReturnPct,result.maxDrawdownPct,amounts.initialCapital,amounts.netPnl,amounts.finalEquity,amounts.currency,input.calculationVersion || '未記錄；請重新驗證',displayStatus(item.risk?.status),input.dataSource]);
   }
   return {filename:'foxyya-research-selected.csv',mime:'text/csv;charset=utf-8',text:'\uFEFF' + table.map(row=>row.map(csvCell).join(',')).join('\r\n')};
 }

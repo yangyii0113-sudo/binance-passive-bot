@@ -3,6 +3,7 @@ import { badge, metric, section } from './ui.js';
 import { evaluateStrategyGuard } from './strategy_guard.js';
 import { researchHistoryPanel } from './research_history_view.js';
 import { equityChart } from './equity_chart.js';
+import { BACKTEST_VERSION, backtestAmountFields, backtestAmountNote } from './backtest_amounts.js';
 
 import { displayStatus, displayText, displayStrategyMatch, displayTimeframe, displayRange } from './display.js';
 
@@ -246,7 +247,7 @@ function derivedStrategies(state){
       tp2: price ? price * (side === 'LONG' ? 1.035 : 0.965) : null,
       rr: 1.67,
       confidence: status === 'HIGH' || status === 'TRIGGERED' ? '高' : status === 'READY' || status === 'SETUP' ? '中' : '低',
-      note:'輕量版動能訊號依 24 小時動能與流動性分級；高強度代表條件共振較高，不等同保證獲利或自動買進。'
+      note:'輕量版訊號依 24 小時動能與流動性分級。止盈／停損採固定百分比參考：停損距離 1.2%、第一止盈 2%、第二止盈 3.5%；多單向上止盈、空單向下止盈。未設定分批比例、未自動執行，亦未納入 EMA 回測。'
     };
   });
 }
@@ -706,6 +707,11 @@ function strategyWorkspaceTabs(state){
 }
 
 function validatorVerdict(validator){
+  const input = validator?.input;
+  const localBacktest = input?.executionModel === 'Fully Closed Signal → Next Bar Open' && /^Binance /.test(input?.dataSource || '');
+  if(localBacktest && input.calculationVersion !== BACKTEST_VERSION){
+    return {label:'待重新驗證',tone:'caution',reason:'回測計算已更新，請重新驗證'};
+  }
   return evaluateStrategyGuard(validator?.result);
 }
 function riskTone(status){
@@ -840,6 +846,7 @@ function topFiveResearchPanel(state){
         <span><small>平均每筆</small><strong>${pct(result.avgTradePct)}</strong></span>
         <span><small>淨報酬率</small><strong class="${changeClass}">${pct(result.netReturnPct)}</strong></span>
         <span><small>最大回撤</small><strong>${pct(result.maxDrawdownPct)}</strong></span>
+        ${backtestAmountFields(item.backtest).map(([label,value])=>`<span><small>${label}</small><strong>${value}</strong></span>`).join('')}
       </div>`
       : `<div class="candidate-empty-line">${displayText(spec.supported === false ? spec.reason : item.error || '尚未完成基準回測')}</div>`;
 
@@ -872,6 +879,7 @@ function topFiveResearchPanel(state){
           <div><span>資料來源</span><strong>${displayMarketSource(input.dataSource)}</strong></div>
         </div>
         ${metrics}
+        ${item.backtest ? `<p class="guard-note">${backtestAmountNote(item.backtest)}</p>` : ''}
         <div class="research-detail-footer">
           <span>${displayText(guard.reason || spec.reason || '固定基準驗證')}</span>
           ${item.status === 'DONE' || item.status === 'ERROR' ? `
@@ -911,7 +919,9 @@ function topFiveResearchPanel(state){
     <div class="agent-research-list">${resultRows}</div>
     <details class="research-rule-note">
       <summary>查看固定驗證規則</summary>
-      <p>趨勢策略：EMA20/50 · 4 小時 · 2 年；動能／突破觀察：EMA10/30 · 1 小時 · 1 年；區間策略尚未實作均值回歸基準，因此只研究、不偽裝成已驗證策略。</p>
+      <p>先檢查七個時間週期的技術方向，再依策略類型採固定基準：趨勢為 EMA20/50 · 4 小時 · 2 年；動能／突破（包含趨勢／動能）為 EMA10/30 · 1 小時 · 1 年。若至少五個週期同向，改採趨勢基準。期間是預先設定，不是逐幣挑選最高報酬期間；不同期間的累計報酬不能直接比較。</p>
+      <p>策略通過條件：至少 50 筆交易、獲利因子 ≥ 1.2、平均每筆與淨報酬為正、最大回撤 ≤ 35%，且通過樣本層級檢查。少於 20 筆屬樣本不足。區間策略的均值回歸基準尚未實作，只列為研究。</p>
+      <p>曝險阻擋優先於策略通過；本機以保證金占淨值 1.5% 為上限代理指標。最終「已驗證」只表示通過目前規則，未代表樣本外驗證或未來獲利。此 EMA 回測於方向翻轉後的下一根開盤換向，期末平倉，不使用訊號卡的第一／第二止盈。</p>
     </details>
   </section>`;
 }
@@ -1412,6 +1422,7 @@ export function backtestPage(state) {
       ${metric('交易筆數',result.trades)}${metric('勝率',pct(result.winRatePct))}
       ${metric('獲利因子',result.profitFactor == null ? '—' : Number(result.profitFactor).toFixed(2))}
       ${metric('淨報酬率',pct(result.netReturnPct))}${metric('最大回撤',pct(result.maxDrawdownPct))}
+      ${backtestAmountFields(b).map(([label,value])=>metric(label,value)).join('')}
       ${metric('樣本數',input.samples || '—')}${metric('驗證層級',displayStatus(result.validation?.label || '—'))}
       ${metric('平均每筆',result.avgTradePct == null ? '—' : pct(result.avgTradePct))}
     </div>
@@ -1422,6 +1433,7 @@ export function backtestPage(state) {
       <div><span>資料來源</span><strong>${displayMarketSource(input.dataSource)}</strong></div>
       <div><span>成交模型</span><strong>${displayExecutionModel(input.executionModel)}</strong></div>
     </div>
+    <p class="guard-note">${backtestAmountNote(b)}</p>
     ${equityChart(b.equityCurve)}`
     : `<div class="empty-state"><strong>${b.status==='LOADING'?'歷史回測執行中…':'尚未執行歷史回測'}</strong><span>使用 Binance U 本位永續合約歷史 K 線；模擬交易與歷史回測完全分離。</span></div>`;
   return `<div class="page-stack">${messageBar(state)}${section('策略測試', `
@@ -1469,6 +1481,7 @@ export function strategyLabPage(state) {
       ${metric('交易筆數',result.trades)}${metric('勝率',pct(result.winRatePct))}
       ${metric('獲利因子',result.profitFactor == null ? '—' : Number(result.profitFactor).toFixed(2))}
       ${metric('淨報酬率',pct(result.netReturnPct))}${metric('最大回撤',pct(result.maxDrawdownPct))}
+      ${backtestAmountFields(b).map(([label,value])=>metric(label,value)).join('')}
       ${metric('樣本數',input.samples || '—')}${metric('驗證層級',displayStatus(result.validation?.label || '—'))}
       ${metric('平均每筆',result.avgTradePct == null ? '—' : pct(result.avgTradePct))}
     </div>
@@ -1479,6 +1492,7 @@ export function strategyLabPage(state) {
       <div><span>資料來源</span><strong>${displayMarketSource(input.dataSource)}</strong></div>
       <div><span>成交模型</span><strong>${displayExecutionModel(input.executionModel)}</strong></div>
     </div>
+    <p class="guard-note">${backtestAmountNote(b)}</p>
     ${equityChart(b.equityCurve)}
   ` : `<div class="empty-state"><strong>${b.status==='LOADING'?'歷史回測執行中…':'尚未執行歷史回測'}</strong><span>使用 Binance U 本位永續合約歷史 K 線；模擬交易與歷史回測完全分離。</span></div>`;
 

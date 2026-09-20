@@ -1,4 +1,5 @@
 import { STATUS } from './status.js';
+import { BACKTEST_CAPITAL, BACKTEST_VERSION } from './backtest_amounts.js';
 
 const FUTURES_BASE = 'https://fapi.binance.com/fapi/v1/klines';
 const SPOT_PUBLIC_BASE = 'https://data-api.binance.vision/api/v3/klines';
@@ -132,7 +133,7 @@ function simulate(candles, strategy){
   let peak = 1;
   let maxDd = 0;
   const trades = [];
-  const curve = [{time:candles[0].time,balance:1000}];
+  const curve = [{time:candles[0].time,balance:BACKTEST_CAPITAL}];
   for(let i=1;i<candles.length;i++){
     const signalIndex = i - 1;
     if(fast[signalIndex] == null || slow[signalIndex] == null) continue;
@@ -146,26 +147,27 @@ function simulate(candles, strategy){
     }
     if(nextSide !== side){
       const exit = fill;
-      const raw = side === 1 ? exit / entry - 1 : entry / exit - 1;
-      const ret = raw - COST_PER_TRADE;
-      equity *= Math.max(0.01,1 + ret);
+      const raw = side * (exit - entry) / entry;
+      const ret = Math.max(-1,raw - COST_PER_TRADE);
+      equity *= 1 + ret;
       trades.push({entry,exit,side:side===1?'LONG':'SHORT',returnPct:ret*100,time:candles[i].time});
       peak = Math.max(peak,equity);
       maxDd = Math.max(maxDd,(peak-equity)/peak);
-      curve.push({time:candles[i].time,balance:1000*equity});
+      curve.push({time:candles[i].time,balance:BACKTEST_CAPITAL*equity});
+      if (equity === 0) { side = 0; entry = null; break; }
       side = nextSide;
       entry = fill;
     }
   }
   if(side !== 0 && entry){
     const exit = candles[candles.length-1].close;
-    const raw = side === 1 ? exit / entry - 1 : entry / exit - 1;
-    const ret = raw - COST_PER_TRADE;
-    equity *= Math.max(0.01,1 + ret);
+    const raw = side * (exit - entry) / entry;
+    const ret = Math.max(-1,raw - COST_PER_TRADE);
+    equity *= 1 + ret;
     trades.push({entry,exit,side:side===1?'LONG':'SHORT',returnPct:ret*100,time:candles[candles.length-1].time});
     peak = Math.max(peak,equity);
     maxDd = Math.max(maxDd,(peak-equity)/peak);
-    curve.push({time:candles[candles.length-1].time,balance:1000*equity});
+    curve.push({time:candles[candles.length-1].time,balance:BACKTEST_CAPITAL*equity});
   }
   const positives = trades.filter(t=>t.returnPct>0).map(t=>t.returnPct);
   const negatives = trades.filter(t=>t.returnPct<0).map(t=>t.returnPct);
@@ -179,6 +181,9 @@ function simulate(candles, strategy){
     avgTradePct,
     profitFactor: grossLoss > 0 ? grossWin/grossLoss : null,
     netReturnPct: (equity-1)*100,
+    netPnl: BACKTEST_CAPITAL*(equity-1),
+    finalEquity: BACKTEST_CAPITAL*equity,
+    capitalExhausted: equity === 0,
     maxDrawdownPct: maxDd*100,
     tradesList: trades,
     equityCurve: curve
@@ -195,7 +200,7 @@ export async function runLiteBacktest({symbol='BTCUSDT',range='90D',strategy='A'
     status: STATUS.LIVE,
     updatedAt: new Date().toISOString(),
     local: true,
-    input:{symbol,range:resolved.range,strategy,timeframe:interval,samples:candles.length,dataSource:fetched.source,costModel:'單次來回成本 0.08%',executionModel:'Fully Closed Signal → Next Bar Open'},
+    input:{symbol,range:resolved.range,strategy,timeframe:interval,samples:candles.length,dataSource:fetched.source,costModel:'單次來回成本 0.08%',executionModel:'Fully Closed Signal → Next Bar Open',initialCapital:BACKTEST_CAPITAL,currency:'USDT',calculationVersion:BACKTEST_VERSION},
     result:{
       trades:result.trades,
       winRatePct:result.winRatePct,
@@ -203,6 +208,9 @@ export async function runLiteBacktest({symbol='BTCUSDT',range='90D',strategy='A'
       avgTradePct:result.avgTradePct,
       profitFactor:result.profitFactor,
       netReturnPct:result.netReturnPct,
+      netPnl:result.netPnl,
+      finalEquity:result.finalEquity,
+      capitalExhausted:result.capitalExhausted,
       maxDrawdownPct:result.maxDrawdownPct,
       validation
     },
