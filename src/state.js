@@ -45,6 +45,10 @@ export const appState = {
       total: 0,
       rows: [],
       error: null
+    },
+    researchHistory: {
+      updatedAt: null,
+      runs: []
     }
   },
   ui: {
