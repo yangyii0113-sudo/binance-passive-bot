@@ -1,3 +1,5 @@
+import { displayStatus, displayStrategyMatch, displayTimeframe, displayRange } from './display.js';
+
 const KEY = 'foxyya.research.history.v1';
 const MAX_RUNS = 20;
 
@@ -86,4 +88,32 @@ export function clearResearchHistory(){
 
 export function latestResearchRun(){
   return loadResearchHistory().runs[0] || null;
+}
+
+function csvCell(value) {
+  let text = value == null ? '' : String(value);
+  // Text that spreadsheets interpret as a formula must stay literal.
+  if (typeof value === 'string' && /^[\s]*[=+\-@]|^[\t\r\n]/.test(text)) text = `'${text}`;
+  return `"${text.replaceAll('"','""')}"`;
+}
+
+export function researchExport(history, {format = 'json', id} = {}) {
+  const runs = Array.isArray(history?.runs) ? history.runs.slice(0, MAX_RUNS) : [];
+  if (!runs.length) throw new Error('尚無研究歷史可匯出');
+  if (format === 'json') {
+    return {
+      filename:'foxyya-research-history.json', mime:'application/json;charset=utf-8',
+      text:JSON.stringify({schema:'foxyya-research-export/1',exportedAt:now(),source:'browser-local',historical:true,paperOnly:true,realOrderLocked:true,runs},null,2)
+    };
+  }
+  if (format !== 'csv') throw new Error('不支援的匯出格式');
+  const run = runs.find(item => item.id === id);
+  if (!run) throw new Error('找不到指定的研究紀錄');
+  const table = [['完成時間','幣種','研究評分','歷史結論（非即時）','策略匹配','回測週期','回測期間','交易筆數','勝率（%）','獲利因子','淨報酬率（%）','最大回撤（%）','曝險狀態','資料來源']];
+  for (const item of run.rows || []) {
+    const result = item.backtest?.result || {};
+    const input = item.backtest?.input || {};
+    table.push([run.completedAt,item.symbol,item.researchScore,displayStatus(item.decision?.label || item.status),displayStrategyMatch(item.strategyMatch),displayTimeframe(input.timeframe),displayRange(input.range),result.trades,result.winRatePct,result.profitFactor,result.netReturnPct,result.maxDrawdownPct,displayStatus(item.risk?.status),input.dataSource]);
+  }
+  return {filename:'foxyya-research-selected.csv',mime:'text/csv;charset=utf-8',text:'\uFEFF' + table.map(row=>row.map(csvCell).join(',')).join('\r\n')};
 }

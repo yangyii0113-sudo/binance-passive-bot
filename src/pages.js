@@ -1,6 +1,8 @@
 import { mock } from './mock.js';
 import { badge, metric, section } from './ui.js';
 import { evaluateStrategyGuard } from './strategy_guard.js';
+import { researchHistoryPanel } from './research_history_view.js';
+import { equityChart } from './equity_chart.js';
 
 import { displayStatus, displayText, displayStrategyMatch, displayTimeframe, displayRange } from './display.js';
 
@@ -1003,7 +1005,7 @@ function marketScoutPanel(state){
     </div>
     <div class="agent-intro agent-intro-compact"><strong>全市場掃描</strong><span>先找可交易市場，再驗證 技術面／策略優勢／風險。前五名是研究順位，不是買進順位。</span></div>
     <div class="agent-results market-scout-results">${cards}</div>
-    ${filter === 'strong' ? topFiveResearchPanel(state) : ''}
+    ${filter === 'strong' ? topFiveResearchPanel(state) + researchHistoryPanel(state.agents?.researchHistory, state.ui?.researchHistoryId) : ''}
   </div>`;
 }
 function technicalAgentPanel(state){
@@ -1397,6 +1399,7 @@ export function resultsPage(state) {
       ${metric('獲利因子', s.profitFactor == null ? '—' : Number(s.profitFactor).toFixed(2))}
       ${metric('淨損益', money(s.netPnl))}${metric('最大回撤', pct(s.maxDrawdownPct))}
     </div>
+    ${equityChart(results.navCurve,{kind:'paper',local:results.local})}
     ${tradeRows(results)}`, badge(results.local ? '本機模擬交易' : '模擬交易'))}</div>`;
 }
 
@@ -1419,7 +1422,7 @@ export function backtestPage(state) {
       <div><span>資料來源</span><strong>${displayMarketSource(input.dataSource)}</strong></div>
       <div><span>成交模型</span><strong>${displayExecutionModel(input.executionModel)}</strong></div>
     </div>
-    <div class="chart-placeholder"><span>權益曲線</span><strong>${b.equityCurve?.length || 0} 個權益節點</strong></div>`
+    ${equityChart(b.equityCurve)}`
     : `<div class="empty-state"><strong>${b.status==='LOADING'?'歷史回測執行中…':'尚未執行歷史回測'}</strong><span>使用 Binance U 本位永續合約歷史 K 線；模擬交易與歷史回測完全分離。</span></div>`;
   return `<div class="page-stack">${messageBar(state)}${section('策略測試', `
     <form id="backtest-form" class="form-grid">
@@ -1457,6 +1460,7 @@ export function strategyLabPage(state) {
       ${metric('獲利因子', s.profitFactor == null ? '—' : Number(s.profitFactor).toFixed(2))}
       ${metric('淨損益', money(s.netPnl))}${metric('最大回撤', pct(s.maxDrawdownPct))}
     </div>
+    ${equityChart(results.navCurve,{kind:'paper',local:results.local})}
     ${tradeRows(results)}
   `;
 
@@ -1475,7 +1479,7 @@ export function strategyLabPage(state) {
       <div><span>資料來源</span><strong>${displayMarketSource(input.dataSource)}</strong></div>
       <div><span>成交模型</span><strong>${displayExecutionModel(input.executionModel)}</strong></div>
     </div>
-    <div class="chart-placeholder"><span>權益曲線</span><strong>${b.equityCurve?.length || 0} 個權益節點</strong></div>
+    ${equityChart(b.equityCurve)}
   ` : `<div class="empty-state"><strong>${b.status==='LOADING'?'歷史回測執行中…':'尚未執行歷史回測'}</strong><span>使用 Binance U 本位永續合約歷史 K 線；模擬交易與歷史回測完全分離。</span></div>`;
 
   const backtestHtml = `

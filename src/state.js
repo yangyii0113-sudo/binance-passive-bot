@@ -67,6 +67,7 @@ export const appState = {
     selectedStrongSymbol: null,
     selectedSymbol: null,
     validatorTargetSymbol: null,
+    researchHistoryId: null,
     message: ''
   }
 };

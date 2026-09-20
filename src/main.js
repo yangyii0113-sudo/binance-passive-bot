@@ -8,7 +8,7 @@ import { loadBacktestSnapshot } from './services/backtest.js';
 import { openLocalPaperPosition, closeLocalPaperPosition } from './local_paper.js';
 import { runLiteBacktest, BACKTEST_RANGE_OPTIONS, normalizeTimeframe } from './local_backtest.js';
 import { loadCandidatePool, upsertCandidate, removeCandidate, updateCandidate } from './candidate_pool.js';
-import { loadResearchHistory, appendResearchRun } from './research_history.js';
+import { loadResearchHistory, appendResearchRun, researchExport } from './research_history.js';
 import { analyzeMultiTimeframe } from './multi_timeframe.js';
 import { evaluatePortfolioRisk } from './risk_gate.js';
 import { evaluateStrategyGuard } from './strategy_guard.js';
@@ -451,12 +451,36 @@ function initEvents() {
   });
 
   document.addEventListener('change', (event) => {
+    if (event.target?.matches?.('[data-research-history-select]')) {
+      appState.ui.researchHistoryId = event.target.value;
+      render();
+      document.querySelector('[data-research-history-select]')?.focus({preventScroll:true});
+      return;
+    }
     if (event.target?.matches?.('select[name="timeframe"]')) {
       syncBacktestRangeSelect(event.target);
     }
   });
 
   document.addEventListener('click', async (event) => {
+    const historyExport = event.target.closest?.('[data-history-export]');
+    if (historyExport && !historyExport.disabled) {
+      try {
+        const history = appState.agents.researchHistory;
+        const id = history.runs.find(run=>run.id === appState.ui.researchHistoryId)?.id || history.runs[0]?.id;
+        const file = researchExport(history,{format:historyExport.dataset.historyExport,id});
+        const url = URL.createObjectURL(new Blob([file.text],{type:file.mime}));
+        const link = document.createElement('a');
+        link.href = url; link.download = file.filename;
+        document.body.append(link); link.click(); link.remove();
+        setTimeout(()=>URL.revokeObjectURL(url),1000);
+        appState.ui.message = `已產生 ${file.filename}，請查看瀏覽器下載項目。`;
+      } catch (error) {
+        appState.ui.message = error?.message || '研究匯出失敗';
+      }
+      render();
+      return;
+    }
     const assetClass = event.target.closest?.('[data-asset-class]');
     if (assetClass) {
       appState.ui.assetClass = assetClass.dataset.assetClass;

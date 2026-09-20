@@ -2122,6 +2122,38 @@ button, a, input, select, summary { scroll-margin-block:16px 110px; }
   font-size:.57rem;
   line-height:1.45;
 }
+
+/* Saved research remains a separate, read-only view. */
+.research-history { margin:16px 0; border:1px solid var(--line); border-radius:16px; padding:14px; min-width:0; }
+.research-history>summary { cursor:pointer; min-height:44px; padding:10px 0; font-size:.85rem; font-weight:600; }
+.research-history>summary>span { color:var(--muted); margin-left:8px; font-weight:400; font-size:.75rem; }
+.research-history .guard-note { margin:8px 0 16px; font-size:.75rem; line-height:1.6; }
+.history-select { display:grid; gap:8px; font-size:.8rem; min-width:0; }
+.history-select select { width:100%; min-width:0; min-height:44px; padding:10px; border:1px solid var(--line); border-radius:10px; background:#121418; color:var(--text); font-size:16px; }
+.history-actions { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; }
+.history-actions button { flex:1 1 140px; min-height:44px; }
+.history-rows { display:grid; gap:10px; }
+.history-row { border:1px solid var(--line); border-radius:12px; padding:12px; min-width:0; }
+.history-row header { display:flex; flex-wrap:wrap; justify-content:space-between; gap:8px; font-size:.85rem; }
+.history-row header>span { color:var(--gold); }
+.history-row dl { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin:16px 0 0; }
+.history-row dt { color:var(--muted); font-size:.7rem; }
+.history-row dd { margin:4px 0 0; font-size:.8rem; overflow-wrap:anywhere; }
+.history-empty { font-size:.8rem; color:var(--muted); }
+.equity-chart { margin:16px; padding:14px; border:1px solid var(--line); border-radius:14px; min-width:0; }
+.equity-chart figcaption { font-size:.85rem; font-weight:600; margin-bottom:12px; }
+.equity-values,.equity-dates { display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; font-size:.75rem; color:var(--muted); }
+.equity-values strong { display:block; color:var(--text); margin-top:4px; font-size:.85rem; }
+.equity-chart svg { display:block; width:100%; height:180px; margin:8px 0; overflow:visible; }
+.equity-chart path { fill:none; stroke:var(--gold); stroke-width:2; vector-effect:non-scaling-stroke; }
+.equity-chart circle { fill:var(--gold); }
+.equity-grid { stroke:var(--line); stroke-dasharray:3 5; vector-effect:non-scaling-stroke; }
+.equity-chart p { color:var(--muted); font-size:.75rem; line-height:1.6; margin-bottom:0; }
+@media(max-width:700px){
+  .history-row dl { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .equity-chart { margin:12px; padding:12px; }
+  .equity-dates time { flex:1 1 130px; }
+}
 @media(max-width:700px){
   .signal-source-note{
     padding:8px 9px;
