@@ -214,7 +214,7 @@ class TPExHistoricalProvider:
         if not isinstance(payload, dict):
             raise ProviderError("TPEx tradingStock payload is not an object")
         stat = clean_text(payload.get("stat"))
-        if stat and stat != "OK":
+        if stat and stat.upper() != "OK":
             if "沒有" in stat or "查無" in stat or "no data" in stat.lower():
                 return ()
             raise ProviderError(f"TPEx tradingStock status: {stat!r}")
