@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+from datetime import date, timedelta
 from pathlib import Path
 import sys
 import tempfile
@@ -24,6 +25,10 @@ from research.tw.read_models import (
     VenueIntelligenceBundle,
     market_intelligence_read_model,
 )
+from research.tw.providers.historical import (
+    TPExHistoricalProvider,
+    TWSEHistoricalProvider,
+)
 from research.tw.providers.http import UrllibJsonTransport
 from research.tw.providers.institutional import (
     TPExInstitutionalSummaryProvider,
@@ -33,6 +38,7 @@ from research.tw.providers.margin import TPExMarginProvider, TWSEMarginProvider
 from research.tw.providers.tpex import TPExProvider
 from research.tw.providers.twse import TWSEProvider
 from research.tw.providers.twse_calendar import TWSEHolidayCalendarProvider
+from research.tw.services.historical_window import build_historical_window
 from research.tw.services.stock_workspace import build_stock_workspace
 from research.tw.storage import RawSnapshotStore
 
@@ -367,6 +373,65 @@ def main() -> int:
                 f"TPEx sample workspace failed: {sample_tpex_symbol}"
             )
 
+        history_start = (
+            date.fromisoformat(target_date) - timedelta(days=70)
+        ).isoformat()
+        twse_history = tuple(
+            TWSEHistoricalProvider(http_transport).fetch_range(
+                "2330",
+                history_start,
+                target_date,
+            )
+        )
+        tpex_history = tuple(
+            TPExHistoricalProvider(http_transport).fetch_range(
+                sample_tpex_symbol,
+                history_start,
+                target_date,
+            )
+        )
+        twse_history_window = build_historical_window(
+            twse_history,
+            instrument_id="twse:2330",
+            venue="TWSE",
+            end_date=target_date,
+            sessions=20,
+        )
+        tpex_history_window = build_historical_window(
+            tpex_history,
+            instrument_id=f"tpex:{sample_tpex_symbol}",
+            venue="TPEX",
+            end_date=target_date,
+            sessions=20,
+        )
+
+        for window in (twse_history_window, tpex_history_window):
+            if not window.sufficient_history:
+                raise RuntimeError(
+                    f"{window.instrument_id} historical window insufficient: "
+                    f"{len(window.bars)}/{window.requested_sessions}"
+                )
+            if window.last_session is None or window.last_session > target_date:
+                raise RuntimeError(
+                    f"{window.instrument_id} historical look-ahead violation"
+                )
+            if window.price_mode != "raw_unadjusted":
+                raise RuntimeError(
+                    f"{window.instrument_id} historical price mode unexpected"
+                )
+            if window.corporate_action_adjusted:
+                raise RuntimeError(
+                    f"{window.instrument_id} raw history mislabeled adjusted"
+                )
+            if not window.lookahead_blocked:
+                raise RuntimeError(
+                    f"{window.instrument_id} historical look-ahead gate disabled"
+                )
+            if not window.sources:
+                raise RuntimeError(
+                    f"{window.instrument_id} historical provenance unavailable"
+                )
+
         print(
             json.dumps(
                 {
@@ -412,6 +477,18 @@ def main() -> int:
                     "tpex_workspace_sample": sample_tpex_symbol,
                     "tpex_workspace_coverage":
                         sample_tpex_workspace.quote.coverage_ratio,
+                    "twse_history_sessions":
+                        len(twse_history_window.bars),
+                    "tpex_history_sessions":
+                        len(tpex_history_window.bars),
+                    "twse_history_first":
+                        twse_history_window.first_session,
+                    "tpex_history_first":
+                        tpex_history_window.first_session,
+                    "twse_history_last":
+                        twse_history_window.last_session,
+                    "tpex_history_last":
+                        tpex_history_window.last_session,
                     "raw_snapshot_root": temp,
                     "execution_allowed": False,
                 },
