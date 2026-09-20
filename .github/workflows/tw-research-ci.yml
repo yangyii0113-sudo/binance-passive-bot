@@ -11,6 +11,7 @@ on:
       - 'tests/fixtures/tw/**'
       - 'docs/tw/**'
       - '.github/workflows/tw-research-ci.yml'
+      - 'tools/tw_technical_smoke.py'
   pull_request:
     paths:
       - 'research/tw/**'
@@ -19,6 +20,7 @@ on:
       - 'tests/fixtures/tw/**'
       - 'docs/tw/**'
       - '.github/workflows/tw-research-ci.yml'
+      - 'tools/tw_technical_smoke.py'
   workflow_dispatch:
 
 permissions:

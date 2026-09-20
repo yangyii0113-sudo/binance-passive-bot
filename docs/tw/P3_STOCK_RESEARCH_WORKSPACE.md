@@ -45,14 +45,31 @@ Gate:
 
 ## P3.3 Technical Research — ACTIVE
 
-Future:
-- daily / weekly trend
-- MA / EMA
-- RSI / MACD
-- momentum
-- support / resistance
-- volume confirmation
-- volatility state
+Implementation and local acceptance completed on 2026-09-20. Remote publication
+and GitHub workflow acceptance are pending, so the manifest remains ACTIVE and
+P3.4 remains LOCKED. Do not promote using an earlier commit's green CI.
+
+Implemented:
+- canonical HistoricalWindow-only daily / closed-week trend
+- SMA20/60, EMA12/26, Wilder RSI14, MACD12/26/9
+- momentum20 / ROC20 and prior-session support / resistance
+- volume confirmation and Wilder ATR14 / ATR% / volatility change
+- per-metric evidence, warm-up coverage, unavailable reasons
+- window integrity revalidation and enforced Research-only execution boundary
+
+Gate:
+- [x] 142 Taiwan architecture / active-phase tests pass locally
+- [x] full Python regression 286 / 286; runtime Node regression 16 / 16
+- [x] official TWSE 2330 / TPEx 6488 smoke: 120 sessions each, ending 2026-09-18
+- [x] incomplete / missing weeks, future bars, missing / invalid fields fail closed
+- [x] independent code review findings reproduced and fixed
+- [x] Production Execution V2 unchanged
+- [ ] publish this implementation and verify GitHub Research Architecture Gate
+- [ ] verify GitHub Official Data Live Smoke for the same implementation
+- [ ] promote P3.3 COMPLETE and unlock only P3.4 after those gates
+
+Method: [P3_3_TECHNICAL_RESEARCH.md](P3_3_TECHNICAL_RESEARCH.md).
+Continuation: [HANDOFF_2026-09-20_P3.3.md](HANDOFF_2026-09-20_P3.3.md).
 
 ## P3.4 Fundamentals & Events — LOCKED
 

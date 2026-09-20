@@ -1,31 +1,10 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from datetime import date
 from typing import Iterable
 
-from ..history import HistoricalBar
-
-
-class HistoricalIntegrityError(RuntimeError):
-    pass
-
-
-@dataclass(frozen=True)
-class HistoricalWindow:
-    instrument_id: str
-    venue: str
-    requested_sessions: int
-    end_date: str
-    first_session: str | None
-    last_session: str | None
-    bars: tuple[HistoricalBar, ...]
-    coverage_ratio: float
-    sufficient_history: bool
-    price_mode: str
-    corporate_action_adjusted: bool
-    lookahead_blocked: bool
-    sources: tuple[str, ...]
+# Re-export the canonical types for existing P3.2 consumers.
+from ..history import HistoricalBar, HistoricalIntegrityError, HistoricalWindow
 
 
 def _same_bar(left: HistoricalBar, right: HistoricalBar) -> bool:

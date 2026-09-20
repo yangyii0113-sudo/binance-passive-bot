@@ -9,6 +9,11 @@ on:
       - 'tools/tw_public_data_smoke.py'
       - 'research/tw/providers/**'
       - 'research/tw/acquisition.py'
+      - 'research/tw/history.py'
+      - 'research/tw/technical_contracts.py'
+      - 'research/tw/intelligence/technical*.py'
+      - 'research/tw/services/historical_window.py'
+      - 'tools/tw_technical_smoke.py'
   workflow_dispatch:
 
 permissions:
@@ -17,7 +22,7 @@ permissions:
 jobs:
   official-data-smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
 
@@ -32,3 +37,8 @@ jobs:
         env:
           PYTHONPATH: .
         run: python tools/tw_public_data_smoke.py
+
+      - name: Run official TWSE / TPEx technical-research smoke
+        env:
+          PYTHONPATH: .
+        run: python tools/tw_technical_smoke.py

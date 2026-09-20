@@ -32,8 +32,14 @@ from .market_structure import (
     MarketTurnover,
     build_market_structure,
 )
+from .technical import build_technical_research
+from ..technical_contracts import TechnicalFrame, TechnicalMetric, TechnicalResearchSnapshot
 
 __all__ = [
+    "TechnicalFrame",
+    "TechnicalMetric",
+    "TechnicalResearchSnapshot",
+    "build_technical_research",
     "InstitutionalFlowSnapshot",
     "InstitutionalGroupFlow",
     "build_institutional_flow",

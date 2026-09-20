@@ -21,3 +21,24 @@ class HistoricalBar:
 
     def identity(self) -> tuple[str, str]:
         return (self.instrument_id, self.session_date)
+
+
+class HistoricalIntegrityError(RuntimeError):
+    pass
+
+
+@dataclass(frozen=True)
+class HistoricalWindow:
+    instrument_id: str
+    venue: str
+    requested_sessions: int
+    end_date: str
+    first_session: str | None
+    last_session: str | None
+    bars: tuple[HistoricalBar, ...]
+    coverage_ratio: float
+    sufficient_history: bool
+    price_mode: str
+    corporate_action_adjusted: bool
+    lookahead_blocked: bool
+    sources: tuple[str, ...]
