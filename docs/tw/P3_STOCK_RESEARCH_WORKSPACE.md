@@ -84,7 +84,9 @@ Local Taiwan tests: 185 passed. Official eight-source smoke and six revenue
 acceptance symbols passed. Method: [P3_4_FUNDAMENTALS_EVENTS.md](P3_4_FUNDAMENTALS_EVENTS.md).
 Handoff: [HANDOFF_2026-09-21_P3.4.md](HANDOFF_2026-09-21_P3.4.md).
 P3.4 remains ACTIVE: the GitHub architecture gate passed, while existing P2
-integration acceptance is blocked by TWSE/TPEx source dates (9/18 versus 9/21).
+integration acceptance is blocked by intermittent TPEx quote downloads and an
+observed TWSE/TPEx date mismatch (9/18 versus 9/21). P3.4 independent remote
+smoke passed on workflow commit `a431bb3`; the overall gate is still red.
 Both GitHub gates must pass before promotion; later slices stay LOCKED.
 
 ## P3.5 Research Candidate Engine — LOCKED
