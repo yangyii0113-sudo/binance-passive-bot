@@ -1,0 +1,30 @@
+[
+  {
+    "ExRrightsExDividendDate": "1150909",
+    "SecuritiesCompanyCode": "1815",
+    "CompanyName": "富喬",
+    "ExRrightsExDividend": "除權息",
+    "StockDividendRatio": "0.05000171",
+    "SubscriptionRatioToNewSharesIssued": "0.00000000",
+    "SubscriptionPricePerShare": "0.00",
+    "CashDividend": "0.50001709",
+    "AllocatedForPublicUnderwriting": "0",
+    "SubscribedByEmployees": "0",
+    "SubscribedByExistingShareholders": "0",
+    "SubscribedProRataInThousandShares": "0.00000000"
+  },
+  {
+    "ExRrightsExDividendDate": "1150909",
+    "SecuritiesCompanyCode": "4160",
+    "CompanyName": "訊聯基因",
+    "ExRrightsExDividend": "除權",
+    "StockDividendRatio": "0.04958349",
+    "SubscriptionRatioToNewSharesIssued": "0.00000000",
+    "SubscriptionPricePerShare": "0.00",
+    "CashDividend": "0.00000000",
+    "AllocatedForPublicUnderwriting": "0",
+    "SubscribedByEmployees": "0",
+    "SubscribedByExistingShareholders": "0",
+    "SubscribedProRataInThousandShares": "0.00000000"
+  }
+]

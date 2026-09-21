@@ -73,12 +73,17 @@ Continuation: [HANDOFF_2026-09-20_P3.3.md](HANDOFF_2026-09-20_P3.3.md).
 
 ## P3.4 Fundamentals & Events — ACTIVE
 
-Next work:
-- monthly revenue
-- financial events
-- material information
-- dividends / corporate actions
-- event timeline
+Implemented, pending remote gate acceptance:
+- exact monthly revenue context and source-traceable growth
+- financial/conference topics on official material announcements
+- dividend resolutions and ex-right schedules with explicit archival states
+- receipt/publication-gated timeline and latest-source presence
+- immutable contracts, exact raw acquisition/replay, failure and integrity gates
+
+Local Taiwan tests: 185 passed. Official eight-source smoke and six revenue
+acceptance symbols passed. Method: [P3_4_FUNDAMENTALS_EVENTS.md](P3_4_FUNDAMENTALS_EVENTS.md).
+Handoff: [HANDOFF_2026-09-21_P3.4.md](HANDOFF_2026-09-21_P3.4.md).
+P3.4 remains ACTIVE until both GitHub gates pass on the implementation.
 
 ## P3.5 Research Candidate Engine — LOCKED
 

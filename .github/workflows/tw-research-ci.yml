@@ -12,6 +12,7 @@ on:
       - 'docs/tw/**'
       - '.github/workflows/tw-research-ci.yml'
       - 'tools/tw_technical_smoke.py'
+      - 'tools/tw_fundamentals_smoke.py'
   pull_request:
     paths:
       - 'research/tw/**'
@@ -21,6 +22,7 @@ on:
       - 'docs/tw/**'
       - '.github/workflows/tw-research-ci.yml'
       - 'tools/tw_technical_smoke.py'
+      - 'tools/tw_fundamentals_smoke.py'
   workflow_dispatch:
 
 permissions:

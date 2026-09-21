@@ -14,6 +14,11 @@ on:
       - 'research/tw/intelligence/technical*.py'
       - 'research/tw/services/historical_window.py'
       - 'tools/tw_technical_smoke.py'
+      - 'tools/tw_fundamentals_smoke.py'
+      - 'research/tw/fundamental_contracts.py'
+      - 'research/tw/disclosure_archive.py'
+      - 'research/tw/intelligence/fundamentals.py'
+      - 'research/tw/services/fundamentals.py'
   workflow_dispatch:
 
 permissions:
@@ -42,3 +47,8 @@ jobs:
         env:
           PYTHONPATH: .
         run: python tools/tw_technical_smoke.py
+
+      - name: Run official TWSE / TPEx fundamentals and events smoke
+        env:
+          PYTHONPATH: .
+        run: python tools/tw_fundamentals_smoke.py

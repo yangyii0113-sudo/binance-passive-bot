@@ -1,0 +1,1 @@
+Official source row subsets captured 2026-09-20 Asia/Taipei. Exact row contents retained; subset JSON is a deterministic fixture, not a full wire response. URLs and stale TPEx dividend limitation: docs/tw/P3_4_FUNDAMENTALS_EVENTS.md. Test receipt times and mutations are controlled test scenarios, not asserted historical collection times.
