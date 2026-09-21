@@ -44,11 +44,13 @@ jobs:
         run: python tools/tw_public_data_smoke.py
 
       - name: Run official TWSE / TPEx technical-research smoke
+        if: ${{ !cancelled() }}
         env:
           PYTHONPATH: .
         run: python tools/tw_technical_smoke.py
 
       - name: Run official TWSE / TPEx fundamentals and events smoke
+        if: ${{ !cancelled() }}
         env:
           PYTHONPATH: .
         run: python tools/tw_fundamentals_smoke.py

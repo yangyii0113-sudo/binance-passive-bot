@@ -83,7 +83,9 @@ Implemented, pending remote gate acceptance:
 Local Taiwan tests: 185 passed. Official eight-source smoke and six revenue
 acceptance symbols passed. Method: [P3_4_FUNDAMENTALS_EVENTS.md](P3_4_FUNDAMENTALS_EVENTS.md).
 Handoff: [HANDOFF_2026-09-21_P3.4.md](HANDOFF_2026-09-21_P3.4.md).
-P3.4 remains ACTIVE until both GitHub gates pass on the implementation.
+P3.4 remains ACTIVE: the GitHub architecture gate passed, while existing P2
+integration acceptance is blocked by TWSE/TPEx source dates (9/18 versus 9/21).
+Both GitHub gates must pass before promotion; later slices stay LOCKED.
 
 ## P3.5 Research Candidate Engine — LOCKED
 
