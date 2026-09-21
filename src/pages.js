@@ -1372,7 +1372,7 @@ export function ordersPage(state) {
   const summary = paper.summary;
   return `<div class="page-stack">${messageBar(state)}${section('持倉訂單', `
     <div class="metric-grid">
-      ${metric('模擬淨值', money(summary.nav))}${metric('可用資金', money(summary.cash))}
+      ${metric('模擬淨值', money(summary.nav))}${metric('帳戶餘額', money(summary.cash))}
       ${metric('未平倉數', summary.openPositions)}${metric('未實現損益', money(summary.unrealizedPnl))}
       ${metric('保證金 / 淨值', pct(summary.portfolioRiskPct))}${metric('資料模式', paper.local ? '本機模擬' : '執行環境')}
     </div>
