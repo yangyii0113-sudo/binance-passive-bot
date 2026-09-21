@@ -11,6 +11,7 @@ on:
       - 'tests/fixtures/tw/**'
       - 'docs/tw/**'
       - '.github/workflows/tw-research-ci.yml'
+      - 'tools/tw_public_data_smoke.py'
       - 'tools/tw_technical_smoke.py'
       - 'tools/tw_fundamentals_smoke.py'
   pull_request:
@@ -21,6 +22,7 @@ on:
       - 'tests/fixtures/tw/**'
       - 'docs/tw/**'
       - '.github/workflows/tw-research-ci.yml'
+      - 'tools/tw_public_data_smoke.py'
       - 'tools/tw_technical_smoke.py'
       - 'tools/tw_fundamentals_smoke.py'
   workflow_dispatch:

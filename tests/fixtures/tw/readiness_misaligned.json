@@ -1,0 +1,815 @@
+{
+  "description": "Reduced actual official responses captured 2026-09-21 after20:18 Asia/Taipei. Dates and retained rows unchanged. Company profile fields reduced to public adapter inputs. TWSE margin tables retain first2rows. This fixture reproduces source readiness failure, not full-universe coverage.",
+  "responses": {
+    "https://openapi.twse.com.tw/v1/opendata/t187ap03_L": [
+      {
+        "出表日期": "1150920",
+        "公司代號": "2308",
+        "公司名稱": "台達電子工業股份有限公司",
+        "公司簡稱": "台達電",
+        "產業別": "28"
+      },
+      {
+        "出表日期": "1150920",
+        "公司代號": "2317",
+        "公司名稱": "鴻海精密工業股份有限公司",
+        "公司簡稱": "鴻海",
+        "產業別": "31"
+      },
+      {
+        "出表日期": "1150920",
+        "公司代號": "2330",
+        "公司名稱": "台灣積體電路製造股份有限公司",
+        "公司簡稱": "台積電",
+        "產業別": "24"
+      },
+      {
+        "出表日期": "1150920",
+        "公司代號": "2454",
+        "公司名稱": "聯發科技股份有限公司",
+        "公司簡稱": "聯發科",
+        "產業別": "24"
+      },
+      {
+        "出表日期": "1150920",
+        "公司代號": "2881",
+        "公司名稱": "富邦金融控股股份有限公司",
+        "公司簡稱": "富邦金",
+        "產業別": "17"
+      }
+    ],
+    "https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap03_O": [
+      {
+        "Date": "1150921",
+        "SecuritiesCompanyCode": "6488",
+        "CompanyName": "環球晶圓股份有限公司",
+        "CompanyAbbreviation": "環球晶",
+        "SecuritiesIndustryCode": "24"
+      }
+    ],
+    "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL": [
+      {
+        "Date": "1150918",
+        "Code": "2308",
+        "Name": "台達電",
+        "TradeVolume": "13051318",
+        "TradeValue": "22643029185",
+        "OpeningPrice": "1730.00",
+        "HighestPrice": "1750.00",
+        "LowestPrice": "1715.00",
+        "ClosingPrice": "1735.00",
+        "Change": "50.0000",
+        "Transaction": "26803"
+      },
+      {
+        "Date": "1150918",
+        "Code": "2317",
+        "Name": "鴻海",
+        "TradeVolume": "44803117",
+        "TradeValue": "11233127681",
+        "OpeningPrice": "252.50",
+        "HighestPrice": "253.00",
+        "LowestPrice": "249.00",
+        "ClosingPrice": "250.50",
+        "Change": "0.0000",
+        "Transaction": "23986"
+      },
+      {
+        "Date": "1150918",
+        "Code": "2330",
+        "Name": "台積電",
+        "TradeVolume": "40892688",
+        "TradeValue": "100394074139",
+        "OpeningPrice": "2460.00",
+        "HighestPrice": "2460.00",
+        "LowestPrice": "2435.00",
+        "ClosingPrice": "2460.00",
+        "Change": "35.0000",
+        "Transaction": "69571"
+      },
+      {
+        "Date": "1150918",
+        "Code": "2454",
+        "Name": "聯發科",
+        "TradeVolume": "10365174",
+        "TradeValue": "48313107830",
+        "OpeningPrice": "4600.00",
+        "HighestPrice": "4735.00",
+        "LowestPrice": "4545.00",
+        "ClosingPrice": "4710.00",
+        "Change": "210.0000",
+        "Transaction": "54482"
+      },
+      {
+        "Date": "1150918",
+        "Code": "2881",
+        "Name": "富邦金",
+        "TradeVolume": "28248424",
+        "TradeValue": "4239977546",
+        "OpeningPrice": "152.50",
+        "HighestPrice": "152.50",
+        "LowestPrice": "148.00",
+        "ClosingPrice": "150.50",
+        "Change": "-1.0000",
+        "Transaction": "12262"
+      }
+    ],
+    "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes": [
+      {
+        "Date": "1150921",
+        "SecuritiesCompanyCode": "6488",
+        "CompanyName": "環球晶",
+        "Close": "931.00",
+        "Change": "-13.00 ",
+        "Open": "951.00",
+        "High": "954.00",
+        "Low": "925.00",
+        "Average": "937.33",
+        "TradingShares": "6946339",
+        "TransactionAmount": "6510994689",
+        "TransactionNumber": "19526",
+        "LatestBidPrice": "931.00",
+        "LatesAskPrice": "932.00",
+        "Capitals": "478113725",
+        "NextReferencePrice": "931.00",
+        "NextLimitUp": "1020.00",
+        "NextLimitDown": "838.00"
+      }
+    ],
+    "https://openapi.twse.com.tw/v1/exchangeReport/FMTQIK": [
+      {
+        "Date": "1150901",
+        "TradeVolume": "13000849196",
+        "TradeValue": "1187571567117",
+        "Transaction": "5301801",
+        "TAIEX": "46948.72",
+        "Change": "820.25"
+      },
+      {
+        "Date": "1150902",
+        "TradeVolume": "10824863832",
+        "TradeValue": "976499979054",
+        "Transaction": "5093402",
+        "TAIEX": "46164.72",
+        "Change": "-784.00"
+      },
+      {
+        "Date": "1150903",
+        "TradeVolume": "11201667577",
+        "TradeValue": "993261606190",
+        "Transaction": "5471695",
+        "TAIEX": "45857.66",
+        "Change": "-307.06"
+      },
+      {
+        "Date": "1150904",
+        "TradeVolume": "9267046831",
+        "TradeValue": "858244966564",
+        "Transaction": "4020260",
+        "TAIEX": "46551.13",
+        "Change": "693.47"
+      },
+      {
+        "Date": "1150907",
+        "TradeVolume": "11024654794",
+        "TradeValue": "997944843239",
+        "Transaction": "5043482",
+        "TAIEX": "47326.27",
+        "Change": "775.14"
+      },
+      {
+        "Date": "1150908",
+        "TradeVolume": "9521469130",
+        "TradeValue": "922658079092",
+        "Transaction": "4777144",
+        "TAIEX": "47105.78",
+        "Change": "-220.49"
+      },
+      {
+        "Date": "1150909",
+        "TradeVolume": "9258080220",
+        "TradeValue": "815976678108",
+        "Transaction": "4148302",
+        "TAIEX": "47183.36",
+        "Change": "77.58"
+      },
+      {
+        "Date": "1150910",
+        "TradeVolume": "8675764818",
+        "TradeValue": "750742811639",
+        "Transaction": "4045306",
+        "TAIEX": "46940.49",
+        "Change": "-242.87"
+      },
+      {
+        "Date": "1150911",
+        "TradeVolume": "10111607761",
+        "TradeValue": "762245189934",
+        "Transaction": "4824572",
+        "TAIEX": "46184.85",
+        "Change": "-755.64"
+      },
+      {
+        "Date": "1150914",
+        "TradeVolume": "8822022033",
+        "TradeValue": "665316266033",
+        "Transaction": "4064716",
+        "TAIEX": "45862.52",
+        "Change": "-322.33"
+      },
+      {
+        "Date": "1150915",
+        "TradeVolume": "8228715551",
+        "TradeValue": "634706804618",
+        "Transaction": "3947260",
+        "TAIEX": "45511.49",
+        "Change": "-351.03"
+      },
+      {
+        "Date": "1150916",
+        "TradeVolume": "8352607880",
+        "TradeValue": "675969528562",
+        "Transaction": "3400805",
+        "TAIEX": "45848.90",
+        "Change": "337.41"
+      },
+      {
+        "Date": "1150917",
+        "TradeVolume": "10710347398",
+        "TradeValue": "866619179411",
+        "Transaction": "4234132",
+        "TAIEX": "46288.00",
+        "Change": "439.10"
+      },
+      {
+        "Date": "1150918",
+        "TradeVolume": "12052158761",
+        "TradeValue": "1142321910407",
+        "Transaction": "4680943",
+        "TAIEX": "47180.75",
+        "Change": "892.75"
+      }
+    ],
+    "https://www.tpex.org.tw/openapi/v1/tpex_daily_trading_index": [
+      {
+        "Date": "1150901",
+        "TradeVolume": "902905474",
+        "TradeAmount": "252387964702",
+        "NumberOfTransactions": "1095837",
+        "TPExIndex": "410.77",
+        "Change": "9.07"
+      },
+      {
+        "Date": "1150902",
+        "TradeVolume": "820814304",
+        "TradeAmount": "221773156843",
+        "NumberOfTransactions": "1052783",
+        "TPExIndex": "406.96",
+        "Change": "-3.81"
+      },
+      {
+        "Date": "1150903",
+        "TradeVolume": "984355552",
+        "TradeAmount": "241225808595",
+        "NumberOfTransactions": "1205370",
+        "TPExIndex": "395.25",
+        "Change": "-11.71"
+      },
+      {
+        "Date": "1150904",
+        "TradeVolume": "769958855",
+        "TradeAmount": "195529166176",
+        "NumberOfTransactions": "882384",
+        "TPExIndex": "402.48",
+        "Change": "7.23"
+      },
+      {
+        "Date": "1150907",
+        "TradeVolume": "795410582",
+        "TradeAmount": "203603900770",
+        "NumberOfTransactions": "964405",
+        "TPExIndex": "409.33",
+        "Change": "6.85"
+      },
+      {
+        "Date": "1150908",
+        "TradeVolume": "871496084",
+        "TradeAmount": "214858284662",
+        "NumberOfTransactions": "1019221",
+        "TPExIndex": "407.19",
+        "Change": "-2.14"
+      },
+      {
+        "Date": "1150909",
+        "TradeVolume": "832664141",
+        "TradeAmount": "216771977397",
+        "NumberOfTransactions": "926244",
+        "TPExIndex": "408.09",
+        "Change": "0.90"
+      },
+      {
+        "Date": "1150910",
+        "TradeVolume": "804217133",
+        "TradeAmount": "173278012172",
+        "NumberOfTransactions": "974192",
+        "TPExIndex": "405.24",
+        "Change": "-2.85"
+      },
+      {
+        "Date": "1150911",
+        "TradeVolume": "826150268",
+        "TradeAmount": "185181338982",
+        "NumberOfTransactions": "1055110",
+        "TPExIndex": "395.52",
+        "Change": "-9.72"
+      },
+      {
+        "Date": "1150914",
+        "TradeVolume": "710545967",
+        "TradeAmount": "167847114406",
+        "NumberOfTransactions": "827112",
+        "TPExIndex": "394.67",
+        "Change": "-0.85"
+      },
+      {
+        "Date": "1150915",
+        "TradeVolume": "737030104",
+        "TradeAmount": "175404583797",
+        "NumberOfTransactions": "902311",
+        "TPExIndex": "388.73",
+        "Change": "-5.94"
+      },
+      {
+        "Date": "1150916",
+        "TradeVolume": "777380366",
+        "TradeAmount": "183676771560",
+        "NumberOfTransactions": "812128",
+        "TPExIndex": "399.21",
+        "Change": "10.48"
+      },
+      {
+        "Date": "1150917",
+        "TradeVolume": "1018314978",
+        "TradeAmount": "263239309936",
+        "NumberOfTransactions": "1168816",
+        "TPExIndex": "398.17",
+        "Change": "-1.04"
+      },
+      {
+        "Date": "1150918",
+        "TradeVolume": "1199745556",
+        "TradeAmount": "267470200600",
+        "NumberOfTransactions": "1113671",
+        "TPExIndex": "412.68",
+        "Change": "14.51"
+      },
+      {
+        "Date": "1150921",
+        "TradeVolume": "1021927139",
+        "TradeAmount": "212474257357",
+        "NumberOfTransactions": "1091371",
+        "TPExIndex": "412.57",
+        "Change": "-0.11"
+      }
+    ],
+    "https://openapi.twse.com.tw/v1/holidaySchedule/holidaySchedule": [
+      {
+        "Name": "中華民國開國紀念日",
+        "Date": "1150101",
+        "Weekday": "四",
+        "Description": "依規定放假1日。"
+      },
+      {
+        "Name": "國曆新年開始交易日",
+        "Date": "1150102",
+        "Weekday": "五",
+        "Description": "國曆新年開始交易。"
+      },
+      {
+        "Name": "農曆春節前最後交易日",
+        "Date": "1150211",
+        "Weekday": "三",
+        "Description": "農曆春節前最後交易。<br>"
+      },
+      {
+        "Name": "市場無交易，僅辦理結算交割作業",
+        "Date": "1150212",
+        "Weekday": "四",
+        "Description": ""
+      },
+      {
+        "Name": "市場無交易，僅辦理結算交割作業",
+        "Date": "1150213",
+        "Weekday": "五",
+        "Description": ""
+      },
+      {
+        "Name": "農曆除夕及春節",
+        "Date": "1150215",
+        "Weekday": "日",
+        "Description": "依規定於2月15日至2月19日放假5日。2月15日適逢星期日，於2月20日（星期五）補假。"
+      },
+      {
+        "Name": "農曆除夕及春節",
+        "Date": "1150216",
+        "Weekday": "一",
+        "Description": "依規定於2月15日至2月19日放假5日。2月15日適逢星期日，於2月20日（星期五）補假。"
+      },
+      {
+        "Name": "農曆除夕及春節",
+        "Date": "1150217",
+        "Weekday": "二",
+        "Description": "依規定於2月15日至2月19日放假5日。2月15日適逢星期日，於2月20日（星期五）補假。<br><br><br>"
+      },
+      {
+        "Name": "農曆除夕及春節",
+        "Date": "1150218",
+        "Weekday": "三",
+        "Description": "依規定於2月15日至2月19日放假5日。2月15日適逢星期日，於2月20日（星期五）補假。"
+      },
+      {
+        "Name": "農曆除夕及春節",
+        "Date": "1150219",
+        "Weekday": "四",
+        "Description": "依規定於2月15日至2月19日放假5日。2月15日適逢星期日，於2月20日（星期五）補假。"
+      },
+      {
+        "Name": "農曆除夕及春節",
+        "Date": "1150220",
+        "Weekday": "五",
+        "Description": "依規定於2月15日至2月19日放假5日。2月15日適逢星期日，於2月20日（星期五）補假。"
+      },
+      {
+        "Name": "農曆春節後開始交易日",
+        "Date": "1150223",
+        "Weekday": "一",
+        "Description": "農曆春節後開始交易。"
+      },
+      {
+        "Name": "和平紀念日",
+        "Date": "1150227",
+        "Weekday": "五",
+        "Description": "和平紀念日為2月28日適逢星期六，於2月27日（星期五）補假。"
+      },
+      {
+        "Name": "和平紀念日",
+        "Date": "1150228",
+        "Weekday": "六",
+        "Description": "依規定放假1日。"
+      },
+      {
+        "Name": "兒童節及民族掃墓節",
+        "Date": "1150403",
+        "Weekday": "五",
+        "Description": "兒童節為4月4日適逢星期六，於4月3日（星期五）補假。"
+      },
+      {
+        "Name": "兒童節及民族掃墓節",
+        "Date": "1150404",
+        "Weekday": "六",
+        "Description": "依規定放假1日。"
+      },
+      {
+        "Name": "兒童節及民族掃墓節",
+        "Date": "1150405",
+        "Weekday": "日",
+        "Description": "依規定放假1日。"
+      },
+      {
+        "Name": "兒童節及民族掃墓節",
+        "Date": "1150406",
+        "Weekday": "一",
+        "Description": "民族掃墓節為4月5日適逢星期日，於4月6日（星期一）補假。"
+      },
+      {
+        "Name": "勞動節",
+        "Date": "1150501",
+        "Weekday": "五",
+        "Description": "依規定放假1日。"
+      },
+      {
+        "Name": "端午節",
+        "Date": "1150619",
+        "Weekday": "五",
+        "Description": "依規定放假1日。"
+      },
+      {
+        "Name": "中秋節",
+        "Date": "1150925",
+        "Weekday": "五",
+        "Description": "依規定放假1日。"
+      },
+      {
+        "Name": "孔子誕辰紀念日/ 教師節",
+        "Date": "1150928",
+        "Weekday": "一",
+        "Description": "依規定放假1日。"
+      },
+      {
+        "Name": "國慶日",
+        "Date": "1151009",
+        "Weekday": "五",
+        "Description": "國慶日為10月10日適逢星期六，於10月9日（星期五）補假。"
+      },
+      {
+        "Name": "國慶日",
+        "Date": "1151010",
+        "Weekday": "六",
+        "Description": "依規定放假1日。"
+      },
+      {
+        "Name": "臺灣光復暨金門古寧頭大捷紀念日",
+        "Date": "1151025",
+        "Weekday": "日",
+        "Description": "依規定放假1日。"
+      },
+      {
+        "Name": "臺灣光復暨金門古寧頭大捷紀念日",
+        "Date": "1151026",
+        "Weekday": "一",
+        "Description": "臺灣光復暨金門古寧頭大捷紀念日為10月25日適逢星期日，於10月26日（星期一）補假。"
+      },
+      {
+        "Name": "行憲紀念日",
+        "Date": "1151225",
+        "Weekday": "五",
+        "Description": "依規定放假1日。"
+      }
+    ],
+    "https://www.twse.com.tw/rwd/zh/fund/BFI82U?response=json&dayDate=20260918&type=day": {
+      "stat": "OK",
+      "date": "20260918",
+      "title": "115年09月18日 三大法人買賣金額統計表",
+      "fields": [
+        "單位名稱",
+        "買進金額",
+        "賣出金額",
+        "買賣差額"
+      ],
+      "data": [
+        [
+          "自營商(自行買賣)",
+          "21,646,121,449",
+          "7,464,254,131",
+          "14,181,867,318"
+        ],
+        [
+          "自營商(避險)",
+          "38,736,743,404",
+          "28,615,152,210",
+          "10,121,591,194"
+        ],
+        [
+          "投信",
+          "43,553,365,127",
+          "35,399,915,995",
+          "8,153,449,132"
+        ],
+        [
+          "外資及陸資(不含外資自營商)",
+          "585,247,334,035",
+          "498,252,972,093",
+          "86,994,361,942"
+        ],
+        [
+          "外資自營商",
+          "0",
+          "0",
+          "0"
+        ],
+        [
+          "合計",
+          "689,183,564,015",
+          "569,732,294,429",
+          "119,451,269,586"
+        ]
+      ],
+      "params": {
+        "response": "json",
+        "dayDate": "20260918",
+        "type": "day",
+        "controller": "fund",
+        "action": "BFI82U",
+        "lang": "zh",
+        "monthDate": null,
+        "weekDate": null
+      },
+      "notes": [
+        "自營商表示證券自營商專戶。",
+        "投信表示本國投資信託基金。",
+        "外資及陸資表示依「華僑及外國人投資證券管理辦法」及「大陸地區投資人來臺從事證券投資及期貨交易管理辦法」辦理登記等投資人。",
+        "因外資自營商買賣金額已計入自營商買賣金額，故不納入三大法人買賣金額之合計數計算。",
+        "本統計資訊含一般、零股、盤後定價、鉅額，不含拍賣、標購。",
+        "本資訊以當日原始成交情形統計，不以證券商申報錯帳、更正帳號等調整後資料統計。",
+        "外幣成交值係以本公司當日下午3時30分公告匯率換算後加入成交金額。<br>公告匯率請參考本公司首頁>產品與服務>交易系統>雙幣ETF專區>代號對應及每日公告匯率。"
+      ],
+      "hints": "單位：元"
+    },
+    "https://www.tpex.org.tw/openapi/v1/tpex_3insti_summary": [
+      {
+        "Date": "1150921",
+        "Investor": "外資及陸資合計",
+        "PurchaseAmount": "62873471707",
+        "SaleAmount": "72240980120",
+        "Net": "-9367508413"
+      },
+      {
+        "Date": "1150921",
+        "Investor": "　外資及陸資(不含自營商)",
+        "PurchaseAmount": "62873471707",
+        "SaleAmount": "72240980120",
+        "Net": "-9367508413"
+      },
+      {
+        "Date": "1150921",
+        "Investor": "　外資自營商",
+        "PurchaseAmount": "0",
+        "SaleAmount": "0",
+        "Net": "0"
+      },
+      {
+        "Date": "1150921",
+        "Investor": "投信",
+        "PurchaseAmount": "5875140024",
+        "SaleAmount": "8807341268",
+        "Net": "-2932201244"
+      },
+      {
+        "Date": "1150921",
+        "Investor": "自營商合計",
+        "PurchaseAmount": "6192643957",
+        "SaleAmount": "4918597563",
+        "Net": "1274046394"
+      },
+      {
+        "Date": "1150921",
+        "Investor": "　自營商(自行買賣)",
+        "PurchaseAmount": "2747573107",
+        "SaleAmount": "1540170870",
+        "Net": "1207402237"
+      },
+      {
+        "Date": "1150921",
+        "Investor": "　自營商(避險)",
+        "PurchaseAmount": "3445070850",
+        "SaleAmount": "3378426693",
+        "Net": "66644157"
+      },
+      {
+        "Date": "1150921",
+        "Investor": "三大法人合計*",
+        "PurchaseAmount": "74941255688",
+        "SaleAmount": "85966918951",
+        "Net": "-11025663263"
+      }
+    ],
+    "https://www.twse.com.tw/rwd/zh/marginTrading/MI_MARGN?date=20260918&selectType=ALL&response=json": {
+      "stat": "OK",
+      "date": "20260918",
+      "tables": [
+        {
+          "title": "115年09月18日 信用交易統計",
+          "fields": [
+            "項目",
+            "買進",
+            "賣出",
+            "現金(券)償還",
+            "前日餘額",
+            "今日餘額"
+          ],
+          "data": [
+            [
+              "融資(交易單位)",
+              "374,091",
+              "345,691",
+              "10,378",
+              "9,261,793",
+              "9,279,815"
+            ],
+            [
+              "融券(交易單位)",
+              "21,423",
+              "29,932",
+              "1,832",
+              "216,288",
+              "222,965"
+            ]
+          ]
+        },
+        {
+          "title": "115年09月18日 融資融券彙總 (全部)",
+          "fields": [
+            "代號",
+            "名稱",
+            "買進",
+            "賣出",
+            "現金償還",
+            "前日餘額",
+            "今日餘額",
+            "次一營業日限額",
+            "買進",
+            "賣出",
+            "現券償還",
+            "前日餘額",
+            "今日餘額",
+            "次一營業日限額",
+            "資券互抵",
+            "註記"
+          ],
+          "data": [
+            [
+              "00400A",
+              "主動國泰動能高息",
+              "81",
+              "254",
+              "0",
+              "9,792",
+              "9,619",
+              "478,785",
+              "0",
+              "0",
+              "0",
+              "2",
+              "2",
+              "478,785",
+              "0",
+              " "
+            ],
+            [
+              "00401A",
+              "主動摩根台灣鑫收",
+              "54",
+              "146",
+              "0",
+              "1,700",
+              "1,608",
+              "65,473",
+              "0",
+              "0",
+              "0",
+              "2",
+              "2",
+              "65,473",
+              "0",
+              " "
+            ]
+          ],
+          "notes": [
+            "備註欄係表明成交日次一營業日股票融資融券狀況",
+            "符號說明： O：停止融資, X：停止融券, @：融資分配, %：融券分配, !：停止買賣 ",
+            "限額：<br>　融資餘額達該種股票上市股份25%時，暫停融資買進。融券餘額達該種股票上市股份25%時，暫停融券賣出。",
+            "融資、融券餘額達限額之八成時，次一營業日進行額度分配。",
+            "當日如有臨時新增之變更交易有價證券標的，網頁右上角會呈現點選框，屆時請點選明細查詢，另外，歷史資料也可點選此 <a href='/zh/trading/bfihbu.html' target='_blank'>連結</a> 查詢。當日臨時新增之變更交易有價證券，若該證券原得為融資融券交易，將被暫停融資融券。"
+          ],
+          "groups": [
+            {
+              "title": "股票",
+              "span": 2
+            },
+            {
+              "title": "融資",
+              "span": 6
+            },
+            {
+              "title": "融券",
+              "span": 6
+            },
+            {
+              "title": "",
+              "span": 1
+            },
+            {
+              "title": "",
+              "span": 1
+            }
+          ]
+        }
+      ]
+    },
+    "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_margin_balance": [
+      {
+        "Date": "1150918",
+        "SecuritiesCompanyCode": "6488",
+        "CompanyName": "環球晶",
+        "MarginPurchaseBalancePreviousDay": "12621",
+        "MarginPurchase": "883",
+        "MarginSales": "469",
+        "CashRedemption": "5",
+        "MarginPurchaseBalance": "13030",
+        "MarginPurchaseBalanceBelongSecuritiesFinanceEnterprise": "213",
+        "MarginPurchaseUtilizationRate": "10.9",
+        "MarginPurchaseQuota": "119528",
+        "ShortSaleBalancePreviousDay": "325",
+        "ShortSale": "277",
+        "ShortConvering": "131",
+        "StockRedemption": "0",
+        "ShortSaleBalance": "471",
+        "ShortSaleBalanceBelongSecuritiesFinanceEnterprise": "0",
+        "ShortSaleUtilizationRate": "0.39",
+        "ShortSaleQuota": "119528",
+        "Offsetting": "18",
+        "Note": ""
+      }
+    ]
+  }
+}

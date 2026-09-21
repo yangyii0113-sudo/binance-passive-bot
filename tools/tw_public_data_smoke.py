@@ -2,7 +2,10 @@
 from __future__ import annotations
 
 import json
-from datetime import date, timedelta
+import math
+import re
+from collections.abc import Mapping
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 import sys
 import tempfile
@@ -12,6 +15,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from research.tw.acquisition import DatasetPolicy, SnapshottingJsonTransport, latest_row_date
+from research.tw.contracts import Availability, Observation
 from research.tw.intelligence.institutional_flow import build_institutional_flow
 from research.tw.intelligence.margin_short import build_margin_short_context
 from research.tw.intelligence.market_regime import (
@@ -41,6 +45,99 @@ from research.tw.providers.twse_calendar import TWSEHolidayCalendarProvider
 from research.tw.services.historical_window import build_historical_window
 from research.tw.services.stock_workspace import build_stock_workspace
 from research.tw.storage import RawSnapshotStore
+
+
+REQUIRED_SOURCE_DATASETS = tuple(
+    f"{venue}_{kind}"
+    for venue in ("twse", "tpex")
+    for kind in ("quotes", "index", "institutional", "margin")
+)
+
+
+class OfficialSourceReadinessError(RuntimeError):
+    def __init__(self, report: dict):
+        self.report = report
+        dates = "; ".join(
+            f"{name}={','.join(item['dates']) or 'missing'}"
+            for name, item in report["sources"].items()
+        )
+        super().__init__("official sources not ready for common-date integration: " + dates)
+
+
+def require_aligned_sources(sources: Mapping) -> dict:
+    """Check canonical source dates, not market correctness or freshness.
+
+    A passed preflight never replaces the downstream acceptance assertions.
+    Missing fields in some securities are allowed; an entire unusable source is
+    not. Every source row retains its own date, including unavailable fields.
+    """
+    report = {"kind": "official_source_date_alignment", "status": "NOT_READY",
+              "common_date": None, "sources": {}, "issues": [],
+              "execution_allowed": False}
+    if not isinstance(sources, Mapping):
+        report["issues"] = ["invalid_source_mapping"]
+        raise OfficialSourceReadinessError(report)
+    if set(sources) - set(REQUIRED_SOURCE_DATASETS):
+        report["issues"].append("unexpected_datasets")
+    all_dates = set()
+    for name in REQUIRED_SOURCE_DATASETS:
+        issues, dates, origins = set(), set(), set()
+        usable = 0
+        if name not in sources:
+            issues.add("missing_dataset")
+        try:
+            rows = tuple(sources.get(name, ()))
+        except TypeError:
+            rows = ()
+            issues.add("invalid_dataset_sequence")
+        if not rows:
+            issues.add("empty_dataset")
+        venue = name.split("_", 1)[0].upper()
+        for row in rows:
+            if not isinstance(row, Observation):
+                issues.add("noncanonical_record")
+                continue
+            row_valid = True
+            try:
+                if not isinstance(row.observed_at, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", row.observed_at):
+                    raise ValueError("ISO date required")
+                date.fromisoformat(row.observed_at)
+                dates.add(row.observed_at)
+            except ValueError:
+                issues.add("invalid_or_missing_date")
+                row_valid = False
+            if not isinstance(row.source, str) or not row.source.strip():
+                issues.add("missing_source")
+                row_valid = False
+            else:
+                origins.add(row.source)
+                if row.source.split(":", 1)[0].upper() != venue:
+                    issues.add("source_venue_mismatch")
+                    row_valid = False
+            if not isinstance(row.metadata, Mapping) or row.metadata.get("venue") != venue:
+                issues.add("record_venue_mismatch")
+                row_valid = False
+            numeric = type(row.value) is int or (type(row.value) is float and math.isfinite(row.value))
+            if row_valid and row.availability == Availability.AVAILABLE and numeric:
+                usable += 1
+        if not usable:
+            issues.add("no_usable_observations")
+        if len(dates) > 1:
+            issues.add("mixed_dates")
+        report["sources"][name] = {
+            "dates": sorted(dates), "origins": sorted(origins),
+            "record_count": len(rows), "usable_count": usable, "issues": sorted(issues),
+        }
+        all_dates.update(dates)
+        if issues:
+            report["issues"].append(name + ":not_ready")
+    if len(all_dates) != 1:
+        report["issues"].append("source_dates_not_aligned")
+    if report["issues"]:
+        raise OfficialSourceReadinessError(report)
+    report["status"] = "ALIGNED"
+    report["common_date"] = next(iter(all_dates))
+    return report
 
 
 def main() -> int:
@@ -140,14 +237,10 @@ def main() -> int:
         if target_date is None:
             raise RuntimeError("TWSE index date unavailable for institutional smoke")
 
-        twse_inst = build_institutional_flow(
-            TWSEInstitutionalSummaryProvider(http_transport).fetch(target_date),
-            venue="TWSE",
-        )
-        tpex_inst = build_institutional_flow(
-            TPExInstitutionalSummaryProvider(http_transport).fetch(),
-            venue="TPEX",
-        )
+        twse_inst_raw = tuple(TWSEInstitutionalSummaryProvider(http_transport).fetch(target_date))
+        tpex_inst_raw = tuple(TPExInstitutionalSummaryProvider(http_transport).fetch())
+        twse_inst = build_institutional_flow(twse_inst_raw, venue="TWSE")
+        tpex_inst = build_institutional_flow(tpex_inst_raw, venue="TPEX")
 
         for snapshot in (twse_inst, tpex_inst):
             for group in ("foreign", "investment_trust", "dealer"):
@@ -169,6 +262,23 @@ def main() -> int:
             raise RuntimeError("TWSE margin dataset normalized no observations")
         if not tpex_margin_raw:
             raise RuntimeError("TPEx margin dataset normalized no observations")
+
+        try:
+            source_readiness = require_aligned_sources({
+                "twse_quotes": twse_daily,
+                "twse_index": tuple(twse_market.values()),
+                "twse_institutional": twse_inst_raw,
+                "twse_margin": twse_margin_raw,
+                "tpex_quotes": tpex_daily,
+                "tpex_index": tuple(tpex_market.values()),
+                "tpex_institutional": tpex_inst_raw,
+                "tpex_margin": tpex_margin_raw,
+            })
+        except OfficialSourceReadinessError as exc:
+            diagnostic = {**exc.report, "checked_at": datetime.now(timezone.utc).isoformat()}
+            print("OFFICIAL_SOURCE_READINESS " + json.dumps(diagnostic, ensure_ascii=False),
+                  file=sys.stderr, flush=True)
+            raise
 
         twse_margin = build_margin_short_context(
             twse_margin_raw,
@@ -436,6 +546,7 @@ def main() -> int:
             json.dumps(
                 {
                     "ok": True,
+                    "source_readiness": source_readiness,
                     "twse_instruments": len(twse_registry),
                     "tpex_instruments": len(tpex_registry),
                     "tpex_daily_closes": len(tpex_closes),
