@@ -39,10 +39,11 @@ jobs:
       - name: Prepare static site
         run: |
           BUILD_SHA="$(git rev-parse --short HEAD)"
-          mkdir -p _site
-          sed "s#./styles.css#./styles.css?v=$BUILD_SHA#g; s#./src/main.js#./src/main.js?v=$BUILD_SHA#g" index.html > _site/index.html
-          cp styles.css package.json _site/
-          cp -R src _site/src
+          mkdir -p "_site/releases/$BUILD_SHA"
+          sed "s#./styles.css#./releases/$BUILD_SHA/styles.css#g; s#./src/main.js#./releases/$BUILD_SHA/src/main.js#g" index.html > _site/index.html
+          cp package.json _site/
+          cp styles.css "_site/releases/$BUILD_SHA/"
+          cp -R src "_site/releases/$BUILD_SHA/src"
           printf '{"build":"%s"}\n' "$BUILD_SHA" > _site/build.json
           echo "Publishing FOXYYA Lite build $BUILD_SHA"
       - name: Upload Pages artifact
