@@ -1,5 +1,7 @@
 import { mock } from './mock.js';
 import { badge, metric, section } from './ui.js';
+import { STATUS } from './status.js';
+import { emptyPaperSnapshot, emptyResultsSnapshot } from './contracts.js';
 
 function marketStatusLabel(market) {
   const time = market.updatedAt
@@ -9,17 +11,32 @@ function marketStatusLabel(market) {
 }
 
 function money(value) {
+  if (value === null || value === undefined || value === '') return '—';
   const n = Number(value);
   return Number.isFinite(n) ? `$${n.toLocaleString('en-US', { maximumFractionDigits: 2 })}` : '—';
 }
 
 function pct(value) {
+  if (value === null || value === undefined || value === '') return '—';
   const n = Number(value);
   return Number.isFinite(n) ? `${n.toFixed(2)}%` : '—';
 }
 
 function valueOrDash(value) {
   return value === null || value === undefined || value === '' ? '—' : String(value);
+}
+
+function snapshotNotice(snapshot) {
+  if (snapshot.status === STATUS.LIVE) {
+    return '唯讀快照已載入；正式交易帳本尚未驗證。數字不代表已完成帳本對帳。';
+  }
+  if (snapshot.status === STATUS.ERROR) {
+    return '資料讀取失敗；目前資產、持倉與績效未知，不代表空倉或零損益。';
+  }
+  if (snapshot.status === STATUS.STALE) {
+    return '快照已過期；等待更新與帳本驗證，暫不顯示目前資產或績效。';
+  }
+  return '資料尚未取得；目前資產、持倉與績效未知，等待唯讀快照與帳本驗證。';
 }
 
 function strategyCards(strategySnapshot) {
@@ -105,32 +122,40 @@ export function strategiesPage(state) {
 
 export function ordersPage(state) {
   const paper = state.paper;
-  const summary = paper.summary;
+  const loaded = paper.status === STATUS.LIVE;
+  const summary = loaded ? paper.summary : emptyPaperSnapshot().summary;
+  const positionStatus = !loaded || summary.openPositions == null
+    ? '持倉狀態尚未驗證'
+    : summary.openPositions === 0
+      ? '快照回報零持倉（尚未對帳）'
+      : '快照回報有持倉（尚未對帳）';
   return `<div class="page-stack">${section('持倉訂單', `
     <div class="metric-grid">
       ${metric('Paper NAV', money(summary.nav))}
       ${metric('Cash', money(summary.cash))}
-      ${metric('Open Positions', summary.openPositions)}
-      ${metric('Pending Orders', summary.pendingOrders)}
+      ${metric('Open Positions', valueOrDash(summary.openPositions))}
+      ${metric('Pending Orders', valueOrDash(summary.pendingOrders))}
       ${metric('Unrealized PnL', money(summary.unrealizedPnl))}
       ${metric('Portfolio Risk', pct(summary.portfolioRiskPct))}
     </div>
-    <div class="empty-state"><strong>${paper.positions.length ? '持倉資料已載入' : '目前沒有模擬持倉'}</strong><span>Paper Snapshot 與交易執行保持唯讀隔離。</span></div>`, `${badge('PAPER ONLY')} ${badge('REAL ORDER LOCKED')}`)}</div>`;
+    <div class="empty-state" role="status"><strong>${positionStatus}</strong><span>${snapshotNotice(paper)}</span><span>PAPER_ONLY · REAL_ORDER_LOCK · No Backfill</span></div>`, badge('帳本尚未驗證'))}</div>`;
 }
 
 export function resultsPage(state) {
   const results = state.results;
-  const summary = results.summary;
+  const loaded = results.status === STATUS.LIVE;
+  const summary = loaded ? results.summary : emptyResultsSnapshot().summary;
   return `<div class="page-stack">${section('交易結果', `
     <div class="metric-grid">
-      ${metric('Trades', summary.trades)}
+      ${metric('Trades', valueOrDash(summary.trades))}
       ${metric('Win Rate', pct(summary.winRatePct))}
       ${metric('Expectancy', summary.expectancyR == null ? '—' : `${summary.expectancyR}R`)}
       ${metric('Profit Factor', valueOrDash(summary.profitFactor))}
       ${metric('Net PnL', money(summary.netPnl))}
       ${metric('Max Drawdown', pct(summary.maxDrawdownPct))}
     </div>
-    <div class="chart-placeholder"><span>NAV Curve</span><strong>${results.navCurve.length ? 'Forward Paper 資料已載入' : '等待 Forward Paper 資料'}</strong></div>`, badge('FORWARD PAPER'))}</div>`;
+    <div class="empty-state" role="status"><strong>交易績效尚未完成帳本驗證</strong><span>${snapshotNotice(results)}</span></div>
+    <div class="chart-placeholder"><span>NAV Curve</span><strong>${loaded && results.navCurve.length ? '已收到曲線資料，圖表尚未繪製' : '等待 Forward Paper 資料'}</strong></div>`, badge('FORWARD PAPER'))}</div>`;
 }
 
 export function backtestPage(state) {
@@ -142,8 +167,8 @@ export function backtestPage(state) {
       <label>策略<select><option>策略 A</option><option>策略 B</option></select></label>
       <label>Timeframe<select><option>1H</option><option>4H</option></select></label>
     </div>
-    <button class="primary-btn" type="button">開始測試</button>
-    <div class="empty-state"><strong>${backtest.result ? 'Backtest Snapshot 已載入' : 'Backtest 尚未接入'}</strong><span>Forward Paper 與 Historical Backtest 保持完全分離。</span></div>`, badge('HISTORICAL BACKTEST'))}</div>`;
+    <button class="primary-btn" type="button" disabled aria-describedby="backtest-unavailable">開始測試（尚未開放）</button>
+    <div class="empty-state" id="backtest-unavailable"><strong>${backtest.result ? 'Backtest Snapshot 已載入' : 'Backtest 尚未接入'}</strong><span>此頁尚未串接啟動回測功能；目前只能讀取既有快照。</span><span>Forward Paper 與 Historical Backtest 保持完全分離。</span></div>`, badge('HISTORICAL BACKTEST'))}</div>`;
 }
 
 export const pages = Object.freeze({

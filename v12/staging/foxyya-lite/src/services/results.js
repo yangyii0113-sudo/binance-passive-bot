@@ -3,27 +3,26 @@ import { STATUS } from '../status.js';
 import { loadRuntimeSnapshot } from './runtime.js';
 
 function numOrNull(value) {
-  if (value === null || value === undefined || value === '') return null;
+  if (typeof value !== 'number' && typeof value !== 'string') return null;
+  if (typeof value === 'string' && !value.trim()) return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function num(value, fallback = 0) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
-}
-
 function normalizeCanonicalResults(payload) {
-  const rawSummary = payload.summary || {};
+  const rawSummary = payload.summary;
+  if (!rawSummary || typeof rawSummary !== 'object' || Array.isArray(rawSummary)) {
+    throw new Error('Missing Results summary');
+  }
   return {
     status: STATUS.LIVE,
-    updatedAt: payload.updatedAt || payload.updated_at || new Date().toISOString(),
+    updatedAt: payload.updatedAt || payload.updated_at || null,
     summary: {
-      trades: num(rawSummary.trades, 0),
+      trades: numOrNull(rawSummary.trades),
       winRatePct: numOrNull(rawSummary.winRatePct ?? rawSummary.win_rate_pct),
       expectancyR: numOrNull(rawSummary.expectancyR ?? rawSummary.expectancy_r),
       profitFactor: numOrNull(rawSummary.profitFactor ?? rawSummary.profit_factor),
-      netPnl: num(rawSummary.netPnl ?? rawSummary.net_pnl, 0),
+      netPnl: numOrNull(rawSummary.netPnl ?? rawSummary.net_pnl),
       maxDrawdownPct: numOrNull(rawSummary.maxDrawdownPct ?? rawSummary.max_drawdown_pct)
     },
     navCurve: Array.isArray(payload.navCurve) ? payload.navCurve : Array.isArray(payload.nav_curve) ? payload.nav_curve : [],
@@ -39,20 +38,23 @@ function profitFactor(values) {
 }
 
 function normalizeRuntimeResults(payload) {
-  const trades = Array.isArray(payload?.trades) ? payload.trades : [];
+  if (!Array.isArray(payload.trades)) throw new Error('Missing Results trades');
+  const trades = payload.trades;
   const closed = trades.filter((trade) => trade?.closed === true);
-  const netValues = closed.map((trade) => num(trade.net_pnl_usdt, 0));
-  const rValues = closed.map((trade) => numOrNull(trade.realized_r)).filter((value) => value !== null);
+  const netValues = closed.map((trade) => numOrNull(trade.net_pnl_usdt));
+  const netComplete = netValues.every((value) => value !== null);
+  const rValues = closed.map((trade) => numOrNull(trade.realized_r));
+  const rComplete = rValues.every((value) => value !== null);
   const wins = netValues.filter((value) => value > 0).length;
-  const totalNet = netValues.reduce((sum, value) => sum + value, 0);
+  const totalNet = netComplete ? netValues.reduce((sum, value) => sum + value, 0) : null;
   return {
     status: STATUS.LIVE,
-    updatedAt: payload?.served_at ? new Date(payload.served_at).toISOString() : new Date().toISOString(),
+    updatedAt: payload?.served_at ? new Date(payload.served_at).toISOString() : null,
     summary: {
       trades: closed.length,
-      winRatePct: closed.length ? (wins / closed.length) * 100 : null,
-      expectancyR: rValues.length ? rValues.reduce((sum, value) => sum + value, 0) / rValues.length : null,
-      profitFactor: profitFactor(netValues),
+      winRatePct: closed.length && netComplete ? (wins / closed.length) * 100 : null,
+      expectancyR: rValues.length && rComplete ? rValues.reduce((sum, value) => sum + value, 0) / rValues.length : null,
+      profitFactor: netComplete ? profitFactor(netValues) : null,
       netPnl: totalNet,
       maxDrawdownPct: null
     },
@@ -62,7 +64,7 @@ function normalizeRuntimeResults(payload) {
 }
 
 export function normalizeResultsSnapshot(payload) {
-  if (!payload || typeof payload !== 'object') throw new Error('Invalid Results Snapshot payload');
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) throw new Error('Invalid Results Snapshot payload');
   if (payload.schema === 'foxyya-runtime-snapshot/1' || payload.trades) return normalizeRuntimeResults(payload);
   return normalizeCanonicalResults(payload);
 }
