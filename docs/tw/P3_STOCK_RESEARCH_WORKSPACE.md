@@ -71,9 +71,9 @@ Gate:
 Method: [P3_3_TECHNICAL_RESEARCH.md](P3_3_TECHNICAL_RESEARCH.md).
 Continuation: [HANDOFF_2026-09-20_P3.3.md](HANDOFF_2026-09-20_P3.3.md).
 
-## P3.4 Fundamentals & Events — ACTIVE
+## P3.4 Fundamentals & Events — COMPLETE
 
-Implemented, pending remote gate acceptance:
+Implemented and remotely accepted:
 - exact monthly revenue context and source-traceable growth
 - financial/conference topics on official material announcements
 - dividend resolutions and ex-right schedules with explicit archival states
@@ -83,21 +83,25 @@ Implemented, pending remote gate acceptance:
 Local Taiwan tests: 185 passed. Official eight-source smoke and six revenue
 acceptance symbols passed. Method: [P3_4_FUNDAMENTALS_EVENTS.md](P3_4_FUNDAMENTALS_EVENTS.md).
 Handoff: [HANDOFF_2026-09-21_P3.4.md](HANDOFF_2026-09-21_P3.4.md).
-P3.4 remains ACTIVE: the GitHub architecture gate passed, while existing P2
-integration acceptance is blocked by intermittent TPEx quote downloads and an
-observed TWSE/TPEx date mismatch (9/18 versus 9/21). P3.4 independent remote
-smoke passed on workflow commit `a431bb3`; the overall gate is still red.
-Both GitHub gates must pass before promotion; later slices stay LOCKED.
+The blocking source-date mismatch was resolved without weakening the gate.
+Latest snapshots still published asynchronously, so the smoke now acquires the
+lagging TWSE venue from official exact-session endpoints, then reruns the same
+strict eight-source common-date guard. On 2026-09-23 the full integration,
+technical, and fundamentals/event smokes all passed for common date 2026-09-22.
+Official Data Live Smoke run `35759014192`: SUCCESS. Research Architecture
+Gate run `35759048766`: SUCCESS. Production Execution V2 remained untouched.
 
-## P3.5 Research Candidate Engine — LOCKED
+## P3.5 Research Candidate Engine — ACTIVE
 
-Future:
-- evidence requirements
-- scenario
-- invalidation
-- risk notes
+Build:
+- explicit minimum evidence contract
+- technical + fundamentals/event + market-context fusion
+- scenario and invalidation as research text/data only
+- risk-note aggregation
+- confidence based on evidence coverage, never a promised win rate
 - insufficient-data fail closed
-- no executable order object
+- deterministic ranking for review only
+- no executable order object or broker payload
 
 ## P3.6 Read Models / Exit Gate — LOCKED
 
