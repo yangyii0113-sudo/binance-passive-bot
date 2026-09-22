@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "active_slice": "P3.5.2",
+  "active_slice": "P3.5.3",
   "slices": [
     {"id": "P3.5.1", "name": "Evidence Gate", "status": "COMPLETE", "depends_on": []},
-    {"id": "P3.5.2", "name": "Research Fusion", "status": "ACTIVE", "depends_on": ["P3.5.1"]},
-    {"id": "P3.5.3", "name": "Scenario and Invalidation", "status": "LOCKED", "depends_on": ["P3.5.2"]},
+    {"id": "P3.5.2", "name": "Research Fusion", "status": "COMPLETE", "depends_on": ["P3.5.1"]},
+    {"id": "P3.5.3", "name": "Scenario and Invalidation", "status": "ACTIVE", "depends_on": ["P3.5.2"]},
     {"id": "P3.5.4", "name": "Review Ranking and Exit Gate", "status": "LOCKED", "depends_on": ["P3.5.3"]}
   ]
 }
