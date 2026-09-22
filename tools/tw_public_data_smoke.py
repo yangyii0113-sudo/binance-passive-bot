@@ -39,6 +39,7 @@ from research.tw.providers.institutional import (
     TWSEInstitutionalSummaryProvider,
 )
 from research.tw.providers.margin import TPExMarginProvider, TWSEMarginProvider
+from research.tw.providers.session import TWSEExactSessionProvider
 from research.tw.providers.tpex import TPExProvider
 from research.tw.providers.twse import TWSEProvider
 from research.tw.providers.twse_calendar import TWSEHolidayCalendarProvider
@@ -140,6 +141,89 @@ def require_aligned_sources(sources: Mapping) -> dict:
     return report
 
 
+_TWSE_ALIGNMENT_DATASETS = (
+    "twse_quotes",
+    "twse_index",
+    "twse_institutional",
+    "twse_margin",
+)
+_TPEX_ALIGNMENT_DATASETS = (
+    "tpex_quotes",
+    "tpex_index",
+    "tpex_institutional",
+    "tpex_margin",
+)
+
+
+def _venue_report_date(report: dict, names: tuple[str, ...]) -> str | None:
+    dates = set()
+    for name in names:
+        item = report.get("sources", {}).get(name, {})
+        if item.get("issues") or len(item.get("dates", ())) != 1:
+            return None
+        dates.add(item["dates"][0])
+    return next(iter(dates)) if len(dates) == 1 else None
+
+
+def align_sources_for_integration(
+    sources: Mapping,
+    *,
+    transport,
+) -> tuple[dict, dict, dict]:
+    """Preserve the strict common-date gate while recovering a lagging TWSE.
+
+    Latest snapshot feeds can publish at different times. If all four TWSE
+    sources agree on one older session and all four TPEx sources agree on one
+    newer session, query official TWSE exact-session endpoints for the newer
+    date. The strict readiness guard is then run again on the actual recovered
+    observations.
+
+    No Observation timestamp is rewritten. Failure to prove the exact session
+    returns the original NOT_READY result.
+    """
+    source_map = {name: tuple(rows) for name, rows in sources.items()}
+    try:
+        readiness = require_aligned_sources(source_map)
+        return source_map, readiness, {
+            "mode": "latest_snapshots",
+            "attempted": False,
+            "execution_allowed": False,
+        }
+    except OfficialSourceReadinessError as original:
+        report = original.report
+        if set(report.get("issues", ())) != {"source_dates_not_aligned"}:
+            raise
+
+        twse_date = _venue_report_date(report, _TWSE_ALIGNMENT_DATASETS)
+        tpex_date = _venue_report_date(report, _TPEX_ALIGNMENT_DATASETS)
+        if twse_date is None or tpex_date is None or twse_date >= tpex_date:
+            raise
+
+        target_date = tpex_date
+        try:
+            exact = TWSEExactSessionProvider(transport)
+            recovered = dict(source_map)
+            recovered["twse_quotes"] = tuple(exact.fetch_quotes(target_date))
+            recovered["twse_index"] = tuple(exact.fetch_market(target_date))
+            recovered["twse_institutional"] = tuple(
+                TWSEInstitutionalSummaryProvider(transport).fetch(target_date)
+            )
+            recovered["twse_margin"] = tuple(
+                TWSEMarginProvider(transport).fetch(target_date)
+            )
+            readiness = require_aligned_sources(recovered)
+        except Exception as recovery_error:
+            raise original from recovery_error
+
+        return recovered, readiness, {
+            "mode": "twse_exact_session_recovery",
+            "attempted": True,
+            "from_date": twse_date,
+            "target_date": target_date,
+            "execution_allowed": False,
+        }
+
+
 def main() -> int:
     policies = (
         DatasetPolicy("twse_stock_day_all", TWSEProvider.QUOTES_URL, latest_row_date("Date")),
@@ -237,11 +321,93 @@ def main() -> int:
         if target_date is None:
             raise RuntimeError("TWSE index date unavailable for institutional smoke")
 
-        twse_inst_raw = tuple(TWSEInstitutionalSummaryProvider(http_transport).fetch(target_date))
-        tpex_inst_raw = tuple(TPExInstitutionalSummaryProvider(http_transport).fetch())
+        twse_inst_raw = tuple(
+            TWSEInstitutionalSummaryProvider(http_transport).fetch(target_date)
+        )
+        tpex_inst_raw = tuple(
+            TPExInstitutionalSummaryProvider(http_transport).fetch()
+        )
+        twse_margin_raw = tuple(
+            TWSEMarginProvider(http_transport).fetch(target_date)
+        )
+        tpex_margin_raw = tuple(TPExMarginProvider(http_transport).fetch())
+
+        if not twse_margin_raw:
+            raise RuntimeError("TWSE margin dataset normalized no observations")
+        if not tpex_margin_raw:
+            raise RuntimeError("TPEx margin dataset normalized no observations")
+
+        try:
+            aligned_sources, source_readiness, source_alignment = (
+                align_sources_for_integration(
+                    {
+                        "twse_quotes": twse_daily,
+                        "twse_index": tuple(twse_market.values()),
+                        "twse_institutional": twse_inst_raw,
+                        "twse_margin": twse_margin_raw,
+                        "tpex_quotes": tpex_daily,
+                        "tpex_index": tuple(tpex_market.values()),
+                        "tpex_institutional": tpex_inst_raw,
+                        "tpex_margin": tpex_margin_raw,
+                    },
+                    transport=http_transport,
+                )
+            )
+        except OfficialSourceReadinessError as exc:
+            diagnostic = {
+                **exc.report,
+                "checked_at": datetime.now(timezone.utc).isoformat(),
+            }
+            print(
+                "OFFICIAL_SOURCE_READINESS "
+                + json.dumps(diagnostic, ensure_ascii=False),
+                file=sys.stderr,
+                flush=True,
+            )
+            raise
+
+        target_date = source_readiness["common_date"]
+        twse_daily = tuple(aligned_sources["twse_quotes"])
+        tpex_daily = tuple(aligned_sources["tpex_quotes"])
+        twse_market = {
+            item.field: item
+            for item in aligned_sources["twse_index"]
+        }
+        tpex_market = {
+            item.field: item
+            for item in aligned_sources["tpex_index"]
+        }
+        twse_inst_raw = tuple(aligned_sources["twse_institutional"])
+        tpex_inst_raw = tuple(aligned_sources["tpex_institutional"])
+        twse_margin_raw = tuple(aligned_sources["twse_margin"])
+        tpex_margin_raw = tuple(aligned_sources["tpex_margin"])
+
+        twse_quote = {
+            item.field: item
+            for item in twse_daily
+            if item.instrument_id == "twse:2330"
+        }
+        if not twse_quote.get("close") or twse_quote["close"].value is None:
+            raise RuntimeError(
+                "TWSE 2330 close unavailable after source alignment"
+            )
+
+        tpex_closes = [
+            item
+            for item in tpex_daily
+            if item.field == "close" and item.value is not None
+        ]
+        matched_closes = [
+            item for item in tpex_closes if item.instrument_id in registry_ids
+        ]
+        if not matched_closes:
+            raise RuntimeError(
+                "TPEx aligned quote universe does not intersect registry"
+            )
+        sample_tpex_close = matched_closes[0]
+
         twse_inst = build_institutional_flow(twse_inst_raw, venue="TWSE")
         tpex_inst = build_institutional_flow(tpex_inst_raw, venue="TPEX")
-
         for snapshot in (twse_inst, tpex_inst):
             for group in ("foreign", "investment_trust", "dealer"):
                 flow = snapshot.by_group(group)
@@ -254,31 +420,6 @@ def main() -> int:
                     f"{snapshot.venue} institutional coverage too low: "
                     f"{snapshot.coverage_ratio:.2f}"
                 )
-
-        twse_margin_raw = tuple(TWSEMarginProvider(http_transport).fetch(target_date))
-        tpex_margin_raw = tuple(TPExMarginProvider(http_transport).fetch())
-
-        if not twse_margin_raw:
-            raise RuntimeError("TWSE margin dataset normalized no observations")
-        if not tpex_margin_raw:
-            raise RuntimeError("TPEx margin dataset normalized no observations")
-
-        try:
-            source_readiness = require_aligned_sources({
-                "twse_quotes": twse_daily,
-                "twse_index": tuple(twse_market.values()),
-                "twse_institutional": twse_inst_raw,
-                "twse_margin": twse_margin_raw,
-                "tpex_quotes": tpex_daily,
-                "tpex_index": tuple(tpex_market.values()),
-                "tpex_institutional": tpex_inst_raw,
-                "tpex_margin": tpex_margin_raw,
-            })
-        except OfficialSourceReadinessError as exc:
-            diagnostic = {**exc.report, "checked_at": datetime.now(timezone.utc).isoformat()}
-            print("OFFICIAL_SOURCE_READINESS " + json.dumps(diagnostic, ensure_ascii=False),
-                  file=sys.stderr, flush=True)
-            raise
 
         twse_margin = build_margin_short_context(
             twse_margin_raw,
@@ -547,6 +688,7 @@ def main() -> int:
                 {
                     "ok": True,
                     "source_readiness": source_readiness,
+                    "source_alignment": source_alignment,
                     "twse_instruments": len(twse_registry),
                     "tpex_instruments": len(tpex_registry),
                     "tpex_daily_closes": len(tpex_closes),
