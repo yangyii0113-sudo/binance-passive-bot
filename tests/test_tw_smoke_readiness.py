@@ -116,3 +116,89 @@ def test_live_smoke_rejects_real_misaligned_fixture_before_sector_ranking(monkey
     assert report['sources']['twse_index']['dates']==['2026-09-18']
     assert report['sources']['tpex_index']['dates']==['2026-09-21']
     assert 'OFFICIAL_SOURCE_READINESS' in capsys.readouterr().err
+
+
+def _canonical(name: str, day: str, source: str | None = None):
+    venue=name.split('_',1)[0].upper()
+    return (
+        Observation(
+            instrument_id=venue.lower()+':MARKET',
+            field='close',
+            value=1,
+            source=source or venue+':fixture',
+            observed_at=day,
+            availability=Availability.AVAILABLE,
+            metadata={'venue':venue},
+        ),
+    )
+
+
+def test_exact_session_recovery_aligns_lagging_twse_without_rewriting(monkeypatch):
+    rows=sources()
+    for name in ('tpex_quotes','tpex_index','tpex_institutional','tpex_margin'):
+        rows[name]=_canonical(name,'2026-09-22')
+    original_twse={name:rows[name] for name in (
+        'twse_quotes','twse_index','twse_institutional','twse_margin'
+    )}
+
+    class ExactTWSE:
+        def __init__(self,transport):pass
+        def fetch_quotes(self,day):
+            return _canonical('twse_quotes',day,'TWSE:MI_INDEX_RWD')
+        def fetch_market(self,day):
+            return _canonical('twse_index',day,'TWSE:FMTQIK_RWD')
+
+    class ExactInstitutional:
+        def __init__(self,transport):pass
+        def fetch(self,day):
+            return _canonical('twse_institutional',day,'TWSE:BFI82U')
+
+    class ExactMargin:
+        def __init__(self,transport):pass
+        def fetch(self,day):
+            return _canonical('twse_margin',day,'TWSE:MI_MARGN_RWD')
+
+    monkeypatch.setattr(smoke,'TWSEExactSessionProvider',ExactTWSE)
+    monkeypatch.setattr(smoke,'TWSEInstitutionalSummaryProvider',ExactInstitutional)
+    monkeypatch.setattr(smoke,'TWSEMarginProvider',ExactMargin)
+
+    recovered,report,method=smoke.align_sources_for_integration(
+        rows,transport=object()
+    )
+
+    assert report['status']=='ALIGNED'
+    assert report['common_date']=='2026-09-22'
+    assert method['mode']=='twse_exact_session_recovery'
+    assert method['from_date']=='2026-09-21'
+    assert method['target_date']=='2026-09-22'
+    assert not method['execution_allowed']
+    assert all(
+        item.observed_at=='2026-09-22'
+        for name in ('twse_quotes','twse_index','twse_institutional','twse_margin')
+        for item in recovered[name]
+    )
+    # Input observations remain untouched; alignment is acquisition, not timestamp rewriting.
+    assert all(
+        item.observed_at=='2026-09-21'
+        for name,items in original_twse.items()
+        for item in items
+    )
+
+
+def test_failed_exact_session_recovery_preserves_original_not_ready_report(monkeypatch):
+    rows=sources()
+    for name in ('tpex_quotes','tpex_index','tpex_institutional','tpex_margin'):
+        rows[name]=_canonical(name,'2026-09-22')
+    original=rejection(rows)
+
+    class BrokenExact:
+        def __init__(self,transport):pass
+        def fetch_quotes(self,day):
+            raise RuntimeError('official exact-session source unavailable')
+
+    monkeypatch.setattr(smoke,'TWSEExactSessionProvider',BrokenExact)
+    with pytest.raises(smoke.OfficialSourceReadinessError) as exc:
+        smoke.align_sources_for_integration(rows,transport=object())
+
+    assert exc.value.report==original
+    assert 'source_dates_not_aligned' in exc.value.report['issues']
