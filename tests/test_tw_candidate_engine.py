@@ -28,6 +28,7 @@ from research.tw.intelligence.market_regime import (
 )
 from research.tw.services.candidate_engine import (
     Candidate,
+    fuse_candidate_research,
     validate_candidate_evidence,
 )
 from research.tw.services.stock_workspace import (
@@ -300,3 +301,94 @@ def test_candidate_service_has_no_provider_network_or_execution_import():
     assert "urllib" not in source
     assert "requests" not in source
     assert "foxyya.execution" not in source
+
+
+def _gate(**kwargs):
+    return validate_candidate_evidence(
+        workspace=kwargs.get("workspace", _workspace()),
+        technical=kwargs.get("technical", _technical()),
+        fundamentals=kwargs.get("fundamentals", _fundamentals()),
+        market_regime=kwargs.get("market_regime", _regime()),
+    )
+
+
+def test_research_fusion_is_bullish_when_primary_and_context_align():
+    technical=_technical(state=ResearchState.BULLISH)
+    fundamentals=_fundamentals()
+    market=_regime(state=MarketRegimeState.NARROW_POSITIVE)
+    result=fuse_candidate_research(
+        gate=_gate(technical=technical,fundamentals=fundamentals,market_regime=market),
+        technical=technical,
+        fundamentals=fundamentals,
+        market_regime=market,
+    )
+
+    assert result.state == ResearchState.BULLISH
+    assert result.directional_score == 4
+    assert result.confidence == pytest.approx(0.975)
+    assert "confidence_is_not_a_return_probability" in result.risk_notes
+    assert result.execution_allowed is False
+
+
+def test_research_fusion_neutralizes_strong_directional_disagreement():
+    technical=_technical(state=ResearchState.BULLISH)
+    fundamentals=replace(
+        _fundamentals(),
+        revenue=replace(
+            _fundamentals().revenue,
+            yoy_percent=Decimal("-20.000000"),
+        ),
+    )
+    market=_regime(state=MarketRegimeState.BROAD_NEGATIVE)
+    result=fuse_candidate_research(
+        gate=_gate(technical=technical,fundamentals=fundamentals,market_regime=market),
+        technical=technical,
+        fundamentals=fundamentals,
+        market_regime=market,
+    )
+
+    assert result.state == ResearchState.NEUTRAL
+    assert result.directional_score == 0
+    assert "technical_market_direction_divergence" in result.risk_notes
+    assert result.confidence < result.evidence_coverage
+
+
+def test_research_fusion_fail_closed_when_evidence_gate_is_not_ready():
+    fundamentals=_fundamentals(
+        revenue_availability=Availability.UNAVAILABLE
+    )
+    gate=_gate(fundamentals=fundamentals)
+    result=fuse_candidate_research(
+        gate=gate,
+        technical=_technical(),
+        fundamentals=fundamentals,
+        market_regime=_regime(),
+    )
+
+    assert gate.ready is False
+    assert result.state == ResearchState.INSUFFICIENT_DATA
+    assert result.directional_score is None
+    assert result.confidence is None
+    assert "fundamental_evidence_insufficient" in result.rationale
+
+
+def test_mixed_market_regime_reduces_consistency_not_to_zero():
+    technical=_technical(state=ResearchState.BULLISH)
+    market=_regime(state=MarketRegimeState.MIXED)
+    fundamentals=_fundamentals()
+    gate=_gate(
+        technical=technical,
+        fundamentals=fundamentals,
+        market_regime=market,
+    )
+    result=fuse_candidate_research(
+        gate=gate,
+        technical=technical,
+        fundamentals=fundamentals,
+        market_regime=market,
+    )
+
+    assert result.state == ResearchState.BULLISH
+    assert result.directional_score == 3
+    assert "market_regime_mixed" in result.risk_notes
+    assert 0 < result.confidence < result.evidence_coverage
