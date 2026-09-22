@@ -2,6 +2,12 @@ import { mock } from './mock.js';
 import { badge, metric, section } from './ui.js';
 import { STATUS } from './status.js';
 import { emptyPaperSnapshot, emptyResultsSnapshot } from './contracts.js';
+import { createViewState, selectMarketRows, selectStrategyItems } from './view.js';
+
+function filterButtons(action, selected, options, label) {
+  return `<div class="tabs" role="group" aria-label="${label}">${options.map(([value, text]) =>
+    `<button type="button" data-action="${action}" data-value="${value}" aria-pressed="${selected === value}">${text}</button>`).join('')}</div>`;
+}
 
 function marketStatusLabel(market) {
   const time = market.updatedAt
@@ -39,15 +45,17 @@ function snapshotNotice(snapshot) {
   return '資料尚未取得；目前資產、持倉與績效未知，等待唯讀快照與帳本驗證。';
 }
 
-function strategyCards(strategySnapshot) {
+function strategyCards(strategySnapshot, view) {
   if (!strategySnapshot.items.length) {
     const message = strategySnapshot.status === 'ERROR'
-      ? 'Strategy Snapshot 目前無法讀取；其他模組仍可正常使用。'
-      : 'Strategy Adapter 已就緒，等待策略引擎提供 Snapshot。';
+      ? '策略資料目前讀取失敗；可繼續查看公開行情。'
+      : '等待策略資料來源提供唯讀快照；目前沒有可供篩選的資料。';
     return `<div class="empty-state"><strong>目前沒有策略快照</strong><span>${message}</span></div>`;
   }
 
-  return `<div class="cards-grid">${strategySnapshot.items.map((strategy) => `
+  const selected = selectStrategyItems(strategySnapshot.items, view);
+  if (!selected.length) return '<div class="empty-state" role="status"><strong>沒有符合條件的策略</strong><span>請清除搜尋或切換至「全部」。</span></div>';
+  return `<p class="section-note" role="status">顯示 ${selected.length} / ${strategySnapshot.items.length} 筆快照；僅供觀察。</p><div class="cards-grid">${selected.map((strategy) => `
     <article class="detail-card">
       <div class="row-between"><strong>${strategy.symbol}</strong>${badge(strategy.statusLabel || strategy.status)}</div>
       <h3>${strategy.strategy} · ${strategy.direction}</h3>
@@ -66,7 +74,7 @@ function strategyCards(strategySnapshot) {
 function strategyOpportunity(strategySnapshot) {
   const strategy = strategySnapshot.items[0];
   if (!strategy) {
-    return `<div class="empty-state"><strong>策略機會等待資料</strong><span>Strategy Adapter 已隔離，Market Data 不受影響。</span></div>`;
+    return `<div class="empty-state"><strong>策略機會等待資料</strong><span>策略快照尚未取得；公開行情可獨立查看。</span></div>`;
   }
 
   return `<div class="strategy-card">
@@ -80,11 +88,14 @@ function strategyOpportunity(strategySnapshot) {
 
 export function homePage(state) {
   const market = state.market;
-  const coins = market.rows.map(([icon, symbol, price, change]) => {
+  const view = state.view || createViewState();
+  const selectedRows = selectMarketRows(market.rows, view);
+  const coins = selectedRows.map(([, symbol, price, change]) => {
     const hasChange = Number.isFinite(change);
     const changeText = hasChange ? `${change >= 0 ? '+' : ''}${change.toFixed(2)}%` : '—';
     const changeClass = !hasChange ? '' : change >= 0 ? 'up' : 'down';
-    return `<div class="coin-row"><span class="coin-icon">${icon}</span><strong>${symbol}</strong><span>${price}</span><b class="${changeClass}">${changeText}</b></div>`;
+    const favorite = view.favorites.includes(symbol);
+    return `<div class="coin-row"><button type="button" class="favorite-toggle" data-action="favorite" data-value="${encodeURIComponent(symbol)}" aria-label="收藏 ${symbol}" aria-pressed="${favorite}">${favorite ? '★' : '☆'}</button><strong>${symbol}</strong><span>${price}</span><b class="${changeClass}">${changeText}</b></div>`;
   }).join('');
 
   const news = mock.news.map(([n, title, text, tag]) => `
@@ -101,23 +112,27 @@ export function homePage(state) {
         <div><span>市場方向</span><strong>${market.direction}</strong></div>
         <div><span>風險情緒</span><strong class="muted-strong">${market.sentiment}</strong></div>
       </div>
-      <div class="tabs"><span>收藏</span><span class="active">熱門</span><span>漲幅</span><span>跌幅</span><span>成交額</span></div>
+      ${filterButtons('market-filter', view.marketFilter, [['all', '全部'], ['favorites', '收藏'], ['gainers', '漲幅排序'], ['losers', '跌幅排序']], '行情分類')}
+      <p class="section-note" role="status">顯示 ${selectedRows.length} / ${market.rows.length} 個幣種。成交額資料尚未提供。</p>
       <div class="table-head"><span>幣種</span><span>最新價格</span><span>24h</span></div>
-      <div class="coin-list">${coins}</div>`, badge(market.status, market.status))}
+      <div class="coin-list">${coins || `<div class="empty-state" role="status"><strong>${view.marketFilter === 'favorites' && !view.favorites.length ? '尚未收藏幣種' : '找不到符合條件的幣種'}</strong><span>可切換至「全部」、清除搜尋，或按星號加入收藏。</span></div>`}</div>
+      ${view.preferenceNotice ? `<p class="section-note" role="status">${view.preferenceNotice}</p>` : ''}`, badge(market.status, market.status))}
 
     ${section('國際熱點', `
-      <div class="tabs compact"><span class="active">新聞</span><span>經濟日曆</span></div>
-      <div class="news-list">${news}</div>
-      <div class="calendar-row"><span>▣</span><div><strong>重要事件日曆</strong><small>關注關鍵經濟數據與國際事件，掌握市場變化。</small></div><span>前值 —　預期 —　公布值 —　›</span></div>`)}
+      ${filterButtons('event-tab', view.eventTab, [['news', '主題示意'], ['calendar', '經濟日曆']], '國際資訊分類')}
+      ${view.eventTab === 'calendar'
+        ? '<div class="empty-state"><strong>經濟日曆尚未接入</strong><span>目前沒有可驗證的事件時間、預期值或公布值。</span></div>'
+        : `<p class="section-note">以下是版面示意文字，尚未接入即時新聞；不能用來判斷當前事件。</p><div class="news-list">${news}</div>`}`, badge('示意內容'))}
 
-    ${section('策略機會', strategyOpportunity(state.strategy), '<span class="action-link">查看條件與圖表 ›</span>')}
+    ${section('策略機會', strategyOpportunity(state.strategy), '<a class="action-link" href="#/strategies">查看策略 ›</a>')}
   </div>`;
 }
 
 export function strategiesPage(state) {
+  const view = state.view || createViewState();
   return `<div class="page-stack">${section('交易策略', `
-    <div class="tabs"><span class="active">觀察中</span><span>等待進場</span><span>已失效</span></div>
-    ${strategyCards(state.strategy)}`, badge(state.strategy.status))}</div>`;
+    ${filterButtons('strategy-filter', view.strategyFilter, [['all', '全部'], ['watch', '觀察中'], ['pending', '等待進場'], ['invalid', '已失效']], '策略分類')}
+    ${strategyCards(state.strategy, view)}`, badge(state.strategy.status))}</div>`;
 }
 
 export function ordersPage(state) {

@@ -1,5 +1,6 @@
 import { MARKET_SOURCE, MARKET_SYMBOLS } from './config.js';
 import { STATUS } from './status.js';
+import { createViewState } from './view.js';
 import {
   emptyStrategySnapshot,
   emptyPaperSnapshot,
@@ -8,6 +9,7 @@ import {
 } from './contracts.js';
 
 export const appState = {
+  view: createViewState(),
   market: {
     status: STATUS.LOADING,
     source: MARKET_SOURCE,

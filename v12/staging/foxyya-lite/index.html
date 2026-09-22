@@ -16,12 +16,24 @@
       </div>
       <div class="top-actions">
         <span class="mode-pill"><span class="live-dot"></span>模擬模式</span>
-        <button class="icon-btn" aria-label="配置">⚙ 配置</button>
         <div class="avatar" aria-label="FOXYYA">🦊</div>
       </div>
     </header>
 
-    <div class="searchbar">⌕ <span>搜尋幣種、國際事件</span></div>
+    <details class="usage-help">
+      <summary>功能與資料說明</summary>
+      <p>行情僅包含 BTC、ETH、SOL 的公開資料；LIVE 不代表模擬帳戶或交易引擎已就緒。</p>
+      <p>收藏只儲存在目前瀏覽器。國際熱點為示意內容，經濟日曆、回測執行與 NAV 圖表尚未提供。</p>
+      <p>資產、持倉與績效須等待唯讀快照及帳本驗證；「—」不代表零值。</p>
+      <p>PAPER_ONLY · REAL_ORDER_LOCK · No Backfill</p>
+    </details>
+    <form class="searchbar" id="search-form" role="search">
+      <label for="market-search" id="search-label">搜尋行情幣種</label>
+      <div class="search-controls">
+        <input id="market-search" type="search" placeholder="BTC、ETH、SOL" maxlength="80" autocomplete="off" />
+        <button id="search-clear" type="button">清除</button>
+      </div>
+    </form>
     <main id="app" aria-live="polite"></main>
 
     <nav class="bottom-nav" aria-label="主要導覽">
