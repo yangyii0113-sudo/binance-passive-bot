@@ -19,6 +19,9 @@ on:
       - 'research/tw/disclosure_archive.py'
       - 'research/tw/intelligence/fundamentals.py'
       - 'research/tw/services/fundamentals.py'
+      - 'research/tw/services/candidate_engine.py'
+      - 'research/tw/p3_5_manifest.json'
+      - 'tools/tw_candidate_smoke.py'
   workflow_dispatch:
 
 permissions:
@@ -27,7 +30,7 @@ permissions:
 jobs:
   official-data-smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
@@ -35,8 +38,12 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Compile live-smoke script
-        run: python -m py_compile tools/tw_public_data_smoke.py
+      - name: Compile live-smoke scripts
+        run: |
+          python -m py_compile tools/tw_public_data_smoke.py
+          python -m py_compile tools/tw_technical_smoke.py
+          python -m py_compile tools/tw_fundamentals_smoke.py
+          python -m py_compile tools/tw_candidate_smoke.py
 
       - name: Run official TWSE / TPEx public-data smoke
         env:
@@ -54,3 +61,9 @@ jobs:
         env:
           PYTHONPATH: .
         run: python tools/tw_fundamentals_smoke.py
+
+      - name: Run official TWSE / TPEx research-candidate smoke
+        if: ${{ !cancelled() }}
+        env:
+          PYTHONPATH: .
+        run: python tools/tw_candidate_smoke.py
