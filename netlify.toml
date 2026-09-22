@@ -1,0 +1,4 @@
+# Only PR deploy previews serve the Lite frontend.
+# Production settings and Execution V2 are unchanged.
+[context.deploy-preview]
+  publish = "v12/staging/foxyya-lite"

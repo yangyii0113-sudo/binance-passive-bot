@@ -9,12 +9,12 @@ export function emptyPaperSnapshot() {
     status: STATUS.EMPTY,
     updatedAt: null,
     summary: {
-      nav: 100000,
-      cash: 100000,
-      openPositions: 0,
-      pendingOrders: 0,
-      unrealizedPnl: 0,
-      portfolioRiskPct: 0
+      nav: null,
+      cash: null,
+      openPositions: null,
+      pendingOrders: null,
+      unrealizedPnl: null,
+      portfolioRiskPct: null
     },
     positions: [],
     pending: []
@@ -26,12 +26,12 @@ export function emptyResultsSnapshot() {
     status: STATUS.EMPTY,
     updatedAt: null,
     summary: {
-      trades: 0,
+      trades: null,
       winRatePct: null,
       expectancyR: null,
       profitFactor: null,
-      netPnl: 0,
-      maxDrawdownPct: 0
+      netPnl: null,
+      maxDrawdownPct: null
     },
     navCurve: [],
     recentTrades: []
