@@ -28,6 +28,7 @@ from research.tw.intelligence.market_regime import (
 )
 from research.tw.services.candidate_engine import (
     Candidate,
+    build_candidate_from_fusion,
     fuse_candidate_research,
     validate_candidate_evidence,
 )
@@ -37,6 +38,7 @@ from research.tw.services.stock_workspace import (
 )
 from research.tw.technical_contracts import (
     TechnicalFrame,
+    TechnicalMetric,
     TechnicalResearchSnapshot,
 )
 
@@ -392,3 +394,151 @@ def test_mixed_market_regime_reduces_consistency_not_to_zero():
     assert result.directional_score == 3
     assert "market_regime_mixed" in result.risk_notes
     assert 0 < result.confidence < result.evidence_coverage
+
+
+def _technical_with_levels(
+    *,
+    state=ResearchState.BULLISH,
+    support=95.0,
+    resistance=110.0,
+    day=DAY,
+):
+    base=_technical(day=day,state=state)
+    refs=(EvidenceRef("level","TWSE:history",day,"twse:2330"),)
+    metrics=(
+        TechnicalMetric(
+            name="support20",
+            value=support,
+            availability=Availability.AVAILABLE if support is not None else Availability.UNAVAILABLE,
+            required_periods=20,
+            observed_periods=20 if support is not None else 0,
+            coverage_ratio=1.0 if support is not None else 0.0,
+            observed_at=day,
+            evidence=refs if support is not None else (),
+            reason=None if support is not None else "unavailable",
+        ),
+        TechnicalMetric(
+            name="resistance20",
+            value=resistance,
+            availability=Availability.AVAILABLE if resistance is not None else Availability.UNAVAILABLE,
+            required_periods=20,
+            observed_periods=20 if resistance is not None else 0,
+            coverage_ratio=1.0 if resistance is not None else 0.0,
+            observed_at=day,
+            evidence=refs if resistance is not None else (),
+            reason=None if resistance is not None else "unavailable",
+        ),
+    )
+    return replace(base,daily=replace(base.daily,metrics=metrics))
+
+
+def _negative_fundamentals():
+    base=_fundamentals()
+    return replace(
+        base,
+        revenue=replace(
+            base.revenue,
+            yoy_percent=Decimal("-20.000000"),
+        ),
+    )
+
+
+def test_bullish_candidate_requires_and_exposes_support_invalidation():
+    technical=_technical_with_levels(state=ResearchState.BULLISH,support=95)
+    fundamentals=_fundamentals()
+    market=_regime(state=MarketRegimeState.NARROW_POSITIVE)
+    gate=_gate(technical=technical,fundamentals=fundamentals,market_regime=market)
+    fusion=fuse_candidate_research(
+        gate=gate,
+        technical=technical,
+        fundamentals=fundamentals,
+        market_regime=market,
+    )
+    candidate=build_candidate_from_fusion(fusion=fusion,technical=technical)
+
+    assert candidate.signal.state == ResearchState.BULLISH
+    assert candidate.scenario == "positive_evidence_continuation_review"
+    assert candidate.invalidation == "daily_close_below_support20:95"
+    assert candidate.signal.confidence == fusion.confidence
+    assert candidate.signal.evidence == fusion.evidence
+    assert candidate.execution_allowed is False
+
+
+def test_bearish_candidate_uses_resistance_as_invalidation():
+    technical=_technical_with_levels(state=ResearchState.BEARISH,resistance=110)
+    fundamentals=_negative_fundamentals()
+    market=_regime(state=MarketRegimeState.BROAD_NEGATIVE)
+    gate=_gate(technical=technical,fundamentals=fundamentals,market_regime=market)
+    fusion=fuse_candidate_research(
+        gate=gate,
+        technical=technical,
+        fundamentals=fundamentals,
+        market_regime=market,
+    )
+    candidate=build_candidate_from_fusion(fusion=fusion,technical=technical)
+
+    assert fusion.state == ResearchState.BEARISH
+    assert candidate.signal.state == ResearchState.BEARISH
+    assert candidate.scenario == "negative_evidence_continuation_review"
+    assert candidate.invalidation == "daily_close_above_resistance20:110"
+
+
+def test_directional_candidate_without_invalidation_level_fails_closed():
+    technical=_technical_with_levels(
+        state=ResearchState.BULLISH,
+        support=None,
+    )
+    fundamentals=_fundamentals()
+    market=_regime(state=MarketRegimeState.NARROW_POSITIVE)
+    # Gate remains valid because support/resistance is a scenario-stage requirement.
+    gate=_gate(technical=technical,fundamentals=fundamentals,market_regime=market)
+    fusion=fuse_candidate_research(
+        gate=gate,
+        technical=technical,
+        fundamentals=fundamentals,
+        market_regime=market,
+    )
+    candidate=build_candidate_from_fusion(fusion=fusion,technical=technical)
+
+    assert gate.ready is True
+    assert fusion.state == ResearchState.BULLISH
+    assert candidate.signal.state == ResearchState.INSUFFICIENT_DATA
+    assert candidate.scenario == "UNAVAILABLE"
+    assert candidate.invalidation == "UNAVAILABLE"
+    assert candidate.signal.confidence is None
+
+
+def test_neutral_candidate_does_not_invent_directional_invalidation():
+    technical=_technical_with_levels(state=ResearchState.NEUTRAL)
+    fundamentals=_fundamentals()
+    market=_regime(state=MarketRegimeState.MIXED)
+    gate=_gate(technical=technical,fundamentals=fundamentals,market_regime=market)
+    fusion=fuse_candidate_research(
+        gate=gate,
+        technical=technical,
+        fundamentals=fundamentals,
+        market_regime=market,
+    )
+    candidate=build_candidate_from_fusion(fusion=fusion,technical=technical)
+
+    assert candidate.signal.state == ResearchState.NEUTRAL
+    assert candidate.scenario == "mixed_evidence_review"
+    assert candidate.invalidation == "UNAVAILABLE"
+
+
+def test_scenario_builder_rechecks_technical_identity_and_date():
+    technical=_technical_with_levels(state=ResearchState.BULLISH)
+    fundamentals=_fundamentals()
+    market=_regime()
+    gate=_gate(technical=technical,fundamentals=fundamentals,market_regime=market)
+    fusion=fuse_candidate_research(
+        gate=gate,
+        technical=technical,
+        fundamentals=fundamentals,
+        market_regime=market,
+    )
+    mismatched=replace(technical,observed_at="2026-09-21")
+    candidate=build_candidate_from_fusion(fusion=fusion,technical=mismatched)
+
+    assert candidate.signal.state == ResearchState.INSUFFICIENT_DATA
+    assert "technical_identity_or_date_mismatch" in candidate.signal.rationale
