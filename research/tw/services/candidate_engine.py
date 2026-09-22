@@ -379,6 +379,158 @@ def fuse_candidate_research(
     )
 
 
+def _metric_value(
+    technical: TechnicalResearchSnapshot,
+    name: str,
+) -> float | None:
+    metric = technical.daily.by_name(name)
+    if (
+        metric is None
+        or metric.availability != Availability.AVAILABLE
+        or metric.value is None
+    ):
+        return None
+    return float(metric.value)
+
+
+def build_candidate_from_fusion(
+    *,
+    fusion: CandidateResearchFusion,
+    technical: TechnicalResearchSnapshot,
+) -> Candidate:
+    """Create a bounded research scenario from a completed fusion result.
+
+    Directional candidates require an explicit canonical invalidation level.
+    Missing support/resistance fails closed rather than inventing a level.
+    """
+    if (
+        fusion.state == ResearchState.INSUFFICIENT_DATA
+        or fusion.directional_score is None
+    ):
+        signal = ResearchSignal(
+            instrument_id=fusion.instrument_id,
+            state=ResearchState.INSUFFICIENT_DATA,
+            rationale=fusion.rationale or ("required_evidence_not_ready",),
+            evidence=fusion.evidence,
+            confidence=None,
+            execution_allowed=False,
+        )
+        return Candidate(
+            instrument_id=fusion.instrument_id,
+            signal=signal,
+            scenario="UNAVAILABLE",
+            invalidation="UNAVAILABLE",
+            risk_notes=tuple(dict.fromkeys(
+                fusion.risk_notes
+                + ("Research only; no executable order is produced.",)
+            )),
+            evidence_coverage=fusion.evidence_coverage,
+            review_priority=0,
+            execution_allowed=False,
+        )
+
+    if (
+        technical.instrument_id != fusion.instrument_id
+        or technical.observed_at != fusion.observed_at
+    ):
+        signal = ResearchSignal(
+            instrument_id=fusion.instrument_id,
+            state=ResearchState.INSUFFICIENT_DATA,
+            rationale=("technical_identity_or_date_mismatch",),
+            evidence=fusion.evidence,
+            confidence=None,
+            execution_allowed=False,
+        )
+        return Candidate(
+            instrument_id=fusion.instrument_id,
+            signal=signal,
+            scenario="UNAVAILABLE",
+            invalidation="UNAVAILABLE",
+            risk_notes=tuple(dict.fromkeys(
+                fusion.risk_notes
+                + ("Research only; no executable order is produced.",)
+            )),
+            evidence_coverage=fusion.evidence_coverage,
+            review_priority=0,
+            execution_allowed=False,
+        )
+
+    scenario = "mixed_evidence_review"
+    invalidation = "UNAVAILABLE"
+    if fusion.state == ResearchState.BULLISH:
+        support = _metric_value(technical, "support20")
+        if support is None:
+            return Candidate(
+                instrument_id=fusion.instrument_id,
+                signal=ResearchSignal(
+                    instrument_id=fusion.instrument_id,
+                    state=ResearchState.INSUFFICIENT_DATA,
+                    rationale=("directional_invalidation_level_unavailable",),
+                    evidence=fusion.evidence,
+                    confidence=None,
+                    execution_allowed=False,
+                ),
+                scenario="UNAVAILABLE",
+                invalidation="UNAVAILABLE",
+                risk_notes=tuple(dict.fromkeys(
+                    fusion.risk_notes
+                    + ("Research only; no executable order is produced.",)
+                )),
+                evidence_coverage=fusion.evidence_coverage,
+                review_priority=0,
+                execution_allowed=False,
+            )
+        scenario = "positive_evidence_continuation_review"
+        invalidation = f"daily_close_below_support20:{support:.6g}"
+    elif fusion.state == ResearchState.BEARISH:
+        resistance = _metric_value(technical, "resistance20")
+        if resistance is None:
+            return Candidate(
+                instrument_id=fusion.instrument_id,
+                signal=ResearchSignal(
+                    instrument_id=fusion.instrument_id,
+                    state=ResearchState.INSUFFICIENT_DATA,
+                    rationale=("directional_invalidation_level_unavailable",),
+                    evidence=fusion.evidence,
+                    confidence=None,
+                    execution_allowed=False,
+                ),
+                scenario="UNAVAILABLE",
+                invalidation="UNAVAILABLE",
+                risk_notes=tuple(dict.fromkeys(
+                    fusion.risk_notes
+                    + ("Research only; no executable order is produced.",)
+                )),
+                evidence_coverage=fusion.evidence_coverage,
+                review_priority=0,
+                execution_allowed=False,
+            )
+        scenario = "negative_evidence_continuation_review"
+        invalidation = f"daily_close_above_resistance20:{resistance:.6g}"
+
+    signal = ResearchSignal(
+        instrument_id=fusion.instrument_id,
+        state=fusion.state,
+        rationale=fusion.rationale,
+        evidence=fusion.evidence,
+        confidence=fusion.confidence,
+        execution_allowed=False,
+    )
+    return Candidate(
+        instrument_id=fusion.instrument_id,
+        signal=signal,
+        scenario=scenario,
+        invalidation=invalidation,
+        risk_notes=tuple(dict.fromkeys(
+            fusion.risk_notes
+            + ("Research only; no executable order is produced.",)
+        )),
+        evidence_coverage=fusion.evidence_coverage,
+        review_priority=0,
+        execution_allowed=False,
+    )
+
+
 def insufficient_data_candidate(
     instrument_id: str,
     *reasons: str,
