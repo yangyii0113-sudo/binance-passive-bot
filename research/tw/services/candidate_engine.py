@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, timedelta, timezone
 
 from ..contracts import Availability, EvidenceRef, ResearchSignal, ResearchState
@@ -529,6 +529,89 @@ def build_candidate_from_fusion(
         review_priority=0,
         execution_allowed=False,
     )
+
+
+def score_candidate_for_review(candidate: Candidate) -> Candidate:
+    """Assign an evidence/clarity priority for human review.
+
+    review_priority is not expected return, win probability or execution rank.
+    """
+    if not isinstance(candidate, Candidate):
+        raise TypeError("candidate must be Candidate")
+    if candidate.signal.state == ResearchState.INSUFFICIENT_DATA:
+        return replace(candidate, review_priority=0)
+
+    confidence = candidate.signal.confidence or 0.0
+    clarity = (
+        1.0
+        if candidate.signal.state in {ResearchState.BULLISH, ResearchState.BEARISH}
+        else 0.75
+    )
+    evidence_score = (
+        0.60 * candidate.evidence_coverage
+        + 0.40 * confidence
+    )
+    priority = round(
+        100 * max(0.0, min(1.0, evidence_score)) * clarity
+    )
+    return replace(candidate, review_priority=max(0, min(100, priority)))
+
+
+def rank_candidates_for_review(
+    candidates,
+    *,
+    limit: int = 5,
+) -> tuple[Candidate, ...]:
+    """Deterministically prioritize evidence-complete candidates for review."""
+    if type(limit) is not int or limit <= 0:
+        raise ValueError("limit must be a positive integer")
+
+    rows = tuple(candidates)
+    if any(not isinstance(item, Candidate) for item in rows):
+        raise TypeError("all candidates must be Candidate")
+
+    ids = [item.instrument_id for item in rows]
+    if len(ids) != len(set(ids)):
+        raise ValueError("duplicate candidate instrument_id")
+
+    scored = tuple(score_candidate_for_review(item) for item in rows)
+    return tuple(
+        sorted(
+            scored,
+            key=lambda item: (
+                -item.review_priority,
+                item.signal.state == ResearchState.INSUFFICIENT_DATA,
+                item.instrument_id,
+            ),
+        )[:limit]
+    )
+
+
+def build_research_candidate(
+    *,
+    workspace: StockWorkspaceSnapshot,
+    technical: TechnicalResearchSnapshot,
+    fundamentals: FundamentalsSnapshot,
+    market_regime: MarketRegimeSnapshot,
+) -> Candidate:
+    """Run the complete P3.5 research-only candidate pipeline."""
+    gate = validate_candidate_evidence(
+        workspace=workspace,
+        technical=technical,
+        fundamentals=fundamentals,
+        market_regime=market_regime,
+    )
+    fusion = fuse_candidate_research(
+        gate=gate,
+        technical=technical,
+        fundamentals=fundamentals,
+        market_regime=market_regime,
+    )
+    candidate = build_candidate_from_fusion(
+        fusion=fusion,
+        technical=technical,
+    )
+    return score_candidate_for_review(candidate)
 
 
 def insufficient_data_candidate(
