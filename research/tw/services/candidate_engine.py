@@ -6,7 +6,7 @@ from datetime import date, timedelta, timezone
 from ..contracts import Availability, EvidenceRef, ResearchSignal, ResearchState
 from ..fundamental_contracts import FundamentalsSnapshot, instant
 from ..intelligence.market_regime import MarketRegimeSnapshot, MarketRegimeState
-from ..services.stock_workspace import StockWorkspaceSnapshot
+from .stock_workspace import StockWorkspaceSnapshot
 from ..technical_contracts import TechnicalResearchSnapshot
 
 
@@ -36,6 +36,28 @@ class Candidate:
             raise ValueError("candidate evidence_coverage must be between 0 and 1")
         if not 0 <= self.review_priority <= 100:
             raise ValueError("candidate review_priority must be between 0 and 100")
+
+
+@dataclass(frozen=True)
+class CandidateResearchFusion:
+    instrument_id: str
+    observed_at: str | None
+    state: ResearchState
+    directional_score: int | None
+    evidence_coverage: float
+    confidence: float | None
+    rationale: tuple[str, ...]
+    risk_notes: tuple[str, ...]
+    evidence: tuple[EvidenceRef, ...]
+    execution_allowed: bool = False
+
+    def __post_init__(self) -> None:
+        if self.execution_allowed:
+            raise ValueError("Taiwan candidate fusion cannot authorize execution")
+        if not 0.0 <= self.evidence_coverage <= 1.0:
+            raise ValueError("fusion evidence_coverage must be between 0 and 1")
+        if self.confidence is not None and not 0.0 <= self.confidence <= 1.0:
+            raise ValueError("fusion confidence must be between 0 and 1")
 
 
 @dataclass(frozen=True)
@@ -231,6 +253,128 @@ def validate_candidate_evidence(
         evidence=evidence,
         reasons=tuple(dict.fromkeys(reasons)),
         warnings=tuple(dict.fromkeys(warnings)),
+        execution_allowed=False,
+    )
+
+
+def _research_vote(state: ResearchState) -> int:
+    if state == ResearchState.BULLISH:
+        return 1
+    if state == ResearchState.BEARISH:
+        return -1
+    return 0
+
+
+def _market_vote(state: MarketRegimeState) -> int:
+    if state in {
+        MarketRegimeState.BROAD_POSITIVE,
+        MarketRegimeState.NARROW_POSITIVE,
+    }:
+        return 1
+    if state in {
+        MarketRegimeState.BROAD_NEGATIVE,
+        MarketRegimeState.NARROW_NEGATIVE,
+    }:
+        return -1
+    return 0
+
+
+def _revenue_vote(snapshot: FundamentalsSnapshot) -> int:
+    value = snapshot.revenue.yoy_percent
+    if value is None:
+        return 0
+    if value > 0:
+        return 1
+    if value < 0:
+        return -1
+    return 0
+
+
+def fuse_candidate_research(
+    *,
+    gate: CandidateEvidenceGate,
+    technical: TechnicalResearchSnapshot,
+    fundamentals: FundamentalsSnapshot,
+    market_regime: MarketRegimeSnapshot,
+) -> CandidateResearchFusion:
+    """Fuse validated evidence into a descriptive research state.
+
+    Confidence measures evidence completeness/consistency only. It is not a
+    probability of profit, return forecast or execution qualification.
+    """
+    if not gate.ready:
+        return CandidateResearchFusion(
+            instrument_id=gate.instrument_id,
+            observed_at=gate.observed_at,
+            state=ResearchState.INSUFFICIENT_DATA,
+            directional_score=None,
+            evidence_coverage=gate.coverage_ratio,
+            confidence=None,
+            rationale=gate.reasons or ("required_evidence_not_ready",),
+            risk_notes=gate.warnings + (
+                "confidence_is_not_a_return_probability",
+            ),
+            evidence=gate.evidence,
+            execution_allowed=False,
+        )
+
+    technical_vote = _research_vote(technical.state)
+    market_vote = _market_vote(market_regime.state)
+    revenue_vote = _revenue_vote(fundamentals)
+    score = technical_vote * 2 + market_vote + revenue_vote
+
+    if score >= 2:
+        state = ResearchState.BULLISH
+    elif score <= -2:
+        state = ResearchState.BEARISH
+    else:
+        state = ResearchState.NEUTRAL
+
+    consistency = 1.0
+    risk_notes = list(gate.warnings)
+    if technical_vote == 0:
+        consistency *= 0.85
+        risk_notes.append("technical_state_neutral")
+    elif market_vote == 0:
+        consistency *= 0.90
+        risk_notes.append("market_regime_mixed")
+    elif technical_vote != market_vote:
+        consistency *= 0.70
+        risk_notes.append("technical_market_direction_divergence")
+
+    if (
+        revenue_vote != 0
+        and technical_vote != 0
+        and revenue_vote != technical_vote
+    ):
+        consistency *= 0.90
+        risk_notes.append("revenue_growth_direction_diverges_from_technical")
+
+    risk_notes.extend(technical.limitations)
+    risk_notes.extend(fundamentals.limitations)
+    risk_notes.append("confidence_is_not_a_return_probability")
+
+    confidence = max(
+        0.0,
+        min(1.0, gate.coverage_ratio * consistency),
+    )
+    rationale = (
+        f"technical_state:{technical.state.value}",
+        f"market_regime:{market_regime.state.value}",
+        f"revenue_yoy_direction:{revenue_vote}",
+        f"descriptive_score:{score}",
+    )
+
+    return CandidateResearchFusion(
+        instrument_id=gate.instrument_id,
+        observed_at=gate.observed_at,
+        state=state,
+        directional_score=score,
+        evidence_coverage=gate.coverage_ratio,
+        confidence=confidence,
+        rationale=rationale,
+        risk_notes=tuple(dict.fromkeys(risk_notes)),
+        evidence=gate.evidence,
         execution_allowed=False,
     )
 
