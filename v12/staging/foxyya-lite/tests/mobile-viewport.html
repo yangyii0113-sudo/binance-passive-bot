@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FOXYYA 手機尺寸驗收</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#030b10;color:#ecf5fa;font:14px system-ui,sans-serif}header{padding:12px 20px;border-bottom:1px solid #294755;display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap}label{display:flex;align-items:center;gap:8px}select{font:inherit;background:#122733;color:inherit;border:1px solid #3c6174;border-radius:6px;padding:8px}p{margin:0;color:#a0b9c7}main{display:flex;justify-content:center;padding:18px 0 70px}iframe{display:block;width:390px;height:844px;max-width:none;border:1px solid #31505f;background:#061018}
+</style>
+</head>
+<body>
+<header><strong>FOXYYA 手機尺寸驗收</strong><label>畫面寬度<select id="viewport-width"><option value="360">360 px</option><option value="390" selected>390 px</option><option value="430">430 px</option></select></label><p>同源響應式預覽；不代表 iOS Safari 真機驗證。</p></header>
+<main><iframe id="mobile-preview" title="FOXYYA 手機預覽" src="../index.html#/"></iframe></main>
+<script>
+const widthControl = document.getElementById('viewport-width');
+const previewFrame = document.getElementById('mobile-preview');
+widthControl.addEventListener('change', () => { previewFrame.style.width = `${Number(widthControl.value)}px`; });
+</script>
+</body>
+</html>
