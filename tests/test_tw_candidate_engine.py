@@ -29,7 +29,10 @@ from research.tw.intelligence.market_regime import (
 from research.tw.services.candidate_engine import (
     Candidate,
     build_candidate_from_fusion,
+    build_research_candidate,
     fuse_candidate_research,
+    rank_candidates_for_review,
+    score_candidate_for_review,
     validate_candidate_evidence,
 )
 from research.tw.services.stock_workspace import (
@@ -542,3 +545,137 @@ def test_scenario_builder_rechecks_technical_identity_and_date():
 
     assert candidate.signal.state == ResearchState.INSUFFICIENT_DATA
     assert "technical_identity_or_date_mismatch" in candidate.signal.rationale
+
+
+def test_complete_candidate_pipeline_assigns_review_priority_not_execution():
+    technical=_technical_with_levels(state=ResearchState.BULLISH,support=95)
+    candidate=build_research_candidate(
+        workspace=_workspace(),
+        technical=technical,
+        fundamentals=_fundamentals(),
+        market_regime=_regime(),
+    )
+
+    assert candidate.signal.state == ResearchState.BULLISH
+    assert candidate.review_priority > 0
+    assert candidate.evidence_coverage > 0
+    assert candidate.execution_allowed is False
+    assert candidate.signal.execution_allowed is False
+    assert "probability" in " ".join(candidate.risk_notes)
+
+
+def test_insufficient_candidate_priority_is_zero():
+    technical=_technical_with_levels(state=ResearchState.BULLISH,support=None)
+    candidate=build_research_candidate(
+        workspace=_workspace(),
+        technical=technical,
+        fundamentals=_fundamentals(),
+        market_regime=_regime(),
+    )
+
+    assert candidate.signal.state == ResearchState.INSUFFICIENT_DATA
+    assert candidate.review_priority == 0
+
+
+def test_neutral_review_priority_is_lower_at_same_evidence_confidence():
+    signal_directional=ResearchSignal(
+        instrument_id="twse:2330",
+        state=ResearchState.BULLISH,
+        rationale=("fixture",),
+        confidence=0.8,
+        execution_allowed=False,
+    )
+    signal_neutral=replace(signal_directional,state=ResearchState.NEUTRAL)
+    directional=Candidate(
+        instrument_id="twse:2330",
+        signal=signal_directional,
+        scenario="positive_evidence_continuation_review",
+        invalidation="daily_close_below_support20:95",
+        evidence_coverage=0.8,
+    )
+    neutral=Candidate(
+        instrument_id="twse:2317",
+        signal=replace(signal_neutral,instrument_id="twse:2317"),
+        scenario="mixed_evidence_review",
+        invalidation="UNAVAILABLE",
+        evidence_coverage=0.8,
+    )
+
+    assert score_candidate_for_review(directional).review_priority > (
+        score_candidate_for_review(neutral).review_priority
+    )
+
+
+def test_review_ranking_is_deterministic_and_incomplete_last():
+    def make(symbol,state,confidence,coverage):
+        signal=ResearchSignal(
+            instrument_id=f"twse:{symbol}",
+            state=state,
+            rationale=("fixture",),
+            confidence=confidence,
+            execution_allowed=False,
+        )
+        return Candidate(
+            instrument_id=f"twse:{symbol}",
+            signal=signal,
+            scenario="review" if state != ResearchState.INSUFFICIENT_DATA else "UNAVAILABLE",
+            invalidation="UNAVAILABLE",
+            evidence_coverage=coverage,
+        )
+
+    rows=(
+        make("3000",ResearchState.INSUFFICIENT_DATA,None,0.9),
+        make("2000",ResearchState.BULLISH,0.8,0.8),
+        make("1000",ResearchState.BULLISH,0.8,0.8),
+        make("4000",ResearchState.NEUTRAL,0.9,0.9),
+    )
+    ranked=rank_candidates_for_review(reversed(rows),limit=4)
+
+    assert tuple(item.instrument_id for item in ranked) == (
+        "twse:1000",
+        "twse:2000",
+        "twse:4000",
+        "twse:3000",
+    )
+    assert ranked[-1].review_priority == 0
+
+
+def test_review_ranking_rejects_duplicate_instruments_and_invalid_limit():
+    signal=ResearchSignal(
+        instrument_id="twse:2330",
+        state=ResearchState.NEUTRAL,
+        rationale=("fixture",),
+        confidence=0.5,
+    )
+    row=Candidate(
+        instrument_id="twse:2330",
+        signal=signal,
+        scenario="review",
+        invalidation="UNAVAILABLE",
+        evidence_coverage=0.5,
+    )
+    with pytest.raises(ValueError,match="duplicate"):
+        rank_candidates_for_review((row,row))
+    with pytest.raises(ValueError,match="positive integer"):
+        rank_candidates_for_review((row,),limit=0)
+
+
+def test_review_priority_is_unchanged_by_scenario_text():
+    signal=ResearchSignal(
+        instrument_id="twse:2330",
+        state=ResearchState.BULLISH,
+        rationale=("fixture",),
+        confidence=0.8,
+    )
+    first=Candidate(
+        instrument_id="twse:2330",
+        signal=signal,
+        scenario="scenario-a",
+        invalidation="level-a",
+        evidence_coverage=0.8,
+    )
+    second=replace(first,scenario="scenario-b",invalidation="level-b")
+
+    assert score_candidate_for_review(first).review_priority == (
+        score_candidate_for_review(second).review_priority
+    )
