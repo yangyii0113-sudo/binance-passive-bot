@@ -1,3 +1,4 @@
+import { scanPullbacks } from './trend_pullback.js';
 import { MARKET_REFRESH_MS } from './config.js';
 import { appState, setMarketState, setStateSlice } from './state.js';
 import { cachedMarketSnapshot, loadMarketSnapshot } from './market.js';
@@ -463,6 +464,14 @@ function initEvents() {
   });
 
   document.addEventListener('click', async (event) => {
+    if(event.target.closest?.('[data-pullback-scan]')) {
+      if(appState.pullback.loading) return;
+      setStateSlice('pullback',{loading:true,rows:[]}); render();
+      try { setStateSlice('pullback',{rows:await scanPullbacks()}); }
+      finally { setStateSlice('pullback',{loading:false}); render(); }
+      return;
+    }
+
     const historyExport = event.target.closest?.('[data-history-export]');
     if (historyExport && !historyExport.disabled) {
       try {

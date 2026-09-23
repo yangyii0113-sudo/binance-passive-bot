@@ -27,6 +27,7 @@ export const appState = {
     rows: []
   },
   strategy: emptyStrategySnapshot(),
+  pullback: { loading: false, rows: [] },
   paper: emptyPaperSnapshot(),
   results: emptyResultsSnapshot(),
   backtest: emptyBacktestSnapshot(),

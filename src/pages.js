@@ -1,3 +1,4 @@
+import { entryPlan, pullbackPanel } from './entry_plan.js';
 import { mock } from './mock.js';
 import { badge, metric, section } from './ui.js';
 import { evaluateStrategyGuard } from './strategy_guard.js';
@@ -278,13 +279,10 @@ function strategyCards(state) {
         <strong class="strategy-direction">${strategy.direction}</strong>
         <span>訊號分數 <b>${valueOrDash(strategy.signalScore)}</b>/100</span>
       </div>
+      ${entryPlan(strategy)}
       <div class="mini-grid strategy-metrics">
-        <span><em>風報比</em><strong>${valueOrDash(strategy.rr)}</strong></span>
-        <span><em>信心</em><strong>${valueOrDash(strategy.confidence)}</strong></span>
-        <span><em>進場價</em><strong>${price(strategy.entry)}</strong></span>
-        <span><em>停損價</em><strong>${price(strategy.stop)}</strong></span>
-        <span><em>第一止盈</em><strong>${price(strategy.tp1)}</strong></span>
-        <span><em>第二止盈</em><strong>${price(strategy.tp2)}</strong></span>
+        <span><em>參考風報比</em><strong>${valueOrDash(strategy.rr)}</strong></span>
+        <span><em>訊號信心</em><strong>${valueOrDash(strategy.confidence)}</strong></span>
       </div>
       <p class="strategy-note">${strategy.note || '策略快照僅供觀察，不提供真實下單。'}</p>
       <button class="candidate-add-btn" data-candidate-add="${strategy.symbol}"
@@ -312,6 +310,7 @@ function strategyOpportunity(state) {
       </div>
       <b class="strategy-direction">${strategy.direction}</b>
       <div class="opportunity-score">訊號分數 <strong>${valueOrDash(strategy.signalScore)}</strong>/100</div>
+      ${entryPlan(strategy)}
       <p class="strategy-note">${strategy.note}</p>
       <button class="text-btn" data-go-strategies type="button">查看全部交易訊號 ›</button>
     </div>
@@ -1321,6 +1320,8 @@ export function strategiesPage(state) {
   const workspace = state.ui?.strategyWorkspace || 'signals';
   const isCrypto = (state.ui?.assetClass || 'crypto') === 'crypto';
   const signalsHtml = isCrypto ? `
+    ${pullbackPanel(state)}
+    <h3>市場動能參考</h3>
     <div class="signal-filter-row">
       ${tab('全部','all',filter,'data-strategy-filter')}
       ${tab('🔥 高強度','HIGH',filter,'data-strategy-filter')}

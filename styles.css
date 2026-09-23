@@ -2160,3 +2160,30 @@ button, a, input, select, summary { scroll-margin-block:16px 110px; }
     font-size:.52rem;
   }
 }
+
+/* Point hierarchy: entry first; targets and protective stop remain readable on phones. */
+.entry-plan { display:grid; gap:10px; margin:16px 0; min-width:0; font-variant-numeric:tabular-nums; }
+.entry-plan-primary { padding:18px; border:1px solid #72a7ff66; border-radius:14px; background:#142741; }
+.entry-plan-primary > span, .entry-plan-exits > div > span { display:block; font-size:13px; font-weight:650; margin-bottom:8px; color:#ccd8ea; }
+.entry-plan-primary > strong { display:block; font-size:clamp(23px,3vw,32px); line-height:1.25; color:#f5f9ff; overflow-wrap:anywhere; }
+.entry-plan strong small { font-size:11px; font-weight:500; color:#aebbd0; }
+.entry-plan-primary p { color:#aebbd0; font-size:12px; margin:9px 0 0; }
+.entry-plan-exits { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+.entry-plan-exits > div { padding:14px; border-radius:12px; border:1px solid #2a4850; background:#142b2c; min-width:0; }
+.entry-plan-exits strong { display:block; font-size:19px; line-height:1.4; color:#7fe4c5; overflow-wrap:anywhere; }
+.entry-plan-exits > div > small { display:block; margin-top:6px; font-size:11px; color:#adbec9; }
+.entry-plan-exits .entry-plan-stop { grid-column:1/-1; border-color:#70404b; background:#32212b; }
+.entry-plan-stop strong { color:#ffadb5; }
+.pullback-panel { border:1px solid #3e5477; padding:20px; border-radius:18px; margin-bottom:28px; background:#101b2c; }
+.pullback-heading { display:flex; gap:18px; align-items:center; justify-content:space-between; flex-wrap:wrap; }
+.pullback-heading h3 { margin:8px 0; }
+.pullback-heading p { color:#b4c2d7; font-size:13px; line-height:1.6; }
+.research-kicker { color:#a5c6ff; font-size:12px; letter-spacing:.03em; }
+.pullback-panel button { white-space:normal; }
+@media(max-width:540px) {
+  .pullback-panel { padding:12px; }
+  .pullback-heading button { width:100%; }
+  .entry-plan-exits { grid-template-columns:1fr; }
+  .entry-plan-exits strong { font-size:22px; }
+  .entry-plan-primary { padding:15px; }
+}
