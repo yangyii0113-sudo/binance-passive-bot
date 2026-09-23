@@ -53,7 +53,7 @@ export async function scanPullbacks(candidates=[],{fetcher=fetch,onProgress=()=>
     while(cursor<candidates.length){
       const index=cursor++,candidate=candidates[index],symbol=candidate.symbol;
       try {
-        if(!/^[A-Z0-9]+USDT$/.test(symbol))throw new Error('合約代碼無效');
+        if(!/^[\p{L}\p{N}]+USDT$/u.test(symbol))throw new Error('合約代碼無效');
         const rows=await Promise.all(['1h','4h'].map(async interval=>{
           const response=await fetcher(`https://fapi.binance.com/fapi/v1/klines?symbol=${encodeURIComponent(symbol)}&interval=${interval}&limit=601`,{signal:AbortSignal.timeout(15000)});
           if(!response.ok)throw new Error(`合約資料讀取失敗（${response.status}）`);

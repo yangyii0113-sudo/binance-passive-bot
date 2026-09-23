@@ -40,12 +40,12 @@ test('top ten scanner selects fresh rising crypto contracts with deterministic l
  assert.equal(filtered.some(x=>['COIN13USDT','COIN12USDT','COIN11USDT','COIN10USDT','COIN9USDT'].includes(x.symbol)),false);
 });
 test('scanner preserves ranking, isolates unavailable contracts and bounds concurrent requests',async()=>{
- let active=0,peak=0;const progress=[];
- const rows=await scanPullbacks(Array.from({length:10},(_,i)=>({symbol:`COIN${i}USDT`,rank:i+1})),{
- fetcher:async()=>{active++;peak=Math.max(peak,active);await new Promise(r=>setTimeout(r,2));active--;return {ok:true,json:async()=>[]};},
+ let active=0,peak=0;const progress=[],urls=[];
+ const rows=await scanPullbacks(Array.from({length:10},(_,i)=>({symbol:i===9?'龙虾USDT':`COIN${i}USDT`,rank:i+1})),{
+ fetcher:async(url)=>{urls.push(url);active++;peak=Math.max(peak,active);await new Promise(r=>setTimeout(r,2));active--;return {ok:true,json:async()=>[]};},
  onProgress:n=>progress.push(n)
  });
- assert.equal(rows.length,10);assert.ok(rows.every(x=>x.status==='BLOCKED'&&x.entry===undefined));assert.ok(peak<=4);assert.equal(progress.at(-1),10);
+ assert.equal(rows.length,10);assert.ok(rows.every(x=>x.status==='BLOCKED'&&x.entry===undefined));assert.ok(peak<=4);assert.equal(progress.at(-1),10);assert.equal(urls.length,20);assert.ok(urls.some(url=>url.includes(encodeURIComponent('龙虾USDT'))));
  assert.deepEqual(rows.map(x=>x.rank),[1,2,3,4,5,6,7,8,9,10]);
  assert.deepEqual(await scanPullbacks(),[]);
 });
