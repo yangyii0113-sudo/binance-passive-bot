@@ -1,3 +1,4 @@
+import { loadComparisonHistory, saveComparisonRun, restoreComparisonRun } from './comparison_history.js';
 import { runComparisonBatch } from './comparison_batch.js';
 import { runPullbackComparison } from './pullback_replay.js';
 import { scanPullbacks, strongPullbackCandidates } from './trend_pullback.js';
@@ -19,6 +20,25 @@ import { validationSpecForMatch, researchDecision } from './research_pipeline.js
 import { STATUS } from './status.js';
 import { pages, strongTopFive } from './pages.js';
 import { currentRoute, markActiveNav } from './router.js';
+
+function showComparisonHistory(run) {
+  const record=restoreComparisonRun(run);
+  setStateSlice('pullback',{batchHistoryId:record.id,batchRecord:record,batchHistorical:true,batchRows:record.rows,batchStop:record.status==='STOPPED'||record.status==='INTERRUPTED',comparison:record.rows.find(row=>row.result)?.result||null,comparisonError:null});
+}
+function persistComparisonBatch(status='RUNNING') {
+  const current=appState.pullback;
+  if(!current.batchRows?.length||!current.batchRecord)return;
+  const record={...current.batchRecord,status,updatedAt:new Date().toISOString(),rows:current.batchRows};
+  try {
+    const runs=saveComparisonRun(record);
+    setStateSlice('pullback',{batchHistory:runs,batchHistoryId:record.id,batchRecord:record,batchStorageError:null,batchSaved:true});
+  } catch(error){setStateSlice('pullback',{batchStorageError:String(error.message)});}
+}
+function syncComparisonHistory() {
+  const history=loadComparisonHistory();
+  setStateSlice('pullback',{batchHistory:history.runs,batchStorageError:history.error});
+  if(history.runs[0])showComparisonHistory(history.runs[0]);
+}
 
 function syncCandidates() {
   const book = loadCandidatePool();
@@ -454,6 +474,12 @@ function initEvents() {
   });
 
   document.addEventListener('change', (event) => {
+    if(event.target?.matches?.('[data-comparison-history-select]')){
+      if(appState.pullback.comparing||appState.pullback.loading)return;
+      const run=appState.pullback.batchHistory?.find(r=>r.id===event.target.value);
+      if(run)showComparisonHistory(run);render();return;
+    }
+
     if (event.target?.matches?.('[data-research-history-select]')) {
       appState.ui.researchHistoryId = event.target.value;
       render();
@@ -477,15 +503,17 @@ function initEvents() {
     if(event.target.closest?.('[data-pullback-batch]')) {
       if(appState.pullback.loading||appState.pullback.comparing||!appState.pullback.rows?.length)return;
       const symbols=appState.pullback.rows.map(row=>row.symbol);
+      const startedAt=new Date().toISOString();
+      setStateSlice('pullback',{batchHistorical:false,batchSaved:false,batchHistoryId:null,batchRecord:{id:crypto.randomUUID(),startedAt,updatedAt:startedAt,scannedAt:appState.pullback.scannedAt,status:'RUNNING',rows:[]}});
       setStateSlice('pullback',{comparing:true,batchRunning:true,batchStop:false,batchRows:[],comparingSymbol:null,comparison:null,comparisonError:null});render();
       try {
         await runComparisonBatch(symbols,{shouldStop:()=>appState.pullback.batchStop,onUpdate:batchRows=>{
-          setStateSlice('pullback',{batchRows});
+          setStateSlice('pullback',{batchRows});persistComparisonBatch();
           if(!appState.pullback.comparison){const first=batchRows.find(row=>row.result);if(first)setStateSlice('pullback',{comparison:first.result});}
           render();
         }});
       } catch(error){setStateSlice('pullback',{comparisonError:String(error.message||'批次比較失敗')});}
-      finally{setStateSlice('pullback',{comparing:false,batchRunning:false,comparingSymbol:null});render();}
+      finally{persistComparisonBatch(appState.pullback.batchRows?.some(row=>row.status==='CANCELLED')?'STOPPED':'DONE');setStateSlice('pullback',{comparing:false,batchRunning:false,comparingSymbol:null});render();}
       return;
     }
     const compareButton=event.target.closest?.('[data-pullback-compare]');
@@ -501,7 +529,7 @@ function initEvents() {
     }
     if(event.target.closest?.('[data-pullback-scan]')) {
       if(appState.pullback.loading||appState.pullback.comparing) return;
-      setStateSlice('pullback',{loading:true,rows:[],error:null,completed:0,total:0,scannedAt:null,batchRows:[],batchStop:false,comparison:null,comparisonError:null}); render();
+      setStateSlice('pullback',{loading:true,rows:[],error:null,completed:0,total:0,scannedAt:null,batchHistorical:false,batchHistoryId:null,batchRecord:null,batchRows:[],batchStop:false,comparison:null,comparisonError:null}); render();
       try {
         const [market,response]=await Promise.all([loadMarketSnapshot(),fetch('https://fapi.binance.com/fapi/v1/exchangeInfo',{cache:'no-store',signal:AbortSignal.timeout(15000)})]);
         if(!response.ok)throw new Error('無法確認加密貨幣合約清單');
@@ -834,6 +862,7 @@ function init() {
   if (cached) setMarketState(cached);
   syncCandidates();
   syncResearchHistory();
+  syncComparisonHistory();
   initEvents();
   render();
   refreshMarket();

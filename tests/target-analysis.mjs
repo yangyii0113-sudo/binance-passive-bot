@@ -107,3 +107,32 @@ test('batch overview distinguishes missing evidence from real zero results and n
  result.holdout.enhanced={trades:30,netPnl:20};result.holdout.stress={trades:30,netPnl:-1};assert.equal(comparisonAssessment(result),'成本壓力未通過');
  result.holdout.stress.netPnl=5;assert.equal(comparisonAssessment(result),'僅供後續驗證');
 });
+
+test('comparison history survives reload, caps runs and stores summaries without trade ledgers',async()=>{
+ const {saveComparisonRun,loadComparisonHistory,restoreComparisonRun}=await import('../src/comparison_history.js');
+ const data=new Map();const storage={getItem:k=>data.get(k)||null,setItem:(k,v)=>data.set(k,v)};
+ const result={symbol:'UNIUSDT',...comparePlans(researchFixture())};
+ const make=(id)=>({id,startedAt:'2026-09-23T08:00:00Z',updatedAt:'2026-09-23T08:01:00Z',status:'DONE',rows:[{symbol:'UNIUSDT',status:'DONE',result}]});
+ for(let i=0;i<22;i++)saveComparisonRun(make(String(i)),storage);
+ const history=loadComparisonHistory(storage);assert.equal(history.error,null);assert.equal(history.runs.length,20);assert.equal(history.runs[0].id,'21');
+ assert.equal(history.runs[0].rows[0].result.holdout.baseline.netPnl,result.holdout.baseline.netPnl);
+ assert.equal(history.runs[0].rows[0].result.holdout.baseline.ledger,undefined);
+ saveComparisonRun({...make('21'),status:'RUNNING',rows:[{symbol:'UNIUSDT',status:'DONE',result},{symbol:'SOLUSDT',status:'RUNNING'}]},storage);
+ const restored=restoreComparisonRun(loadComparisonHistory(storage).runs[0]);
+ assert.equal(restored.status,'INTERRUPTED');assert.equal(restored.rows[0].status,'DONE');assert.equal(restored.rows[1].status,'CANCELLED');assert.equal(restored.rows[1].result,undefined);
+ assert.equal(loadComparisonHistory(storage).runs.length,20);
+});
+test('storage failure and corrupt history never claim a successful save or overwrite existing data',async()=>{
+ const {loadComparisonHistory,saveComparisonRun}=await import('../src/comparison_history.js');
+ let writes=0;const corrupt={getItem:()=>'{bad',setItem:()=>writes++};
+ assert.ok(loadComparisonHistory(corrupt).error);assert.throws(()=>saveComparisonRun({},corrupt));assert.equal(writes,0);
+ const blocked={getItem:()=>null,setItem:()=>{throw new Error('quota');}};
+ const run={id:'run',startedAt:'2026-09-23T08:00:00Z',updatedAt:'2026-09-23T08:01:00Z',status:'RUNNING',rows:[{symbol:'UNIUSDT',status:'PENDING'}]};
+ assert.throws(()=>saveComparisonRun(run,blocked),/尚未保存/);
+ assert.throws(()=>saveComparisonRun({...run,rows:[{symbol:'UNIUSDT',status:'DONE',result:{}}]},blocked),/格式不完整/);
+});
+test('restored batch history is visibly dated and cannot masquerade as current market data',async()=>{
+ const {batchComparisonPanel}=await import('../src/comparison_batch_view.js');
+ const html=batchComparisonPanel({batchHistorical:true,batchRecord:{startedAt:'2026-09-23T08:00:00Z',status:'INTERRUPTED'},batchRows:[{symbol:'UNIUSDT',status:'CANCELLED'}]});
+ assert.match(html,/歷史比較（唯讀，非目前行情）/);assert.match(html,/2026/);assert.match(html,/不會自動續跑/);assert.doesNotMatch(html,/已保存至此瀏覽器/);
+});
