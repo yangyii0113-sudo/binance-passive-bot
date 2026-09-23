@@ -1,3 +1,4 @@
+import { runPullbackComparison } from './pullback_replay.js';
 import { scanPullbacks } from './trend_pullback.js';
 import { MARKET_REFRESH_MS } from './config.js';
 import { appState, setMarketState, setStateSlice } from './state.js';
@@ -464,6 +465,15 @@ function initEvents() {
   });
 
   document.addEventListener('click', async (event) => {
+    const compareButton=event.target.closest?.('[data-pullback-compare]');
+    if(compareButton){
+      if(appState.pullback.comparing)return;
+      setStateSlice('pullback',{comparing:true,comparison:null,comparisonError:null});render();
+      try {setStateSlice('pullback',{comparison:await runPullbackComparison(compareButton.dataset.pullbackCompare)});}
+      catch(error){setStateSlice('pullback',{comparisonError:String(error.message||error)});}
+      finally{setStateSlice('pullback',{comparing:false});render();}
+      return;
+    }
     if(event.target.closest?.('[data-pullback-scan]')) {
       if(appState.pullback.loading) return;
       setStateSlice('pullback',{loading:true,rows:[]}); render();

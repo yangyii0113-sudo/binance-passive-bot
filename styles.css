@@ -2187,3 +2187,13 @@ button, a, input, select, summary { scroll-margin-block:16px 110px; }
   .entry-plan-exits strong { font-size:22px; }
   .entry-plan-primary { padding:15px; }
 }
+.target-analysis { border-top:1px solid #42516a; padding:14px 0 0; font-size:12px; line-height:1.7; color:#bdcbe0; }
+.target-analysis p { margin:6px 0; }
+.exit-comparison { margin-top:22px; padding-top:18px; border-top:1px solid #42516a; min-width:0; }
+.exit-comparison p { color:#b9c8dc; font-size:13px; line-height:1.7; }
+.comparison-actions { display:flex; flex-wrap:wrap; gap:10px; }
+.comparison-scroll { max-width:100%; overflow-x:auto; }
+.comparison-scroll table { min-width:660px; width:100%; font-size:12px; border-collapse:collapse; }
+.comparison-scroll th,.comparison-scroll td { padding:10px; text-align:right; border-bottom:1px solid #35425a; white-space:nowrap; }
+.comparison-scroll th:first-child { text-align:left; }
+.comparison-verdict { padding:14px; border:1px solid #76613a; border-radius:10px; background:#30291d; }

@@ -4,6 +4,6 @@
   "type": "module",
   "scripts": {
     "build": "node ./scripts/build-static.mjs",
-    "test": "node ./tests/gate-a-smoke.mjs && node ./tests/backtest-timeframes.mjs && node ./tests/research-pipeline.mjs && node ./tests/truthfulness-regressions.mjs && node --test ./tests/trend-pullback.mjs ./tests/ui-regressions.mjs ./tests/paper-flow.mjs ./tests/history-equity.mjs ./tests/backtest-amounts.mjs && node ./tests/architecture-boundaries.mjs && node ./tests/staging-server-smoke.mjs"
+    "test": "node ./tests/gate-a-smoke.mjs && node ./tests/backtest-timeframes.mjs && node ./tests/research-pipeline.mjs && node ./tests/truthfulness-regressions.mjs && node --test ./tests/target-analysis.mjs ./tests/trend-pullback.mjs ./tests/ui-regressions.mjs ./tests/paper-flow.mjs ./tests/history-equity.mjs ./tests/backtest-amounts.mjs && node ./tests/architecture-boundaries.mjs && node ./tests/staging-server-smoke.mjs"
   }
 }

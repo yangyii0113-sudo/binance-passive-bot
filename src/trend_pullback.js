@@ -1,3 +1,4 @@
+import { refineTargets } from './target_analysis.js';
 // TP01 is an isolated research scanner. No order or production execution calls.
 const H = 3600000;
 function closed(rows, step, count, now) {
@@ -28,18 +29,22 @@ export function pullbackPlan({hourly=[],fourHourly=[],now=Date.now()}={}) {
     const stop=(sign===1?Math.min(...h.slice(-5).map(x=>x.low)):Math.max(...h.slice(-5).map(x=>x.high)))-sign*volatility*.2;
     const risk=Math.abs(entry-stop);
     if(!Number.isFinite(risk)||risk<=0||entry<=0||stop<=0||entry+sign*2*risk<=0) return {status:'BLOCKED',reason:'風險距離無效'};
-    return {status:'SETUP',side,entry,stop,tp1:entry+sign*risk,tp2:entry+sign*2*risk,signalAt:b.end,expiresAt:b.end+1+H,reason:'研究條件成立；等待下一根 1 小時 K 線突破進場門檻，尚未確認成交'};
+    return {status:'SETUP',side,entry,stop,atr:volatility,tp1:entry+sign*risk,tp2:entry+sign*2*risk,signalAt:b.end,expiresAt:b.end+1+H,reason:'研究條件成立；等待下一根 1 小時 K 線突破進場門檻，尚未確認成交'};
   } catch(e) {return {status:'BLOCKED',reason:e.message};}
 }
 export async function scanPullbacks(){
   return Promise.all(['BTCUSDT','ETHUSDT'].map(async symbol=>{
     try {
       const rows=await Promise.all(['1h','4h'].map(async interval=>{
-        const response=await fetch(`https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=${interval}&limit=600`,{signal:AbortSignal.timeout(15000)});
+        const response=await fetch(`https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=${interval}&limit=601`,{signal:AbortSignal.timeout(15000)});
         if(!response.ok)throw new Error(`合約資料讀取失敗（${response.status}）`);
         const data=await response.json();if(!Array.isArray(data))throw new Error('資料格式異常');return data;
       }));
-      return {symbol,...pullbackPlan({hourly:rows[0],fourHourly:rows[1]})};
+      const now=Date.now();
+      const plan=pullbackPlan({hourly:rows[0],fourHourly:rows[1],now});
+      if(plan.status!=='SETUP')return {symbol,...plan};
+      const enhanced=refineTargets(plan,rows[0].filter(r=>+r[6]<now),plan.atr);
+      return {symbol,...enhanced,status:enhanced.targetAnalysis.accepted?'SETUP':'SKIP',reason:enhanced.targetAnalysis.reason};
     } catch {return {symbol,status:'BLOCKED',reason:'無法取得完整合約 K 線，請稍後重新分析'};}
   }));
 }
