@@ -24,13 +24,13 @@ export function pullbackPlan({hourly=[],fourHourly=[],now=Date.now()}={}) {
     const side=fc.at(-1)>fast&&fast>slow&&fast>prev?'LONG':fc.at(-1)<fast&&fast<slow&&fast<prev?'SHORT':null;
     const mid=ema(hc,20), volatility=atr(h), sign=side==='LONG'?1:-1;
     const pullback=side==='LONG'?b.low<=mid&&b.close>mid&&b.close>b.open:b.high>=mid&&b.close<mid&&b.close<b.open;
-    if(!side||!pullback||Math.abs(b.close-mid)>volatility) return {status:'WAIT',reason:'等待 4 小時趨勢與 1 小時回調收盤確認'};
+    if(!side||!pullback||Math.abs(b.close-mid)>volatility) return {status:'WAIT',diagnosticReason:!side?'trendWait':!pullback?'pullbackWait':'extendedWait',reason:'等待 4 小時趨勢與 1 小時回調收盤確認'};
     const entry=(sign===1?b.high:b.low)+sign*volatility*.1;
     const stop=(sign===1?Math.min(...h.slice(-5).map(x=>x.low)):Math.max(...h.slice(-5).map(x=>x.high)))-sign*volatility*.2;
     const risk=Math.abs(entry-stop);
-    if(!Number.isFinite(risk)||risk<=0||entry<=0||stop<=0||entry+sign*2*risk<=0) return {status:'BLOCKED',reason:'風險距離無效'};
+    if(!Number.isFinite(risk)||risk<=0||entry<=0||stop<=0||entry+sign*2*risk<=0) return {status:'BLOCKED',diagnosticReason:'riskBlocked',reason:'風險距離無效'};
     return {status:'SETUP',side,entry,stop,atr:volatility,tp1:entry+sign*risk,tp2:entry+sign*2*risk,signalAt:b.end,expiresAt:b.end+1+H,reason:'研究條件成立；等待下一根 1 小時 K 線突破進場門檻，尚未確認成交'};
-  } catch(e) {return {status:'BLOCKED',reason:e.message};}
+  } catch(e) {return {status:'BLOCKED',diagnosticReason:'dataBlocked',reason:e.message};}
 }
 // Rank only fresh, rising crypto perpetuals; never fill gaps with cached/mock rows.
 export function strongPullbackCandidates(market, contracts, now=Date.now()) {

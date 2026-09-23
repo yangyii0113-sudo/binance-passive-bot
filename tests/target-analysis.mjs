@@ -136,3 +136,33 @@ test('restored batch history is visibly dated and cannot masquerade as current m
  const html=batchComparisonPanel({batchHistorical:true,batchRecord:{startedAt:'2026-09-23T08:00:00Z',status:'INTERRUPTED'},batchRows:[{symbol:'UNIUSDT',status:'CANCELLED'}]});
  assert.match(html,/歷史比較（唯讀，非目前行情）/);assert.match(html,/2026/);assert.match(html,/不會自動續跑/);assert.doesNotMatch(html,/已保存至此瀏覽器/);
 });
+
+test('diagnostic funnel reconciles without double counting intermediate signal totals',()=>{
+ const r=comparePlans(researchFixture());
+ for(const section of [r.development,r.holdout])for(const m of Object.values(section)){
+  const d=m.diagnostics;
+  assert.equal(d.evaluated,d.dataBlocked+d.trendWait+d.pullbackWait+d.extendedWait+d.riskBlocked+m.skipped+d.noEntry+m.trades);
+  assert.equal(m.signals,m.skipped+d.noEntry+m.trades);
+  assert.equal(d.noEntry,d.entryGap+d.stopGap+d.noBreakout+d.missingFuture);
+  assert.ok(Object.values(d).every(x=>Number.isInteger(x)&&x>=0));
+ }
+ assert.ok(r.development.baseline.diagnostics.evaluated>0);
+});
+test('unfilled trade diagnostics preserve entry cancellation behavior',()=>{
+ assert.equal(replayTrade(p,[]).reason,'missingFuture');
+ assert.equal(replayTrade(p,[[0,101,103,99,102]]).reason,'entryGap');
+ assert.equal(replayTrade(p,[[0,94,103,93,99]]).reason,'stopGap');
+ assert.equal(replayTrade(p,[[0,98,99,97,98]]).reason,'noBreakout');
+ for(const bars of [[],[[0,101,103,99,102]],[[0,94,103,93,99]],[[0,98,99,97,98]]])assert.equal(replayTrade(p,bars).filled,false);
+});
+test('history retains new diagnostics but labels old snapshots unavailable rather than zero',async()=>{
+ const {saveComparisonRun,loadComparisonHistory}=await import('../src/comparison_history.js');
+ const {comparisonDiagnostics}=await import('../src/comparison_diagnostics.js');
+ let raw=null;const storage={getItem:()=>raw,setItem:(k,v)=>{raw=v;}};
+ const result={symbol:'UNIUSDT',...comparePlans(researchFixture())};
+ saveComparisonRun({id:'diagnosis',startedAt:'2026-09-23T08:00:00Z',updatedAt:'2026-09-23T08:01:00Z',status:'DONE',rows:[{symbol:'UNIUSDT',status:'DONE',result}]},storage);
+ assert.deepEqual(loadComparisonHistory(storage).runs[0].rows[0].result.holdout.enhanced.diagnostics,result.holdout.enhanced.diagnostics);
+ for(const section of [result.development,result.holdout])for(const m of Object.values(section))delete m.diagnostics;
+ assert.match(comparisonDiagnostics(result),/此筆歷史未記錄診斷/);
+ assert.doesNotMatch(comparisonDiagnostics(result),/實際評估時點/);
+});

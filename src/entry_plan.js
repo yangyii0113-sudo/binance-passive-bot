@@ -1,3 +1,4 @@
+import { comparisonDiagnostics } from './comparison_diagnostics.js';
 import { batchComparisonPanel } from './comparison_batch_view.js';
 import { displayText } from './display.js';
 const escape = v => String(v ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -41,6 +42,7 @@ function comparisonPanel(snapshot){
   ${snapshot.comparisonError?`<p role="alert">${escape(displayText(snapshot.comparisonError))}</p>`:''}
   ${r?`<h4>${escape(r.symbol)} · ${new Date(r.start).toISOString().slice(0,10)} 至 ${new Date(r.end).toISOString().slice(0,10)} 世界標準時間（結束不含）</h4>
   <p>各組起始 1,000 USDT，每筆風險預算 0.25%、名目本金上限 1 倍；單幣獨立研究。最長持有 48 根一小時 K 棒，同根衝突先止損，區段末強制平倉。</p>
+  ${comparisonDiagnostics(r)}
   ${table('前段 70%：規則觀察',[['原版',r.development.baseline],['新版',r.development.enhanced]])}
   ${table('後段 30%：保留資料檢查',[['原版',r.holdout.baseline],['新版',r.holdout.enhanced],['新版 · 雙倍成本',r.holdout.stress]])}
   <p>新版後段訊號 ${r.holdout.enhanced.signals} 次，空間／成本篩選略過 ${r.holdout.enhanced.skipped} 次。${Object.entries(r.holdout.enhanced.skipReasons||{}).map(([reason,count])=>`${escape(displayText(reason))}：${count} 次`).join('；')}</p>

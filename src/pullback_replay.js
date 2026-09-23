@@ -3,10 +3,10 @@ import { refineTargets, EXIT_COSTS } from './target_analysis.js';
 const H=3600000;
 export function replayTrade(plan, bars, {fee=EXIT_COSTS.fee,slippage=EXIT_COSTS.slippage,protect=false}={}) {
   const sign=plan.side==='LONG'?1:-1, first=bars[0];
-  if(!first)return {filled:false,bars:0};
+  if(!first)return {filled:false,bars:0,reason:'missingFuture'};
   const hit=(b,p,favourable)=>favourable?(sign===1?+b[2]>=p:+b[3]<=p):(sign===1?+b[3]<=p:+b[2]>=p);
   // Cancel opening gaps. If entry and stop both occur intrabar, assume entry then loss.
-  if(sign*(+first[1]-plan.entry)>0||sign*(+first[1]-plan.stop)<=0||!hit(first,plan.entry,true))return {filled:false,bars:1};
+  if(sign*(+first[1]-plan.entry)>0||sign*(+first[1]-plan.stop)<=0||!hit(first,plan.entry,true))return {filled:false,bars:1,reason:sign*(+first[1]-plan.entry)>0?'entryGap':sign*(+first[1]-plan.stop)<=0?'stopGap':'noBreakout'};
   const entry=plan.entry*(1+sign*slippage);
   let stop=plan.stop,remaining=1,pnl=-entry*fee,partial=false;
   function exit(price,quantity){const fill=price*(1-sign*slippage);pnl+=quantity*(sign*(fill-entry)-fill*fee);remaining-=quantity;}
@@ -27,16 +27,18 @@ export function comparePlans({hourly,fourHourly,start,end}) {
   function run(from,to,enhanced,multiplier=1){
     let balance=1000,peak=1000,dd=0,wins=0,grossWin=0,grossLoss=0,count=0,signals=0,skipped=0;
     const skipReasons={};
+    const diagnostics={evaluated:0,dataBlocked:0,trendWait:0,pullbackWait:0,extendedWait:0,riskBlocked:0,noEntry:0,entryGap:0,stopGap:0,noBreakout:0,missingFuture:0};
     const ledger=[];const costs={fee:EXIT_COSTS.fee*multiplier,slippage:EXIT_COSTS.slippage*multiplier};
     for(let i=200;i<hourly.length;i++){
       const time=+hourly[i][0];if(time<from||time>=to)continue;
       const history=hourly.slice(Math.max(0,i-600),i);
       const higher=fourHourly.filter(r=>+r[6]<time).slice(-600);
       let plan=pullbackPlan({hourly:history,fourHourly:higher,now:time});
-      if(plan.status!=='SETUP')continue;signals++;
+      diagnostics.evaluated++;
+      if(plan.status!=='SETUP'){diagnostics[plan.diagnosticReason||'dataBlocked']++;continue;}signals++;
       if(enhanced){plan=refineTargets(plan,history,plan.atr,costs);if(!plan.targetAnalysis.accepted){skipped++;skipReasons[plan.targetAnalysis.reason]=(skipReasons[plan.targetAnalysis.reason]||0)+1;continue;}}
       const future=hourly.slice(i,i+48).filter(r=>+r[0]<to);
-      const result=replayTrade(plan,future,{...costs,protect:enhanced});if(!result.filled)continue;
+      const result=replayTrade(plan,future,{...costs,protect:enhanced});if(!result.filled){diagnostics.noEntry++;diagnostics[result.reason]++;continue;}
       const riskPerUnit=Math.abs(result.entry-plan.stop)+costs.slippage*plan.stop+costs.fee*(result.entry+plan.stop);
       const qty=Math.min(balance*.0025/riskPerUnit,balance/result.entry);
       const pnl=qty*result.returnPerUnit;balance+=pnl;count++;if(pnl>0){wins++;grossWin+=pnl;}else grossLoss-=pnl;
@@ -44,7 +46,7 @@ export function comparePlans({hourly,fourHourly,start,end}) {
       ledger.push({entryTime:time,exitTime:+future[result.bars-1][6],side:plan.side,entry:result.entry,qty,pnl,balance,reason:result.reason});
       i+=result.bars-1;
     }
-    return {trades:count,signals,skipped,skipReasons,netPnl:balance-1000,netReturnPct:(balance/1000-1)*100,winRate:count?wins/count*100:null,profitFactor:grossLoss?grossWin/grossLoss:null,avgPnl:count?(balance-1000)/count:null,closedDrawdownPct:dd,ledger};
+    return {trades:count,signals,skipped,skipReasons,diagnostics,netPnl:balance-1000,netReturnPct:(balance/1000-1)*100,winRate:count?wins/count*100:null,profitFactor:grossLoss?grossWin/grossLoss:null,avgPnl:count?(balance-1000)/count:null,closedDrawdownPct:dd,ledger};
   }
   return {start,end,split,version:'TP01-S1',fundingIncluded:false,development:{baseline:run(start,split,false),enhanced:run(start,split,true)},holdout:{baseline:run(split,end,false),enhanced:run(split,end,true),stress:run(split,end,true,2)}};
 }

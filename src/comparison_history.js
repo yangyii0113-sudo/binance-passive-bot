@@ -15,6 +15,11 @@ function compactResult(result,symbol){
         const v=metrics[field];if(v!==undefined&&v!==null&&!Number.isFinite(v))throw new Error('比較指標格式無效');
         output[section][rule][field]=v??null;
       }
+      if(metrics.diagnostics){
+        const fields=['evaluated','dataBlocked','trendWait','pullbackWait','extendedWait','riskBlocked','noEntry','entryGap','stopGap','noBreakout','missingFuture'];
+        if(fields.some(k=>!Number.isInteger(metrics.diagnostics[k])||metrics.diagnostics[k]<0))throw new Error('診斷計數格式無效');
+        output[section][rule].diagnostics=Object.fromEntries(fields.map(k=>[k,metrics.diagnostics[k]]));
+      }
       output[section][rule].skipReasons=Object.fromEntries(Object.entries(metrics.skipReasons||{}).filter(([k,v])=>k.length<=300&&Number.isInteger(v)&&v>=0));
     }
   }
