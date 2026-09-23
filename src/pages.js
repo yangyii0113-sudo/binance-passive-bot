@@ -1,3 +1,4 @@
+import { smcReference } from './smc_reference.js';
 import { entryPlan, pullbackPanel } from './entry_plan.js';
 import { mock } from './mock.js';
 import { badge, metric, section } from './ui.js';
@@ -1332,6 +1333,7 @@ export function strategiesPage(state) {
     </div>
     <div class="signal-legend">訊號依動能與流動性分級；高強度訊號會特別置頂，但不代表保證買進或獲利。</div>
     ${strategyCards(state)}
+    ${smcReference()}
   ` : stockEmptyState('股市策略資料源尚未接入');
 
   let content = signalsHtml;
