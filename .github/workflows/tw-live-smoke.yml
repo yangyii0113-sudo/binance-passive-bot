@@ -60,10 +60,19 @@ jobs:
         if: ${{ !cancelled() }}
         env:
           PYTHONPATH: .
-        run: python tools/tw_fundamentals_smoke.py
+        run: python tools/tw_fundamentals_smoke.py --archive-dir "$RUNNER_TEMP/tw-disclosure-evidence"
 
       - name: Run official TWSE / TPEx research-candidate smoke
         if: ${{ !cancelled() }}
         env:
           PYTHONPATH: .
         run: python tools/tw_candidate_smoke.py
+
+      - name: Preserve official disclosure evidence on failure
+        if: ${{ failure() && !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: tw-disclosure-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/tw-disclosure-evidence
+          retention-days: 3
+          if-no-files-found: warn

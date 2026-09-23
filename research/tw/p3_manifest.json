@@ -1,52 +1,12 @@
 {
   "schema_version": 1,
-  "active_slice": "P3.6",
+  "active_slice": "P3.5",
   "slices": [
-    {
-      "id": "P3.1",
-      "name": "Stock Workspace Core",
-      "status": "COMPLETE",
-      "depends_on": []
-    },
-    {
-      "id": "P3.2",
-      "name": "Historical Research Window",
-      "status": "COMPLETE",
-      "depends_on": [
-        "P3.1"
-      ]
-    },
-    {
-      "id": "P3.3",
-      "name": "Technical Research",
-      "status": "COMPLETE",
-      "depends_on": [
-        "P3.2"
-      ]
-    },
-    {
-      "id": "P3.4",
-      "name": "Fundamentals and Events",
-      "status": "COMPLETE",
-      "depends_on": [
-        "P3.3"
-      ]
-    },
-    {
-      "id": "P3.5",
-      "name": "Research Candidate Engine",
-      "status": "COMPLETE",
-      "depends_on": [
-        "P3.4"
-      ]
-    },
-    {
-      "id": "P3.6",
-      "name": "Read Models and Exit Gate",
-      "status": "ACTIVE",
-      "depends_on": [
-        "P3.5"
-      ]
-    }
+    {"id": "P3.1", "name": "Stock Workspace Core", "status": "COMPLETE", "depends_on": []},
+    {"id": "P3.2", "name": "Historical Research Window", "status": "COMPLETE", "depends_on": ["P3.1"]},
+    {"id": "P3.3", "name": "Technical Research", "status": "COMPLETE", "depends_on": ["P3.2"]},
+    {"id": "P3.4", "name": "Fundamentals and Events", "status": "COMPLETE", "depends_on": ["P3.3"]},
+    {"id": "P3.5", "name": "Research Candidate Engine", "status": "ACTIVE", "depends_on": ["P3.4"]},
+    {"id": "P3.6", "name": "Read Models and Exit Gate", "status": "LOCKED", "depends_on": ["P3.5"]}
   ]
 }

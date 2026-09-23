@@ -1,36 +1,10 @@
 {
   "schema_version": 1,
-  "active_slice": null,
+  "active_slice": "P3.5.4",
   "slices": [
-    {
-      "id": "P3.5.1",
-      "name": "Evidence Gate",
-      "status": "COMPLETE",
-      "depends_on": []
-    },
-    {
-      "id": "P3.5.2",
-      "name": "Research Fusion",
-      "status": "COMPLETE",
-      "depends_on": [
-        "P3.5.1"
-      ]
-    },
-    {
-      "id": "P3.5.3",
-      "name": "Scenario and Invalidation",
-      "status": "COMPLETE",
-      "depends_on": [
-        "P3.5.2"
-      ]
-    },
-    {
-      "id": "P3.5.4",
-      "name": "Review Ranking and Exit Gate",
-      "status": "COMPLETE",
-      "depends_on": [
-        "P3.5.3"
-      ]
-    }
+    {"id": "P3.5.1", "name": "Evidence Gate", "status": "COMPLETE", "depends_on": []},
+    {"id": "P3.5.2", "name": "Research Fusion", "status": "COMPLETE", "depends_on": ["P3.5.1"]},
+    {"id": "P3.5.3", "name": "Scenario and Invalidation", "status": "COMPLETE", "depends_on": ["P3.5.2"]},
+    {"id": "P3.5.4", "name": "Review Ranking and Exit Gate", "status": "ACTIVE", "depends_on": ["P3.5.3"]}
   ]
 }

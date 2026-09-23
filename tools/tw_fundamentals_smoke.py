@@ -26,9 +26,14 @@ ACCEPTANCE = (('TWSE', '2330'), ('TWSE', '2317'), ('TWSE', '2454'),
 
 
 def fundamentals_smoke_summary(batches, *, as_of: str) -> dict:
+    batches = tuple(batches)
     expected = set(SOURCES)
     if {b.dataset for b in batches} != expected:
         raise RuntimeError('all eight official disclosure datasets are required')
+    failed_sources = {b.dataset: b.error for b in batches if b.error}
+    if failed_sources:
+        raise RuntimeError('official disclosure source failures: ' +
+                           json.dumps(failed_sources, ensure_ascii=False, sort_keys=True))
     results = []
     dataset_coverage = {}
     for venue, symbol in ACCEPTANCE:
