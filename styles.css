@@ -2221,3 +2221,5 @@ button, a, input, select, summary { scroll-margin-block:16px 110px; }
 .coin-strategy-detail > summary span { display:block; margin:6px 0 0 16px; font-size:12px; color:#d6bd77; }
 .coin-analysis-card > button { width:100%; min-height:44px; margin-top:10px; }
 @media(max-width:540px) { .coin-facts { gap:8px; } .coin-filters button { flex:1 1 42%; padding:10px 6px; font-size:12px; } }
+.coin-overview label { display:block; margin:12px 0; font-size:13px; }
+.coin-overview select { display:block; width:100%; max-width:100%; min-width:0; margin-top:8px; padding:10px; background:#101722; color:#d8e2ef; border:1px solid #47576d; border-radius:8px; }

@@ -1,3 +1,4 @@
+import { loadCoinHistory, saveCoinAnalysis, restoreCoinAnalysis } from './coin_analysis_history.js';
 import { loadComparisonHistory, saveComparisonRun, restoreComparisonRun } from './comparison_history.js';
 import { runComparisonBatch } from './comparison_batch.js';
 import { runPullbackComparison } from './pullback_replay.js';
@@ -38,6 +39,12 @@ function syncComparisonHistory() {
   const history=loadComparisonHistory();
   setStateSlice('pullback',{batchHistory:history.runs,batchStorageError:history.error});
   if(history.runs[0])showComparisonHistory(history.runs[0]);
+}
+
+function syncCoinHistory(){
+  const history=loadCoinHistory();
+  setStateSlice('pullback',{analysisHistory:history.runs,analysisStorageError:history.error});
+  if(history.runs[0])setStateSlice('pullback',restoreCoinAnalysis(history.runs[0]));
 }
 
 function syncCandidates() {
@@ -474,6 +481,11 @@ function initEvents() {
   });
 
   document.addEventListener('change', (event) => {
+    if(event.target?.matches?.('[data-coin-history-select]')){
+      if(appState.pullback.comparing||appState.pullback.loading)return;
+      const run=appState.pullback.analysisHistory?.find(r=>r.id===event.target.value);
+      if(run)setStateSlice('pullback',restoreCoinAnalysis(run));render();return;
+    }
     if(event.target?.matches?.('[data-comparison-history-select]')){
       if(appState.pullback.comparing||appState.pullback.loading)return;
       const run=appState.pullback.batchHistory?.find(r=>r.id===event.target.value);
@@ -507,7 +519,7 @@ function initEvents() {
       if(row){setStateSlice('pullback',{comparison:row.result,comparisonError:null});render();}return;
     }
     if(event.target.closest?.('[data-pullback-batch]')) {
-      if(appState.pullback.loading||appState.pullback.comparing||!appState.pullback.rows?.length)return;
+      if(appState.pullback.analysisHistorical||appState.pullback.loading||appState.pullback.comparing||!appState.pullback.rows?.length)return;
       const symbols=appState.pullback.rows.map(row=>row.symbol);
       const startedAt=new Date().toISOString();
       setStateSlice('pullback',{batchHistorical:false,batchSaved:false,batchHistoryId:null,batchRecord:{id:crypto.randomUUID(),startedAt,updatedAt:startedAt,scannedAt:appState.pullback.scannedAt,status:'RUNNING',rows:[]}});
@@ -524,7 +536,7 @@ function initEvents() {
     }
     const compareButton=event.target.closest?.('[data-pullback-compare]');
     if(compareButton){
-      if(appState.pullback.comparing||appState.pullback.loading)return;
+      if(appState.pullback.analysisHistorical||appState.pullback.comparing||appState.pullback.loading)return;
       const symbol=compareButton.dataset.pullbackCompare;
       if(!appState.pullback.rows.some(row=>row.symbol===symbol))return;
       setStateSlice('pullback',{comparing:true,comparingSymbol:symbol,comparison:null,comparisonError:null});render();
@@ -535,7 +547,7 @@ function initEvents() {
     }
     if(event.target.closest?.('[data-pullback-scan]')) {
       if(appState.pullback.loading||appState.pullback.comparing) return;
-      setStateSlice('pullback',{loading:true,rows:[],analysisFilter:'all',error:null,completed:0,total:0,scannedAt:null,batchHistorical:false,batchHistoryId:null,batchRecord:null,batchRows:[],batchStop:false,comparison:null,comparisonError:null}); render();
+      setStateSlice('pullback',{loading:true,rows:[],analysisHistorical:false,analysisHistoryId:null,analysisSaved:false,analysisFilter:'all',error:null,completed:0,total:0,scannedAt:null,batchHistorical:false,batchHistoryId:null,batchRecord:null,batchRows:[],batchStop:false,comparison:null,comparisonError:null}); render();
       try {
         const [market,response]=await Promise.all([loadMarketSnapshot(),fetch('https://fapi.binance.com/fapi/v1/exchangeInfo',{cache:'no-store',signal:AbortSignal.timeout(15000)})]);
         if(!response.ok)throw new Error('無法確認加密貨幣合約清單');
@@ -545,6 +557,11 @@ function initEvents() {
         setStateSlice('pullback',{total:candidates.length,scannedAt:market.updatedAt});render();
         const rows=await scanPullbacks(candidates,{onProgress:(completed)=>{setStateSlice('pullback',{completed});render();}});
         setStateSlice('pullback',{rows});
+        try{
+          const record={id:crypto.randomUUID(),scannedAt:market.updatedAt,rows:rows.map(r=>({...r,analysis:r.analysis||{status:'BLOCKED',reason:r.reason,strategies:[]}}))};
+          const history=saveCoinAnalysis(record);
+          setStateSlice('pullback',{analysisHistory:history,analysisHistoryId:record.id,analysisSaved:true,analysisStorageError:null});
+        }catch(error){setStateSlice('pullback',{analysisSaved:false,analysisStorageError:String(error.message)});}
       } catch(error) {setStateSlice('pullback',{error:String(error.message||'分析失敗，請稍後再試')});}
       finally { setStateSlice('pullback',{loading:false}); render(); }
       return;
@@ -869,6 +886,7 @@ function init() {
   syncCandidates();
   syncResearchHistory();
   syncComparisonHistory();
+  syncCoinHistory();
   initEvents();
   render();
   refreshMarket();
