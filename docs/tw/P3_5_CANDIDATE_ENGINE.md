@@ -1,6 +1,6 @@
 # P3.5 — Taiwan Research Candidate Engine
 
-**Status:** ACTIVE
+**Status:** COMPLETE
 
 ## Purpose
 
@@ -66,4 +66,22 @@ Missing a required family produces `INSUFFICIENT_DATA`.
 - no provider/network dependency in candidate service
 - no Production Execution V2 import
 - official live smoke green on acceptance symbols
-- P3.6 remains locked until this gate completes
+- P3.6 is unlocked after the acceptance evidence below
+
+## Acceptance — 2026-09-23
+
+Implementation reviewed at `807e7f9952da72b93a76979301e3aae5844530e6`.
+Fresh local Taiwan suite: **234 passed** (Python 3.12).
+[GitHub architecture gate](https://github.com/yangyii0113-sudo/binance-passive-bot/actions/runs/35760532319): 234 passed at that commit.
+[Official live smoke](https://github.com/yangyii0113-sudo/binance-passive-bot/actions/runs/35760526005): all four steps passed at `2db4e27b9a5509110ebc71c5944586b5b78522e0`.
+The subsequent implementation commit only exports candidate service symbols;
+its architecture gate verifies those imports. The official candidate step
+accepted TWSE 2330 and TPEx 6488 at common market date 2026-09-22, both with
+`execution_allowed=false`. These are recorded acceptance results, not a
+continuous freshness or production-readiness claim.
+
+P3.5.4 and P3.5 are complete; only P3.6 is now active. P3 itself remains active.
+Next: stable JSON stock-workspace read model combining canonical quote,
+technical, fundamentals/events and candidate evidence, with deterministic
+serialization, explicit missing states and official acceptance. UI/mobile
+and deployment remain separate later phases. No execution runtime changes.

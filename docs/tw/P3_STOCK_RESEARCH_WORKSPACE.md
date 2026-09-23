@@ -47,7 +47,7 @@ Gate:
 
 Implementation, local acceptance and both GitHub gates completed on 2026-09-20.
 Verified implementation: `bceb6e70ee27087a8e7d21dadb50e8d00e0707ee`.
-Only P3.4 is now ACTIVE; P3.5 and later slices remain LOCKED.
+At P3.3 acceptance, P3.4 was unlocked. Current active slice: P3.6.
 
 Implemented:
 - canonical HistoricalWindow-only daily / closed-week trend
@@ -91,7 +91,7 @@ technical, and fundamentals/event smokes all passed for common date 2026-09-22.
 Official Data Live Smoke run `35759014192`: SUCCESS. Research Architecture
 Gate run `35759048766`: SUCCESS. Production Execution V2 remained untouched.
 
-## P3.5 Research Candidate Engine — ACTIVE
+## P3.5 Research Candidate Engine — COMPLETE
 
 Build:
 - explicit minimum evidence contract
@@ -103,7 +103,10 @@ Build:
 - deterministic ranking for review only
 - no executable order object or broker payload
 
-## P3.6 Read Models / Exit Gate — LOCKED
+Acceptance: 234 Taiwan tests passed; official TWSE 2330 / TPEx 6488 candidate
+smoke passed. Evidence: [P3_5_CANDIDATE_ENGINE.md](P3_5_CANDIDATE_ENGINE.md).
+
+## P3.6 Read Models / Exit Gate — ACTIVE
 
 P3 COMPLETE requires:
 - stock workspace can render from canonical data
