@@ -78,3 +78,32 @@ test('comparison UI offers every scanned symbol and clears the fixed BTC ETH pai
  assert.doesNotMatch(html,/data-pullback-compare="(?:BTC|ETH)USDT"/);
  assert.match(pullbackPanel({pullback:{rows:[]}}),/產生可比較清單/);
 });
+
+test('batch comparisons share a cutoff, run sequentially and isolate failed symbols',async()=>{
+ const {runComparisonBatch}=await import('../src/comparison_batch.js');
+ let active=0,peak=0;const calls=[],updates=[];
+ const result=await runComparisonBatch(['UNIUSDT','SOLUSDT','龙虾USDT'],{now:20000000,onUpdate:rows=>updates.push(rows),compare:async(symbol,{end})=>{
+  calls.push({symbol,end});active++;peak=Math.max(peak,active);await Promise.resolve();active--;
+  if(symbol==='SOLUSDT')throw new Error('歷史資料不完整');return {symbol,end};
+ }});
+ assert.equal(peak,1);assert.deepEqual(result.map(x=>x.status),['DONE','ERROR','DONE']);assert.equal(new Set(calls.map(x=>x.end)).size,1);
+ assert.deepEqual(updates[0].map(x=>x.status),['PENDING','PENDING','PENDING']);
+ assert.equal(result[1].result,undefined);assert.match(result[1].error,/歷史/);
+ await assert.rejects(runComparisonBatch(['UNIUSDT','UNIUSDT']),/清單無效/);
+ await assert.rejects(runComparisonBatch(Array(11).fill('UNIUSDT')),/清單無效/);
+});
+test('batch stop preserves completed results and prevents later requests',async()=>{
+ const {runComparisonBatch}=await import('../src/comparison_batch.js');let stop=false,calls=0;
+ const rows=await runComparisonBatch(['UNIUSDT','SOLUSDT','BTCUSDT'],{shouldStop:()=>stop,compare:async(symbol,{end})=>{calls++;stop=true;return {symbol,end};}});
+ assert.equal(calls,1);assert.deepEqual(rows.map(x=>x.status),['DONE','CANCELLED','CANCELLED']);
+ assert.ok(rows[0].result);assert.equal(rows[1].result,undefined);
+});
+test('batch overview distinguishes missing evidence from real zero results and never upgrades strategies',async()=>{
+ const {comparisonAssessment,batchComparisonPanel}=await import('../src/comparison_batch_view.js');
+ const result={holdout:{baseline:{trades:30,netPnl:10},enhanced:{trades:0,netPnl:0,winRate:null},stress:{trades:0,netPnl:0}}};
+ assert.equal(comparisonAssessment(result),'樣本不足');
+ const html=batchComparisonPanel({rows:[{symbol:'UNIUSDT'},{symbol:'SOLUSDT'}],batchRows:[{symbol:'UNIUSDT',status:'DONE',result},{symbol:'SOLUSDT',status:'ERROR',error:'缺資料<script>'}]});
+ assert.match(html,/樣本不足/);assert.match(html,/0\.00/);assert.match(html,/缺資料&lt;script&gt;/);assert.doesNotMatch(html,/<script>/);
+ result.holdout.enhanced={trades:30,netPnl:20};result.holdout.stress={trades:30,netPnl:-1};assert.equal(comparisonAssessment(result),'成本壓力未通過');
+ result.holdout.stress.netPnl=5;assert.equal(comparisonAssessment(result),'僅供後續驗證');
+});

@@ -63,13 +63,14 @@ async function history(symbol,interval,start,end,fetcher){
   }
   return rows;
 }
-export async function runPullbackComparison(symbol,{fetcher=fetch}={}){
+export async function runPullbackComparison(symbol,{fetcher=fetch,end=Math.floor(Date.now()/(4*H))*4*H}={}){
   if(typeof symbol!=='string'||! /^[\p{L}\p{N}]+USDT$/u.test(symbol))throw new Error('請選擇有效的加密貨幣合約');
   const response=await fetcher('https://fapi.binance.com/fapi/v1/exchangeInfo',{cache:'no-store',signal:AbortSignal.timeout(15000)});
   if(!response.ok)throw new Error('無法確認合約狀態，已停止比較');
   const contracts=await response.json();
   if(!contracts?.symbols?.some(x=>x.symbol===symbol&&x.status==='TRADING'&&x.contractType==='PERPETUAL'&&x.quoteAsset==='USDT'&&x.underlyingType==='COIN'))throw new Error('此標的不是可交易的加密貨幣永續合約');
-  const end=Math.floor(Date.now()/(4*H))*4*H,start=end-90*24*H;
+  if(!Number.isSafeInteger(end)||end%(4*H)!==0||end>Math.floor(Date.now()/(4*H))*4*H)throw new Error('比較期間無效');
+  const start=end-90*24*H;
   const [hourly,fourHourly]=await Promise.all([history(symbol,'1h',start-600*H,end,fetcher),history(symbol,'4h',start-600*4*H,end,fetcher)]);
   return {symbol,...comparePlans({hourly,fourHourly,start,end})};
 }

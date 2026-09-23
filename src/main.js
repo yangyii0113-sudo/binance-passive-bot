@@ -1,3 +1,4 @@
+import { runComparisonBatch } from './comparison_batch.js';
 import { runPullbackComparison } from './pullback_replay.js';
 import { scanPullbacks, strongPullbackCandidates } from './trend_pullback.js';
 import { MARKET_REFRESH_MS } from './config.js';
@@ -465,6 +466,28 @@ function initEvents() {
   });
 
   document.addEventListener('click', async (event) => {
+    if(event.target.closest?.('[data-pullback-batch-stop]')) {
+      if(appState.pullback.batchRunning){setStateSlice('pullback',{batchStop:true});render();}return;
+    }
+    const batchDetail=event.target.closest?.('[data-pullback-batch-detail]');
+    if(batchDetail){
+      const row=appState.pullback.batchRows?.find(r=>r.symbol===batchDetail.dataset.pullbackBatchDetail&&r.status==='DONE');
+      if(row){setStateSlice('pullback',{comparison:row.result,comparisonError:null});render();}return;
+    }
+    if(event.target.closest?.('[data-pullback-batch]')) {
+      if(appState.pullback.loading||appState.pullback.comparing||!appState.pullback.rows?.length)return;
+      const symbols=appState.pullback.rows.map(row=>row.symbol);
+      setStateSlice('pullback',{comparing:true,batchRunning:true,batchStop:false,batchRows:[],comparingSymbol:null,comparison:null,comparisonError:null});render();
+      try {
+        await runComparisonBatch(symbols,{shouldStop:()=>appState.pullback.batchStop,onUpdate:batchRows=>{
+          setStateSlice('pullback',{batchRows});
+          if(!appState.pullback.comparison){const first=batchRows.find(row=>row.result);if(first)setStateSlice('pullback',{comparison:first.result});}
+          render();
+        }});
+      } catch(error){setStateSlice('pullback',{comparisonError:String(error.message||'批次比較失敗')});}
+      finally{setStateSlice('pullback',{comparing:false,batchRunning:false,comparingSymbol:null});render();}
+      return;
+    }
     const compareButton=event.target.closest?.('[data-pullback-compare]');
     if(compareButton){
       if(appState.pullback.comparing||appState.pullback.loading)return;
@@ -478,7 +501,7 @@ function initEvents() {
     }
     if(event.target.closest?.('[data-pullback-scan]')) {
       if(appState.pullback.loading||appState.pullback.comparing) return;
-      setStateSlice('pullback',{loading:true,rows:[],error:null,completed:0,total:0,scannedAt:null,comparison:null,comparisonError:null}); render();
+      setStateSlice('pullback',{loading:true,rows:[],error:null,completed:0,total:0,scannedAt:null,batchRows:[],batchStop:false,comparison:null,comparisonError:null}); render();
       try {
         const [market,response]=await Promise.all([loadMarketSnapshot(),fetch('https://fapi.binance.com/fapi/v1/exchangeInfo',{cache:'no-store',signal:AbortSignal.timeout(15000)})]);
         if(!response.ok)throw new Error('無法確認加密貨幣合約清單');

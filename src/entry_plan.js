@@ -1,3 +1,4 @@
+import { batchComparisonPanel } from './comparison_batch_view.js';
 import { displayText } from './display.js';
 const escape = v => String(v ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const number = v => v!==null && v!==undefined && v!=='' && Number.isFinite(Number(v)) && Number(v)>0 ? Number(v) : null;
@@ -36,6 +37,7 @@ function comparisonPanel(snapshot){
   const n=v=>typeof v==='number'&&Number.isFinite(v)?v.toFixed(2):'—';
   const table=(label,items)=>`<h4>${label}</h4><div class="comparison-scroll"><table><thead><tr><th>規則</th><th>筆數</th><th>淨損益 USDT</th><th>勝率 %</th><th>獲利因子</th><th>每筆均值 USDT</th><th>已平倉回撤 %</th></tr></thead><tbody>${items.map(([label,v])=>`<tr><th>${label}</th><td>${v.trades}</td><td>${n(v.netPnl)}</td><td>${n(v.winRate)}</td><td>${n(v.profitFactor)}</td><td>${n(v.avgPnl)}</td><td>${n(v.closedDrawdownPct)}</td></tr>`).join('')}</tbody></table></div>`;
   return `<div class="exit-comparison"><h3>出場規則比較</h3><p>同一進場邏輯：原版 一倍／兩倍風險距離 對照結構止盈＋成本篩選＋第一止盈後保護。前 70% 與後 30% 分開計算，固定參數、不自動挑選勝者。</p><p>先分析強勢前 10 檔，再選擇其中一檔比較最近 90 天的出場規則。一次執行一檔；新上市或歷史資料不足時停止，不補造資料。目前強勢名單是事後選樣，本比較不代表整套選幣策略的歷史績效。</p><div class="comparison-actions">${(snapshot.rows||[]).map(item=>`<button type="button" class="primary-btn" data-pullback-compare="${escape(item.symbol)}" ${snapshot.comparing||snapshot.loading?'disabled':''}>${snapshot.comparing&&snapshot.comparingSymbol===item.symbol?`正在比較 ${escape(item.symbol)}…`:`比較 ${escape(item.symbol)} · 90 天`}</button>`).join('')||'<p>請先點上方「分析強勢前 10 檔進場點位」，產生可比較清單。</p>'}</div>
+  ${batchComparisonPanel(snapshot)}
   ${snapshot.comparisonError?`<p role="alert">${escape(displayText(snapshot.comparisonError))}</p>`:''}
   ${r?`<h4>${escape(r.symbol)} · ${new Date(r.start).toISOString().slice(0,10)} 至 ${new Date(r.end).toISOString().slice(0,10)} 世界標準時間（結束不含）</h4>
   <p>各組起始 1,000 USDT，每筆風險預算 0.25%、名目本金上限 1 倍；單幣獨立研究。最長持有 48 根一小時 K 棒，同根衝突先止損，區段末強制平倉。</p>
