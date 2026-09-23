@@ -1227,7 +1227,7 @@ function strategyLibraryPanel(state){
     {name:'動能策略',version:'輕量版第一版',type:'動能',status:'訊號運作中',tone:'live',desc:'24 小時動能＋流動性分級，負責目前市場雷達與訊號分類。'},
     {name:'趨勢策略',version:'20／50 期指數均線',type:'趨勢',status:'可回測',tone:'ready',desc:'較慢的趨勢跟隨版本，現有歷史回測引擎可驗證。'},
     {name:'快速趨勢',version:'10／30 期指數均線',type:'趨勢',status:'可回測',tone:'ready',desc:'反應較快的趨勢版本，用來和慢速版本進行比較。'},
-    {name:'ICT 結構策略',version:'規劃中',type:'結構',status:'規劃中',tone:'planned',desc:'BOS、CHoCH、流動性掃蕩、OTE 等結構邏輯。'},
+    {name:'機構交易結構策略',version:'規劃中',type:'結構',status:'規劃中',tone:'planned',desc:'結構突破、趨勢特徵改變、流動性掃蕩、最佳進場區等結構邏輯。'},
     {name:'均值回歸',version:'規劃中',type:'均值回歸',status:'規劃中',tone:'planned',desc:'震盪市場用，後續驗證 相對強弱指標、成交量加權均價偏離 等條件。'},
     {name:'突破策略',version:'規劃中',type:'突破',status:'規劃中',tone:'planned',desc:'區間突破、成交量與波動擴張的方向性策略。'}
   ];
