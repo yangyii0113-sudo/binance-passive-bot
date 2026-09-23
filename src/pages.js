@@ -237,7 +237,7 @@ function derivedStrategies(state){
     const stop = price ? price * (side === 'LONG' ? 0.988 : 1.012) : null;
     return {
       symbol,
-      strategy:'動能策略 · 輕量版 v1',
+      strategy:'動能策略 · 輕量版第一版',
       direction: side === 'LONG' ? '偏多觀察' : '偏空觀察',
       status,
       statusLabel,
@@ -248,7 +248,7 @@ function derivedStrategies(state){
       tp2: price ? price * (side === 'LONG' ? 1.035 : 0.965) : null,
       rr: 1.67,
       confidence: status === 'HIGH' || status === 'TRIGGERED' ? '高' : status === 'READY' || status === 'SETUP' ? '中' : '低',
-      note:'輕量版訊號依 24 小時動能與流動性分級。止盈／停損採固定百分比參考：停損距離 1.2%、第一止盈 2%、第二止盈 3.5%；多單向上止盈、空單向下止盈。未設定分批比例、未自動執行，亦未納入 EMA 回測。'
+      note:'輕量版訊號依 24 小時動能與流動性分級。止盈／停損採固定百分比參考：停損距離 1.2%、第一止盈 2%、第二止盈 3.5%；多單向上止盈、空單向下止盈。未設定分批比例、未自動執行，亦未納入 指數均線回測。'
     };
   });
 }
@@ -691,7 +691,7 @@ function strategyWorkspaceTabs(state){
   const active = state.ui?.strategyWorkspace || 'signals';
   const items = [
     ['signals','訊號'],
-    ['agents','AI 分析代理'],
+    ['agents','智慧分析代理'],
     ['candidates','候選池'],
     ['library','策略庫'],
     ['develop','策略開發'],
@@ -775,7 +775,7 @@ function candidatePoolPanel(state){
     </form>
     <div class="candidate-pool-summary">
       <div><span>候選數</span><strong>${items.length}</strong></div>
-      <p>AI 分析代理可獨立分析；只有你選擇的標的才會進入候選池。曝險檢查目前以模擬保證金／淨值代理曝險，具有阻擋權但不會送出真實訂單。</p>
+      <p>智慧分析代理可獨立分析；只有你選擇的標的才會進入候選池。曝險檢查目前以模擬保證金／淨值代理曝險，具有阻擋權但不會送出真實訂單。</p>
     </div>
     <div class="candidate-list">${rows}</div>
   </div>`;
@@ -793,7 +793,7 @@ function agentTabs(state){
     ['review','06','交易檢討'],
     ['playbook','07','交易手冊']
   ];
-  return `<div class="agent-tabs" role="tablist" aria-label="FOXYYA AI 分析代理">
+  return `<div class="agent-tabs" role="tablist" aria-label="FOXYYA 智慧分析代理">
     ${agents.map(([key,no,label])=>`
       <button type="button" class="agent-tab ${active===key?'active':''}" data-agent-key="${key}" role="tab" aria-selected="${active===key}">
         <span>${no}</span><strong>${label}</strong>
@@ -918,9 +918,9 @@ function topFiveResearchPanel(state){
     <div class="agent-research-list">${resultRows}</div>
     <details class="research-rule-note">
       <summary>查看固定驗證規則</summary>
-      <p>先檢查七個時間週期的技術方向，再依策略類型採固定基準：趨勢為 EMA20/50 · 4 小時 · 2 年；動能／突破（包含趨勢／動能）為 EMA10/30 · 1 小時 · 1 年。若至少五個週期同向，改採趨勢基準。期間是預先設定，不是逐幣挑選最高報酬期間；不同期間的累計報酬不能直接比較。</p>
+      <p>先檢查七個時間週期的技術方向，再依策略類型採固定基準：趨勢為 20／50 期指數均線 · 4 小時 · 2 年；動能／突破（包含趨勢／動能）為 10／30 期指數均線 · 1 小時 · 1 年。若至少五個週期同向，改採趨勢基準。期間是預先設定，不是逐幣挑選最高報酬期間；不同期間的累計報酬不能直接比較。</p>
       <p>策略通過條件：至少 50 筆交易、獲利因子 ≥ 1.2、平均每筆與淨報酬為正、最大回撤 ≤ 35%，且通過樣本層級檢查。少於 20 筆屬樣本不足。區間策略的均值回歸基準尚未實作，只列為研究。</p>
-      <p>曝險阻擋優先於策略通過；本機以保證金占淨值 1.5% 為上限代理指標。最終「已驗證」只表示通過目前規則，未代表樣本外驗證或未來獲利。此 EMA 回測於方向翻轉後的下一根開盤換向，期末平倉，不使用訊號卡的第一／第二止盈。</p>
+      <p>曝險阻擋優先於策略通過；本機以保證金占淨值 1.5% 為上限代理指標。最終「已驗證」只表示通過目前規則，未代表樣本外驗證或未來獲利。此 指數均線回測於方向翻轉後的下一根開盤換向，期末平倉，不使用訊號卡的第一／第二止盈。</p>
     </details>
   </section>`;
 }
@@ -989,7 +989,7 @@ function marketScoutPanel(state){
           <strong>${display}</strong>
           <span>${last}</span>
         </div>
-        ${chips || `<span>${reason}</span>`}
+        ${chips || `<span>${displayText(reason)}</span>`}
         <small class="agent-market-move ${ch>=0?'up':'down'}">${ch>=0?'+':''}${ch.toFixed(2)}% · ${mode==='universe' ? `流動性 #${evidence.liquidityRank}` : compactVolume(volume)}</small>
       </div>
       ${isComposite
@@ -1010,7 +1010,7 @@ function marketScoutPanel(state){
       <div><span>市場池</span><strong>${universe.length}</strong></div>
       <div><span>前五名</span><strong>${topFive.length}</strong></div>
       <div><span>阻擋</span><strong>${blockedCount}</strong></div>
-      <div><span>資料源</span><strong>U 本位永續</strong></div>
+      <div><span>資料源</span><strong>穩定幣本位永續</strong></div>
     </div>
     <div class="agent-intro agent-intro-compact"><strong>全市場掃描</strong><span>先找可交易市場，再驗證 技術面／策略優勢／風險。前五名是研究順位，不是買進順位。</span></div>
     <div class="agent-results market-scout-results">${cards}</div>
@@ -1032,9 +1032,9 @@ function technicalAgentPanel(state){
     ? `<div class="agent-technical-grid">${frames.map(frame=>{
         const direction = String(frame.direction || '');
         const tone = direction.includes('多') ? 'up' : direction.includes('空') ? 'down' : '';
-        return `<div class="agent-tech-card"><span>${displayTimeframe(frame.interval || frame.label)}</span><strong class="${tone}">${direction}</strong><small>EMA20 ${price(frame.ema20)} · EMA50 ${price(frame.ema50)}</small><b>${Number.isFinite(Number(frame.momentumPct)) ? `${Number(frame.momentumPct)>=0?'+':''}${Number(frame.momentumPct).toFixed(2)}%` : '—'}</b></div>`;
+        return `<div class="agent-tech-card"><span>${displayTimeframe(frame.interval || frame.label)}</span><strong class="${tone}">${direction}</strong><small>20 期指數均線 ${price(frame.ema20)} · 50 期指數均線 ${price(frame.ema50)}</small><b>${Number.isFinite(Number(frame.momentumPct)) ? `${Number(frame.momentumPct)>=0?'+':''}${Number(frame.momentumPct).toFixed(2)}%` : '—'}</b></div>`;
       }).join('')}</div>`
-    : '<div class="empty-state"><strong>選擇標的後執行多週期分析</strong><span>資料直接使用 Binance U 本位永續合約的完整收盤 K 棒。</span></div>';
+    : '<div class="empty-state"><strong>選擇標的後執行多週期分析</strong><span>資料直接使用幣安穩定幣本位永續合約的完整收盤 K 棒。</span></div>';
   const add = technical?.status === 'LIVE'
     ? agentCandidateButton(technical.symbol,'Technical Analyst',technical.consensus,`data-candidate-direction="${technical.consensus}"`)
     : '';
@@ -1044,7 +1044,7 @@ function technicalAgentPanel(state){
       <label>分析標的<select name="symbol">${marketSymbolOptions(state)}</select></label>
       <button type="button" class="primary-inline-btn" data-agent-technical-run>執行分析</button>
     </form>
-    ${technical?.status==='LIVE' ? `<div class="agent-consensus"><span>多週期共識</span><strong>${technical.consensus}</strong><small>${displayMarketSource(technical.source)}</small></div>` : ''}
+    ${technical?.status==='LIVE' ? `<div class="agent-consensus"><span>多週期共識</span><strong>${displayText(technical.consensus)}</strong><small>${displayMarketSource(technical.source)}</small></div>` : ''}
     ${frameHtml}
     ${add ? `<div class="agent-single-action">${add}</div>` : ''}
   </div>`;
@@ -1192,7 +1192,7 @@ function aiAgentsPanel(state){
   if(key==='review') content = tradeReviewAgentPanel(state);
   if(key==='playbook') content = playbookAgentPanel(state);
   return `<div class="ai-agents-wrap">
-    <div class="agent-system-note"><strong>FOXYYA AI 分析代理 v1</strong><span>各分析代理彼此獨立；篩選結果可自由加入候選池。現階段分析只使用已接入的市場、模擬交易、回測與事件框架資料。</span></div>
+    <div class="agent-system-note"><strong>FOXYYA 智慧分析代理第一版</strong><span>各分析代理彼此獨立；篩選結果可自由加入候選池。現階段分析只使用已接入的市場、模擬交易、回測與事件框架資料。</span></div>
     ${agentTabs(state)}
     ${content}
   </div>`;
@@ -1224,11 +1224,11 @@ function profitabilityPanel(state){
 
 function strategyLibraryPanel(state){
   const entries = [
-    {name:'動能策略',version:'輕量版 v1',type:'動能',status:'訊號運作中',tone:'live',desc:'24 小時動能＋流動性分級，負責目前市場雷達與訊號分類。'},
-    {name:'趨勢策略',version:'EMA20 / 50',type:'趨勢',status:'可回測',tone:'ready',desc:'較慢的趨勢跟隨版本，現有歷史回測引擎可驗證。'},
-    {name:'快速趨勢',version:'EMA10 / 30',type:'趨勢',status:'可回測',tone:'ready',desc:'反應較快的趨勢版本，用來和慢速版本進行比較。'},
+    {name:'動能策略',version:'輕量版第一版',type:'動能',status:'訊號運作中',tone:'live',desc:'24 小時動能＋流動性分級，負責目前市場雷達與訊號分類。'},
+    {name:'趨勢策略',version:'20／50 期指數均線',type:'趨勢',status:'可回測',tone:'ready',desc:'較慢的趨勢跟隨版本，現有歷史回測引擎可驗證。'},
+    {name:'快速趨勢',version:'10／30 期指數均線',type:'趨勢',status:'可回測',tone:'ready',desc:'反應較快的趨勢版本，用來和慢速版本進行比較。'},
     {name:'ICT 結構策略',version:'規劃中',type:'結構',status:'規劃中',tone:'planned',desc:'BOS、CHoCH、流動性掃蕩、OTE 等結構邏輯。'},
-    {name:'均值回歸',version:'規劃中',type:'均值回歸',status:'規劃中',tone:'planned',desc:'震盪市場用，後續驗證 RSI、VWAP 偏離 等條件。'},
+    {name:'均值回歸',version:'規劃中',type:'均值回歸',status:'規劃中',tone:'planned',desc:'震盪市場用，後續驗證 相對強弱指標、成交量加權均價偏離 等條件。'},
     {name:'突破策略',version:'規劃中',type:'突破',status:'規劃中',tone:'planned',desc:'區間突破、成交量與波動擴張的方向性策略。'}
   ];
   return `<div class="rd-stack">
@@ -1248,7 +1248,7 @@ function strategyDevelopmentPanel(){
     ['01','交易假設','先說明為什麼這個策略優勢應該存在。'],
     ['02','市場狀態','定義趨勢／區間／高波動等市場狀態。'],
     ['03','進場','明確定義觸發條件，不使用事後判讀。'],
-    ['04','停損','定義失效點、ATR 或結構停損。'],
+    ['04','停損','定義失效點、平均真實波幅或結構停損。'],
     ['05','止盈','第一止盈／第二止盈、移動停利與離場規則。'],
     ['06','風險','每筆風險、模擬保證金、槓桿與成本。'],
     ['07','驗證','歷史回測 → 樣本外測試 → 前向模擬交易 → 對照組。']
@@ -1302,8 +1302,8 @@ function strategyOptimizationPanel(state){
   return `<div class="rd-stack">
     <div class="optimization-lanes">
       <article class="opt-card"><span>對照組</span><strong>正式策略基準</strong><p>沿用既有 對照組凍結原則。輕量版訊號不會自動升格成正式策略。</p><small>保持不動，作為比較基準</small></article>
-      <article class="opt-card"><span>候選版本</span><strong>EMA20 / 50</strong><p>可使用現有歷史回測驗證；需再加入 樣本外測試與前向模擬交易。</p><small>${b?.result ? '已有最新回測結果' : '尚未執行最新回測'}</small></article>
-      <article class="opt-card"><span>挑戰版本</span><strong>EMA10 / 30</strong><p>反應較快，需比較交易頻率、成本侵蝕與最大回撤。</p><small>不可只用最高報酬選參數</small></article>
+      <article class="opt-card"><span>候選版本</span><strong>20／50 期指數均線</strong><p>可使用現有歷史回測驗證；需再加入 樣本外測試與前向模擬交易。</p><small>${b?.result ? '已有最新回測結果' : '尚未執行最新回測'}</small></article>
+      <article class="opt-card"><span>挑戰版本</span><strong>10／30 期指數均線</strong><p>反應較快，需比較交易頻率、成本侵蝕與最大回撤。</p><small>不可只用最高報酬選參數</small></article>
     </div>
     <div class="optimization-rules">
       <strong>優化門檻</strong>
@@ -1345,8 +1345,8 @@ export function strategiesPage(state) {
   return `<div class="page-stack">${messageBar(state)}
     ${assetClassSwitcher(state)}
     ${strategyWorkspaceTabs(state)}
-    ${workspace === 'signals' && isCrypto ? '<div class="signal-source-note">目前訊號基準：24 小時市場雷達；多週期判讀請使用 AI 分析代理 → 技術分析。</div>' : ''}
-    ${section(workspace === 'signals' ? '交易訊號' : workspace === 'agents' ? 'AI 分析代理' : workspace === 'candidates' ? '候選池' : '策略研發', content, badge(workspace === 'signals' ? (isCrypto ? '輕量版訊號' : '無資料') : workspace === 'agents' ? '7 個分析代理' : workspace === 'candidates' ? `${state.candidates?.items?.length || 0} 個候選` : '策略研發'))}
+    ${workspace === 'signals' && isCrypto ? '<div class="signal-source-note">目前訊號基準：24 小時市場雷達；多週期判讀請使用 智慧分析代理 → 技術分析。</div>' : ''}
+    ${section(workspace === 'signals' ? '交易訊號' : workspace === 'agents' ? '智慧分析代理' : workspace === 'candidates' ? '候選池' : '策略研發', content, badge(workspace === 'signals' ? (isCrypto ? '輕量版訊號' : '無資料') : workspace === 'agents' ? '7 個分析代理' : workspace === 'candidates' ? `${state.candidates?.items?.length || 0} 個候選` : '策略研發'))}
   </div>`;
 }
 
@@ -1436,12 +1436,12 @@ export function backtestPage(state) {
     </div>
     <p class="guard-note">${backtestAmountNote(b)}</p>
     ${equityChart(b.equityCurve)}`
-    : `<div class="empty-state"><strong>${b.status==='LOADING'?'歷史回測執行中…':'尚未執行歷史回測'}</strong><span>使用 Binance U 本位永續合約歷史 K 線；模擬交易與歷史回測完全分離。</span></div>`;
+    : `<div class="empty-state"><strong>${b.status==='LOADING'?'歷史回測執行中…':'尚未執行歷史回測'}</strong><span>使用幣安穩定幣本位永續合約歷史 K 線；模擬交易與歷史回測完全分離。</span></div>`;
   return `<div class="page-stack">${messageBar(state)}${section('策略測試', `
     <form id="backtest-form" class="form-grid">
       <label>幣種<select name="symbol">${marketSymbolOptions(state)}</select></label>
       <label>測試期間<select name="range"><option value="30D">30 天</option><option value="90D">90 天</option><option value="180D">180 天</option></select></label>
-      <label>策略<select name="strategy"><option value="A">策略 A · EMA20/50</option><option value="B">策略 B · EMA10/30</option></select></label>
+      <label>策略<select name="strategy"><option value="A">策略甲 · 20／50 期指數均線</option><option value="B">策略乙 · 10／30 期指數均線</option></select></label>
       <label>時間週期<select name="timeframe">
         <option value="15m">15 分鐘</option>
         <option value="1h">1 小時</option>
@@ -1495,13 +1495,13 @@ export function strategyLabPage(state) {
     </div>
     <p class="guard-note">${backtestAmountNote(b)}</p>
     ${equityChart(b.equityCurve)}
-  ` : `<div class="empty-state"><strong>${b.status==='LOADING'?'歷史回測執行中…':'尚未執行歷史回測'}</strong><span>使用 Binance U 本位永續合約歷史 K 線；模擬交易與歷史回測完全分離。</span></div>`;
+  ` : `<div class="empty-state"><strong>${b.status==='LOADING'?'歷史回測執行中…':'尚未執行歷史回測'}</strong><span>使用幣安穩定幣本位永續合約歷史 K 線；模擬交易與歷史回測完全分離。</span></div>`;
 
   const backtestHtml = `
     <form id="backtest-form" class="form-grid">
       <label>幣種<select name="symbol">${marketSymbolOptions(state)}</select></label>
       <label>測試期間<select name="range"><option value="30D">30 天</option><option value="90D">90 天</option><option value="180D">180 天</option></select></label>
-      <label>策略<select name="strategy"><option value="A">趨勢策略 · EMA20/50</option><option value="B">快速趨勢 · EMA10/30</option></select></label>
+      <label>策略<select name="strategy"><option value="A">趨勢策略 · 20／50 期指數均線</option><option value="B">快速趨勢 · 10／30 期指數均線</option></select></label>
       <label>時間週期<select name="timeframe">
         <option value="15m">15 分鐘</option>
         <option value="1h">1 小時</option>

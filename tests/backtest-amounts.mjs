@@ -87,7 +87,7 @@ test('derived signal targets disclose their fixed percentage and separation from
   assert.match(text,/第一止盈 102\.000/);
   assert.match(text,/第二止盈 103\.500/);
   assert.match(text,/固定百分比/);
-  assert.match(text,/未納入 EMA 回測/);
+  assert.match(text,/未納入 指數均線回測/);
 });
 
 test('candidate readiness requires rerunning legacy local backtests after the calculation correction',()=>{

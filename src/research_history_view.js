@@ -1,5 +1,5 @@
 import { escapeHtml, displayDate, finiteNumber } from './ui.js';
-import { displayStatus, displayStrategyMatch, displayTimeframe, displayRange } from './display.js';
+import { displayText, displayStatus, displayStrategyMatch, displayTimeframe, displayRange } from './display.js';
 import { backtestAmountFields, backtestAmountNote } from './backtest_amounts.js';
 
 const number = value => finiteNumber(value)?.toLocaleString('zh-TW',{maximumFractionDigits:2}) ?? '—';
@@ -16,8 +16,8 @@ export function researchHistoryPanel(history, selectedId) {
       ${runs.map(run=>`<option value="${escapeHtml(run.id)}" ${selected.id===run.id?'selected':''}>${escapeHtml(displayDate(run.completedAt))} · ${run.rows?.length || 0} 個標的</option>`).join('')}
     </select></label>` : '<p class="history-empty">尚無研究歷史，完成一次全套驗證後即可查閱。</p>'}
     <div class="history-actions">
-      <button type="button" class="secondary-btn" data-history-export="csv" ${selected?'':'disabled'}>匯出此筆 CSV</button>
-      <button type="button" class="secondary-btn" data-history-export="json" ${selected?'':'disabled'}>匯出全部 JSON</button>
+      <button type="button" class="secondary-btn" data-history-export="csv" ${selected?'':'disabled'}>匯出此筆表格</button>
+      <button type="button" class="secondary-btn" data-history-export="json" ${selected?'':'disabled'}>匯出全部資料</button>
     </div>
     <div class="history-rows">${rows.map(item=>{
       const result = item.backtest?.result || {};
@@ -26,7 +26,7 @@ export function researchHistoryPanel(history, selectedId) {
       return `<article class="history-row">
         <header><strong>${escapeHtml(item.symbol)}</strong><span>${escapeHtml(displayStatus(item.decision?.label || item.status))}</span></header>
         <dl>
-          ${field('研究評分',number(item.researchScore))}${field('技術結論',item.technical?.consensus || '—')}
+          ${field('研究評分',number(item.researchScore))}${field('技術結論',displayText(item.technical?.consensus) || '—')}
           ${field('策略匹配',displayStrategyMatch(item.strategyMatch))}${field('曝險檢查',displayStatus(item.risk?.status))}
           ${field('回測週期',displayTimeframe(input.timeframe))}${field('回測期間',displayRange(input.range))}
           ${field('交易筆數',number(result.trades))}${field('勝率',percent(result.winRatePct))}
