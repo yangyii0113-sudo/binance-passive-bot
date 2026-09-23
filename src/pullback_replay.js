@@ -1,3 +1,4 @@
+import { familyPlan, FAMILY_VERSION } from './strategy_families.js';
 import { pullbackPlan } from './trend_pullback.js';
 import { refineTargets, EXIT_COSTS } from './target_analysis.js';
 const H=3600000;
@@ -24,7 +25,7 @@ export function replayTrade(plan, bars, {fee=EXIT_COSTS.fee,slippage=EXIT_COSTS.
 }
 export function comparePlans({hourly,fourHourly,start,end}) {
   const split=start+Math.floor((end-start)*.7/H)*H;
-  function run(from,to,enhanced,multiplier=1){
+  function run(from,to,enhanced,multiplier=1,family=null){
     let balance=1000,peak=1000,dd=0,wins=0,grossWin=0,grossLoss=0,count=0,signals=0,skipped=0;
     const skipReasons={};
     const diagnostics={evaluated:0,dataBlocked:0,trendWait:0,pullbackWait:0,extendedWait:0,riskBlocked:0,noEntry:0,entryGap:0,stopGap:0,noBreakout:0,missingFuture:0};
@@ -33,8 +34,9 @@ export function comparePlans({hourly,fourHourly,start,end}) {
       const time=+hourly[i][0];if(time<from||time>=to)continue;
       const history=hourly.slice(Math.max(0,i-600),i);
       const higher=fourHourly.filter(r=>+r[6]<time).slice(-600);
-      let plan=pullbackPlan({hourly:history,fourHourly:higher,now:time});
+      let plan=family?familyPlan(history,family,time):pullbackPlan({hourly:history,fourHourly:higher,now:time});
       diagnostics.evaluated++;
+      if(plan.status==='SKIP'){signals++;skipped++;skipReasons[plan.reason]=(skipReasons[plan.reason]||0)+1;continue;}
       if(plan.status!=='SETUP'){diagnostics[plan.diagnosticReason||'dataBlocked']++;continue;}signals++;
       if(enhanced){plan=refineTargets(plan,history,plan.atr,costs);if(!plan.targetAnalysis.accepted){skipped++;skipReasons[plan.targetAnalysis.reason]=(skipReasons[plan.targetAnalysis.reason]||0)+1;continue;}}
       const future=hourly.slice(i,i+48).filter(r=>+r[0]<to);
@@ -48,7 +50,14 @@ export function comparePlans({hourly,fourHourly,start,end}) {
     }
     return {trades:count,signals,skipped,skipReasons,diagnostics,netPnl:balance-1000,netReturnPct:(balance/1000-1)*100,winRate:count?wins/count*100:null,profitFactor:grossLoss?grossWin/grossLoss:null,avgPnl:count?(balance-1000)/count:null,closedDrawdownPct:dd,ledger};
   }
-  return {start,end,split,version:'TP01-S1',fundingIncluded:false,development:{baseline:run(start,split,false),enhanced:run(start,split,true)},holdout:{baseline:run(split,end,false),enhanced:run(split,end,true),stress:run(split,end,true,2)}};
+  const development={baseline:run(start,split,false),enhanced:run(start,split,true)};
+  const holdout={baseline:run(split,end,false),enhanced:run(split,end,true),stress:run(split,end,true,2)};
+  const families={version:FAMILY_VERSION,rows:[
+    {key:'pullback',development:development.baseline,holdout:holdout.baseline,stress:run(split,end,false,2)},
+    {key:'structured',development:development.enhanced,holdout:holdout.enhanced,stress:holdout.stress},
+    ...['breakout','meanReversion'].map(key=>({key,development:run(start,split,false,1,key),holdout:run(split,end,false,1,key),stress:run(split,end,false,2,key)}))
+  ]};
+  return {start,end,split,version:'TP01-S1',fundingIncluded:false,development,holdout,families};
 }
 async function history(symbol,interval,start,end,fetcher){
   const rows=[];let cursor=start;

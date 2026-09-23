@@ -23,6 +23,14 @@ function compactResult(result,symbol){
       output[section][rule].skipReasons=Object.fromEntries(Object.entries(metrics.skipReasons||{}).filter(([k,v])=>k.length<=300&&Number.isInteger(v)&&v>=0));
     }
   }
+  if(result.families){
+    if(result.families.version!=='families-v1'||!Array.isArray(result.families.rows)||result.families.rows.length!==4||result.families.rows.map(r=>r.key).join(',')!=='pullback,structured,breakout,meanReversion')throw new Error('多策略比較格式無效');
+    output.families={version:'families-v1',rows:result.families.rows.map(row=>{
+      const compact=compactResult({symbol,version:result.version,start:result.start,end:result.end,split:result.split,
+        development:{baseline:row.development,enhanced:row.development},holdout:{baseline:row.holdout,enhanced:row.holdout,stress:row.stress}},symbol);
+      return {key:row.key,development:compact.development.baseline,holdout:compact.holdout.baseline,stress:compact.holdout.stress};
+    })};
+  }
   return output;
 }
 function compactRun(run){
