@@ -17,12 +17,15 @@ export function entryPlan(plan,{research=false}={}) {
 }
 export function pullbackPanel(state,now=Date.now()) {
   const snapshot=state.pullback||{};
-  return `<section class="pullback-panel" aria-label="趨勢回調研究一號"><div class="pullback-heading"><div><span class="research-kicker">BTC / ETH · 研究版 · 僅模擬</span><h3>趨勢回調研究一號 · 結構止盈</h3><p>4 小時辨識趨勢，1 小時等待回調收盤，再觀察突破進場。</p></div><button type="button" class="primary-btn" data-pullback-scan ${snapshot.loading?'disabled':''}>${snapshot.loading?'分析中…':'分析 BTC／ETH 進場點位'}</button></div>
+  return `<section class="pullback-panel" aria-label="趨勢回調研究一號"><div class="pullback-heading"><div><span class="research-kicker">強勢前 10 檔 · 研究版 · 僅模擬</span><h3>趨勢回調研究一號 · 結構止盈</h3><p>4 小時辨識趨勢，1 小時等待回調收盤，再觀察突破進場。</p></div><button type="button" class="primary-btn" data-pullback-scan ${snapshot.loading?'disabled':''}>${snapshot.loading?`分析中 ${snapshot.completed||0}／${snapshot.total||10}`:'分析強勢前 10 檔進場點位'}</button></div>
+    <p class="strategy-note">每次分析先更新行情，從高流動性標的池選出上漲的加密貨幣永續合約，依市場強度排序，成交額作同分排序；排除 24 小時漲幅達 30% 及成交額低於 1,000 萬 USDT 的標的。不足 10 檔不補足，排名不代表可立即進場。</p>
+    ${snapshot.error?`<p role="alert">${escape(displayText(snapshot.error))}</p>`:''}
+    ${snapshot.scannedAt?`<p>行情時間：${escape(new Date(snapshot.scannedAt).toLocaleString('zh-TW'))} · 本次 ${snapshot.total} 檔</p>`:''}
     <p class="strategy-note">新增結構止盈、成本篩選與 90 天比較；尚未取得足夠績效證據，不列為「驗證通過」。止盈／止損為研究計畫，不會送出真實訂單。</p>
     ${snapshot.rows?.length?`<div class="cards-grid">${snapshot.rows.map(p=>{
       const expired=p.expiresAt&&p.expiresAt<=now;
       const ready=p.status==='SETUP'&&!expired;
-      return `<article class="detail-card"><div class="strategy-card-head"><strong>${escape(p.symbol)}</strong><span class="signal-badge">${expired?'已過期，請重新分析':ready?'等待突破':p.status==='BLOCKED'?'資料不足／暫停':p.status==='SKIP'?'空間不足，略過':'等待條件'}</span></div><p>${ready?(p.side==='LONG'?'做多研究計畫':'做空研究計畫'):''}</p><p>${escape(expired?'此計畫已失效，不可沿用舊點位':displayText(p.reason))}</p>${ready?entryPlan(p,{research:true}):''}${ready?`<p class="strategy-note">有效期限：${new Date(p.expiresAt).toISOString().replace('T',' ').replace('.000Z',' 世界標準時間')}。止損先到、跳空越過門檻或逾時均取消；突破與成交尚未由系統追蹤。</p>`:''}</article>`;
+      return `<article class="detail-card"><div class="strategy-card-head"><strong>${p.rank?`第 ${p.rank} 名 · `:''}${escape(p.symbol)}</strong><span class="signal-badge">${expired?'已過期，請重新分析':ready?'等待突破':p.status==='BLOCKED'?'資料不足／暫停':p.status==='SKIP'?'空間不足，略過':'等待條件'}</span></div>${Number.isFinite(p.strength)?`<p>市場強度 ${p.strength.toFixed(1)}／100 · 24 小時 +${p.change.toFixed(2)}%</p>`:''}<p>${ready?(p.side==='LONG'?'做多研究計畫':'做空研究計畫'):''}</p><p>${escape(expired?'此計畫已失效，不可沿用舊點位':displayText(p.reason))}</p>${ready?entryPlan(p,{research:true}):''}${ready?`<p class="strategy-note">有效期限：${new Date(p.expiresAt).toISOString().replace('T',' ').replace('.000Z',' 世界標準時間')}。止損先到、跳空越過門檻或逾時均取消；突破與成交尚未由系統追蹤。</p>`:''}</article>`;
     }).join('')}</div>`:'<div class="empty-state"><strong>尚未分析進場條件</strong><span>按上方按鈕讀取完整合約 K 線；未成立時不產生點位。</span></div>'}
     ${comparisonPanel(snapshot)}
   </section>`;

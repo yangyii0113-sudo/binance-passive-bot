@@ -1,5 +1,5 @@
 import { runPullbackComparison } from './pullback_replay.js';
-import { scanPullbacks } from './trend_pullback.js';
+import { scanPullbacks, strongPullbackCandidates } from './trend_pullback.js';
 import { MARKET_REFRESH_MS } from './config.js';
 import { appState, setMarketState, setStateSlice } from './state.js';
 import { cachedMarketSnapshot, loadMarketSnapshot } from './market.js';
@@ -476,8 +476,17 @@ function initEvents() {
     }
     if(event.target.closest?.('[data-pullback-scan]')) {
       if(appState.pullback.loading) return;
-      setStateSlice('pullback',{loading:true,rows:[]}); render();
-      try { setStateSlice('pullback',{rows:await scanPullbacks()}); }
+      setStateSlice('pullback',{loading:true,rows:[],error:null,completed:0,total:0,scannedAt:null}); render();
+      try {
+        const [market,response]=await Promise.all([loadMarketSnapshot(),fetch('https://fapi.binance.com/fapi/v1/exchangeInfo',{cache:'no-store',signal:AbortSignal.timeout(15000)})]);
+        if(!response.ok)throw new Error('無法確認加密貨幣合約清單');
+        const candidates=strongPullbackCandidates(market,await response.json());
+        setMarketState(market);
+        if(!candidates.length)throw new Error('目前沒有符合條件的強勢幣，請稍後重新分析');
+        setStateSlice('pullback',{total:candidates.length,scannedAt:market.updatedAt});render();
+        const rows=await scanPullbacks(candidates,{onProgress:(completed)=>{setStateSlice('pullback',{completed});render();}});
+        setStateSlice('pullback',{rows});
+      } catch(error) {setStateSlice('pullback',{error:String(error.message||'分析失敗，請稍後再試')});}
       finally { setStateSlice('pullback',{loading:false}); render(); }
       return;
     }

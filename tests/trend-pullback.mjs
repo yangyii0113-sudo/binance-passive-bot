@@ -21,3 +21,31 @@ test('expired plans hide old prices and empty prices do not become zero',()=>{
  assert.match(html,/已過期/);
  assert.doesNotMatch(entryPlan({entry:null,stop:null,tp1:null,tp2:null}),/0\.000/);
 });
+
+const {strongPullbackCandidates,scanPullbacks}=await import('../src/trend_pullback.js');
+test('top ten scanner selects fresh rising crypto contracts with deterministic liquidity ties',()=>{
+ const now=Date.now();
+ const symbols=Array.from({length:14},(_,i)=>`COIN${i}USDT`);
+ const contracts={symbols:symbols.map(symbol=>({symbol,status:'TRADING',contractType:'PERPETUAL',quoteAsset:'USDT',underlyingType:'COIN'}))};
+ const rows=symbols.map((symbol,i)=>['',symbol,'1',5,20000000+i,90]);
+ const market={status:'LIVE',updatedAt:new Date(now).toISOString(),universeRows:rows};
+ const selected=strongPullbackCandidates(market,contracts,now);
+ assert.equal(selected.length,10);assert.equal(selected[0].symbol,'COIN13USDT');assert.equal(selected[9].rank,10);
+ assert.throws(()=>strongPullbackCandidates({...market,status:'STALE'},contracts,now));
+ assert.throws(()=>strongPullbackCandidates({...market,updatedAt:new Date(now-120001).toISOString()},contracts,now));
+ assert.throws(()=>strongPullbackCandidates(market,{},now));
+ contracts.symbols[13].underlyingType='EQUITY';rows[12][3]=-5;rows[11][3]=30;rows[10][4]=1;rows[9][5]=null;
+ const filtered=strongPullbackCandidates({...market,universeRows:[...rows,rows[0]]},contracts,now);
+ assert.equal(filtered.length,9);assert.equal(new Set(filtered.map(x=>x.symbol)).size,9);
+ assert.equal(filtered.some(x=>['COIN13USDT','COIN12USDT','COIN11USDT','COIN10USDT','COIN9USDT'].includes(x.symbol)),false);
+});
+test('scanner preserves ranking, isolates unavailable contracts and bounds concurrent requests',async()=>{
+ let active=0,peak=0;const progress=[];
+ const rows=await scanPullbacks(Array.from({length:10},(_,i)=>({symbol:`COIN${i}USDT`,rank:i+1})),{
+ fetcher:async()=>{active++;peak=Math.max(peak,active);await new Promise(r=>setTimeout(r,2));active--;return {ok:true,json:async()=>[]};},
+ onProgress:n=>progress.push(n)
+ });
+ assert.equal(rows.length,10);assert.ok(rows.every(x=>x.status==='BLOCKED'&&x.entry===undefined));assert.ok(peak<=4);assert.equal(progress.at(-1),10);
+ assert.deepEqual(rows.map(x=>x.rank),[1,2,3,4,5,6,7,8,9,10]);
+ assert.deepEqual(await scanPullbacks(),[]);
+});
