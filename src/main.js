@@ -467,16 +467,18 @@ function initEvents() {
   document.addEventListener('click', async (event) => {
     const compareButton=event.target.closest?.('[data-pullback-compare]');
     if(compareButton){
-      if(appState.pullback.comparing)return;
-      setStateSlice('pullback',{comparing:true,comparison:null,comparisonError:null});render();
-      try {setStateSlice('pullback',{comparison:await runPullbackComparison(compareButton.dataset.pullbackCompare)});}
+      if(appState.pullback.comparing||appState.pullback.loading)return;
+      const symbol=compareButton.dataset.pullbackCompare;
+      if(!appState.pullback.rows.some(row=>row.symbol===symbol))return;
+      setStateSlice('pullback',{comparing:true,comparingSymbol:symbol,comparison:null,comparisonError:null});render();
+      try {setStateSlice('pullback',{comparison:await runPullbackComparison(symbol)});}
       catch(error){setStateSlice('pullback',{comparisonError:String(error.message||error)});}
       finally{setStateSlice('pullback',{comparing:false});render();}
       return;
     }
     if(event.target.closest?.('[data-pullback-scan]')) {
-      if(appState.pullback.loading) return;
-      setStateSlice('pullback',{loading:true,rows:[],error:null,completed:0,total:0,scannedAt:null}); render();
+      if(appState.pullback.loading||appState.pullback.comparing) return;
+      setStateSlice('pullback',{loading:true,rows:[],error:null,completed:0,total:0,scannedAt:null,comparison:null,comparisonError:null}); render();
       try {
         const [market,response]=await Promise.all([loadMarketSnapshot(),fetch('https://fapi.binance.com/fapi/v1/exchangeInfo',{cache:'no-store',signal:AbortSignal.timeout(15000)})]);
         if(!response.ok)throw new Error('無法確認加密貨幣合約清單');

@@ -57,3 +57,24 @@ test('comparison ledgers reconcile to money and later holdout candles cannot alt
  for(const row of a.fourHourly)if(row[0]>=r.split)for(const k of [1,2,3,4])row[k]*=2;
  assert.deepEqual(comparePlans(a).development,r.development);
 });
+
+test('exit comparison accepts selected altcoins and Unicode contracts while rejecting non-crypto',async()=>{
+ const {runPullbackComparison}=await import('../src/pullback_replay.js');
+ for(const symbol of ['SOLUSDT','UNIUSDT','龙虾USDT']){
+  const urls=[];
+  const fetcher=async url=>{urls.push(url);return {ok:true,json:async()=>url.endsWith('exchangeInfo')?{symbols:[{symbol,status:'TRADING',contractType:'PERPETUAL',quoteAsset:'USDT',underlyingType:'COIN'}]}:[]};};
+  await assert.rejects(runPullbackComparison(symbol,{fetcher}),/歷史資料不完整/);
+  assert.ok(urls.some(url=>url.includes(`symbol=${encodeURIComponent(symbol)}`)));
+ }
+ await assert.rejects(runPullbackComparison('SOLUSDT',{fetcher:async()=>({ok:true,json:async()=>({symbols:[]})})}),/不是可交易/);
+ await assert.rejects(runPullbackComparison('SOLUSDT&invalid=1'),/有效/);
+});
+
+test('comparison UI offers every scanned symbol and clears the fixed BTC ETH pair',async()=>{
+ const {pullbackPanel}=await import('../src/entry_plan.js');
+ const html=pullbackPanel({pullback:{rows:[{symbol:'UNIUSDT',status:'WAIT'},{symbol:'龙虾USDT',status:'BLOCKED'}]}});
+ assert.match(html,/data-pullback-compare="UNIUSDT"/);
+ assert.match(html,/data-pullback-compare="龙虾USDT"/);
+ assert.doesNotMatch(html,/data-pullback-compare="(?:BTC|ETH)USDT"/);
+ assert.match(pullbackPanel({pullback:{rows:[]}}),/產生可比較清單/);
+});
