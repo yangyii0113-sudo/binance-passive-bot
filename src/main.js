@@ -492,6 +492,12 @@ function initEvents() {
   });
 
   document.addEventListener('click', async (event) => {
+    const coinFilter=event.target.closest?.('[data-coin-filter]');
+    if(coinFilter){
+      const value=coinFilter.dataset.coinFilter;
+      if(['all','plan','wait','issue'].includes(value)){setStateSlice('pullback',{analysisFilter:value});render();}
+      return;
+    }
     if(event.target.closest?.('[data-pullback-batch-stop]')) {
       if(appState.pullback.batchRunning){setStateSlice('pullback',{batchStop:true});render();}return;
     }
@@ -529,7 +535,7 @@ function initEvents() {
     }
     if(event.target.closest?.('[data-pullback-scan]')) {
       if(appState.pullback.loading||appState.pullback.comparing) return;
-      setStateSlice('pullback',{loading:true,rows:[],error:null,completed:0,total:0,scannedAt:null,batchHistorical:false,batchHistoryId:null,batchRecord:null,batchRows:[],batchStop:false,comparison:null,comparisonError:null}); render();
+      setStateSlice('pullback',{loading:true,rows:[],analysisFilter:'all',error:null,completed:0,total:0,scannedAt:null,batchHistorical:false,batchHistoryId:null,batchRecord:null,batchRows:[],batchStop:false,comparison:null,comparisonError:null}); render();
       try {
         const [market,response]=await Promise.all([loadMarketSnapshot(),fetch('https://fapi.binance.com/fapi/v1/exchangeInfo',{cache:'no-store',signal:AbortSignal.timeout(15000)})]);
         if(!response.ok)throw new Error('無法確認加密貨幣合約清單');

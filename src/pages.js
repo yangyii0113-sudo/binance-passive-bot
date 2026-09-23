@@ -1228,8 +1228,8 @@ function strategyLibraryPanel(state){
     {name:'趨勢策略',version:'20／50 期指數均線',type:'趨勢',status:'可回測',tone:'ready',desc:'較慢的趨勢跟隨版本，現有歷史回測引擎可驗證。'},
     {name:'快速趨勢',version:'10／30 期指數均線',type:'趨勢',status:'可回測',tone:'ready',desc:'反應較快的趨勢版本，用來和慢速版本進行比較。'},
     {name:'機構交易結構策略',version:'規劃中',type:'結構',status:'規劃中',tone:'planned',desc:'結構突破、趨勢特徵改變、流動性掃蕩、最佳進場區等結構邏輯。'},
-    {name:'均值回歸',version:'研究第一版',type:'均值回歸',status:'可比較 · 未驗證',tone:'ready',desc:'震盪條件下，偏離固定均價區間後收回；在訊號頁先掃描強勢幣，再執行 90 天多策略比較。尚未接入即時訊號。'},
-    {name:'突破策略',version:'研究第一版',type:'突破',status:'可比較 · 未驗證',tone:'ready',desc:'收盤突破前 20 根區間並放量；在訊號頁執行 90 天多策略比較。尚未接入即時訊號。'}
+    {name:'均值回歸',version:'研究第一版',type:'均值回歸',status:'可比較 · 未驗證',tone:'ready',desc:'震盪條件下，偏離固定均價區間後收回；在訊號頁先掃描強勢幣，再執行 90 天多策略比較。訊號頁另有收盤快照條件分析，尚未追蹤盤中成交。'},
+    {name:'突破策略',version:'研究第一版',type:'突破',status:'可比較 · 未驗證',tone:'ready',desc:'收盤突破前 20 根區間並放量；在訊號頁執行 90 天多策略比較。訊號頁另有收盤快照條件分析，尚未追蹤盤中成交。'}
   ];
   return `<div class="rd-stack">
     ${profitabilityPanel(state)}

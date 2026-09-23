@@ -2203,3 +2203,21 @@ button, a, input, select, summary { scroll-margin-block:16px 110px; }
 .diagnostic-counts { margin:12px 0; }
 .diagnostic-counts > div { display:flex; gap:12px; justify-content:space-between; padding:6px 0; border-bottom:1px solid #ffffff12; }
 .diagnostic-counts dd { margin:0; font-variant-numeric:tabular-nums; }
+
+.coin-overview { margin:18px 0 12px; padding:14px; border:1px solid #435370; border-radius:12px; }
+.coin-overview p,.coin-analysis-card p { font-size:13px; line-height:1.7; color:#bac8db; }
+.coin-filters { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; }
+.coin-filters button { min-height:44px; }
+.coin-filters [aria-pressed="true"] { border-color:#e7b846; color:#f3c854; background:#362f20; }
+.coin-analysis-grid { padding:0; align-items:start; }
+.coin-analysis-card { min-width:0; overflow-wrap:anywhere; }
+.coin-analysis-card .strategy-card-head { flex-wrap:wrap; gap:8px; }
+.coin-facts { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin:14px 0; }
+.coin-facts > div { padding:10px; border:1px solid #34445b; border-radius:8px; }
+.coin-facts dt { color:#a9b9cd; font-size:12px; line-height:1.5; }
+.coin-facts dd { margin:5px 0 0; font-size:16px; font-weight:650; font-variant-numeric:tabular-nums; }
+.coin-strategy-detail { border-top:1px solid #3a485a; padding:12px 0; }
+.coin-strategy-detail > summary { cursor:pointer; min-height:44px; font-size:14px; }
+.coin-strategy-detail > summary span { display:block; margin:6px 0 0 16px; font-size:12px; color:#d6bd77; }
+.coin-analysis-card > button { width:100%; min-height:44px; margin-top:10px; }
+@media(max-width:540px) { .coin-facts { gap:8px; } .coin-filters button { flex:1 1 42%; padding:10px 6px; font-size:12px; } }

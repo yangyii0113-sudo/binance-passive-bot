@@ -1,3 +1,4 @@
+import { analyzeCoin } from './coin_analysis.js';
 import { refineTargets } from './target_analysis.js';
 // TP01 is an isolated research scanner. No order or production execution calls.
 const H = 3600000;
@@ -66,6 +67,9 @@ export async function scanPullbacks(candidates=[],{fetcher=fetch,onProgress=()=>
           const enhanced=refineTargets(plan,rows[0].filter(r=>+r[6]<now),plan.atr);
           results[index]={...candidate,...enhanced,status:enhanced.targetAnalysis.accepted?'SETUP':'SKIP',reason:enhanced.targetAnalysis.reason};
         }
+        const analysis=analyzeCoin({hourly:rows[0],fourHourly:rows[1],pullback:results[index],now});
+        results[index].analysis=analysis;
+        if(analysis.status==='BLOCKED')results[index]={...candidate,status:'BLOCKED',reason:analysis.reason,analysis};
       } catch {results[index]={...candidate,status:'BLOCKED',reason:'無法取得完整合約 K 線，請稍後重新分析'};}
       onProgress(++completed,candidates.length);
     }

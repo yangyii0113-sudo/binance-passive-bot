@@ -16,7 +16,8 @@ export function familyPlan(rows,kind,now){
   const channel=rows.slice(-21,-1),upper=Math.max(...channel.map(r=>+r[2])),lower=Math.min(...channel.map(r=>+r[3]));
   const averageVolume=mean(channel.map(r=>+r[5]));
   side=+last[4]>upper?'LONG':+last[4]<lower?'SHORT':null;
-  if(!side||averageVolume<=0||+last[5]<averageVolume*1.5)return wait('等待收盤突破前 20 根區間及 1.5 倍量');
+  if(!side)return wait('尚未收盤突破前 20 根最高／最低價');
+  if(averageVolume<=0||+last[5]<averageVolume*1.5)return wait('收盤已突破區間；等待訊號棒成交量達前 20 根均量的 1.5 倍');
  }else{
   // Freeze the band before the excursion/reclaim pair: neither bar alters its own threshold.
   const base=rows.slice(-22,-2).map(r=>+r[4]);center=mean(base);

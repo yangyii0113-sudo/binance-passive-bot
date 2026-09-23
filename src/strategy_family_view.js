@@ -17,5 +17,5 @@ export function strategyFamilyPanel(result){
  <p>新策略扣除基本成本後，分批目標風報比需至少 1；有效期限 1 根。跳空越過進場／止損、逾時未突破即取消；最長持有 48 根，同根衝突先止損。成本壓力測試固定相同新策略計畫，只將成交費用與滑價加倍。</p>
  <div class="comparison-scroll" role="region" aria-label="多策略績效，可左右滑動" tabindex="0"><table><thead><tr><th>策略</th><th>前段筆數</th><th>前段淨損益</th><th>後段筆數</th><th>後段勝率 %</th><th>後段淨損益</th><th>每筆均值</th><th>獲利因子</th><th>已平倉回撤 %</th><th>雙倍成本淨損益</th><th>判讀</th></tr></thead><tbody>${families.rows.map(row=>`<tr><th>${FAMILY_NAMES[row.key]}</th><td>${row.development.trades}</td><td>${n(row.development.netPnl)}</td><td>${row.holdout.trades}</td><td>${n(row.holdout.winRate)}</td><td>${n(row.holdout.netPnl)}</td><td>${n(row.holdout.avgPnl)}</td><td>${n(row.holdout.profitFactor)}</td><td>${n(row.holdout.closedDrawdownPct)}</td><td>${n(row.stress.netPnl)}</td><td>${familyAssessment(row)}</td></tr>`).join('')}</tbody></table></div>
  <p>金額單位 USDT；每組獨立起始 1,000，每筆風險預算 0.25%，名目上限 1 倍。前 70% 與後 30% 分開計算。20 筆只用於標記樣本不足，超過不等於驗證通過。缺少資金費率、跨期與前向證據，不宣稱最高勝率、最佳組合或穩定盈利。</p>
- <p>本表是單幣獨立策略比較，尚未計算策略間相關性與共同持倉風險，不能加總為投資組合績效。新策略目前提供歷史研究，尚未接入即時訊號或正式執行。</p></section>`;
+ <p>本表是單幣獨立策略比較，尚未計算策略間相關性與共同持倉風險，不能加總為投資組合績效。新策略另提供收盤快照條件分析，尚未追蹤即時成交或接入正式執行。</p></section>`;
 }
