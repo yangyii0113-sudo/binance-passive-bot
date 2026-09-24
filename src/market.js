@@ -9,6 +9,29 @@ import { readMarketCache, writeMarketCache } from './cache.js';
 import { STATUS } from './status.js';
 
 const STABLE_BASES = new Set(['USDC','FDUSD','TUSD','USDP','DAI','USDE']);
+let contractCache=null;
+let pendingContracts=null;
+
+export function cryptoContractTickers(tickers, contracts) {
+  if(!Array.isArray(tickers) || !Array.isArray(contracts?.symbols)) throw new Error('合約清單格式異常');
+  const symbols=new Set(contracts.symbols.filter(c=>c && c.status==='TRADING' && c.contractType==='PERPETUAL' && c.quoteAsset==='USDT' && c.underlyingType==='COIN').map(c=>c.symbol));
+  return tickers.filter(ticker=>symbols.has(ticker?.symbol));
+}
+
+async function fetchCryptoContracts() {
+  const age=Date.now()-(contractCache?.checkedAt || 0);
+  if(contractCache && age>=0 && age<300000) return contractCache;
+  if(pendingContracts) return pendingContracts;
+  pendingContracts=(async()=>{
+    const response=await fetch('https://fapi.binance.com/fapi/v1/exchangeInfo',{cache:'no-store',signal:AbortSignal.timeout(MARKET_TIMEOUT_MS)});
+    if(!response.ok) throw new Error('無法核對加密貨幣合約清單');
+    const data=await response.json();
+    if(!Array.isArray(data?.symbols) || !data.symbols.length) throw new Error('合約清單格式異常');
+    contractCache={symbols:data.symbols,checkedAt:Date.now()};
+    return contractCache;
+  })().finally(()=>{pendingContracts=null;});
+  return pendingContracts;
+}
 
 function formatPrice(value) {
   const n = Number(value);
@@ -119,10 +142,12 @@ async function fetchAllTickers() {
 
 export function cachedMarketSnapshot() {
   const cached = readMarketCache();
-  if (!cached) return null;
+  if (!cached || cached.cryptoOnly!==true) return null;
   const summary = deriveMarketSummary(cached.rows);
   return {
     status: STATUS.STALE,
+    cryptoOnly:true,
+    contractVerifiedAt:cached.contractVerifiedAt,
     updatedAt: cached.updatedAt,
     rows: cached.rows,
     universeRows: Array.isArray(cached.universeRows) ? cached.universeRows : cached.rows,
@@ -134,8 +159,8 @@ export function cachedMarketSnapshot() {
 
 export async function loadMarketSnapshot() {
   try {
-    const payload = await fetchAllTickers();
-    const universeRows = normalizeUniverse(payload);
+    const [payload,contracts] = await Promise.all([fetchAllTickers(),fetchCryptoContracts()]);
+    const universeRows = normalizeUniverse(cryptoContractTickers(payload,contracts));
     if (universeRows.length < CORE_MARKET_SYMBOLS.length) {
       throw new Error('Liquid universe too small');
     }
@@ -143,6 +168,8 @@ export async function loadMarketSnapshot() {
     const summary = deriveMarketSummary(rows);
     const snapshot = {
       status: STATUS.LIVE,
+      cryptoOnly:true,
+      contractVerifiedAt:new Date(contracts.checkedAt).toISOString(),
       updatedAt: new Date().toISOString(),
       rows,
       universeRows,

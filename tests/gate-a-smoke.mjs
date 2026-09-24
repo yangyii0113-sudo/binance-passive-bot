@@ -43,6 +43,7 @@ const marketPayloads = [
 
 globalThis.fetch = async (url) => {
   const parsed = new URL(String(url));
+  if(parsed.pathname.endsWith('/exchangeInfo')) return {ok:true,status:200,json:async()=>({symbols:marketPayloads.map(t=>({symbol:t.symbol,status:'TRADING',contractType:'PERPETUAL',quoteAsset:'USDT',underlyingType:'COIN'}))})};
   if (parsed.pathname.endsWith('/ticker/24hr') && !parsed.searchParams.get('symbol')) {
     return { ok: true, status: 200, json: async () => marketPayloads };
   }

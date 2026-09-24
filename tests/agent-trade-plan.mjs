@@ -6,6 +6,8 @@ import { loadAgentPlanHistory, saveAgentPlanHistory, exportAgentPlanHistory } fr
 import { agentComparisonView, restoredAgentComparisons } from '../src/agent_comparison_view.js';
 import { researchProtectionStop } from '../src/research_risk_view.js';
 import { EXIT_COSTS } from '../src/target_analysis.js';
+import { cryptoContractTickers, normalizeUniverse, cachedMarketSnapshot } from '../src/market.js';
+import { MARKET_CACHE_KEY } from '../src/config.js';
 import { agentHistoryPanel, agentAdvicePanel } from '../src/agent_workflow_view.js';
 import { pages } from '../src/pages.js';
 import { appState } from '../src/state.js';
@@ -136,4 +138,21 @@ test('market selection hands off any listed symbol without adding a candidate or
   const s=structuredClone(appState);s.ui.strategyWorkspace='agents';s.ui.agentKey='market';s.ui.agentFilter='universe';s.market.status='LIVE';s.market.rows=[['U','UNI / USDT','10',3,5e7,70]];s.market.universeRows=s.market.rows;
   const before=structuredClone(s);const html=pages.strategies(s);
   assert.match(html,/data-agent-analyze="UNIUSDT"/);assert.match(html,/分析並擬定計畫/);assert.deepEqual(s,before);
+});
+
+test('market pool excludes non-crypto, dated, inactive and unverified contracts before ranking',()=>{
+  const ticker=symbol=>({symbol,lastPrice:'10',priceChangePercent:'3',quoteVolume:'9999999999'});
+  const contract=symbol=>({symbol,status:'TRADING',contractType:'PERPETUAL',quoteAsset:'USDT',underlyingType:'COIN'});
+  const symbols=[contract('UNIUSDT'),{...contract('SOXLUSDT'),underlyingType:'INDEX'},{...contract('XAUUSDT'),underlyingType:'COMMODITY'},{...contract('OLDUSDT'),status:'SETTLING'},{...contract('BTCUSDT'),contractType:'CURRENT_QUARTER'},contract('USDCUSDT')];
+  const rows=normalizeUniverse(cryptoContractTickers(['UNIUSDT','SOXLUSDT','XAUUSDT','OLDUSDT','BTCUSDT','UNKNOWNUSDT','USDCUSDT'].map(ticker),{symbols}));
+  assert.deepEqual(rows.map(row=>row[1]),['UNI / USDT']);
+  assert.throws(()=>cryptoContractTickers([],{}),/合約清單/);
+});
+
+test('old unverified market caches cannot repopulate the crypto screen',()=>{
+  const previous=globalThis.localStorage;
+  const cache={rows:[['','SOXL / USDT','100',3,1e9,80]],updatedAt:new Date(now).toISOString()};
+  globalThis.localStorage={getItem:key=>key===MARKET_CACHE_KEY?JSON.stringify(cache):null};
+  try{assert.equal(cachedMarketSnapshot(),null);cache.cryptoOnly=true;assert.equal(cachedMarketSnapshot().status,'STALE');}
+  finally{globalThis.localStorage=previous;}
 });
