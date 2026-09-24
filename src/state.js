@@ -40,6 +40,9 @@ export const appState = {
     technical: null,
     technicalBusy: false,
     tradePlans: {},
+    planComparisons: {},
+    planComparisonBusy: false,
+    planExport: null,
     planHistory: {runs:[],error:null},
     topFiveResearch: {
       status: STATUS.EMPTY,

@@ -2,7 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { generateAgentTradePlan, agentPlanStatus } from '../src/agent_trade_plan.js';
 import { agentTradePlanView } from '../src/agent_trade_plan_view.js';
-import { loadAgentPlanHistory, saveAgentPlanHistory } from '../src/agent_plan_history.js';
+import { loadAgentPlanHistory, saveAgentPlanHistory, exportAgentPlanHistory } from '../src/agent_plan_history.js';
+import { agentComparisonView, restoredAgentComparisons } from '../src/agent_comparison_view.js';
+import { researchProtectionStop } from '../src/research_risk_view.js';
+import { EXIT_COSTS } from '../src/target_analysis.js';
 import { agentHistoryPanel, agentAdvicePanel } from '../src/agent_workflow_view.js';
 import { pages } from '../src/pages.js';
 import { appState } from '../src/state.js';
@@ -25,7 +28,7 @@ test('agent plans support non-BTC/ETH futures and both directions with complete 
     const {record,calls}=await generate({side});
     assert.equal(calls.length,2);assert.equal(agentPlanStatus(record,now).key,'plan');
     const html=agentTradePlanView(record,{now});
-    for(const label of ['100.000','進場有效至','第一止盈','第二止盈','止損點','48 根','失效條件','成本後情境','目前計畫尚未完成相同規則的績效驗證','真實下單維持鎖定']) assert.ok(html.includes(label),label);
+    for(const label of ['100.000','進場有效至','第一止盈','第二止盈','止損點','48 根','失效條件','成本後情境','目前計畫仍未通過跨期、前向與完整成交驗證','真實下單維持鎖定']) assert.ok(html.includes(label),label);
     assert.ok(html.includes(side==='LONG'?'做多':'做空'));
     assert.doesNotMatch(html,/data-paper-open|data-paper-close|data-real-order/);
   }
@@ -80,4 +83,57 @@ test('five-stage flow keeps generated plans available without adding candidates 
   assert.match(agentAdvicePanel(state,now),/僅列入條件式模擬觀察/);
   assert.match(agentAdvicePanel(state,now+60000),/暫不進場/);
   assert.deepEqual(state,before);
+});
+
+test('exported records are safely quoted, review-only and contain no fabricated fills or old prices',()=>{
+  const s=storage();
+  const history=saveAgentPlanHistory(fixture(),{storage:s,now,id:'export',origin:'=SUM(1,2)',consensus:'偏多\n"需確認"',technicalAt:now});
+  const csv=exportAgentPlanHistory(history,{format:'csv',now});
+  assert.match(csv.text,/"'=SUM\(1,2\)"/);assert.match(csv.text,/"偏多\n""需確認"""/);
+  assert.match(csv.text,/非成交；不可直接下單/);assert.match(csv.text,/區間突破/);assert.match(csv.text,/技術分析時間/);
+  const json=JSON.parse(exportAgentPlanHistory(history,{format:'json',now}).text);
+  assert.equal(json.canonical,false);assert.equal(json.containsFills,false);assert.equal(json.noBackfill,true);assert.equal(json.runs[0].technicalAt,now);
+  assert.doesNotMatch(JSON.stringify(json),/"entry"|"stop"|"tp1"|"tp2"|"quantity"|"netPnl"/);
+  assert.throws(()=>exportAgentPlanHistory({runs:[]}),/尚無/);
+  assert.throws(()=>exportAgentPlanHistory({...history,error:'損毀'}),/異常/);
+  const html=agentHistoryPanel({agents:{planHistory:history,planExport:{...csv,text:'</textarea><script>bad</script>'}}});
+  assert.match(html,/readonly/);assert.doesNotMatch(html,/<script>/);assert.match(html,/&lt;\/textarea&gt;/);
+});
+
+function comparisonFixture() {
+  const metrics={trades:9,signals:11,skipped:2,netPnl:15,netReturnPct:1.5,winRate:55,profitFactor:1.3,avgPnl:15/9,closedDrawdownPct:1};
+  return {status:'LIVE',updatedAt:new Date(now).toISOString(),result:{symbol:'UNIUSDT',version:'TP01-S1',start:now-90*24*H,split:now-27*24*H,end:now,families:{version:'families-v1',rows:['pullback','structured','breakout','meanReversion'].map(key=>({key,development:metrics,holdout:metrics,stress:{...metrics,netPnl:8}}))}}};
+}
+test('matching research comparisons survive restore without authorizing expired plans',()=>{
+  const c=comparisonFixture();
+  let html=agentComparisonView(c,'UNIUSDT',{allowed:true});assert.match(html,/1.50%/);assert.match(html,/樣本不足/);assert.match(html,/不解除進場與資料完整性檢查/);
+  html=agentComparisonView(c,'ETHUSDT');assert.doesNotMatch(html,/1.50%/);
+  html=agentComparisonView({...c,status:'LOADING'},'UNIUSDT');assert.match(html,/正在讀取完整歷史/);assert.doesNotMatch(html,/1.50%/);
+  html=agentComparisonView({status:'ERROR',error:'缺漏<script>'},'UNIUSDT');assert.match(html,/缺漏&lt;script&gt;/);assert.doesNotMatch(html,/<script>/);
+  const restored=restoredAgentComparisons({runs:[{updatedAt:c.updatedAt,rows:[{symbol:'UNIUSDT',status:'DONE',result:c.result},{symbol:'ETHUSDT',status:'RUNNING'}]}]});
+  assert.equal(restored.UNIUSDT.historical,true);assert.equal(restored.ETHUSDT,undefined);
+  html=agentTradePlanView(fixture(),{now:now+60000,comparison:restored.UNIUSDT});assert.match(html,/歷史比較（唯讀）/);assert.doesNotMatch(html,/entry-plan-primary/);
+});
+
+test('cost-protection stops cover the configured costs for long and short without moving stops backwards',()=>{
+  for(const side of ['LONG','SHORT']){
+    const p=fixture(side).row.analysis.strategies[0];
+    const level=researchProtectionStop(p),sign=side==='LONG'?1:-1;
+    const entry=p.entry*(1+sign*EXIT_COSTS.slippage),exit=level*(1-sign*EXIT_COSTS.slippage);
+    const pnl=sign*(exit-entry)-EXIT_COSTS.fee*(entry+exit);
+    assert.ok(Math.abs(pnl)<1e-10);assert.ok(sign*(level-p.stop)>0);
+  }
+  assert.equal(researchProtectionStop({}),null);
+});
+
+test('partial strategy sets and extended snapshot windows fail closed',()=>{
+  for(const mutate of [r=>r.row.analysis.strategies.pop(),r=>r.row.analysis.strategies[1].key='breakout',r=>r.snapshotUntil+=1,r=>r.row.analysis.validUntil+=H]){
+    const record=fixture();mutate(record);assert.equal(agentPlanStatus(record,now).key,'blocked');assert.doesNotMatch(agentTradePlanView(record,{now}),/entry-plan-primary/);
+  }
+});
+
+test('market selection hands off any listed symbol without adding a candidate or requiring BTC/ETH',()=>{
+  const s=structuredClone(appState);s.ui.strategyWorkspace='agents';s.ui.agentKey='market';s.ui.agentFilter='universe';s.market.status='LIVE';s.market.rows=[['U','UNI / USDT','10',3,5e7,70]];s.market.universeRows=s.market.rows;
+  const before=structuredClone(s);const html=pages.strategies(s);
+  assert.match(html,/data-agent-analyze="UNIUSDT"/);assert.match(html,/分析並擬定計畫/);assert.deepEqual(s,before);
 });

@@ -2266,3 +2266,13 @@ button, a, input, select, summary { scroll-margin-block:16px 110px; }
 .agent-trade-plan ol{padding-left:22px}
 .agent-trade-plan>.primary-inline-btn{margin-top:16px;min-height:44px}
 @media(max-width:600px){.agent-trade-plan{padding:14px;border-radius:14px}.agent-plan-heading{align-items:flex-start}.agent-plan-heading h3{font-size:18px}}
+
+.market-scout-results .agent-analyze-choice{grid-column:1/-1;width:100%;min-height:44px}
+.agent-plan-comparison{border-top:1px solid #55452b;padding-top:14px;margin-top:18px;min-width:0}
+.agent-plan-comparison h4{margin:6px 0;font-size:16px;line-height:1.6}
+.agent-export-preview{min-width:0;overflow-wrap:anywhere;border:1px solid #665124;border-radius:14px;padding:14px}
+.agent-export-preview p{line-height:1.7;font-size:14px}
+.agent-export-preview textarea{display:block;width:100%;max-width:100%;min-width:0;box-sizing:border-box;padding:12px;background:#0d1014;color:#dbe0e8;border:1px solid #665124;border-radius:8px;font:13px/1.6 monospace;resize:vertical}
+.ai-agents-wrap>.agent-tabs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));overflow:visible;gap:4px}
+.ai-agents-wrap>.agent-tabs .agent-tab{min-width:0;min-height:56px;padding:6px 4px;white-space:normal}
+.ai-agents-wrap>.agent-tabs .agent-tab strong{font-size:12px;line-height:1.5;overflow-wrap:anywhere}

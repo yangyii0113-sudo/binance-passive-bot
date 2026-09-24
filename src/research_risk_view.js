@@ -1,4 +1,11 @@
 import { EXIT_COSTS } from './target_analysis.js';
+export function researchProtectionStop(plan) {
+  if (!researchRiskScenario(plan)) return null;
+  const {fee,slippage}=EXIT_COSTS;
+  const sign=plan.side==='LONG'?1:-1, entry=plan.entry*(1+sign*slippage);
+  const level=sign===1?entry*(1+fee)/((1-slippage)*(1-fee)):entry*(1-fee)/((1+slippage)*(1+fee));
+  return sign===1?Math.max(plan.stop,level):Math.min(plan.stop,level);
+}
 // Independent display scenarios. No live NAV, ledger mutation, or execution authorization.
 export function researchRiskScenario(plan) {
   const sign=plan?.side==='LONG'?1:plan?.side==='SHORT'?-1:0;

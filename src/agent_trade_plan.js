@@ -60,7 +60,9 @@ export function agentPlanStatus(record, now=Date.now()) {
   if (record.status!=='LIVE' || record.historical) return {key:'blocked',label:'暫不進場',reason:record.reason || '資料不足或為歷史紀錄，請重新產生交易計畫。',plans:[]};
   const a=record.row?.analysis;
   if (!a || a.status!=='VALID' || !Array.isArray(a.strategies)) return {key:'blocked',label:'暫不進場',reason:a?.reason || record.row?.reason || '完整收盤資料不足，停止產生點位。',plans:[]};
+  if(a.strategies.length!==3 || a.strategies.some(p=>!p || !['SETUP','WAIT','SKIP','BLOCKED'].includes(p.status)) || a.strategies.map(p=>p.key).sort().join(',')!=='breakout,meanReversion,structured') return {key:'blocked',label:'資料異常',reason:'三策略結果缺漏或重複，請重新產生。',plans:[]};
   if (![record.checkedAt, record.snapshotUntil, a.analyzedAt, a.closedAt, a.validUntil].every(Number.isFinite) || record.checkedAt>now || a.analyzedAt>now || a.closedAt>=a.analyzedAt) return {key:'blocked',label:'資料異常',reason:'無法核對資料時間，請重新產生。',plans:[]};
+  if(record.checkedAt<a.analyzedAt || record.snapshotUntil>record.checkedAt+SNAPSHOT_TTL || a.closedAt+1!==Math.floor(a.analyzedAt/H)*H || a.validUntil!==a.closedAt+1+H) return {key:'blocked',label:'資料異常',reason:'核對時間或訊號週期不一致，請重新產生。',plans:[]};
   if (a.validUntil<=now || record.snapshotUntil<=now) return {key:'expired',label:'請更新計畫',reason:'行情核對已超過一分鐘或已換根；舊點位已隱藏，請重新產生。',plans:[]};
   const category=coinCategory(record.row,now);
   if (category==='conflict') return {key:'conflict',label:'方向衝突',reason:'策略出現相反方向，不合併為進場計畫；等待方向釐清。',plans:[]};

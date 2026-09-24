@@ -16,7 +16,8 @@ import { loadCandidatePool, upsertCandidate, removeCandidate, updateCandidate } 
 import { loadResearchHistory, appendResearchRun, researchExport } from './research_history.js';
 import { analyzeMultiTimeframe } from './multi_timeframe.js';
 import { generateAgentTradePlan, normalizePlanSymbol } from './agent_trade_plan.js';
-import { loadAgentPlanHistory, saveAgentPlanHistory } from './agent_plan_history.js';
+import { loadAgentPlanHistory, saveAgentPlanHistory, exportAgentPlanHistory } from './agent_plan_history.js';
+import { restoredAgentComparisons } from './agent_comparison_view.js';
 import { evaluatePortfolioRisk } from './risk_gate.js';
 import { evaluateStrategyGuard } from './strategy_guard.js';
 import { validationSpecForMatch, researchDecision } from './research_pipeline.js';
@@ -40,6 +41,7 @@ function persistComparisonBatch(status='RUNNING') {
 function syncComparisonHistory() {
   const history=loadComparisonHistory();
   setStateSlice('pullback',{batchHistory:history.runs,batchStorageError:history.error});
+  setStateSlice('agents',{planComparisons:restoredAgentComparisons(history)});
   if(history.runs[0])showComparisonHistory(history.runs[0]);
 }
 
@@ -110,7 +112,9 @@ function refreshAgentPlan(value, {origin='重新核對', technical}={}) {
     writeAgentPlan(symbol,record);
     try {
       const source=technical || (appState.agents.technical?.symbol===symbol?appState.agents.technical:candidateBySymbol(symbol)?.technical);
-      setStateSlice('agents',{planHistory:saveAgentPlanHistory(record,{origin,consensus:source?.consensus || '未提供'})});
+      const technicalAt=Date.parse(source?.updatedAt);
+      const fresh=source?.status==='LIVE' && Number.isFinite(technicalAt) && Date.now()-technicalAt>=0 && Date.now()-technicalAt<=120000;
+      setStateSlice('agents',{planHistory:saveAgentPlanHistory(record,{origin,consensus:fresh?source.consensus:'未重新分析',technicalAt:fresh?technicalAt:null}),planExport:null});
       appState.ui.message=`${symbol} 交易計畫已更新並保存研究結論。`;
     } catch(error) {
       setStateSlice('agents',{planHistory:{...appState.agents.planHistory,error:String(error.message)}});
@@ -120,6 +124,54 @@ function refreshAgentPlan(value, {origin='重新核對', technical}={}) {
     .finally(()=>{pendingAgentPlans.delete(symbol);render();});
   pendingAgentPlans.set(symbol,task);
   return task;
+}
+
+async function runAgentTechnical(value, {origin='使用者選幣 · 多週期分析',persistCandidate=false}={}) {
+  if(appState.agents.technicalBusy) return;
+  const symbol=normalizePlanSymbol(value);
+  if(!/^[\p{L}\p{N}]+USDT$/u.test(symbol)) return;
+  Object.assign(appState.ui,{strategyWorkspace:'agents',agentKey:'technical',agentFilter:'all',selectedSymbol:symbol,message:`${symbol} 多週期技術分析中…`});
+  setStateSlice('agents',{technicalBusy:true,technical:{symbol,status:'LOADING'}});
+  writeAgentPlan(symbol,{symbol,status:'LOADING'});render();
+  document.querySelector('#agent-technical-form')?.scrollIntoView({block:'center'});
+  try {
+    let technical;
+    try { technical=await analyzeMultiTimeframe(symbol); }
+    catch(error) { technical={symbol,status:'ERROR',error:String(error?.message || error)}; }
+    setStateSlice('agents',{technical});
+    if(persistCandidate && candidateBySymbol(symbol)){updateCandidate(symbol,{technical});syncCandidates();}
+    await refreshAgentPlan(symbol,{origin,technical});
+    appState.ui.message=`${symbol} 分析流程完成；請查看下方交易計畫與等待條件。`;
+  } finally {setStateSlice('agents',{technicalBusy:false});render();}
+}
+
+async function compareAgentPlan(symbol) {
+  if(appState.agents.planComparisonBusy || appState.pullback.comparing) return;
+  const plan=appState.agents.tradePlans?.[symbol];
+  if(plan?.status!=='LIVE' || plan.row?.analysis?.status!=='VALID') return;
+  const startedAt=new Date().toISOString();
+  const write=comparison=>setStateSlice('agents',{planComparisons:{...appState.agents.planComparisons,[symbol]:comparison}});
+  setStateSlice('agents',{planComparisonBusy:true});write({status:'LOADING'});render();
+  try {
+    const result=await runPullbackComparison(symbol), updatedAt=new Date().toISOString();
+    const comparison={status:'LIVE',historical:false,updatedAt,result};
+    try {
+      const id=crypto.randomUUID();
+      const history=saveComparisonRun({id,startedAt,updatedAt,status:'DONE',rows:[{symbol,status:'DONE',result}]});
+      comparison.result=history.find(r=>r.id===id).rows[0].result;
+      setStateSlice('pullback',{batchHistory:history,batchStorageError:null});
+    } catch(error) {comparison.storageError=String(error.message);}
+    write(comparison);
+    appState.ui.message=`${symbol} 近 90 天比較完成；樣本、成本與回撤仍須一起判讀。`;
+  } catch(error) {write({status:'ERROR',error:String(error.message || '比較失敗')});}
+  finally {setStateSlice('agents',{planComparisonBusy:false});render();}
+}
+
+function downloadResearchFile(file) {
+  const url=URL.createObjectURL(new Blob([file.text],{type:file.mime}));
+  const link=document.createElement('a');link.href=url;link.download=file.filename;
+  document.body.append(link);link.click();link.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 
 let renderedContext = null;
@@ -542,6 +594,25 @@ function initEvents() {
   });
 
   document.addEventListener('click', async (event) => {
+    const selectedAnalysis=event.target.closest?.('[data-agent-analyze]');
+    if(selectedAnalysis){await runAgentTechnical(selectedAnalysis.dataset.agentAnalyze,{origin:'市場篩選 · 一鍵分析'});return;}
+    const planCompare=event.target.closest?.('[data-agent-plan-compare]');
+    if(planCompare){await compareAgentPlan(planCompare.dataset.agentPlanCompare);return;}
+    const planExport=event.target.closest?.('[data-agent-history-export]');
+    if(planExport){
+      try {setStateSlice('agents',{planExport:exportAgentPlanHistory(appState.agents.planHistory,{format:planExport.dataset.agentHistoryExport})});appState.ui.message='匯出內容已產生，請檢查後下載或複製。';}
+      catch(error){appState.ui.message=String(error.message);}
+      render();return;
+    }
+    if(event.target.closest?.('[data-agent-export-download]')){
+      if(appState.agents.planExport){downloadResearchFile(appState.agents.planExport);appState.ui.message='已送出下載請求；若瀏覽器未下載，可複製下方內容。';render();}return;
+    }
+    if(event.target.closest?.('[data-agent-export-copy]')){
+      if(!appState.agents.planExport)return;
+      try {await navigator.clipboard.writeText(appState.agents.planExport.text);appState.ui.message='研究紀錄內容已複製。';}
+      catch {appState.ui.message='瀏覽器未允許自動複製，請從下方文字框手動全選複製。';}
+      render();return;
+    }
     const openPlan=event.target.closest?.('[data-agent-plan-open]');
     if(openPlan){
       appState.ui.agentKey='playbook';appState.ui.agentFilter='all';render();
@@ -574,7 +645,7 @@ function initEvents() {
       if(row){setStateSlice('pullback',{comparison:row.result,comparisonError:null});render();}return;
     }
     if(event.target.closest?.('[data-pullback-batch]')) {
-      if(appState.pullback.analysisHistorical||appState.pullback.loading||appState.pullback.comparing||!appState.pullback.rows?.length)return;
+      if(appState.pullback.analysisHistorical||appState.pullback.loading||appState.pullback.comparing||appState.agents.planComparisonBusy||!appState.pullback.rows?.length)return;
       const symbols=appState.pullback.rows.map(row=>row.symbol);
       const startedAt=new Date().toISOString();
       setStateSlice('pullback',{batchHistorical:false,batchSaved:false,batchHistoryId:null,batchRecord:{id:crypto.randomUUID(),startedAt,updatedAt:startedAt,scannedAt:appState.pullback.scannedAt,status:'RUNNING',rows:[]}});
@@ -591,7 +662,7 @@ function initEvents() {
     }
     const compareButton=event.target.closest?.('[data-pullback-compare]');
     if(compareButton){
-      if(appState.pullback.analysisHistorical||appState.pullback.comparing||appState.pullback.loading)return;
+      if(appState.pullback.analysisHistorical||appState.pullback.comparing||appState.pullback.loading||appState.agents.planComparisonBusy)return;
       const symbol=compareButton.dataset.pullbackCompare;
       if(!appState.pullback.rows.some(row=>row.symbol===symbol))return;
       setStateSlice('pullback',{comparing:true,comparingSymbol:symbol,comparison:null,comparisonError:null});render();
@@ -721,27 +792,9 @@ function initEvents() {
     }
     const agentTechnicalRun = event.target.closest?.('[data-agent-technical-run]');
     if (agentTechnicalRun) {
-      if (appState.agents.technicalBusy) return;
-      const form = document.getElementById('agent-technical-form');
-      const data = form ? new FormData(form) : null;
-      const symbol = data?.get('symbol');
-      if (!symbol) return;
-      setStateSlice('agents', {technicalBusy:true,technical:{symbol,status:'LOADING'}});
-      writeAgentPlan(symbol,{symbol,status:'LOADING'});
-      appState.ui.message = `${symbol} 多週期技術分析中…`;
-      render();
-      try {
-        const technical = await analyzeMultiTimeframe(symbol);
-        setStateSlice('agents', { technical });
-        appState.ui.message = `${symbol} 技術分析完成，正在擬定交易計畫…`;
-      } catch (error) {
-        setStateSlice('agents', { technical: { symbol, status: 'ERROR', error: String(error?.message || error) } });
-        appState.ui.message = `技術分析失敗：${error?.message || '未知錯誤'}`;
-      }
-      await refreshAgentPlan(symbol,{origin:'使用者選幣 · 多週期分析'});
-      setStateSlice('agents', {technicalBusy:false});
-      appState.ui.message = `${symbol} 分析流程完成；請查看下方交易計畫與等待條件。`;
-      render();
+      const form=document.getElementById('agent-technical-form');
+      const symbol=form?new FormData(form).get('symbol'):null;
+      if(symbol)await runAgentTechnical(symbol);
       return;
     }
     const strategyFilter = event.target.closest?.('[data-strategy-filter]');
@@ -806,21 +859,7 @@ function initEvents() {
     }
     const candidateAnalyze = event.target.closest?.('[data-candidate-analyze]');
     if (candidateAnalyze) {
-      const symbol = candidateAnalyze.dataset.candidateAnalyze;
-      if (appState.agents.tradePlans?.[symbol]?.status==='LOADING') return;
-      writeAgentPlan(symbol,{symbol,status:'LOADING'});
-      appState.ui.message = `${symbol} 多週期技術分析中…`;
-      render();
-      try {
-        const technical = await analyzeMultiTimeframe(symbol);
-        updateCandidate(symbol, { technical });
-        syncCandidates();
-        appState.ui.message = `${symbol} 多週期分析完成：${technical.consensus}`;
-      } catch (error) {
-        appState.ui.message = `多週期分析失敗：${error?.message || '未知錯誤'}`;
-      }
-      await refreshAgentPlan(symbol,{origin:'候選池篩選 · 多週期分析'});
-      render();
+      await runAgentTechnical(candidateAnalyze.dataset.candidateAnalyze,{origin:'候選池篩選 · 多週期分析',persistCandidate:true});
       return;
     }
     const candidateRisk = event.target.closest?.('[data-candidate-risk]');
