@@ -15,6 +15,8 @@ import { runLiteBacktest, BACKTEST_RANGE_OPTIONS, normalizeTimeframe } from './l
 import { loadCandidatePool, upsertCandidate, removeCandidate, updateCandidate } from './candidate_pool.js';
 import { loadResearchHistory, appendResearchRun, researchExport } from './research_history.js';
 import { analyzeMultiTimeframe } from './multi_timeframe.js';
+import { generateAgentTradePlan, normalizePlanSymbol } from './agent_trade_plan.js';
+import { loadAgentPlanHistory, saveAgentPlanHistory } from './agent_plan_history.js';
 import { evaluatePortfolioRisk } from './risk_gate.js';
 import { evaluateStrategyGuard } from './strategy_guard.js';
 import { validationSpecForMatch, researchDecision } from './research_pipeline.js';
@@ -84,6 +86,40 @@ function syncResearchHistory() {
 function candidateBySymbol(symbol) {
   const target = String(symbol || '').toUpperCase();
   return (appState.candidates?.items || []).find(item => item.symbol === target) || null;
+}
+
+// Session-only plans: restored research never restores executable-looking levels.
+const pendingAgentPlans = new Map();
+let agentPlanExpiryTimer;
+function scheduleAgentPlanExpiry() {
+  clearTimeout(agentPlanExpiryTimer);
+  const now=Date.now();
+  const times=Object.values(appState.agents.tradePlans || {}).map(r=>Math.min(r.snapshotUntil,r.row?.analysis?.validUntil)).filter(t=>Number.isFinite(t)&&t>now);
+  if(times.length) agentPlanExpiryTimer=setTimeout(()=>{render();scheduleAgentPlanExpiry();},Math.min(...times)-now+20);
+}
+function writeAgentPlan(symbol, record) {
+  setStateSlice('agents', {tradePlans:{...appState.agents.tradePlans,[symbol]:record}});
+  scheduleAgentPlanExpiry();
+}
+function refreshAgentPlan(value, {origin='重新核對', technical}={}) {
+  const symbol=normalizePlanSymbol(value);
+  if (pendingAgentPlans.has(symbol)) return pendingAgentPlans.get(symbol);
+  writeAgentPlan(symbol,{symbol,status:'LOADING'});
+  render();
+  const task=generateAgentTradePlan(symbol).then(record=>{
+    writeAgentPlan(symbol,record);
+    try {
+      const source=technical || (appState.agents.technical?.symbol===symbol?appState.agents.technical:candidateBySymbol(symbol)?.technical);
+      setStateSlice('agents',{planHistory:saveAgentPlanHistory(record,{origin,consensus:source?.consensus || '未提供'})});
+      appState.ui.message=`${symbol} 交易計畫已更新並保存研究結論。`;
+    } catch(error) {
+      setStateSlice('agents',{planHistory:{...appState.agents.planHistory,error:String(error.message)}});
+    }
+    return record;
+  })
+    .finally(()=>{pendingAgentPlans.delete(symbol);render();});
+  pendingAgentPlans.set(symbol,task);
+  return task;
 }
 
 let renderedContext = null;
@@ -269,6 +305,8 @@ async function handleTopFiveResearch(){
       }catch(error){
         technicalError = String(error?.message || error);
       }
+
+      await refreshAgentPlan(row.symbol,{origin:'動態前五名篩選',technical});
 
       const strategyMatch = batchStrategyMatch(row.baseStrategyMatch, technical);
       const spec = validationSpecForMatch(strategyMatch);
@@ -504,6 +542,14 @@ function initEvents() {
   });
 
   document.addEventListener('click', async (event) => {
+    const openPlan=event.target.closest?.('[data-agent-plan-open]');
+    if(openPlan){
+      appState.ui.agentKey='playbook';appState.ui.agentFilter='all';render();
+      const target=[...document.querySelectorAll('[data-plan-symbol]')].find(el=>el.dataset.planSymbol===openPlan.dataset.agentPlanOpen);
+      target?.scrollIntoView({block:'start'});return;
+    }
+    const planRefresh=event.target.closest?.('[data-agent-plan-refresh]');
+    if(planRefresh){await refreshAgentPlan(planRefresh.dataset.agentPlanRefresh);return;}
     const jump=event.target.closest?.('[data-scroll-target]');
     if(jump){
       const id=jump.dataset.scrollTarget;
@@ -675,20 +721,26 @@ function initEvents() {
     }
     const agentTechnicalRun = event.target.closest?.('[data-agent-technical-run]');
     if (agentTechnicalRun) {
+      if (appState.agents.technicalBusy) return;
       const form = document.getElementById('agent-technical-form');
       const data = form ? new FormData(form) : null;
       const symbol = data?.get('symbol');
       if (!symbol) return;
+      setStateSlice('agents', {technicalBusy:true,technical:{symbol,status:'LOADING'}});
+      writeAgentPlan(symbol,{symbol,status:'LOADING'});
       appState.ui.message = `${symbol} 多週期技術分析中…`;
       render();
       try {
         const technical = await analyzeMultiTimeframe(symbol);
         setStateSlice('agents', { technical });
-        appState.ui.message = `${symbol} 技術分析：${technical.consensus}`;
+        appState.ui.message = `${symbol} 技術分析完成，正在擬定交易計畫…`;
       } catch (error) {
         setStateSlice('agents', { technical: { symbol, status: 'ERROR', error: String(error?.message || error) } });
         appState.ui.message = `技術分析失敗：${error?.message || '未知錯誤'}`;
       }
+      await refreshAgentPlan(symbol,{origin:'使用者選幣 · 多週期分析'});
+      setStateSlice('agents', {technicalBusy:false});
+      appState.ui.message = `${symbol} 分析流程完成；請查看下方交易計畫與等待條件。`;
       render();
       return;
     }
@@ -755,6 +807,8 @@ function initEvents() {
     const candidateAnalyze = event.target.closest?.('[data-candidate-analyze]');
     if (candidateAnalyze) {
       const symbol = candidateAnalyze.dataset.candidateAnalyze;
+      if (appState.agents.tradePlans?.[symbol]?.status==='LOADING') return;
+      writeAgentPlan(symbol,{symbol,status:'LOADING'});
       appState.ui.message = `${symbol} 多週期技術分析中…`;
       render();
       try {
@@ -765,6 +819,7 @@ function initEvents() {
       } catch (error) {
         appState.ui.message = `多週期分析失敗：${error?.message || '未知錯誤'}`;
       }
+      await refreshAgentPlan(symbol,{origin:'候選池篩選 · 多週期分析'});
       render();
       return;
     }
@@ -896,6 +951,7 @@ function init() {
   syncResearchHistory();
   syncComparisonHistory();
   syncCoinHistory();
+  setStateSlice('agents',{planHistory:loadAgentPlanHistory()});
   initEvents();
   render();
   refreshMarket();

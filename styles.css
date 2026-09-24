@@ -2250,3 +2250,19 @@ button, a, input, select, summary { scroll-margin-block:16px 110px; }
 .core-tools { display:flex; gap:8px; margin:10px 0; }
 #coin-analysis,#smc-reference { scroll-margin-top:16px; scroll-margin-bottom:120px; }
 @media(max-width:540px) { .family-summary { grid-template-columns:1fr; } .pullback-panel { padding:12px; } .core-disclosure .coin-overview { border:0; padding:0; } .research-risk { padding:10px; } }
+
+/* Agent plans share one compact, mobile-safe research surface. */
+.agent-trade-plan{min-width:0;border:1px solid #665124;border-radius:18px;padding:20px;background:linear-gradient(135deg,#242015,#151617);overflow-wrap:anywhere}
+.agent-plan-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.agent-plan-heading h3{margin:8px 0;font-size:20px;line-height:1.5}
+.agent-plan-heading button{min-height:44px;white-space:normal}
+.agent-plan-list{display:grid;gap:18px}
+.agent-plan-scenario{border-top:1px solid #55452b;margin-top:18px;padding-top:12px;min-width:0}
+.agent-plan-scenario h4{font-size:18px;margin:8px 0;color:#f0c05c}
+.agent-trade-plan p,.agent-plan-waits,.agent-trade-plan li{line-height:1.75}
+.agent-plan-expiry{color:#f0c05c}
+.agent-plan-waits{padding-left:22px}
+.agent-plan-waits li{margin:10px 0}
+.agent-trade-plan ol{padding-left:22px}
+.agent-trade-plan>.primary-inline-btn{margin-top:16px;min-height:44px}
+@media(max-width:600px){.agent-trade-plan{padding:14px;border-radius:14px}.agent-plan-heading{align-items:flex-start}.agent-plan-heading h3{font-size:18px}}

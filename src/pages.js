@@ -1,4 +1,6 @@
 import { smcReference } from './smc_reference.js';
+import { agentTradePlanView } from './agent_trade_plan_view.js';
+import { agentAdvicePanel, agentHistoryPanel } from './agent_workflow_view.js';
 import { entryPlan, pullbackPanel } from './entry_plan.js';
 import { mock } from './mock.js';
 import { badge, metric, section, escapeHtml } from './ui.js';
@@ -795,13 +797,11 @@ function candidatePoolPanel(state){
 function agentTabs(state){
   const active = state.ui?.agentKey || 'market';
   const agents = [
-    ['market','01','市場偵察'],
-    ['technical','02','技術分析'],
-    ['news','03','新聞影響'],
-    ['validator','04','策略驗證'],
-    ['risk','05','曝險管理'],
-    ['review','06','交易檢討'],
-    ['playbook','07','交易手冊']
+    ['technical','01','分析'],
+    ['market','02','篩選'],
+    ['playbook','03','策略'],
+    ['advice','04','交易建議'],
+    ['planHistory','05','紀錄']
   ];
   return `<div class="agent-tabs" role="tablist" aria-label="FOXYYA 智慧分析代理">
     ${agents.map(([key,no,label])=>`
@@ -809,7 +809,7 @@ function agentTabs(state){
         <span>${no}</span><strong>${label}</strong>
       </button>
     `).join('')}
-  </div>`;
+  </div><details class="core-disclosure" data-search="進階分析工具"><summary>進階分析工具</summary><div class="agent-filter-tabs">${[['news','新聞影響'],['validator','策略驗證'],['risk','曝險管理'],['review','交易檢討']].map(([key,label])=>`<button type="button" class="agent-filter-btn ${active===key?'active':''}" data-agent-key="${key}">${label}</button>`).join('')}</div></details>`;
 }
 function agentFilterTabs(state, items){
   const active = state.ui?.agentFilter || items?.[0]?.[0] || 'all';
@@ -889,6 +889,7 @@ function topFiveResearchPanel(state){
         </div>
         ${metrics}
         ${item.backtest ? `<p class="guard-note">${backtestAmountNote(item.backtest)}</p>` : ''}
+        ${agentTradePlanView(state.agents?.tradePlans?.[item.symbol],{symbol:item.symbol,link:true})}
         <div class="research-detail-footer">
           <span>${displayText(guard.reason || spec.reason || '固定基準驗證')}</span>
           ${item.status === 'DONE' || item.status === 'ERROR' ? `
@@ -1044,7 +1045,7 @@ function technicalAgentPanel(state){
         const tone = direction.includes('多') ? 'up' : direction.includes('空') ? 'down' : '';
         return `<div class="agent-tech-card"><span>${displayTimeframe(frame.interval || frame.label)}</span><strong class="${tone}">${direction}</strong><small>20 期指數均線 ${price(frame.ema20)} · 50 期指數均線 ${price(frame.ema50)}</small><b>${Number.isFinite(Number(frame.momentumPct)) ? `${Number(frame.momentumPct)>=0?'+':''}${Number(frame.momentumPct).toFixed(2)}%` : '—'}</b></div>`;
       }).join('')}</div>`
-    : '<div class="empty-state"><strong>選擇標的後執行多週期分析</strong><span>資料直接使用幣安穩定幣本位永續合約的完整收盤 K 棒。</span></div>';
+    : `<div class="empty-state"><strong>${technical?.status==='LOADING'?'多週期分析中…':technical?.status==='ERROR'?'多週期分析未完成':'選擇標的後執行多週期分析'}</strong><span>${technical?.status==='ERROR'?'部分技術資料無法讀取，交易計畫另以完整合約資料核對。':'分析完成後自動擬定交易計畫；條件不足時列出等待原因。'}</span></div>`;
   const add = technical?.status === 'LIVE'
     ? agentCandidateButton(technical.symbol,'Technical Analyst',technical.consensus,`data-candidate-direction="${technical.consensus}"`)
     : '';
@@ -1052,10 +1053,11 @@ function technicalAgentPanel(state){
     ${agentFilterTabs(state,[['all','全部週期'],['intraday','短線'],['swing','波段'],['position','中長線']])}
     <form id="agent-technical-form" class="agent-inline-form">
       <label>分析標的<select name="symbol">${marketSymbolOptions(state)}</select></label>
-      <button type="button" class="primary-inline-btn" data-agent-technical-run>執行分析</button>
+      <button type="button" class="primary-inline-btn" data-agent-technical-run ${state.agents?.technicalBusy?'disabled':''}>${state.agents?.technicalBusy?'分析與擬定中…':'分析並擬定交易計畫'}</button>
     </form>
     ${technical?.status==='LIVE' ? `<div class="agent-consensus"><span>多週期共識</span><strong>${displayText(technical.consensus)}</strong><small>${displayMarketSource(technical.source)}</small></div>` : ''}
     ${frameHtml}
+    ${technical?.symbol?agentTradePlanView(state.agents?.tradePlans?.[technical.symbol],{symbol:technical.symbol,link:true}):''}
     ${add ? `<div class="agent-single-action">${add}</div>` : ''}
   </div>`;
 }
@@ -1168,6 +1170,7 @@ function tradeReviewAgentPanel(state){
   </div>`;
 }
 function playbookAgentPanel(state){
+  const plans=Object.values(state.agents?.tradePlans || {}).sort((a,b)=>(b.checkedAt||Infinity)-(a.checkedAt||Infinity));
   const filter = state.ui?.agentFilter || 'all';
   const all = (state.candidates?.items || []).map(item=>({...item,final:candidateFinalState(item)}));
   const items = all.filter(item=>filter==='all' || item.final.label.toLowerCase()===filter);
@@ -1181,6 +1184,9 @@ function playbookAgentPanel(state){
     </div>
   </article>`).join('') : '<div class="empty-state"><strong>目前沒有符合此狀態的候選</strong></div>';
   return `<div class="agent-panel-stack">
+    <div class="agent-intro"><strong>交易策略與進退場計畫</strong><span>技術分析或前五名研究完成後，計畫自動整理於此。只保留本次使用期間的行情，重新開啟需重新分析。</span></div>
+    <div class="agent-plan-list">${plans.length?plans.map(record=>agentTradePlanView(record)).join(''):'<div class="empty-state"><strong>尚未擬定交易計畫</strong><span>先完成技術分析，或使用下方候選的「技術分析」產生計畫。</span><button type="button" class="primary-inline-btn" data-agent-key="technical">前往技術分析</button></div>'}</div>
+    <details class="core-disclosure" data-search="候選驗證清單"><summary>候選驗證與曝險清單</summary>
     ${agentFilterTabs(state,[['all','全部'],['watch','觀察中'],['setup','條件形成中'],['ready','就緒'],['blocked','阻擋']])}
     <div class="playbook-top">
       <div><span>候選池</span><strong>${all.length}</strong></div>
@@ -1190,6 +1196,7 @@ function playbookAgentPanel(state){
     </div>
     <div class="agent-intro"><strong>交易執行手冊</strong><span>把候選、驗證、曝險檢查與持倉整合成每日執行清單；仍不具備真實下單權。</span></div>
     <div class="playbook-list">${cards}</div>
+    </details>
   </div>`;
 }
 function aiAgentsPanel(state){
@@ -1201,8 +1208,11 @@ function aiAgentsPanel(state){
   if(key==='risk') content = riskAgentPanel(state);
   if(key==='review') content = tradeReviewAgentPanel(state);
   if(key==='playbook') content = playbookAgentPanel(state);
+  if(key==='advice') content = agentAdvicePanel(state);
+  if(key==='planHistory') content = agentHistoryPanel(state);
   return `<div class="ai-agents-wrap">
-    <div class="agent-system-note"><strong>FOXYYA 智慧分析代理第一版</strong><span>各分析代理彼此獨立；篩選結果可自由加入候選池。現階段分析只使用已接入的市場、模擬交易、回測與事件框架資料。</span></div>
+    <div class="agent-system-note"><strong>完整交易研究流程</strong><span>分析 → 篩選 → 策略 → 交易建議 → 紀錄。進退場點位與取消條件整理於交易手冊；真實下單維持鎖定。</span></div>
+    ${state.agents?.planHistory?.error?`<p role="alert">${escapeHtml(state.agents.planHistory.error)}</p>`:''}
     ${agentTabs(state)}
     ${content}
   </div>`;

@@ -20,10 +20,10 @@ function ema(values, period){
 }
 async function fetchClosed(symbol, interval){
   const makeUrl = (base) => `${base}?symbol=${encodeURIComponent(symbol)}&interval=${encodeURIComponent(interval)}&limit=160`;
-  let response = await fetch(makeUrl(FUTURES_BASE),{cache:'no-store'});
+  let response = await fetch(makeUrl(FUTURES_BASE),{cache:'no-store',signal:AbortSignal.timeout(15000)});
   let source = 'Binance USD-M public klines';
   if(!response.ok && [403,451].includes(response.status)){
-    response = await fetch(makeUrl(SPOT_PUBLIC_BASE),{cache:'no-store'});
+    response = await fetch(makeUrl(SPOT_PUBLIC_BASE),{cache:'no-store',signal:AbortSignal.timeout(15000)});
     source = 'Binance Spot public klines · fallback';
   }
   if(!response.ok) throw new Error(`${interval} Kline HTTP ${response.status}`);

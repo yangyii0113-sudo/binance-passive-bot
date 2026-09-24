@@ -38,6 +38,9 @@ export const appState = {
   },
   agents: {
     technical: null,
+    technicalBusy: false,
+    tradePlans: {},
+    planHistory: {runs:[],error:null},
     topFiveResearch: {
       status: STATUS.EMPTY,
       startedAt: null,
