@@ -137,3 +137,9 @@ test('core flow keeps one primary scan and separates collapsed detail from safet
  assert.match(html,/data-scroll-target="smc-reference"/);assert.match(html,/id="smc-reference"/);
  assert.ok(html.indexOf('id="smc-reference"')>html.indexOf('data-search="market-reference"'));
 });
+
+test('active comparison does not show a not-started message',()=>{
+ const s=state();s.ui.strategyWorkspace='signals';s.pullback={comparing:true,rows:[{symbol:'UNIUSDT',status:'WAIT'}]};
+ const html=pages.strategies(s);
+ assert.match(html,/正在計算策略績效/);assert.doesNotMatch(html,/尚未執行比較/);
+});

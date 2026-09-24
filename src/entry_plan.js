@@ -54,5 +54,5 @@ function comparisonPanel(snapshot){
   ${table('後段 30%：保留資料檢查',[['原版',r.holdout.baseline],['新版',r.holdout.enhanced],['新版 · 雙倍成本',r.holdout.stress]])}
   <p>新版後段訊號 ${r.holdout.enhanced.signals} 次，空間／成本篩選略過 ${r.holdout.enhanced.skipped} 次。${Object.entries(r.holdout.enhanced.skipReasons||{}).map(([reason,count])=>`${escape(displayText(reason))}：${count} 次`).join('；')}</p>
   </details><p class="comparison-verdict">${r.holdout.enhanced.trades<20?'樣本不足：新版後段未達 20 筆，不判定盈利提升。':r.holdout.enhanced.netPnl<=r.holdout.baseline.netPnl?'本次後段新版淨損益未超過原版，不升格。':'本次後段新版淨損益較高；仍需跨期間及前向觀察，不能認定穩定提升。'}</p>
-  <p>已平倉回撤不含持倉浮虧。資金費率、交易所數量精度尚未納入；未來真實滑價可能更高，結果不得列為驗證通過。沒有虧損交易時獲利因子顯示 —。</p>`:'<p>尚未執行比較；不顯示推估勝率或保證收益。</p>'}</div>`;
+  <p>已平倉回撤不含持倉浮虧。資金費率、交易所數量精度尚未納入；未來真實滑價可能更高，結果不得列為驗證通過。沒有虧損交易時獲利因子顯示 —。</p>`:snapshot.comparing?'<p role="status">正在計算策略績效，完成前不顯示推估結果。</p>':'<p>尚未執行比較；不顯示推估勝率或保證收益。</p>'}</div>`;
 }

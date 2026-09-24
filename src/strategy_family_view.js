@@ -12,7 +12,8 @@ export function strategyFamilyPanel(result){
  if(!families)return '<p>此筆歷史未包含多策略比較；重新比較才會產生，不回填舊紀錄。</p>';
  return `<section aria-label="多策略研究比較"><h3>多策略研究比較</h3>
  <p>三個策略家族、四組固定規則：趨勢回調有原版與結構止盈兩個版本。各組使用同一幣種、同一資料區間與風險預算；沒有自動排名或啟用勝者。</p>
- <div class="family-summary">${families.rows.map(row=>`<article class="detail-card"><strong>${FAMILY_NAMES[row.key]}</strong><p class="guard-note">${familyAssessment(row)}</p><dl class="core-metrics"><div><dt>後段成本後報酬率</dt><dd>${n(row.holdout.netReturnPct)}%</dd></div><div><dt>後段已平倉樣本</dt><dd>${row.holdout.trades} 筆</dd></div><div><dt>每筆平均淨損益</dt><dd>${n(row.holdout.avgPnl)} USDT</dd></div><div><dt>已平倉回撤</dt><dd>${n(row.holdout.closedDrawdownPct)}%</dd></div></dl><p>雙倍成本淨損益 ${n(row.stress.netPnl)} USDT</p></article>`).join('')}</div>
+ <div class="family-summary">${families.rows.map(row=>`<article class="detail-card"><strong>${FAMILY_NAMES[row.key]}</strong><p class="guard-note">${familyAssessment(row)}</p><dl class="core-metrics"><div><dt>後段成本後報酬率</dt><dd>${n(row.holdout.netReturnPct)}%</dd></div><div><dt>後段已平倉樣本</dt><dd>${row.holdout.trades} 筆</dd></div><div><dt>每筆平均淨損益</dt><dd>${n(row.holdout.avgPnl)} USDT</dd></div><div><dt>已平倉回撤</dt><dd>${n(row.holdout.closedDrawdownPct)}%</dd></div></dl><p>雙倍成本淨損益 ${n(row.stress.netPnl)} USDT · ${row.stress.trades??'—'} 筆</p></article>`).join('')}</div>
+ <p>回調組的雙倍成本測試會重新套用成本篩選，成交樣本可能改變；兩次淨損益差不等於純成本影響。</p>
  <details class="core-disclosure" data-search="family-rules"><summary>策略定義與完整比較表</summary><div class="diagnostic-grid">
  <article class="detail-card"><strong>區間突破 · 研究第一版</strong><p>1 小時收盤超過前 20 根最高／最低價，且成交量達前 20 根均量 1.5 倍。下一根突破訊號棒高／低點加 0.1 倍平均真實波幅才進場。</p><p>止損設於近 5 根極值外 0.2 倍平均真實波幅；1R／2R 各平倉一半。</p></article>
  <article class="detail-card"><strong>均值回歸 · 研究第一版</strong><p>20／50 根均價差不超過 0.5 倍平均真實波幅；收盤偏離事先固定的 20 根均價兩倍標準差，再收回區間。下一根突破確認才進場。</p><p>止損同樣採近 5 根極值；第二目標為訊號當時的固定均價，第一目標為進場到均價的中點，各平倉一半。</p></article></div>
