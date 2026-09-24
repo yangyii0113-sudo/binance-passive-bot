@@ -166,3 +166,24 @@ test('history retains new diagnostics but labels old snapshots unavailable rathe
  assert.match(comparisonDiagnostics(result),/此筆歷史未記錄診斷/);
  assert.doesNotMatch(comparisonDiagnostics(result),/實際評估時點/);
 });
+
+import { researchRiskScenario, researchRiskView } from '../src/research_risk_view.js';
+test('research risk scenarios reconcile long and short net fills and cap illustrative exposure',()=>{
+ for(const plan of [p,{...p,side:'SHORT',stop:105,tp1:95,tp2:90}]){
+  const before=structuredClone(plan),r=researchRiskScenario(plan),sign=plan.side==='LONG'?1:-1;
+  const fill=plan.entry*(1+sign*.0002),exit=plan.stop*(1-sign*.0002);
+  const expectedLoss=-(sign*(exit-fill)-.0005*(fill+exit))*r.quantity;
+  assert.ok(Math.abs(expectedLoss-r.stopLoss)<1e-10);
+  assert.ok(r.stopLoss<=2.5+1e-10);assert.ok(r.notional<=1000+1e-10);
+  assert.ok(r.stressStopLoss>r.stopLoss);assert.ok(r.stressTargetPnl<r.targetPnl);
+  assert.ok(r.netRewardRisk<1.5);assert.deepEqual(plan,before);
+ }
+ const tight=researchRiskScenario({...p,stop:99.999,tp1:100.01,tp2:100.02});
+ assert.ok(tight.notional<=1000);assert.ok(tight.netRewardRisk<1);
+ assert.equal(researchRiskScenario({...p,side:'UNKNOWN'}),null);
+ assert.equal(researchRiskScenario({...p,stop:101}),null);
+ assert.equal(researchRiskScenario({...p,tp1:99}),null);
+ assert.equal(researchRiskScenario({...p,entry:NaN}),null);
+ assert.match(researchRiskView(p),/非你的帳戶淨值或可下單額度/);
+ assert.match(researchRiskView(p),/並非最大可能損失/);
+});

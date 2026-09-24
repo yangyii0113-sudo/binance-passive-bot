@@ -15,8 +15,9 @@ export function batchComparisonPanel(snapshot) {
   const running=rows.find(r=>r.status==='RUNNING');
   const busy=snapshot.comparing||snapshot.loading;
   return `<section class="batch-comparison" aria-label="強勢幣批次比較">
-    <p>批次比較歷史：${snapshot.batchHistory?.length||0} 次</p>
+    <details class="core-disclosure" data-search="batch-history"><summary>批次比較紀錄 · ${snapshot.batchHistory?.length||0} 次</summary><p>批次比較歷史：${snapshot.batchHistory?.length||0} 次</p>
     ${snapshot.batchHistory?.length?`<label>選擇比較日期<select data-comparison-history-select aria-label="選擇比較日期" ${busy?'disabled':''}><option value="" ${!snapshot.batchHistoryId?'selected':''} disabled>目前分析</option>${snapshot.batchHistory.map(run=>`<option value="${escapeHtml(run.id)}" ${run.id===snapshot.batchHistoryId?'selected':''}>${escapeHtml(new Date(run.startedAt).toLocaleString('zh-TW'))} · ${run.rows.length} 檔 · ${run.status==='DONE'?'已結束':run.status==='RUNNING'?'部分紀錄':'已停止'}</option>`).join('')}</select></label>`:''}
+    </details>
     ${snapshot.batchStorageError?`<p role="alert">${escapeHtml(snapshot.batchStorageError)}</p>`:''}
     ${snapshot.batchRecord?`<p class="guard-note">${snapshot.batchHistorical?'歷史比較（唯讀，非目前行情）':'本次比較'} · 執行時間 ${escapeHtml(new Date(snapshot.batchRecord.startedAt).toLocaleString('zh-TW'))}${snapshot.batchRecord.status==='INTERRUPTED'?' · 上次比較中斷，未完成幣種不會自動續跑':''}${!snapshot.batchHistorical&&snapshot.batchSaved&&!snapshot.batchStorageError?' · 已保存至此瀏覽器':''}</p>`:''}
     <div class="comparison-actions">${snapshot.rows?.length?`<button type="button" class="primary-btn" data-pullback-batch ${busy||!snapshot.rows?.length?'disabled':''}>一鍵比較本次 ${snapshot.rows?.length||0} 檔</button>`:''}${snapshot.batchRunning?`<button type="button" class="secondary-btn" data-pullback-batch-stop ${snapshot.batchStop?'disabled':''}>${snapshot.batchStop?'停止已排定':'目前幣種完成後停止'}</button>`:''}</div>

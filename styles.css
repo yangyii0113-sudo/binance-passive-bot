@@ -2237,3 +2237,16 @@ button, a, input, select, summary { scroll-margin-block:16px 110px; }
 .smc-check ul { margin:10px 0; padding-left:20px; }
 .smc-source a { color:#e2bf70; text-decoration:underline; }
 @media(max-width:760px){ .smc-grid { grid-template-columns:1fr; } .smc-reference { margin:22px 10px 12px; padding:14px; } }
+
+/* Compact research flow: disclose details without hiding critical state. */
+.core-disclosure { margin:12px 0; border:1px solid #394452; border-radius:12px; padding:0 12px; min-width:0; }
+.core-disclosure > summary { cursor:pointer; min-height:44px; padding:12px 0; font-size:14px; line-height:1.5; color:#e5c27b; }
+.core-disclosure > p,.research-risk p,.risk-boundary { font-size:13px; line-height:1.7; color:#bac8db; overflow-wrap:anywhere; }
+.core-metrics { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin:12px 0; }
+.core-metrics dt { font-size:12px; line-height:1.5; color:#b2becc; }
+.core-metrics dd { margin:5px 0 0; font-size:16px; font-weight:650; overflow-wrap:anywhere; }
+.family-summary { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.research-risk { padding:12px; border:1px solid #8c733c; border-radius:12px; }
+.core-tools { display:flex; gap:8px; margin:10px 0; }
+#coin-analysis,#smc-reference { scroll-margin-top:16px; scroll-margin-bottom:120px; }
+@media(max-width:540px) { .family-summary { grid-template-columns:1fr; } .pullback-panel { padding:12px; } .core-disclosure .coin-overview { border:0; padding:0; } .research-risk { padding:10px; } }

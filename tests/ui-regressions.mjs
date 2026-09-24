@@ -123,3 +123,17 @@ test('completed three-strategy analysis keeps momentum within the same article',
   assert.equal((html.match(/data-pullback-compare="UNIUSDT"/g)||[]).length,1);
   assert.doesNotMatch(html,/strategy-symbol">UNIUSDT/);
 });
+
+test('core flow keeps one primary scan and separates collapsed detail from safety state',()=>{
+ const s=state();s.ui.strategyWorkspace='signals';s.pullback={rows:[],analysisHistorical:true};
+ const html=pages.strategies(s);
+ assert.equal((html.match(/data-pullback-scan/g)||[]).length,1);
+ assert.match(html,/歷史分析（唯讀，非目前行情）/);
+ assert.match(html,/缺少最新帳戶淨值與完整現有部位/);
+ for(const key of ['selection-rules','analysis-history','market-reference','smc-definitions']){
+  assert.match(html,new RegExp('<details[^>]*data-search="'+key+'"[^>]*>'));
+  assert.doesNotMatch(html,new RegExp('<details[^>]*data-search="'+key+'"[^>]* open'));
+ }
+ assert.match(html,/data-scroll-target="smc-reference"/);assert.match(html,/id="smc-reference"/);
+ assert.ok(html.indexOf('id="smc-reference"')>html.indexOf('data-search="market-reference"'));
+});

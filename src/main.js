@@ -504,6 +504,15 @@ function initEvents() {
   });
 
   document.addEventListener('click', async (event) => {
+    const jump=event.target.closest?.('[data-scroll-target]');
+    if(jump){
+      const id=jump.dataset.scrollTarget;
+      if(['coin-analysis','smc-reference'].includes(id)){
+        const target=document.getElementById(id);
+        target?.scrollIntoView({block:'start'});target?.focus({preventScroll:true});
+      }
+      return;
+    }
     const coinFilter=event.target.closest?.('[data-coin-filter]');
     if(coinFilter){
       const value=coinFilter.dataset.coinFilter;

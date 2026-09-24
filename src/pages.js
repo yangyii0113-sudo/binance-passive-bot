@@ -1331,7 +1331,7 @@ export function strategiesPage(state) {
   const isCrypto = (state.ui?.assetClass || 'crypto') === 'crypto';
   const signalsHtml = isCrypto ? `
     ${pullbackPanel(state,Date.now(),{renderMarket:row=>{const market=derivedStrategies(state).find(item=>item.symbol===row.symbol);return market?momentumDetails(market):'';}})}
-    <h3>${state.pullback?.rows?.length?'其他市場動能':'市場動能參考'}</h3><p class="strategy-note">${state.pullback?.analysisHistorical?'上方為歷史分析；本區列出其他標的目前動能。':state.pullback?.rows?.length?'已分析幣種的動能參考整併於上方主卡；本區只列出其他標的。':'動能評分僅供觀察；請先完成上方分析取得研究條件。'}</p>
+    <details class="core-disclosure" data-search="market-reference"><summary>市場動能雷達 · 其他標的</summary><h3>${state.pullback?.rows?.length?'其他市場動能':'市場動能參考'}</h3><p class="strategy-note">${state.pullback?.analysisHistorical?'上方為歷史分析；本區列出其他標的目前動能。':state.pullback?.rows?.length?'已分析幣種的動能參考整併於上方主卡；本區只列出其他標的。':'動能評分僅供觀察；請先完成上方分析取得研究條件。'}</p>
     <div class="signal-filter-row">
       ${tab('全部','all',filter,'data-strategy-filter')}
       ${tab('🔥 高強度','HIGH',filter,'data-strategy-filter')}
@@ -1341,7 +1341,7 @@ export function strategiesPage(state) {
       ${tab('觀察','WATCH',filter,'data-strategy-filter')}
     </div>
     <div class="signal-legend">訊號依動能與流動性分級；高強度訊號會特別置頂，但不代表保證買進或獲利。</div>
-    ${strategyCards(state)}
+    ${strategyCards(state)}</details>
     ${smcReference()}
   ` : stockEmptyState('股市策略資料源尚未接入');
 

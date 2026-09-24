@@ -24,7 +24,7 @@ test('missing, noncontiguous, unfinished or invalid volume data fail closed',()=
 });
 import { comparePlans } from '../src/pullback_replay.js';
 import { saveComparisonRun, loadComparisonHistory } from '../src/comparison_history.js';
-import { strategyFamilyPanel } from '../src/strategy_family_view.js';
+import { strategyFamilyPanel, familyAssessment } from '../src/strategy_family_view.js';
 test('family comparisons reconcile cash and preserve development against future changes',()=>{
  const hourly=Array.from({length:2800},(_,i)=>{const c=100+i*.02+Math.sin(i/8)*3;return [i*H,c-.3,c+1,c-1,c,i%24===0?200:100,(i+1)*H-1];});
  const fourHourly=[];for(let i=0;i<hourly.length;i+=4){const a=hourly.slice(i,i+4);fourHourly.push([a[0][0],a[0][1],Math.max(...a.map(r=>r[2])),Math.min(...a.map(r=>r[3])),a.at(-1)[4],400,a.at(-1)[6]]);}
@@ -52,4 +52,10 @@ test('mean reversion is symmetric for shorts',()=>{
  a[218]=[218*H,94,94.2,93.5,93.7,100,219*H-1];a[219]=[219*H,93.7,94.7,93.5,94.5,100,220*H-1];
  const mirrored=a.map(r=>[r[0],200-r[1],200-r[3],200-r[2],200-r[4],r[5],r[6]]);
  const p=familyPlan(mirrored,'meanReversion',220*H);assert.equal(p.status,'SETUP');assert.equal(p.side,'SHORT');assert.ok(p.stop>p.entry&&p.tp2<p.tp1&&p.tp1<p.entry);
+});
+
+test('family assessment does not label incomplete performance as ready for validation',()=>{
+ assert.equal(familyAssessment({holdout:{trades:30},stress:{}}),'資料不足');
+ assert.equal(familyAssessment({holdout:{trades:10,netPnl:20},stress:{netPnl:10}}),'樣本不足');
+ assert.equal(familyAssessment({holdout:{trades:30,netPnl:20},stress:{netPnl:-1}}),'成本壓力未通過');
 });
