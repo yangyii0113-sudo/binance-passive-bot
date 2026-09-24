@@ -5,6 +5,9 @@
 <script>
 // Current Pages releases live at releases/<revision>/src/, while local builds serve /src/.
 const site=new URL(location.pathname.includes('/releases/')?'../../../':'../',location.href);
+// Separate each release's review from a previously cached public entry page.
+const revision=location.pathname.match(/\/releases\/([^/]+)\//)?.[1];
+if(revision)site.searchParams.set('review',revision);
 for(const width of [360,390,430]){const section=document.createElement('section');const heading=document.createElement('h2');heading.textContent=width+' 像素';const frame=document.createElement('iframe');frame.title=width+' 像素平台';frame.width=width;frame.src=site.href+'#/strategies';section.append(heading,frame);document.querySelector('main').append(section);}
 document.querySelector('nav').addEventListener('click',event=>{const route=event.target.dataset.route;if(route)for(const frame of document.querySelectorAll('iframe'))frame.src=site.href+'#'+route;});
 </script></html>
