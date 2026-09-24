@@ -12,7 +12,7 @@ export function entryPlan(plan,{research=false}={}) {
   const risk=entry&&stop?Math.abs(entry-stop)/entry*100:null;
   const rewardR=target=>entry&&stop&&number(target)&&entry!==stop?(Math.abs(Number(target)-entry)/Math.abs(entry-stop)).toFixed(2):'—';
   return `<div class="entry-plan" aria-label="進場、止盈與止損點位">
-    <div class="entry-plan-primary"><span>${research?'進場點位 · 突破門檻':'進場點位 · 報價參考'}</span><strong>${quote(entry)} <small>USDT</small></strong><p>${research?'等待突破確認；此價格不是已成交價格':'即時報價估算，尚未確認可進場'}</p></div>
+    <div class="entry-plan-primary"><span>${research?`進場點位 · ${plan.side==='SHORT'?'跌破':'突破'}門檻`:'進場點位 · 報價參考'}</span><strong>${quote(entry)} <small>USDT</small></strong><p>${research?`等待${plan.side==='SHORT'?'向下跌破':'向上突破'}確認；此價格不是已成交價格`:'即時報價估算，尚未確認可進場'}</p></div>
     <div class="entry-plan-exits">
       <div class="entry-plan-target"><span>第一止盈</span><strong>${quote(plan.tp1)} <small>USDT</small></strong><small>${research?`${rewardR(plan.tp1)} 倍風險距離 · 規劃平倉 50%`:'固定百分比參考'}</small></div>
       <div class="entry-plan-target"><span>第二止盈</span><strong>${quote(plan.tp2)} <small>USDT</small></strong><small>${research?`${rewardR(plan.tp2)} 倍風險距離 · 規劃平倉剩餘 50%`:'固定百分比參考'}</small></div>

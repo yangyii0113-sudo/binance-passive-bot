@@ -2276,3 +2276,50 @@ button, a, input, select, summary { scroll-margin-block:16px 110px; }
 .ai-agents-wrap>.agent-tabs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));overflow:visible;gap:4px}
 .ai-agents-wrap>.agent-tabs .agent-tab{min-width:0;min-height:56px;padding:6px 4px;white-space:normal}
 .ai-agents-wrap>.agent-tabs .agent-tab strong{font-size:12px;line-height:1.5;overflow-wrap:anywhere}
+
+/* Two entry points; five stages own the daily research flow. */
+.strategy-workspace-tabs.strategy-primary-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));padding:4px;gap:4px}
+.strategy-primary-tabs .strategy-workspace-btn{min-width:0;min-height:44px;font-size:14px;padding:9px}
+.strategy-page .ai-agents-wrap{gap:12px;padding:12px}
+.strategy-page .ai-agents-wrap>.agent-tabs{margin:0;padding:3px}
+.strategy-page .agent-tab span{font-size:10px}
+.strategy-page .agent-tab:not(.active){color:#bfc2c8}
+.strategy-page .agent-tab:not(.active) span{color:#9da3ad}
+.selection-source-tabs,.advanced-tool-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.selection-source-tabs button,.advanced-tool-grid button{min-height:44px;min-width:0;white-space:normal;font-size:14px}
+.selection-source-tabs [aria-pressed="true"],.advanced-tool-grid [aria-current]{border-color:#c5a154;color:#f0cf8b;background:#302719}
+.strategy-advanced-tools{margin:0 0 8px}
+.advanced-tool-grid{padding-bottom:14px}
+.workflow-help{margin-bottom:0}
+.agent-summary-link{min-height:44px;font-size:14px}
+.plan-status-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:12px 0}
+.plan-status-pair>div{min-width:0;padding:10px;border:1px solid #51504c;border-radius:10px;background:#151719}
+.plan-status-pair dt{font-size:12px;color:#bfc4cd;line-height:1.5}
+.plan-status-pair dd{margin:4px 0 0;font-size:14px;line-height:1.5;font-weight:650;color:#ece8e0}
+.plan-status-pair .plan-state-ready{border-color:#b18b45}
+.plan-status-pair .plan-state-caution{border-color:#967645}
+.plan-status-pair .plan-state-blocked{border-color:#a45e5b}
+.agent-decision-card{min-width:0;padding:16px;border:1px solid #806438;border-radius:16px;background:linear-gradient(135deg,#242015,#151617);overflow-wrap:anywhere}
+.decision-heading{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
+.decision-heading h3{margin:0;font-size:22px;line-height:1.4;color:#f2e8d3}
+.decision-heading>span{font-size:12px;color:#d2bf91}
+.decision-scenario{min-width:0;margin:14px 0;padding-top:12px;border-top:1px solid #55452b}
+.decision-scenario h4{font-size:16px;line-height:1.5;margin:0 0 10px;color:#f1ce89}
+.decision-levels{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:0}
+.decision-levels>div{min-width:0;border:1px solid #484741;border-radius:10px;padding:12px;background:#131516}
+.decision-levels .decision-entry,.decision-levels .decision-stop{grid-column:1/-1}
+.decision-levels .decision-entry{border-color:#b18b45}
+.decision-levels .decision-stop{border-color:#9c6560}
+.decision-levels dt{font-size:13px;color:#cacbd0;line-height:1.5}
+.decision-levels dd{font-size:20px;line-height:1.4;margin:6px 0 0;color:#f0eee7;font-weight:700;font-variant-numeric:tabular-nums}
+.decision-levels .decision-entry dd{font-size:28px;color:#f1ca76}
+.decision-levels small{font-size:11px;font-weight:400;color:#bfc4cd}
+.agent-decision-card p,.agent-decision-card li{font-size:14px;line-height:1.65;margin:10px 0;color:#d5d7dd}
+.agent-decision-card .decision-conclusion{font-size:18px;font-weight:700;color:#f0cf8b}
+.decision-reward strong{font-size:20px;color:#f0cf8b;padding-left:8px}
+.decision-reward span{display:block;font-size:12px;color:#bfc4cd;margin-top:4px}
+.agent-decision-card .decision-validity{font-size:13px;color:#f0cf8b}
+.agent-decision-card .decision-lock{font-size:13px;padding:10px;border-radius:8px;background:#101213;color:#bfc4cd}
+.decision-actions{display:grid;grid-template-columns:1fr;gap:8px;margin-top:12px}
+.decision-actions button{width:100%;min-height:44px;font-size:14px;white-space:normal}
+@media(min-width:760px){.decision-actions{grid-template-columns:repeat(2,minmax(0,1fr))}.agent-advice-panel{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}.advanced-tool-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}

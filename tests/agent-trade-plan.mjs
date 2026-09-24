@@ -9,6 +9,7 @@ import { EXIT_COSTS } from '../src/target_analysis.js';
 import { cryptoContractTickers, normalizeUniverse, cachedMarketSnapshot } from '../src/market.js';
 import { MARKET_CACHE_KEY } from '../src/config.js';
 import { agentHistoryPanel, agentAdvicePanel } from '../src/agent_workflow_view.js';
+import { agentPlanPresentation, agentDecisionCard } from '../src/agent_decision_view.js';
 import { pages } from '../src/pages.js';
 import { appState } from '../src/state.js';
 
@@ -155,4 +156,40 @@ test('old unverified market caches cannot repopulate the crypto screen',()=>{
   globalThis.localStorage={getItem:key=>key===MARKET_CACHE_KEY?JSON.stringify(cache):null};
   try{assert.equal(cachedMarketSnapshot(),null);cache.cryptoOnly=true;assert.equal(cachedMarketSnapshot().status,'STALE');}
   finally{globalThis.localStorage=previous;}
+});
+
+test('decision summaries use gated levels for either side and never restore expired or malformed prices',()=>{
+  for(const side of ['LONG','SHORT']){
+    const record=fixture(side), before=structuredClone(record);
+    const html=agentDecisionCard(record,{now});
+    for(const text of ['100.000','止損點','第一止盈','第二止盈','成本後目標風報比','正式帳本、最新淨值與完整部位尚未核對',side==='LONG'?'向上突破':'向下跌破'])assert.ok(html.includes(text),text);
+    assert.doesNotMatch(html,/data-paper-open|data-real-order|保證盈利/);
+    assert.deepEqual(record,before);
+    for(const mutate of [r=>r.snapshotUntil=now,r=>r.historical=true,r=>r.row.analysis.strategies[0].stop=r.row.analysis.strategies[0].entry,r=>r.row.analysis.strategies={wrong:true}]){
+      const invalid=structuredClone(record);mutate(invalid);
+      const blocked=agentDecisionCard(invalid,{now});
+      assert.doesNotMatch(blocked,/decision-levels|100\.000/);
+      assert.match(blocked,/暫不進場/);
+    }
+  }
+});
+
+test('strategy conditions and quote integrity remain independent display states',()=>{
+  const fresh=fixture();
+  assert.equal(agentPlanPresentation(fresh,now).strategy,'研究條件成立');
+  assert.equal(agentPlanPresentation(fresh,now).data,'本次核對完整');
+  const waiting=fixture();waiting.row.analysis.strategies[0].status='WAIT';
+  assert.equal(agentPlanPresentation(waiting,now).strategy,'等待條件');
+  assert.equal(agentPlanPresentation(waiting,now).data,'本次核對完整');
+  assert.equal(agentPlanPresentation(waiting,now+60000).strategy,'需重新判斷');
+  assert.equal(agentPlanPresentation(waiting,now+60000).data,'已過期');
+  waiting.row.analysis.strategies[0].status='BLOCKED';
+  assert.equal(agentPlanPresentation(waiting,now).strategy,'尚待核對');
+  assert.equal(agentPlanPresentation(waiting,now).data,'部分待核對');
+  waiting.row.analysis.strategies.pop();
+  assert.equal(agentPlanPresentation(waiting,now).data,'不足或異常');
+  const conflict=fixture();conflict.row.analysis.strategies[1]={...fixture('SHORT').row.analysis.strategies[0],key:'structured'};
+  assert.equal(agentPlanPresentation(conflict,now).strategy,'方向衝突');
+  assert.equal(agentPlanPresentation(conflict,now).data,'本次核對完整');
+  assert.doesNotMatch(agentDecisionCard(conflict,{now}),/decision-levels/);
 });

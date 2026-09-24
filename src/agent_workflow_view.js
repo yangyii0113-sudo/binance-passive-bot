@@ -1,16 +1,13 @@
-import { agentPlanStatus } from './agent_trade_plan.js';
+import { agentDecisionCard } from './agent_decision_view.js';
 import { FAMILY_NAMES } from './strategy_families.js';
 import { escapeHtml as esc, displayDate } from './ui.js';
 import { agentComparisonView } from './agent_comparison_view.js';
 
 export function agentAdvicePanel(state, now=Date.now()) {
-  const records=Object.values(state.agents?.tradePlans || {});
-  return `<section class="agent-panel-stack"><div class="agent-intro"><strong>交易建議 · 先確認能否形成計畫</strong><span>以資料完整性、進場條件、成本後空間與風險檢查作決定；目前只供模擬觀察，不代表可實盤下單。</span></div>${records.length?records.map(record=>{
-    const result=agentPlanStatus(record,now);
-    const waits=result.key==='wait'?(record.row?.analysis?.strategies || []).map(p=>`<li>${esc(FAMILY_NAMES[p.key] || '研究策略')}：${esc(p.reason || '等待條件成立')}</li>`).join(''):'';
-    return `<article class="agent-trade-plan"><h3>${esc(record.symbol)} · ${result.label}</h3><p>${result.key==='plan'?'建議：僅列入條件式模擬觀察；觸發前不進場，不累加同幣多個方案。':'建議：暫不進場。'}${esc(result.reason)}</p>${result.plans.length?`<p>候選方案：${result.plans.map(p=>`${FAMILY_NAMES[p.key]}（${p.side==='LONG'?'做多':'做空'}）`).join('、')}</p>`:''}${waits?`<ul class="agent-plan-waits">${waits}</ul>`:''}<button type="button" class="primary-inline-btn" data-agent-plan-open="${esc(record.symbol)}">查看完整策略與點位</button></article>`;
-  }).join(''):'<div class="empty-state"><strong>尚無交易建議</strong><span>先完成分析與策略擬定。</span><button type="button" class="primary-inline-btn" data-agent-key="technical">開始分析</button></div>'}</section>`;
+  const records=Object.values(state.agents?.tradePlans || {}).sort((a,b)=>(b.checkedAt || 0)-(a.checkedAt || 0));
+  return `<section class="agent-panel-stack agent-advice-panel" aria-label="交易建議">${records.length?records.map(record=>agentDecisionCard(record,{now})).join(''):'<div class="empty-state"><strong>尚無交易建議</strong><span>先完成分析；通過核對的進場、止損與止盈會直接整理於此。</span><button type="button" class="primary-inline-btn" data-agent-key="technical">開始分析</button></div>'}</section>`;
 }
+
 export function agentHistoryPanel(state) {
   const history=state.agents?.planHistory || {runs:[]};
   const file=state.agents?.planExport;

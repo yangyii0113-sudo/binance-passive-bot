@@ -700,21 +700,20 @@ function strategyTimeframeTabs(state){
   </div>`;
 }
 function strategyWorkspaceTabs(state){
-  const active = state.ui?.strategyWorkspace || 'signals';
-  const items = [
-    ['signals','訊號'],
-    ['agents','智慧分析代理'],
-    ['candidates','候選池'],
-    ['library','策略庫'],
-    ['develop','策略開發'],
-    ['review','策略檢討'],
-    ['optimize','策略優化']
-  ];
-  return `<div class="strategy-workspace-tabs" role="tablist" aria-label="策略研發工作區">
-    ${items.map(([key,label])=>`
-      <button type="button" class="strategy-workspace-btn ${active===key?'active':''}" data-strategy-workspace="${key}" role="tab" aria-selected="${active===key}">${label}</button>
-    `).join('')}
+  const workspace=state.ui?.strategyWorkspace || 'signals';
+  const active=workspace==='candidates'?'agents':workspace;
+  return `<div class="strategy-workspace-tabs strategy-primary-tabs" role="tablist" aria-label="交易研究入口">
+    ${[['signals','強勢訊號'],['agents','交易流程']].map(([key,label])=>`<button type="button" class="strategy-workspace-btn ${active===key?'active':''}" data-strategy-workspace="${key}" role="tab" aria-selected="${active===key}">${label}</button>`).join('')}
   </div>`;
+}
+function strategyAdvancedTools(state){
+  const workspace=state.ui?.strategyWorkspace;
+  const agent=state.ui?.agentKey;
+  const advanced=['library','develop','review','optimize'].includes(workspace) || (workspace==='agents' && ['news','validator','risk','review'].includes(agent));
+  return `<details class="core-disclosure strategy-advanced-tools" data-search="進階工具" ${advanced?'open':''}><summary>進階工具${advanced?' · 使用中':''}</summary><div class="advanced-tool-grid">
+    ${[['library','策略庫'],['develop','策略開發'],['review','策略檢討'],['optimize','策略優化']].map(([key,label])=>`<button type="button" class="secondary-btn" data-strategy-workspace="${key}" ${workspace===key?'aria-current="page"':''}>${label}</button>`).join('')}
+    ${[['news','新聞影響'],['validator','策略驗證'],['risk','曝險管理'],['review','交易檢討']].map(([key,label])=>`<button type="button" class="secondary-btn" data-agent-key="${key}" ${workspace==='agents' && agent===key?'aria-current="page"':''}>${label}</button>`).join('')}
+  </div></details>`;
 }
 
 function validatorVerdict(validator){
@@ -795,7 +794,7 @@ function candidatePoolPanel(state){
 
 
 function agentTabs(state){
-  const active = state.ui?.agentKey || 'market';
+  const active = state.ui?.strategyWorkspace==='candidates'?'market':state.ui?.agentKey || 'market';
   const agents = [
     ['technical','01','分析'],
     ['market','02','篩選'],
@@ -809,7 +808,7 @@ function agentTabs(state){
         <span>${no}</span><strong>${label}</strong>
       </button>
     `).join('')}
-  </div><details class="core-disclosure" data-search="進階分析工具"><summary>進階分析工具</summary><div class="agent-filter-tabs">${[['news','新聞影響'],['validator','策略驗證'],['risk','曝險管理'],['review','交易檢討']].map(([key,label])=>`<button type="button" class="agent-filter-btn ${active===key?'active':''}" data-agent-key="${key}">${label}</button>`).join('')}</div></details>`;
+  </div>`;
 }
 function agentFilterTabs(state, items){
   const active = state.ui?.agentFilter || items?.[0]?.[0] || 'all';
@@ -1056,9 +1055,10 @@ function technicalAgentPanel(state){
       <label>分析標的<select name="symbol">${marketSymbolOptions(state)}</select></label>
       <button type="button" class="primary-inline-btn" data-agent-technical-run ${state.agents?.technicalBusy?'disabled':''}>${state.agents?.technicalBusy?'分析與擬定中…':'分析並擬定交易計畫'}</button>
     </form>
+    ${technical?.symbol?'<button type="button" class="secondary-btn agent-summary-link" data-agent-key="advice">查看進退場摘要</button>':''}
     ${technical?.status==='LIVE' ? `<div class="agent-consensus"><span>多週期共識</span><strong>${displayText(technical.consensus)}</strong><small>${displayMarketSource(technical.source)}</small></div>` : ''}
     ${frameHtml}
-    ${technical?.symbol?agentTradePlanView(state.agents?.tradePlans?.[technical.symbol],{symbol:technical.symbol,link:true,comparison:state.agents?.planComparisons?.[technical.symbol],comparisonBusy:state.agents?.planComparisonBusy || state.pullback?.comparing}):''}
+    ${technical?.symbol?agentTradePlanView(state.agents?.tradePlans?.[technical.symbol],{symbol:technical.symbol,comparison:state.agents?.planComparisons?.[technical.symbol],comparisonBusy:state.agents?.planComparisonBusy || state.pullback?.comparing}):''}
     ${add ? `<div class="agent-single-action">${add}</div>` : ''}
   </div>`;
 }
@@ -1201,8 +1201,9 @@ function playbookAgentPanel(state){
   </div>`;
 }
 function aiAgentsPanel(state){
-  const key = state.ui?.agentKey || 'market';
-  let content = marketScoutPanel(state);
+  const candidates=state.ui?.strategyWorkspace==='candidates';
+  const key = candidates?'market':state.ui?.agentKey || 'market';
+  let content = candidates?candidatePoolPanel(state):marketScoutPanel(state);
   if(key==='technical') content = technicalAgentPanel(state);
   if(key==='news') content = newsAgentPanel(state);
   if(key==='validator') content = validatorAgentPanel(state);
@@ -1212,10 +1213,11 @@ function aiAgentsPanel(state){
   if(key==='advice') content = agentAdvicePanel(state);
   if(key==='planHistory') content = agentHistoryPanel(state);
   return `<div class="ai-agents-wrap">
-    <div class="agent-system-note"><strong>完整交易研究流程</strong><span>分析 → 篩選 → 策略 → 交易建議 → 紀錄。進退場點位與取消條件整理於交易手冊；真實下單維持鎖定。</span></div>
-    ${state.agents?.planHistory?.error?`<p role="alert">${escapeHtml(state.agents.planHistory.error)}</p>`:''}
     ${agentTabs(state)}
+    ${state.agents?.planHistory?.error?`<p role="alert">${escapeHtml(state.agents.planHistory.error)}</p>`:''}
+    ${key==='market'?`<div class="selection-source-tabs" aria-label="篩選來源"><button type="button" class="secondary-btn" data-strategy-workspace="agents" data-agent-stage="market" aria-pressed="${!candidates}">市場篩選</button><button type="button" class="secondary-btn" data-strategy-workspace="candidates" aria-pressed="${candidates}">我的候選 · ${state.candidates?.items?.length || 0}</button></div>`:''}
     ${content}
+    <details class="core-disclosure workflow-help" data-search="流程使用說明"><summary>流程使用說明</summary><p>分析 → 篩選 → 策略 → 交易建議 → 紀錄。分析完成後，在「交易建議」查看進退場摘要；在「策略」查看依據與完整規則。研究紀錄僅存目前瀏覽器，重新開啟需重新核對點位。</p><p>行情資料完整不代表正式帳本或部位風險已通過核對。僅模擬研究，真實下單維持鎖定，不補造過往交易。</p></details>
   </div>`;
 }
 
@@ -1358,17 +1360,18 @@ export function strategiesPage(state) {
 
   let content = signalsHtml;
   if(workspace === 'agents') content = aiAgentsPanel(state);
-  if(workspace === 'candidates') content = candidatePoolPanel(state);
+  if(workspace === 'candidates') content = aiAgentsPanel(state);
   if(workspace === 'library') content = strategyLibraryPanel(state);
   if(workspace === 'develop') content = strategyDevelopmentPanel();
   if(workspace === 'review') content = strategyReviewPanel(state);
   if(workspace === 'optimize') content = strategyOptimizationPanel(state);
 
-  return `<div class="page-stack">${messageBar(state)}
+  return `<div class="page-stack strategy-page">${messageBar(state)}
     ${assetClassSwitcher(state)}
     ${strategyWorkspaceTabs(state)}
     ${workspace === 'signals' && isCrypto ? '<div class="signal-source-note">24 小時動能用於選幣；下方以 1 小時與 4 小時收盤資料研究三策略。動能達標、研究條件成立與成交是不同狀態。</div>' : ''}
-    ${section(workspace === 'signals' ? '交易訊號' : workspace === 'agents' ? '智慧分析代理' : workspace === 'candidates' ? '候選池' : '策略研發', content, badge(workspace === 'signals' ? (isCrypto ? '輕量版訊號' : '無資料') : workspace === 'agents' ? '5 階段研究流程' : workspace === 'candidates' ? `${state.candidates?.items?.length || 0} 個候選` : '策略研發'))}
+    ${section(workspace === 'signals' ? '交易訊號' : workspace === 'agents' || workspace === 'candidates' ? '交易研究' : '策略研發', content, badge(workspace === 'signals' ? (isCrypto ? '輕量版訊號' : '無資料') : workspace === 'agents' || workspace === 'candidates' ? '僅模擬 · 實盤鎖定' : '策略研發'))}
+    ${strategyAdvancedTools(state)}
   </div>`;
 }
 

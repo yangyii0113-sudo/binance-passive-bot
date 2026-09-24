@@ -615,7 +615,7 @@ function initEvents() {
     }
     const openPlan=event.target.closest?.('[data-agent-plan-open]');
     if(openPlan){
-      appState.ui.agentKey='playbook';appState.ui.agentFilter='all';render();
+      appState.ui.strategyWorkspace='agents';appState.ui.agentKey='playbook';appState.ui.agentFilter='all';render();
       const target=[...document.querySelectorAll('[data-plan-symbol]')].find(el=>el.dataset.planSymbol===openPlan.dataset.agentPlanOpen);
       target?.scrollIntoView({block:'start'});return;
     }
@@ -742,7 +742,12 @@ function initEvents() {
     }
     const strategyWorkspace = event.target.closest?.('[data-strategy-workspace]');
     if (strategyWorkspace) {
+      const previous=appState.ui.strategyWorkspace;
       appState.ui.strategyWorkspace = strategyWorkspace.dataset.strategyWorkspace;
+      if(strategyWorkspace.dataset.agentStage || previous==='candidates' && appState.ui.strategyWorkspace==='agents'){
+        appState.ui.agentKey=strategyWorkspace.dataset.agentStage || 'market';
+        appState.ui.agentFilter='strong';
+      }
       render();
       return;
     }
@@ -754,6 +759,7 @@ function initEvents() {
     }
     const agentKey = event.target.closest?.('[data-agent-key]');
     if (agentKey) {
+      appState.ui.strategyWorkspace = 'agents';
       appState.ui.agentKey = agentKey.dataset.agentKey;
       const defaults = {
         market: 'strong',
