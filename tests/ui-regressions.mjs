@@ -72,3 +72,54 @@ test('recovering remote snapshots clears local mode and removes local mutation c
     assert.equal(appState.results.local,false);
   }
 });
+
+// Presentation-only regression: keep research, quotes and execution distinct.
+test('one coin has one main card and one comparison action', () => {
+  const s=state();s.ui.strategyWorkspace='signals';
+  s.market.rows=[['','UNI / USDT','10',5,2e7,80],['','ETH / USDT','100',4,2e7,85]];
+  s.pullback={rows:[{symbol:'UNIUSDT',status:'WAIT',reason:'等待收盤條件'}]};
+  const before=structuredClone(s);
+  const html=pages.strategies(s);
+  assert.equal((html.match(/<strong>UNIUSDT<\/strong>/g)||[]).length,1);
+  assert.equal((html.match(/data-pullback-compare="UNIUSDT"/g)||[]).length,1);
+  assert.doesNotMatch(html,/strategy-symbol">UNIUSDT/);
+  assert.match(html,/strategy-symbol">ETHUSDT/);
+  assert.match(html,/動能達標/);assert.doesNotMatch(html,/訊號信心|訊號分數/);
+  assert.match(html,/固定百分比點位/);assert.match(html,/非研究進場計畫/);
+  assert.deepEqual(s,before);
+});
+
+test('scan lifecycle shows exactly one truthful empty state', () => {
+  const s=state();s.ui.strategyWorkspace='signals';s.market.rows=[];
+  for(const [snapshot,expected,absent] of [
+    [{rows:[]},'尚未分析幣種條件','本次沒有符合'],
+    [{rows:[],loading:true},'正在分析幣種條件','尚未分析幣種條件'],
+    [{rows:[],scannedAt:'2026-09-24T00:00:00Z',total:0},'本次沒有符合條件的強勢幣','尚未分析幣種條件'],
+    [{rows:[],error:'合約資料讀取失敗'},'分析未完成','尚未分析幣種條件']
+  ]){
+    s.pullback=snapshot;const html=pages.strategies(s);
+    assert.ok(html.includes(expected));assert.ok(!html.includes(absent));
+    assert.doesNotMatch(html,/一鍵比較本次 0 檔|data-pullback-compare/);
+    if(snapshot.error)assert.equal((html.match(/合約資料讀取失敗/g)||[]).length,1);
+  }
+});
+
+test('historical coin cards do not acquire live quote levels while merged', () => {
+  const s=state();s.ui.strategyWorkspace='signals';
+  s.market.rows=[['','UNI / USDT','10',5,2e7,80]];
+  s.pullback={rows:[{symbol:'UNIUSDT',status:'WAIT'}],analysisHistorical:true};
+  const html=pages.strategies(s);
+  assert.doesNotMatch(html,/entry-plan-primary|固定百分比點位/);
+  assert.match(html,/data-pullback-compare="UNIUSDT" disabled/);
+});
+
+test('completed three-strategy analysis keeps momentum within the same article', () => {
+  const s=state();s.ui.strategyWorkspace='signals';
+  s.market.rows=[['','UNI / USDT','10',5,2e7,80]];
+  s.pullback={rows:[{symbol:'UNIUSDT',rank:1,strength:80,analysis:{status:'VALID',closedAt:Date.now()-1000,validUntil:Date.now()+60000,aligned:true,hourlyDirection:'LONG',fourHourlyDirection:'LONG',strategies:[{key:'structured',status:'WAIT'}]}}]};
+  const html=pages.strategies(s);
+  const card=html.match(/<article[^>]*aria-label="UNIUSDT 幣種分析"[\s\S]*?<\/article>/)?.[0];
+  assert.ok(card);assert.match(card,/趨勢回調/);assert.match(card,/data-search="momentum-UNIUSDT"/);
+  assert.equal((html.match(/data-pullback-compare="UNIUSDT"/g)||[]).length,1);
+  assert.doesNotMatch(html,/strategy-symbol">UNIUSDT/);
+});

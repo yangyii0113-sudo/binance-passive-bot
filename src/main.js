@@ -553,8 +553,8 @@ function initEvents() {
         if(!response.ok)throw new Error('無法確認加密貨幣合約清單');
         const candidates=strongPullbackCandidates(market,await response.json());
         setMarketState(market);
-        if(!candidates.length)throw new Error('目前沒有符合條件的強勢幣，請稍後重新分析');
         setStateSlice('pullback',{total:candidates.length,scannedAt:market.updatedAt});render();
+        if(!candidates.length)return;
         const rows=await scanPullbacks(candidates,{onProgress:(completed)=>{setStateSlice('pullback',{completed});render();}});
         setStateSlice('pullback',{rows});
         try{

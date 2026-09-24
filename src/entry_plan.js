@@ -20,24 +20,25 @@ export function entryPlan(plan,{research=false}={}) {
     ${plan.targetAnalysis?`<div class="target-analysis"><strong>止盈依據</strong><p>${escape(displayText(plan.targetAnalysis.basis))}</p><p>前方結構：${quote(plan.targetAnalysis.structure)} USDT · 平均真實波幅：${quote(plan.targetAnalysis.atr)}</p><p>分批淨風報比：${plan.targetAnalysis.netRewardRisk.toFixed(2)}（兩段止盈均成交的情境，非預期收益）</p><p>假設單邊手續費 0.05%＋滑價 0.02%，未含資金費率。</p><p>第一止盈後，剩餘部位從下一根起移至成本保護停損；跳空仍可能虧損。</p></div>`:''}
   </div>`;
 }
-export function pullbackPanel(state,now=Date.now()) {
+export function pullbackPanel(state,now=Date.now(),{renderMarket}={}) {
   const snapshot=state.pullback||{};
-  return `<section class="pullback-panel" aria-label="趨勢回調研究一號"><div class="pullback-heading"><div><span class="research-kicker">強勢前 10 檔 · 研究版 · 僅模擬</span><h3>強勢幣分析 · 三策略條件</h3><p>核對多週期方向、量能與波動，再逐項分析回調、突破及均值回歸條件。</p></div><button type="button" class="primary-btn" data-pullback-scan ${snapshot.loading||snapshot.comparing?'disabled':''}>${snapshot.loading?`分析中 ${snapshot.completed||0}／${snapshot.total||10}`:'分析強勢前 10 檔進場點位'}</button></div>
+  return `<section class="pullback-panel" aria-label="趨勢回調研究一號"><div class="pullback-heading"><div><span class="research-kicker">強勢前 10 檔 · 研究版 · 僅模擬</span><h3>強勢幣分析 · 三策略條件</h3><p>核對多週期方向、量能與波動，再逐項分析回調、突破及均值回歸條件。</p></div><button type="button" class="primary-btn" data-pullback-scan ${snapshot.loading||snapshot.comparing?'disabled':''}>${snapshot.loading?`分析中 ${snapshot.completed||0}／${snapshot.total||0}`:'分析強勢前 10 檔進場點位'}</button></div>
     <p class="strategy-note">每次分析先更新行情，從高流動性標的池選出上漲的加密貨幣永續合約，依市場強度排序，成交額作同分排序；排除 24 小時漲幅達 30% 及成交額低於 1,000 萬 USDT 的標的。不足 10 檔不補足，排名不代表可立即進場。</p>
-    ${snapshot.error?`<p role="alert">${escape(displayText(snapshot.error))}</p>`:''}
+    
     ${snapshot.scannedAt?`<p>行情時間：${escape(new Date(snapshot.scannedAt).toLocaleString('zh-TW'))} · 本次 ${snapshot.total} 檔</p>`:''}
     <p class="strategy-note">三策略使用同一批收盤資料；研究條件成立不代表高勝率，尚未取得足夠績效證據，不列為「驗證通過」。止盈／止損為研究計畫，不會送出真實訂單。</p>
     ${coinHistoryPanel(snapshot)}
-    ${coinAnalysisCards(snapshot,now,entryPlan)}
+    ${coinAnalysisCards(snapshot,now,entryPlan,renderMarket)}
     ${comparisonPanel(snapshot)}
   </section>`;
 }
 
 function comparisonPanel(snapshot){
   const r=snapshot.comparison;
+  if(!snapshot.rows?.length&&!snapshot.batchHistory?.length&&!snapshot.batchRows?.length&&!r&&!snapshot.comparisonError&&!snapshot.batchStorageError)return '';
   const n=v=>typeof v==='number'&&Number.isFinite(v)?v.toFixed(2):'—';
   const table=(label,items)=>`<h4>${label}</h4><div class="comparison-scroll"><table><thead><tr><th>規則</th><th>筆數</th><th>淨損益 USDT</th><th>勝率 %</th><th>獲利因子</th><th>每筆均值 USDT</th><th>已平倉回撤 %</th></tr></thead><tbody>${items.map(([label,v])=>`<tr><th>${label}</th><td>${v.trades}</td><td>${n(v.netPnl)}</td><td>${n(v.winRate)}</td><td>${n(v.profitFactor)}</td><td>${n(v.avgPnl)}</td><td>${n(v.closedDrawdownPct)}</td></tr>`).join('')}</tbody></table></div>`;
-  return `<div class="exit-comparison"><h3>多策略與出場規則比較</h3><p>每次比較會同時研究趨勢回調、區間突破、均值回歸，並保留原有回調出場規則對照。</p><p>其中回調出場對照採同一進場邏輯：原版 一倍／兩倍風險距離 對照結構止盈＋成本篩選＋第一止盈後保護。前 70% 與後 30% 分開計算，固定參數、不自動挑選勝者。</p><p>先分析強勢前 10 檔，再選擇其中一檔比較最近 90 天的出場規則。一次執行一檔；新上市或歷史資料不足時停止，不補造資料。目前強勢名單是事後選樣，本比較不代表整套選幣策略的歷史績效。</p><div class="comparison-actions">${(snapshot.analysisHistorical?[]:snapshot.rows||[]).map(item=>`<button type="button" class="primary-btn" data-pullback-compare="${escape(item.symbol)}" ${snapshot.comparing||snapshot.loading?'disabled':''}>${snapshot.comparing&&snapshot.comparingSymbol===item.symbol?`正在比較 ${escape(item.symbol)}…`:`比較 ${escape(item.symbol)} · 90 天`}</button>`).join('')||'<p>請先點上方「分析強勢前 10 檔進場點位」，產生可比較清單。</p>'}</div>
+  return `<div class="exit-comparison"><h3>多策略與出場規則比較</h3><p>每次比較會同時研究趨勢回調、區間突破、均值回歸，並保留原有回調出場規則對照。</p><p>其中回調出場對照採同一進場邏輯：原版 一倍／兩倍風險距離 對照結構止盈＋成本篩選＋第一止盈後保護。前 70% 與後 30% 分開計算，固定參數、不自動挑選勝者。</p><p>先分析強勢前 10 檔，再選擇其中一檔比較最近 90 天的出場規則。一次執行一檔；新上市或歷史資料不足時停止，不補造資料。目前強勢名單是事後選樣，本比較不代表整套選幣策略的歷史績效。</p><p>單幣比較請使用上方幣種卡的「三策略 · 90 天」。</p>
   ${batchComparisonPanel(snapshot.analysisHistorical?{...snapshot,rows:[]}:snapshot)}
   ${snapshot.comparisonError?`<p role="alert">${escape(displayText(snapshot.comparisonError))}</p>`:''}
   ${r?`<h4>${escape(r.symbol)} · ${new Date(r.start).toISOString().slice(0,10)} 至 ${new Date(r.end).toISOString().slice(0,10)} 世界標準時間（結束不含）</h4>

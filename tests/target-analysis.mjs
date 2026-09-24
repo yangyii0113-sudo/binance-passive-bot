@@ -76,7 +76,7 @@ test('comparison UI offers every scanned symbol and clears the fixed BTC ETH pai
  assert.match(html,/data-pullback-compare="UNIUSDT"/);
  assert.match(html,/data-pullback-compare="龙虾USDT"/);
  assert.doesNotMatch(html,/data-pullback-compare="(?:BTC|ETH)USDT"/);
- assert.match(pullbackPanel({pullback:{rows:[]}}),/產生可比較清單/);
+ assert.doesNotMatch(pullbackPanel({pullback:{rows:[]}}),/data-pullback-(?:batch|compare)/);
 });
 
 test('batch comparisons share a cutoff, run sequentially and isolate failed symbols',async()=>{

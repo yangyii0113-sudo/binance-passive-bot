@@ -1,7 +1,7 @@
 import { smcReference } from './smc_reference.js';
 import { entryPlan, pullbackPanel } from './entry_plan.js';
 import { mock } from './mock.js';
-import { badge, metric, section } from './ui.js';
+import { badge, metric, section, escapeHtml } from './ui.js';
 import { evaluateStrategyGuard } from './strategy_guard.js';
 import { researchHistoryPanel } from './research_history_view.js';
 import { equityChart } from './equity_chart.js';
@@ -227,10 +227,10 @@ function derivedStrategies(state){
       statusLabel = '🔥 高強度訊號';
     } else if(signalScore >= 75 && absChange >= 2.5){
       status = 'TRIGGERED';
-      statusLabel = '已觸發';
+      statusLabel = '動能達標';
     } else if(signalScore >= 65 && absChange >= 2){
       status = 'READY';
-      statusLabel = '等待觸發';
+      statusLabel = '接近動能門檻';
     } else if(signalScore >= 55 || absChange >= 1.5){
       status = 'SETUP';
       statusLabel = '形成中';
@@ -253,9 +253,29 @@ function derivedStrategies(state){
     };
   });
 }
+function momentumStatus(strategy) {
+  return ({HIGH:'高強度動能',TRIGGERED:'動能達標',READY:'接近動能門檻',SETUP:'動能形成中',WATCH:'動能觀察'})[strategy.status] || displayStatus(strategy.statusLabel || strategy.status);
+}
+function momentumDetails(strategy) {
+  return `<details class="coin-strategy-detail" data-search="momentum-${escapeHtml(strategy.symbol)}"><summary>動能參考 · 固定百分比點位</summary><p>動能評分 ${valueOrDash(strategy.signalScore)}／100 · ${momentumStatus(strategy)}。此為報價推算，非研究進場計畫，也不是成交紀錄。</p>
+      ${entryPlan(strategy)}
+      <div class="mini-grid strategy-metrics">
+        <span><em>參考風報比</em><strong>${valueOrDash(strategy.rr)}</strong></span>
+        <span><em>動能等級</em><strong>${valueOrDash(strategy.confidence)}</strong></span>
+      </div>
+      <p class="strategy-note">${strategy.note || '策略快照僅供觀察，不提供真實下單。'}</p>
+      <button class="candidate-add-btn" data-candidate-add="${strategy.symbol}"
+        data-candidate-source="交易訊號 · ${strategy.strategy}"
+        data-candidate-reason="${momentumStatus(strategy)} · 動能評分 ${valueOrDash(strategy.signalScore)}"
+        data-candidate-status="${strategy.status || ''}"
+        data-candidate-score="${valueOrDash(strategy.signalScore)}"
+        data-candidate-direction="${strategy.direction || ''}" type="button">＋ 加入候選池</button>
+  </details>`;
+}
 function strategyCards(state) {
+  const analyzed = new Set((state.pullback?.rows || []).map(row => row.symbol));
   const priority = { HIGH:5, TRIGGERED:4, READY:3, SETUP:2, WATCH:1 };
-  const all = [...derivedStrategies(state)].sort((a,b)=>
+  const all = [...derivedStrategies(state)].filter(item => !analyzed.has(item.symbol)).sort((a,b)=>
     (priority[b.status]||0)-(priority[a.status]||0) ||
     (Number(b.signalScore)||0)-(Number(a.signalScore)||0)
   );
@@ -274,24 +294,13 @@ function strategyCards(state) {
             <span class="strategy-name">${strategy.strategy}</span>
           </div>
         </div>
-        <span class="signal-badge signal-${String(strategy.status||'WATCH').toLowerCase()}">${displayStatus(strategy.statusLabel || strategy.status)}</span>
+        <span class="signal-badge signal-${String(strategy.status||'WATCH').toLowerCase()}">${momentumStatus(strategy)}</span>
       </div>
       <div class="strategy-signal-line">
         <strong class="strategy-direction">${strategy.direction}</strong>
-        <span>訊號分數 <b>${valueOrDash(strategy.signalScore)}</b>/100</span>
+        <span>動能評分 <b>${valueOrDash(strategy.signalScore)}</b>/100</span>
       </div>
-      ${entryPlan(strategy)}
-      <div class="mini-grid strategy-metrics">
-        <span><em>參考風報比</em><strong>${valueOrDash(strategy.rr)}</strong></span>
-        <span><em>訊號信心</em><strong>${valueOrDash(strategy.confidence)}</strong></span>
-      </div>
-      <p class="strategy-note">${strategy.note || '策略快照僅供觀察，不提供真實下單。'}</p>
-      <button class="candidate-add-btn" data-candidate-add="${strategy.symbol}"
-        data-candidate-source="交易訊號 · ${strategy.strategy}"
-        data-candidate-reason="${displayStatus(strategy.statusLabel || strategy.status)} · 訊號分數 ${valueOrDash(strategy.signalScore)}"
-        data-candidate-status="${strategy.status || ''}"
-        data-candidate-score="${valueOrDash(strategy.signalScore)}"
-        data-candidate-direction="${strategy.direction || ''}" type="button">＋ 加入候選池</button>
+      ${momentumDetails(strategy)}
     </article>`;
   }).join('')}</div>`;
 }
@@ -307,10 +316,10 @@ function strategyOpportunity(state) {
     <div class="strategy-main">
       <div class="strategy-opportunity-top">
         <div><strong>${strategy.symbol}</strong><span>${strategy.strategy}</span></div>
-        <span class="signal-badge signal-${String(strategy.status||'WATCH').toLowerCase()}">${displayStatus(strategy.statusLabel || strategy.status)}</span>
+        <span class="signal-badge signal-${String(strategy.status||'WATCH').toLowerCase()}">${momentumStatus(strategy)}</span>
       </div>
       <b class="strategy-direction">${strategy.direction}</b>
-      <div class="opportunity-score">訊號分數 <strong>${valueOrDash(strategy.signalScore)}</strong>/100</div>
+      <div class="opportunity-score">動能評分 <strong>${valueOrDash(strategy.signalScore)}</strong>/100</div>
       ${entryPlan(strategy)}
       <p class="strategy-note">${strategy.note}</p>
       <button class="text-btn" data-go-strategies type="button">查看全部交易訊號 ›</button>
@@ -1321,13 +1330,13 @@ export function strategiesPage(state) {
   const workspace = state.ui?.strategyWorkspace || 'signals';
   const isCrypto = (state.ui?.assetClass || 'crypto') === 'crypto';
   const signalsHtml = isCrypto ? `
-    ${pullbackPanel(state)}
-    <h3>市場動能參考</h3>
+    ${pullbackPanel(state,Date.now(),{renderMarket:row=>{const market=derivedStrategies(state).find(item=>item.symbol===row.symbol);return market?momentumDetails(market):'';}})}
+    <h3>其他市場動能</h3><p class="strategy-note">已分析幣種的動能參考整併於上方主卡；本區只列出其他標的。</p>
     <div class="signal-filter-row">
       ${tab('全部','all',filter,'data-strategy-filter')}
       ${tab('🔥 高強度','HIGH',filter,'data-strategy-filter')}
-      ${tab('已觸發','TRIGGERED',filter,'data-strategy-filter')}
-      ${tab('等待觸發','READY',filter,'data-strategy-filter')}
+      ${tab('動能達標','TRIGGERED',filter,'data-strategy-filter')}
+      ${tab('接近門檻','READY',filter,'data-strategy-filter')}
       ${tab('形成中','SETUP',filter,'data-strategy-filter')}
       ${tab('觀察','WATCH',filter,'data-strategy-filter')}
     </div>
@@ -1347,7 +1356,7 @@ export function strategiesPage(state) {
   return `<div class="page-stack">${messageBar(state)}
     ${assetClassSwitcher(state)}
     ${strategyWorkspaceTabs(state)}
-    ${workspace === 'signals' && isCrypto ? '<div class="signal-source-note">目前訊號基準：24 小時市場雷達；多週期判讀請使用 智慧分析代理 → 技術分析。</div>' : ''}
+    ${workspace === 'signals' && isCrypto ? '<div class="signal-source-note">24 小時動能用於選幣；下方以 1 小時與 4 小時收盤資料研究三策略。動能達標、研究條件成立與成交是不同狀態。</div>' : ''}
     ${section(workspace === 'signals' ? '交易訊號' : workspace === 'agents' ? '智慧分析代理' : workspace === 'candidates' ? '候選池' : '策略研發', content, badge(workspace === 'signals' ? (isCrypto ? '輕量版訊號' : '無資料') : workspace === 'agents' ? '7 個分析代理' : workspace === 'candidates' ? `${state.candidates?.items?.length || 0} 個候選` : '策略研發'))}
   </div>`;
 }

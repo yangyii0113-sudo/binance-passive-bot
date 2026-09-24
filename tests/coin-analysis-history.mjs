@@ -22,5 +22,5 @@ test('restored history stays historical even inside validity window and disables
  assert.doesNotMatch(html,/entry-plan-primary/);assert.match(html,/重新分析目前強勢幣/);
  assert.match(html,/data-pullback-compare="UNIUSDT" disabled/);
  assert.doesNotMatch(html,/data-pullback-compare="UNIUSDT" >/);
- assert.match(html,/一鍵比較本次 0 檔/);
+ assert.doesNotMatch(html,/data-pullback-batch(?: |>|$)/);
 });
