@@ -22,7 +22,7 @@ export function entryPlan(plan,{research=false}={}) {
 }
 export function pullbackPanel(state,now=Date.now(),{renderMarket}={}) {
   const snapshot=state.pullback||{};
-  return `<section class="pullback-panel" aria-label="趨勢回調研究一號"><div class="pullback-heading"><div><span class="research-kicker">強勢前 10 檔 · 研究版 · 僅模擬</span><h3>強勢幣分析 · 三策略條件</h3><p>核對多週期方向、量能與波動，再逐項分析回調、突破及均值回歸條件。</p></div><button type="button" class="primary-btn" data-pullback-scan ${snapshot.loading||snapshot.comparing?'disabled':''}>${snapshot.loading?`分析中 ${snapshot.completed||0}／${snapshot.total||0}`:'分析強勢前 10 檔進場點位'}</button></div>
+  return `<section class="pullback-panel" aria-label="趨勢回調研究一號"><div class="pullback-heading"><div><span class="research-kicker">強勢前 10 檔 · 研究版 · 僅模擬</span><h3>強勢幣分析 · 三策略條件</h3><p>核對多週期方向、量能與波動，再逐項分析回調、突破及均值回歸條件。</p></div><button type="button" class="primary-btn" data-pullback-scan ${snapshot.loading||snapshot.comparing?'disabled':''}>${snapshot.loading?(snapshot.total?`分析中 ${snapshot.completed||0}／${snapshot.total}`:'正在更新行情…'):'分析強勢前 10 檔進場點位'}</button></div>
     <p class="strategy-note">每次分析先更新行情，從高流動性標的池選出上漲的加密貨幣永續合約，依市場強度排序，成交額作同分排序；排除 24 小時漲幅達 30% 及成交額低於 1,000 萬 USDT 的標的。不足 10 檔不補足，排名不代表可立即進場。</p>
     
     ${snapshot.scannedAt?`<p>行情時間：${escape(new Date(snapshot.scannedAt).toLocaleString('zh-TW'))} · 本次 ${snapshot.total} 檔</p>`:''}
