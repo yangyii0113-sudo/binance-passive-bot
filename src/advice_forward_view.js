@@ -7,7 +7,9 @@ const num=(n,suffix='')=>Number.isFinite(n)?`${n.toLocaleString('zh-TW',{maximum
 const price=n=>Number.isFinite(n)?n.toLocaleString('zh-TW',{maximumFractionDigits:8}):'—';
 export function forwardTrackingBar(state,{full=false}={}){
   const f=state.forward||{},rows=f.book?.rows||[];
-  return `<section class="forward-control" aria-label="建議前向追蹤"><div><strong>${f.enabled?'本機前向追蹤中':'本機前向追蹤未啟動'}</strong><p>${esc(f.note||'開啟後再分析幣種，才會登錄新建議。')}</p></div>
+  const feeds=f.feeds||[],live=feeds.filter(x=>x.status==='LIVE').length;
+  const heading=!f.enabled?'本機前向追蹤未啟動':!feeds.length?'追蹤已啟動 · 等待新分析':live?`本機前向追蹤中 · ${live} 檔行情接通`:feeds.some(x=>x.status==='CONNECTING')?'追蹤已啟動 · 行情連接中':'追蹤暫停 · 行情中斷';
+  return `<section class="forward-control" aria-label="建議前向追蹤"><div><strong>${heading}</strong><p>${esc(f.note||'開啟後再分析幣種，才會登錄新建議。')}</p></div>
     ${f.error?`<p role="alert">${esc(f.error)}</p>`:''}
     <div class="history-actions">${f.enabled?'<button type="button" class="secondary-btn" data-forward-stop>停止追蹤</button>':`<button type="button" class="primary-inline-btn" data-forward-start ${f.starting?'disabled':''}>${f.starting?'正在啟動…':'開始本機前向追蹤'}</button>`}${full?'<a class="secondary-btn" href="#/advice">回到交易建議</a>':`<a class="secondary-btn" href="#/advice-results">建議成效 · ${rows.length} 筆</a>`}</div>
     <p>只在此頁保持前景時觀察；關閉、背景或斷線即停止未完成樣本。不補造過往成交。</p>

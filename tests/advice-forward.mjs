@@ -119,4 +119,6 @@ test('performance UI preserves missing outcomes, escapes records, and has no ord
   assert.match(html,/尚無足夠證據/);assert.match(html,/結案勝率<\/span>\s*<strong>—/);
   assert.match(html,/資料中斷 · 待覆核/);assert.match(html,/&lt;script&gt;/);assert.doesNotMatch(html,/<script>|data-paper-open|data-paper-close|data-real-order/);
   assert.match(html,/真實下單鎖定/);assert.deepEqual(state,before);
+  const disconnected=adviceResultsPage({forward:{...state.forward,enabled:true,feeds:[{symbol:'UNIUSDT',status:'BLOCKED'}]}});
+  assert.match(disconnected,/追蹤暫停 · 行情中斷/);assert.doesNotMatch(disconnected,/本機前向追蹤中/);
 });
