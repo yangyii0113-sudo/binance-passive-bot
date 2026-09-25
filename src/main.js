@@ -1,5 +1,6 @@
 import { OUTLOOK_TTL } from './trend_outlook.js';
 import { createForwardController } from './advice_forward_controller.js';
+import { forwardFeedFacts } from './advice_forward_view.js';
 import { loadCoinHistory, saveCoinAnalysis, restoreCoinAnalysis } from './coin_analysis_history.js';
 import { loadComparisonHistory, saveComparisonRun, restoreComparisonRun } from './comparison_history.js';
 import { runComparisonBatch } from './comparison_batch.js';
@@ -113,7 +114,7 @@ function refreshAgentPlan(value, {origin='重新核對', technical}={}) {
   const symbol=normalizePlanSymbol(value);
   if (pendingAgentPlans.has(symbol)) return pendingAgentPlans.get(symbol);
   forwardTracker?.watchSymbol(symbol);
-  const forwardTicket=forwardTracker?.ticket();
+  const forwardTicket=forwardTracker?.ticket(symbol);
   writeAgentPlan(symbol,{symbol,status:'LOADING'});
   render();
   const task=generateAgentTradePlan(symbol).then(record=>{
@@ -612,6 +613,8 @@ function initEvents() {
   document.addEventListener('click', async (event) => {
     if(event.target.closest?.('[data-forward-start]')){await forwardTracker?.start();return;}
     if(event.target.closest?.('[data-forward-stop]')){forwardTracker?.stop();return;}
+    const reconnectFeed=event.target.closest?.('[data-forward-reconnect]');
+    if(reconnectFeed){forwardTracker?.reconnect(reconnectFeed.dataset.forwardReconnect);return;}
     if(event.target.closest?.('[data-forward-export]')){
       try{setStateSlice('forward',{exportFile:forwardTracker.export(),exportMessage:'這是此刻的本機研究快照，可下載或複製保存。'});}
       catch(error){setStateSlice('forward',{error:String(error.message)});}
@@ -1049,7 +1052,16 @@ function init() {
   setStateSlice('agents',{planHistory:loadAgentPlanHistory()});
   let forwardStorage;
   try{forwardStorage=window.localStorage;}catch{}
-  forwardTracker=createForwardController({storage:forwardStorage,locks:navigator.locks,WebSocketClass:window.WebSocket,visible:()=>document.visibilityState==='visible',onChange:view=>{setStateSlice('forward',view);render();}});
+  forwardTracker=createForwardController({storage:forwardStorage,locks:navigator.locks,WebSocketClass:window.WebSocket,visible:()=>document.visibilityState==='visible',
+    onChange:view=>{setStateSlice('forward',{...view,...(view.dataError?{exportFile:null,exportMessage:null}:{})});render();},
+    onHealth:({feeds})=>{
+      setStateSlice('forward',{feeds});
+      for(const element of document.querySelectorAll('[data-forward-facts]')){
+        const feed=feeds.find(f=>f.symbol===element.dataset.forwardFacts);
+        if(feed)element.textContent=forwardFeedFacts(feed);
+      }
+    }
+  });
   forwardTracker.load();
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState!=='visible')forwardTracker.stop('頁面進入背景；未完成樣本待覆核');});
   window.addEventListener('pagehide',()=>forwardTracker.stop('頁面離開；未完成樣本待覆核'));

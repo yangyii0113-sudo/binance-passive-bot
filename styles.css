@@ -2373,6 +2373,12 @@ button, a, input, select, summary { scroll-margin-block:16px 110px; }
 .forward-control p { margin:6px 0 0; color:#b9b6ad; line-height:1.65; }
 .forward-control a.secondary-btn { display:inline-flex; align-items:center; text-decoration:none; }
 .forward-control [role="alert"] { color:#ffb2a2; overflow-wrap:anywhere; }
+.forward-diagnostics { min-width:0; border-top:1px solid #554628; padding-top:10px; }
+.forward-diagnostics summary { cursor:pointer; line-height:1.6; }
+.forward-diagnostics .forward-feeds { margin:10px 0 0; padding:0; list-style:none; }
+.forward-diagnostics li + li { border-top:1px solid #554628; margin-top:12px; padding-top:12px; }
+.forward-diagnostics .history-actions { margin-top:10px; }
+.forward-diagnostics [data-forward-facts] { font-variant-numeric:tabular-nums; }
 .forward-page .section-head { flex-wrap:wrap; }
 .forward-page .metric-grid { margin:18px 0; }
 .forward-page .forward-coverage { margin:16px 0; }

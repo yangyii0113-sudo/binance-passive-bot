@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { emptyForwardBook, registerForwardAdvice, advanceForward, interruptForward, expireForward, normalizeForwardTick, samplePnl, forwardSummary } from '../src/advice_forward.js';
 import { createForwardStore, validateForwardBook, exportForwardBook } from '../src/advice_forward_store.js';
 import { createForwardController } from '../src/advice_forward_controller.js';
-import { adviceResultsPage } from '../src/advice_forward_view.js';
+import { adviceResultsPage, forwardTrackingBar } from '../src/advice_forward_view.js';
 
 const H=3600000,now=2400*H+120000;
 function record(side='LONG',key='breakout'){
@@ -85,10 +85,10 @@ test('storage reload, corruption, quota, conflicting writers and malformed PnL f
 });
 
 function controllerHarness(storage=memory(),locks={request:(_name,_opts,fn)=>Promise.resolve(fn({}))}){
-  const sockets=[];let time=now,visible=true,watchdog;
-  class WS{constructor(url){this.url=url;this.closed=false;sockets.push(this);}close(){this.closed=true;}send(id,price){this.onmessage?.({data:JSON.stringify({e:'aggTrade',s:'UNIUSDT',a:id,p:String(price),T:time,E:time,st:1})});}}
-  const c=createForwardController({storage,locks,WebSocketClass:WS,clock:()=>time,visible:()=>visible,interval:fn=>{watchdog=fn;return 1;},cancelInterval:()=>{}});
-  return {c,storage,sockets,time:t=>{time=t;},hide:()=>{visible=false;},watchdog:()=>watchdog()};
+  const sockets=[],health=[];let time=now,visible=true,watchdog,changes=0;
+  class WS{constructor(url){this.url=url;this.closed=false;sockets.push(this);}close(){this.closed=true;}open(){this.onopen?.({});}send(id,price){this.onmessage?.({data:JSON.stringify({e:'aggTrade',s:'UNIUSDT',a:id,p:String(price),T:time,E:time,st:1})});}}
+  const c=createForwardController({storage,locks,WebSocketClass:WS,clock:()=>time,visible:()=>visible,onChange:()=>changes++,onHealth:x=>health.push(x),interval:fn=>{watchdog=fn;return 1;},cancelInterval:()=>{}});
+  return {c,storage,sockets,health,changes:()=>changes,time:t=>{time=t;},hide:()=>{visible=false;},watchdog:()=>watchdog()};
 }
 test('controller starts an isolated stream, records new analysis, closes on hidden, and never restores entries',async()=>{
   const h=controllerHarness();h.c.load();await h.c.start();h.c.watchSymbol('UNIUSDT');
@@ -97,6 +97,40 @@ test('controller starts an isolated stream, records new analysis, closes on hidd
   h.time(now+100);h.sockets[0].send(11,100);assert.equal(h.c.view().book.rows[0].status,'OPEN');
   h.hide();h.watchdog();assert.equal(h.c.view().book.rows[0].status,'GAP');assert.equal(h.c.view().enabled,false);assert.equal(h.sockets[0].closed,true);
   const fresh=controllerHarness(h.storage);fresh.c.load();await fresh.c.start();assert.equal(fresh.c.view().book.rows[0].status,'GAP');assert.equal(fresh.sockets.length,0);fresh.c.stop();
+});
+test('connection diagnostics distinguish failure before handshake from missing first trade',async()=>{
+  const a=controllerHarness();await a.c.start();a.c.watchSymbol('UNIUSDT');a.time(now+10001);a.watchdog();
+  assert.equal(a.c.view().feeds[0].issue,'CONNECT_TIMEOUT');assert.equal(a.c.view().feeds[0].received,0);a.c.stop();
+  const b=controllerHarness();await b.c.start();b.c.watchSymbol('UNIUSDT');b.sockets[0].open();
+  assert.equal(b.c.view().feeds[0].status,'WAITING');b.c.watchSymbol('UNIUSDT');assert.equal(b.sockets.length,1);
+  b.time(now+10001);b.watchdog();assert.equal(b.c.view().feeds[0].issue,'FIRST_TICK_TIMEOUT');b.c.stop();
+});
+test('tick diagnostics remain current without cloning the book or redrawing the full page per tick',async()=>{
+  const h=controllerHarness();await h.c.start();h.c.watchSymbol('UNIUSDT');h.sockets[0].open();h.sockets[0].send(10,99);
+  const changes=h.changes();h.time(now+100);h.sockets[0].send(11,99.1);h.sockets[0].send(11,99.1);h.time(now+200);h.sockets[0].send(12,99.2);h.watchdog();
+  assert.equal(h.changes(),changes);assert.equal(h.health.at(-1).feeds[0].received,3);assert.equal(h.health.at(-1).feeds[0].lastAt,now+200);
+  assert.equal(h.c.view().feeds[0].lastPrice,99.2);assert.equal(h.c.view().book.rows.length,0);h.c.stop();
+});
+test('manual reconnection cannot resurrect a gap or admit an analysis from the old connection',async()=>{
+  const h=controllerHarness();await h.c.start();h.c.watchSymbol('UNIUSDT');h.sockets[0].send(10,99);
+  const old=h.c.ticket('UNIUSDT');h.c.register(record(),old);h.time(now+100);h.sockets[0].send(11,100);
+  h.sockets[0].onclose?.({code:1006});const filled=structuredClone(h.c.view().book.rows[0]);assert.equal(filled.status,'GAP');
+  assert.equal(h.c.reconnect('UNIUSDT'),true);assert.equal(h.c.reconnect('UNIUSDT'),false);h.sockets[1].open();h.sockets[1].send(900,99);
+  const stale=record('LONG','structured');stale.checkedAt=now+100;stale.snapshotUntil=now+60100;
+  h.c.register(stale,old);assert.equal(h.c.view().book.rows.length,1);assert.deepEqual(h.c.view().book.rows[0],filled);
+  h.c.register(stale,h.c.ticket('UNIUSDT'));assert.equal(h.c.view().book.rows.length,2);assert.equal(h.c.view().book.rows[1].status,'PENDING');h.c.stop();
+});
+test('a tab-lock conflict preserves validated past outcomes and permits read-only export',async()=>{
+  const a=setup();step(a.book,11,100);step(a.book,12,120);
+  const s=memory(),store=createForwardStore(s);store.load();store.save(a.book);
+  const h=controllerHarness(s,{request:(_n,_o,fn)=>Promise.resolve(fn(null))});h.c.load();await h.c.start();
+  const f=h.c.view(),html=adviceResultsPage({forward:f});assert.ok(f.error);assert.equal(f.dataError,null);
+  assert.match(html,/完整結案<\/span>\s*<strong>1/);assert.doesNotMatch(html,/停止計算成效|資料異常，暫停展示/);
+  assert.equal(JSON.parse(h.c.export().text).rows[0].status,'CLOSED');
+});
+test('corrupted storage still hides performance and blocks export after an operational error',async()=>{
+  const s=memory();s.setItem('','{bad');const h=controllerHarness(s);h.c.load();await h.c.start();
+  assert.ok(h.c.view().dataError);assert.throws(()=>h.c.export());assert.equal(s.raw(),'{bad');assert.equal(h.c.view().enabled,false);
 });
 test('controller restart invalidates uncompleted persisted rows; unsupported locks and quota never enable',async()=>{
   const a=controllerHarness();await a.c.start();a.c.watchSymbol('UNIUSDT');a.sockets[0].send(10,99);a.c.register(record());
@@ -121,4 +155,26 @@ test('performance UI preserves missing outcomes, escapes records, and has no ord
   assert.match(html,/真實下單鎖定/);assert.deepEqual(state,before);
   const disconnected=adviceResultsPage({forward:{...state.forward,enabled:true,feeds:[{symbol:'UNIUSDT',status:'BLOCKED'}]}});
   assert.match(disconnected,/追蹤暫停 · 行情中斷/);assert.doesNotMatch(disconnected,/本機前向追蹤中/);
+});
+test('connection recovery UI exposes each stage and enables only the matching next action',()=>{
+  const feed={symbol:'UNIUSDT',status:'WAITING',received:0,lastAt:null,lastPrice:null};
+  const state={forward:{enabled:true,feeds:[feed]}};
+  assert.match(forwardTrackingBar(state),/連線已建立 · 等待首筆行情/);
+  assert.doesNotMatch(forwardTrackingBar(state),/data-forward-reconnect|data-agent-plan-refresh/);
+  feed.status='BLOCKED';feed.reason='連線已建立，但十秒內未收到首筆合格行情';
+  assert.match(forwardTrackingBar(state),/data-forward-reconnect="UNIUSDT"/);
+  assert.match(forwardTrackingBar(state),/十秒內未收到首筆合格行情/);
+  feed.status='LIVE';feed.received=3;feed.lastAt=now;feed.lastPrice=99.2;
+  const live=forwardTrackingBar(state,{full:true});
+  assert.match(live,/已接收 3 筆/);assert.match(live,/最新觀測價 99.2/);assert.match(live,/data-forward-facts="UNIUSDT"/);
+  assert.match(live,/data-agent-plan-refresh="UNIUSDT"/);assert.doesNotMatch(live,/data-forward-reconnect/);
+  state.forward.enabled=false;feed.status='STOPPED';
+  assert.match(forwardTrackingBar(state,{full:true}),/已停止 · 保留最後觀測/);
+  assert.doesNotMatch(forwardTrackingBar(state,{full:true}),/data-forward-reconnect|data-agent-plan-refresh/);
+});
+test('late callbacks from a replaced socket cannot change the new feed or past gaps',async()=>{
+  const h=controllerHarness();await h.c.start();h.c.watchSymbol('UNIUSDT');h.sockets[0].send(10,99);h.c.register(record());
+  const late=h.sockets[0].onmessage;h.sockets[0].onclose({code:1006});h.c.reconnect('UNIUSDT');h.sockets[1].send(900,99);
+  const before=h.c.view();late({data:JSON.stringify({e:'aggTrade',s:'UNIUSDT',a:11,p:'100',T:now,E:now})});
+  assert.deepEqual(h.c.view(),before);h.c.stop();
 });
