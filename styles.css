@@ -2278,7 +2278,7 @@ button, a, input, select, summary { scroll-margin-block:16px 110px; }
 .ai-agents-wrap>.agent-tabs .agent-tab strong{font-size:12px;line-height:1.5;overflow-wrap:anywhere}
 
 /* Two entry points; five stages own the daily research flow. */
-.strategy-workspace-tabs.strategy-primary-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));padding:4px;gap:4px}
+.strategy-workspace-tabs.strategy-primary-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));padding:4px;gap:4px}
 .strategy-primary-tabs .strategy-workspace-btn{min-width:0;min-height:44px;font-size:14px;padding:9px}
 .strategy-page .ai-agents-wrap{gap:12px;padding:12px}
 .strategy-page .ai-agents-wrap>.agent-tabs{margin:0;padding:3px}
@@ -2343,3 +2343,27 @@ button, a, input, select, summary { scroll-margin-block:16px 110px; }
 .decision-actions{display:grid;grid-template-columns:1fr;gap:8px;margin-top:12px}
 .decision-actions button{width:100%;min-height:44px;font-size:14px;white-space:normal}
 @media(min-width:760px){.decision-actions{grid-template-columns:repeat(2,minmax(0,1fr))}.agent-advice-panel{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}.advanced-tool-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.agent-advice-panel{grid-template-columns:minmax(0,1fr)}
+.advice-intro strong{font-size:17px;line-height:1.5;color:#f0cf8b}
+.advice-intro p,.advice-start p{font-size:14px;line-height:1.65;color:#bfc4cd;margin:8px 0}
+.advice-start{min-width:0}
+.advice-symbols{display:flex;flex-wrap:wrap;gap:8px}
+.advice-symbol-btn{flex:1 1 140px;min-width:0;text-align:left;min-height:58px;padding:10px 12px;border-radius:10px;border:1px solid #555752;background:#141719;color:#e7e8e5;cursor:pointer}
+.advice-symbol-btn strong,.advice-symbol-btn span{display:block;overflow-wrap:anywhere;line-height:1.5}
+.advice-symbol-btn strong{font-size:15px}
+.advice-symbol-btn span{font-size:12px;color:#c3c8cf;margin-top:3px}
+.advice-symbol-btn[aria-pressed="true"]{border-color:#f0be55;background:#30291b;box-shadow:inset 0 0 0 1px #f0be55}
+.advice-symbol-btn:focus-visible{outline:2px solid #f0be55;outline-offset:3px}
+.decision-verdict{margin:14px 0 8px;padding:12px;border-radius:10px;background:#101314;border-left:4px solid #b6aaa0}
+.decision-verdict>span,.decision-verdict>strong{display:block;line-height:1.5}
+.decision-verdict>span{font-size:12px;color:#c3c8cf}
+.decision-verdict>strong{font-size:21px;color:#f0eee7;margin-top:4px}
+.decision-verdict[data-advice-verdict="plan"]{border-left-color:#edbb53}
+.decision-verdict[data-advice-verdict="plan"] strong{color:#f0ce83}
+.decision-verdict[data-advice-verdict="blocked"],.decision-verdict[data-advice-verdict="conflict"]{border-left-color:#d18d88}
+.decision-no-levels{display:grid;gap:6px;padding:12px;border:1px dashed #706346;border-radius:10px}
+.decision-no-levels strong{font-size:15px;line-height:1.6;color:#eee4ce}
+.decision-no-levels span{font-size:14px;line-height:1.6;color:#c3c8cf}
+.agent-decision-card>.core-disclosure{margin-top:12px}
+.agent-advice-panel .agent-inline-form{min-width:0}
+.agent-advice-panel .agent-inline-form select{width:100%;min-width:0}

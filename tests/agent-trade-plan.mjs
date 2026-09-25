@@ -193,3 +193,27 @@ test('strategy conditions and quote integrity remain independent display states'
   assert.equal(agentPlanPresentation(conflict,now).data,'本次核對完整');
   assert.doesNotMatch(agentDecisionCard(conflict,{now}),/decision-levels/);
 });
+
+test('advice displays one selected coin without borrowing another coin levels or changing records',()=>{
+  const ready=fixture(),waiting=fixture();waiting.symbol='SOLUSDT';waiting.row.symbol='SOLUSDT';waiting.row.analysis.strategies[0].status='WAIT';
+  const s=structuredClone(appState);s.agents.tradePlans={UNIUSDT:ready,SOLUSDT:waiting};s.ui.adviceSymbol='SOLUSDT';
+  const before=structuredClone(s),html=agentAdvicePanel(s,now);
+  assert.match(html,/data-selected-advice="SOLUSDT"/);
+  assert.equal((html.match(/class="agent-decision-card"/g)||[]).length,1);
+  assert.match(html,/目前 1 檔有條件式模擬計畫/);
+  assert.doesNotMatch(html,/decision-levels|100\.000/);
+  assert.match(html,/暫不進場 · 等待條件/);
+  assert.deepEqual(s,before);
+  s.ui.adviceSymbol=null;assert.match(agentAdvicePanel(s,now),/data-selected-advice="UNIUSDT"/);
+  s.ui.adviceSymbol='UNIUSDT';const expired=agentAdvicePanel(s,now+60000);
+  assert.match(expired,/目前 0 檔有條件式模擬計畫/);assert.doesNotMatch(expired,/decision-levels|100\.000/);
+});
+
+test('direct advice route exposes an actionable empty state and preserves separate research views',()=>{
+  const s=structuredClone(appState),before=structuredClone(s),html=pages.advice(s);
+  assert.match(html,/選擇分析幣種/);assert.match(html,/產生交易建議/);
+  assert.match(html,/data-agent-key="advice" role="tab" aria-selected="true"/);
+  assert.doesNotMatch(html,/class="agent-tabs"|data-pullback-scan|decision-levels/);
+  assert.deepEqual(s,before);
+  s.ui.strategyWorkspace='signals';assert.match(pages.strategies(s),/data-pullback-scan/);
+});

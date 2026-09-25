@@ -135,6 +135,7 @@ async function runAgentTechnical(value, {origin='使用者選幣 · 多週期分
   const symbol=normalizePlanSymbol(value);
   if(!/^[\p{L}\p{N}]+USDT$/u.test(symbol)) return;
   Object.assign(appState.ui,{strategyWorkspace:'agents',agentKey:'technical',agentFilter:'all',selectedSymbol:symbol,message:`${symbol} 多週期技術分析中…`});
+  if(currentRoute()==='advice')navigateTo('#/strategies');
   setStateSlice('agents',{technicalBusy:true,technical:{symbol,status:'LOADING'}});
   writeAgentPlan(symbol,{symbol,status:'LOADING'});render();
   document.querySelector('#agent-technical-form')?.scrollIntoView({block:'center'});
@@ -145,7 +146,12 @@ async function runAgentTechnical(value, {origin='使用者選幣 · 多週期分
     setStateSlice('agents',{technical});
     if(persistCandidate && candidateBySymbol(symbol)){updateCandidate(symbol,{technical});syncCandidates();}
     await refreshAgentPlan(symbol,{origin,technical});
-    appState.ui.message=`${symbol} 分析流程完成；請查看下方交易計畫與等待條件。`;
+    appState.ui.message=`${symbol} 分析完成，交易建議已整理。`;
+    if(currentRoute()==='strategies' && appState.ui.strategyWorkspace==='agents' && appState.ui.agentKey==='technical' && appState.ui.selectedSymbol===symbol){
+      appState.ui.adviceSymbol=symbol;
+      appState.ui.agentKey='advice';
+      navigateTo('#/advice');
+    }
   } finally {setStateSlice('agents',{technicalBusy:false});render();}
 }
 
@@ -182,7 +188,7 @@ let renderedContext = null;
 function render() {
   const route = currentRoute();
   const context = [route, appState.ui.strategyWorkspace, appState.ui.agentKey,
-    appState.ui.labTab, appState.ui.selectedSymbol].join(':');
+    appState.ui.labTab, appState.ui.selectedSymbol,appState.ui.adviceSymbol].join(':');
   const root = document.getElementById('app');
   // Market updates must not reset a user's order/backtest inputs or collapse research details.
   const controls = context === renderedContext
@@ -598,6 +604,15 @@ function initEvents() {
   });
 
   document.addEventListener('click', async (event) => {
+    const adviceSymbol=event.target.closest?.('[data-agent-advice-symbol]');
+    if(adviceSymbol){
+      if(appState.agents.tradePlans?.[adviceSymbol.dataset.agentAdviceSymbol]){
+        appState.ui.adviceSymbol=adviceSymbol.dataset.agentAdviceSymbol;
+        appState.ui.strategyWorkspace='agents';appState.ui.agentKey='advice';
+        navigateTo('#/advice');
+      }
+      return;
+    }
     const selectedAnalysis=event.target.closest?.('[data-agent-analyze]');
     if(selectedAnalysis){await runAgentTechnical(selectedAnalysis.dataset.agentAnalyze,{origin:'市場篩選 · 一鍵分析'});return;}
     const planCompare=event.target.closest?.('[data-agent-plan-compare]');
@@ -619,7 +634,9 @@ function initEvents() {
     }
     const openPlan=event.target.closest?.('[data-agent-plan-open]');
     if(openPlan){
-      appState.ui.strategyWorkspace='agents';appState.ui.agentKey='playbook';appState.ui.agentFilter='all';render();
+      appState.ui.strategyWorkspace='agents';appState.ui.agentKey='playbook';appState.ui.agentFilter='all';
+      if(currentRoute()==='advice')location.hash='#/strategies';
+      render();
       const target=[...document.querySelectorAll('[data-plan-symbol]')].find(el=>el.dataset.planSymbol===openPlan.dataset.agentPlanOpen);
       target?.scrollIntoView({block:'start'});return;
     }
@@ -750,8 +767,9 @@ function initEvents() {
       appState.ui.strategyWorkspace = strategyWorkspace.dataset.strategyWorkspace;
       if(strategyWorkspace.dataset.agentStage || previous==='candidates' && appState.ui.strategyWorkspace==='agents'){
         appState.ui.agentKey=strategyWorkspace.dataset.agentStage || 'market';
-        appState.ui.agentFilter='strong';
+        appState.ui.agentFilter=appState.ui.agentKey==='market'?'strong':'all';
       }
+      if(currentRoute()==='advice')navigateTo('#/strategies');
       render();
       return;
     }
@@ -775,6 +793,8 @@ function initEvents() {
         playbook: 'all'
       };
       appState.ui.agentFilter = defaults[appState.ui.agentKey] || 'all';
+      if(appState.ui.agentKey==='advice')navigateTo('#/advice');
+      else if(currentRoute()==='advice')navigateTo('#/strategies');
       render();
       return;
     }
@@ -802,7 +822,7 @@ function initEvents() {
     }
     const agentTechnicalRun = event.target.closest?.('[data-agent-technical-run]');
     if (agentTechnicalRun) {
-      const form=document.getElementById('agent-technical-form');
+      const form=agentTechnicalRun.closest('form');
       const symbol=form?new FormData(form).get('symbol'):null;
       if(symbol)await runAgentTechnical(symbol);
       return;

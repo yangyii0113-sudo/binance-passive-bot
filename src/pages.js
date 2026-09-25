@@ -702,9 +702,10 @@ function strategyTimeframeTabs(state){
 }
 function strategyWorkspaceTabs(state){
   const workspace=state.ui?.strategyWorkspace || 'signals';
-  const active=workspace==='candidates'?'agents':workspace;
+  const active=workspace==='agents' && state.ui?.agentKey==='advice'?'advice':workspace==='candidates'?'agents':workspace;
   return `<div class="strategy-workspace-tabs strategy-primary-tabs" role="tablist" aria-label="交易研究入口">
-    ${[['signals','強勢訊號'],['agents','交易流程']].map(([key,label])=>`<button type="button" class="strategy-workspace-btn ${active===key?'active':''}" data-strategy-workspace="${key}" role="tab" aria-selected="${active===key}">${label}</button>`).join('')}
+    <button type="button" class="strategy-workspace-btn ${active==='advice'?'active':''}" data-agent-key="advice" role="tab" aria-selected="${active==='advice'}">交易建議</button>
+    ${[['signals','強勢訊號'],['agents','分析流程']].map(([key,label])=>`<button type="button" class="strategy-workspace-btn ${active===key?'active':''}" data-strategy-workspace="${key}" ${key==='agents'?'data-agent-stage="technical"':''} role="tab" aria-selected="${active===key}">${label}</button>`).join('')}
   </div>`;
 }
 function strategyAdvancedTools(state){
@@ -1056,7 +1057,7 @@ function technicalAgentPanel(state){
       <label>分析標的<select name="symbol">${marketSymbolOptions(state)}</select></label>
       <button type="button" class="primary-inline-btn" data-agent-technical-run ${state.agents?.technicalBusy?'disabled':''}>${state.agents?.technicalBusy?'分析與擬定中…':'分析並擬定交易計畫'}</button>
     </form>
-    ${technical?.symbol?'<button type="button" class="secondary-btn agent-summary-link" data-agent-key="advice">查看進退場摘要</button>':''}
+    ${technical?.symbol?`<button type="button" class="primary-inline-btn agent-summary-link" data-agent-advice-symbol="${escapeHtml(technical.symbol)}">查看 ${escapeHtml(technical.symbol)} 交易建議 →</button>`:''}
     ${trendOutlookView(technical,state.agents?.tradePlans?.[technical?.symbol],{filter})}
     ${technical?.status==='LIVE'?`<details class="core-disclosure" data-search="technical-indicators"><summary>逐週期指標明細</summary>${frameHtml}</details>`:frameHtml}
     ${technical?.symbol?agentTradePlanView(state.agents?.tradePlans?.[technical.symbol],{symbol:technical.symbol,comparison:state.agents?.planComparisons?.[technical.symbol],comparisonBusy:state.agents?.planComparisonBusy || state.pullback?.comparing}):''}
@@ -1211,10 +1212,10 @@ function aiAgentsPanel(state){
   if(key==='risk') content = riskAgentPanel(state);
   if(key==='review') content = tradeReviewAgentPanel(state);
   if(key==='playbook') content = playbookAgentPanel(state);
-  if(key==='advice') content = agentAdvicePanel(state);
+  if(key==='advice') content = agentAdvicePanel(state,Date.now(),{analysisForm:`<form id="agent-advice-form" class="agent-inline-form"><label>選擇分析幣種<select name="symbol">${marketSymbolOptions(state)}</select></label><button type="button" class="primary-inline-btn" data-agent-technical-run ${state.agents?.technicalBusy?'disabled':''}>${state.agents?.technicalBusy?'分析中…':'產生交易建議'}</button></form>`});
   if(key==='planHistory') content = agentHistoryPanel(state);
   return `<div class="ai-agents-wrap">
-    ${agentTabs(state)}
+    ${key==='advice'?'':agentTabs(state)}
     ${state.agents?.planHistory?.error?`<p role="alert">${escapeHtml(state.agents.planHistory.error)}</p>`:''}
     ${key==='market'?`<div class="selection-source-tabs" aria-label="篩選來源"><button type="button" class="secondary-btn" data-strategy-workspace="agents" data-agent-stage="market" aria-pressed="${!candidates}">市場篩選</button><button type="button" class="secondary-btn" data-strategy-workspace="candidates" aria-pressed="${candidates}">我的候選 · ${state.candidates?.items?.length || 0}</button></div>`:''}
     ${content}
@@ -1371,7 +1372,7 @@ export function strategiesPage(state) {
     ${assetClassSwitcher(state)}
     ${strategyWorkspaceTabs(state)}
     ${workspace === 'signals' && isCrypto ? '<div class="signal-source-note">24 小時動能用於選幣；下方以 1 小時與 4 小時收盤資料研究三策略。動能達標、研究條件成立與成交是不同狀態。</div>' : ''}
-    ${section(workspace === 'signals' ? '交易訊號' : workspace === 'agents' || workspace === 'candidates' ? '交易研究' : '策略研發', content, badge(workspace === 'signals' ? (isCrypto ? '輕量版訊號' : '無資料') : workspace === 'agents' || workspace === 'candidates' ? '僅模擬 · 實盤鎖定' : '策略研發'))}
+    ${section(workspace === 'agents' && state.ui?.agentKey==='advice' ? '交易建議' : workspace === 'signals' ? '交易訊號' : workspace === 'agents' || workspace === 'candidates' ? '交易研究' : '策略研發', content, badge(workspace === 'signals' ? (isCrypto ? '輕量版訊號' : '無資料') : workspace === 'agents' || workspace === 'candidates' ? '僅模擬 · 實盤鎖定' : '策略研發'))}
     ${strategyAdvancedTools(state)}
   </div>`;
 }
@@ -1555,4 +1556,4 @@ export function strategyLabPage(state) {
   </div>`;
 }
 
-export const pages = Object.freeze({ home: homePage, strategies: strategiesPage, orders: ordersPage, lab: strategyLabPage, results: state => strategyLabPage({...state, ui:{...state.ui,labTab:'forward'}}), backtest: state => strategyLabPage({...state, ui:{...state.ui,labTab:'backtest'}}) });
+export const pages = Object.freeze({ home: homePage, strategies: strategiesPage, advice: state => strategiesPage({...state,ui:{...state.ui,strategyWorkspace:'agents',agentKey:'advice'}}), orders: ordersPage, lab: strategyLabPage, results: state => strategyLabPage({...state, ui:{...state.ui,labTab:'forward'}}), backtest: state => strategyLabPage({...state, ui:{...state.ui,labTab:'backtest'}}) });

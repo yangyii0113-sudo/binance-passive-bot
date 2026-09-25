@@ -199,6 +199,7 @@ assert.equal(
 for (const [hash, route] of [
   ['#/', 'home'],
   ['#/strategies', 'strategies'],
+  ['#/advice', 'advice'],
   ['#/orders', 'orders'],
   ['#/results', 'results'],
   ['#/backtest', 'backtest']
@@ -211,5 +212,5 @@ console.log('GATE_A_SMOKE_OK');
 console.log('market: dynamic liquid universe + symmetric opportunity strength; LIVE -> STALE -> ERROR');
 console.log('snapshot sources: missing -> EMPTY');
 console.log('runtime bridge: strategy/paper/results/backtest canonicalization');
-console.log('routes: 5/5');
+console.log('routes: 6/6');
 console.log('page renderers: 5/5');

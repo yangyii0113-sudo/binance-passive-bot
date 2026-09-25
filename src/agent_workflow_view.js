@@ -1,12 +1,22 @@
 import { trendOutlookView } from './trend_outlook_view.js';
-import { agentDecisionCard } from './agent_decision_view.js';
+import { agentDecisionCard, agentActionLabel } from './agent_decision_view.js';
+import { agentPlanStatus } from './agent_trade_plan.js';
 import { FAMILY_NAMES } from './strategy_families.js';
 import { escapeHtml as esc, displayDate } from './ui.js';
 import { agentComparisonView } from './agent_comparison_view.js';
 
-export function agentAdvicePanel(state, now=Date.now()) {
-  const records=Object.values(state.agents?.tradePlans || {}).sort((a,b)=>(b.checkedAt || 0)-(a.checkedAt || 0));
-  return `<section class="agent-panel-stack agent-advice-panel" aria-label="交易建議">${records.length?records.map(record=>`<div class="advice-with-outlook">${agentDecisionCard(record,{now})}${state.agents?.technical?.symbol===record.symbol?trendOutlookView(state.agents.technical,record,{now,compact:true}):''}</div>`).join(''):'<div class="empty-state"><strong>尚無交易建議</strong><span>先完成分析；通過核對的進場、止損與止盈會直接整理於此。</span><button type="button" class="primary-inline-btn" data-agent-key="technical">開始分析</button></div>'}</section>`;
+export function agentAdvicePanel(state, now=Date.now(), {analysisForm=''}={}) {
+  const records=Object.values(state.agents?.tradePlans || {}).filter(Boolean).sort((a,b)=>(b.checkedAt || 0)-(a.checkedAt || 0));
+  const ready=records.filter(r=>agentPlanStatus(r,now).key==='plan');
+  const selected=records.find(r=>r.symbol===state.ui?.adviceSymbol) || ready[0] || records[0];
+  const symbol=esc(selected?.symbol || '');
+  return `<section class="agent-panel-stack agent-advice-panel" aria-label="交易建議總覽">
+    <div class="advice-intro"><strong>${records.length?`目前 ${ready.length} 檔有條件式模擬計畫`:'先選幣種，直接取得交易建議'}</strong><p>${records.length?'先選幣種，再看「目前建議」與點位。狀態不代表勝率或獲利排名。':'分析完成會直接顯示：現在該做什麼、進場條件、止盈、止損。條件不足時會清楚列出等待原因。'}</p></div>
+    ${records.length?`<div class="advice-symbols" role="group" aria-label="選擇要看的交易建議">${records.map(r=>`<button type="button" class="advice-symbol-btn" data-agent-advice-symbol="${esc(r.symbol)}" aria-pressed="${r===selected}"><strong>${esc(r.symbol)}</strong><span>${agentActionLabel(r,now)}</span></button>`).join('')}</div>
+      <div class="advice-with-outlook" data-selected-advice="${symbol}">${agentDecisionCard(selected,{now})}${state.agents?.technical?.symbol===selected.symbol?trendOutlookView(state.agents.technical,selected,{now,compact:true}):''}</div>
+      <details class="core-disclosure" data-search="advice-new-analysis"><summary>分析其他幣種</summary>${analysisForm}</details>`:`<div class="advice-start">${analysisForm || '<button type="button" class="primary-inline-btn" data-agent-key="technical">開始分析</button>'}<p>尚無本次分析；歷史研究紀錄不會自動變成目前可用點位。</p></div>`}
+    <button type="button" class="secondary-btn" data-agent-key="planHistory">查看研究紀錄</button>
+  </section>`;
 }
 
 export function agentHistoryPanel(state) {
