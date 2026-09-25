@@ -608,6 +608,7 @@ function initEvents() {
     if(adviceSymbol){
       if(appState.agents.tradePlans?.[adviceSymbol.dataset.agentAdviceSymbol]){
         appState.ui.adviceSymbol=adviceSymbol.dataset.agentAdviceSymbol;
+        appState.ui.message='';
         appState.ui.strategyWorkspace='agents';appState.ui.agentKey='advice';
         navigateTo('#/advice');
       }
@@ -635,7 +636,10 @@ function initEvents() {
     const openPlan=event.target.closest?.('[data-agent-plan-open]');
     if(openPlan){
       appState.ui.strategyWorkspace='agents';appState.ui.agentKey='playbook';appState.ui.agentFilter='all';
-      if(currentRoute()==='advice')location.hash='#/strategies';
+      if(currentRoute()==='advice'){
+        appState.ui.pendingPlanFocus=openPlan.dataset.agentPlanOpen;
+        navigateTo('#/strategies');return;
+      }
       render();
       const target=[...document.querySelectorAll('[data-plan-symbol]')].find(el=>el.dataset.planSymbol===openPlan.dataset.agentPlanOpen);
       target?.scrollIntoView({block:'start'});return;
@@ -1028,5 +1032,13 @@ function init() {
   setInterval(refreshMarket, MARKET_REFRESH_MS);
 }
 
-window.addEventListener('hashchange', () => { render(); window.scrollTo({top:0, behavior:'instant'}); });
+window.addEventListener('hashchange', () => {
+  render();
+  const symbol=appState.ui.pendingPlanFocus;
+  appState.ui.pendingPlanFocus=null;
+  const target=currentRoute()==='strategies' && appState.ui.agentKey==='playbook' && symbol
+    ? [...document.querySelectorAll('[data-plan-symbol]')].find(el=>el.dataset.planSymbol===symbol) : null;
+  if(target)target.scrollIntoView({block:'start'});
+  else window.scrollTo({top:0, behavior:'instant'});
+});
 window.addEventListener('DOMContentLoaded', init);
