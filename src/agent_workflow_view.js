@@ -4,6 +4,7 @@ import { agentPlanStatus } from './agent_trade_plan.js';
 import { FAMILY_NAMES } from './strategy_families.js';
 import { escapeHtml as esc, displayDate } from './ui.js';
 import { agentComparisonView } from './agent_comparison_view.js';
+import { forwardTrackingBar } from './advice_forward_view.js';
 
 export function agentAdvicePanel(state, now=Date.now(), {analysisForm=''}={}) {
   const records=Object.values(state.agents?.tradePlans || {}).filter(Boolean).sort((a,b)=>(b.checkedAt || 0)-(a.checkedAt || 0));
@@ -15,6 +16,7 @@ export function agentAdvicePanel(state, now=Date.now(), {analysisForm=''}={}) {
     ${records.length?`<div class="advice-symbols" role="group" aria-label="選擇要看的交易建議">${records.map(r=>`<button type="button" class="advice-symbol-btn" data-agent-advice-symbol="${esc(r.symbol)}" aria-pressed="${r===selected}"><strong>${esc(r.symbol)}</strong><span>${agentActionLabel(r,now)}</span></button>`).join('')}</div>
       <div class="advice-with-outlook" data-selected-advice="${symbol}">${agentDecisionCard(selected,{now})}${state.agents?.technical?.symbol===selected.symbol?trendOutlookView(state.agents.technical,selected,{now,compact:true}):''}</div>
       <details class="core-disclosure" data-search="advice-new-analysis"><summary>分析其他幣種</summary>${analysisForm}</details>`:`<div class="advice-start">${analysisForm || '<button type="button" class="primary-inline-btn" data-agent-key="technical">開始分析</button>'}<p>尚無本次分析；歷史研究紀錄不會自動變成目前可用點位。</p></div>`}
+    ${forwardTrackingBar(state)}
     <button type="button" class="secondary-btn" data-agent-key="planHistory">查看研究紀錄</button>
   </section>`;
 }

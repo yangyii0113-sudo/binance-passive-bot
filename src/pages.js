@@ -1,3 +1,4 @@
+import { adviceResultsPage } from './advice_forward_view.js';
 import { trendOutlookView } from './trend_outlook_view.js';
 import { smcReference } from './smc_reference.js';
 import { agentTradePlanView } from './agent_trade_plan_view.js';
@@ -1546,6 +1547,7 @@ export function strategyLabPage(state) {
 
   return `<div class="page-stack">${messageBar(state)}
     ${section('策略實驗室', `
+      <p class="guard-note">想確認分析建議的後續？<a href="#/advice-results">查看建議成效</a>。下方仍是獨立的模擬交易與歷史回測。</p>
       <div class="lab-tabs">
         ${tab('模擬績效','forward',tabKey,'data-lab-tab')}
         ${tab('歷史回測','backtest',tabKey,'data-lab-tab')}
@@ -1556,4 +1558,4 @@ export function strategyLabPage(state) {
   </div>`;
 }
 
-export const pages = Object.freeze({ home: homePage, strategies: strategiesPage, advice: state => strategiesPage({...state,ui:{...state.ui,strategyWorkspace:'agents',agentKey:'advice'}}), orders: ordersPage, lab: strategyLabPage, results: state => strategyLabPage({...state, ui:{...state.ui,labTab:'forward'}}), backtest: state => strategyLabPage({...state, ui:{...state.ui,labTab:'backtest'}}) });
+export const pages = Object.freeze({ home: homePage, 'advice-results': adviceResultsPage, strategies: strategiesPage, advice: state => strategiesPage({...state,ui:{...state.ui,strategyWorkspace:'agents',agentKey:'advice'}}), orders: ordersPage, lab: strategyLabPage, results: state => strategyLabPage({...state, ui:{...state.ui,labTab:'forward'}}), backtest: state => strategyLabPage({...state, ui:{...state.ui,labTab:'backtest'}}) });

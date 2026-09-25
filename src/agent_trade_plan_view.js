@@ -35,7 +35,7 @@ export function agentTradePlanView(record, {symbol=record?.symbol || '', now=Dat
     </article>`).join('')}
     ${waiting?`<ul class="agent-plan-waits">${waiting}</ul>`:''}
     ${agentComparisonView(comparison,symbol,{allowed:record?.status==='LIVE' && a?.status==='VALID',busy:comparisonBusy})}
-    <details class="core-disclosure" data-search="${name} 交易計畫資料與驗證"><summary>資料依據、績效與風險限制</summary><p>重新取得幣安加密貨幣穩定幣本位永續合約的 1 小時／4 小時完整收盤 K 線；不使用現貨備援資料產生合約點位。多週期共識是背景資訊，三策略各依固定條件判斷。</p>${a?.closedAt?`<p>訊號收盤：${displayDate(a.closedAt)}</p>`:''}<p>90 天比較只提供固定基礎規則的歷史證據；目前計畫仍未通過跨期、前向與完整成交驗證，不沿用其他均線基準回測的勝率。畫面不追蹤後續盤中成交，操作前需重新核對。</p><p>正式帳本、最新帳戶淨值與完整部位尚不可核對，無法確認真實額度與組合風險上限；真實下單維持鎖定，不補造紀錄。</p></details>
+    <details class="core-disclosure" data-search="${name} 交易計畫資料與驗證"><summary>資料依據、績效與風險限制</summary><p>重新取得幣安加密貨幣穩定幣本位永續合約的 1 小時／4 小時完整收盤 K 線；不使用現貨備援資料產生合約點位。多週期共識是背景資訊，三策略各依固定條件判斷。</p>${a?.closedAt?`<p>訊號收盤：${displayDate(a.closedAt)}</p>`:''}<p>90 天比較只提供固定基礎規則的歷史證據；目前計畫仍未通過跨期、前向與完整成交驗證，不沿用其他均線基準回測的勝率。可另開啟本機前向追蹤以觀察新建議；僅限頁面前景，操作前仍需重新核對。</p><p>正式帳本、最新帳戶淨值與完整部位尚不可核對，無法確認真實額度與組合風險上限；真實下單維持鎖定，不補造紀錄。</p></details>
     ${link?'<button type="button" class="primary-inline-btn" data-agent-key="advice">查看進退場摘要</button>':''}
   </section>`;
 }

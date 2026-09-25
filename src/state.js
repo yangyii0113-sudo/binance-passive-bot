@@ -36,6 +36,7 @@ export const appState = {
     updatedAt: null,
     items: []
   },
+  forward: {book:null,enabled:false,starting:false,error:null,note:'尚未啟動；只記錄啟動後的新分析',feeds:[],exportFile:null},
   agents: {
     technical: null,
     technicalBusy: false,

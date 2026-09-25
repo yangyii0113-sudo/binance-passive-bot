@@ -1,4 +1,5 @@
 import { OUTLOOK_TTL } from './trend_outlook.js';
+import { createForwardController } from './advice_forward_controller.js';
 import { loadCoinHistory, saveCoinAnalysis, restoreCoinAnalysis } from './coin_analysis_history.js';
 import { loadComparisonHistory, saveComparisonRun, restoreComparisonRun } from './comparison_history.js';
 import { runComparisonBatch } from './comparison_batch.js';
@@ -93,6 +94,7 @@ function candidateBySymbol(symbol) {
 
 // Session-only plans: restored research never restores executable-looking levels.
 const pendingAgentPlans = new Map();
+let forwardTracker;
 let agentPlanExpiryTimer;
 function scheduleAgentPlanExpiry() {
   clearTimeout(agentPlanExpiryTimer);
@@ -110,10 +112,13 @@ function writeAgentPlan(symbol, record) {
 function refreshAgentPlan(value, {origin='重新核對', technical}={}) {
   const symbol=normalizePlanSymbol(value);
   if (pendingAgentPlans.has(symbol)) return pendingAgentPlans.get(symbol);
+  forwardTracker?.watchSymbol(symbol);
+  const forwardTicket=forwardTracker?.ticket();
   writeAgentPlan(symbol,{symbol,status:'LOADING'});
   render();
   const task=generateAgentTradePlan(symbol).then(record=>{
     writeAgentPlan(symbol,record);
+    forwardTracker?.register(record,forwardTicket);
     try {
       const source=technical || (appState.agents.technical?.symbol===symbol?appState.agents.technical:candidateBySymbol(symbol)?.technical);
       const technicalAt=Date.parse(source?.updatedAt);
@@ -134,6 +139,7 @@ async function runAgentTechnical(value, {origin='使用者選幣 · 多週期分
   if(appState.agents.technicalBusy) return;
   const symbol=normalizePlanSymbol(value);
   if(!/^[\p{L}\p{N}]+USDT$/u.test(symbol)) return;
+  forwardTracker?.watchSymbol(symbol);
   Object.assign(appState.ui,{strategyWorkspace:'agents',agentKey:'technical',agentFilter:'all',selectedSymbol:symbol,message:`${symbol} 多週期技術分析中…`});
   if(currentRoute()==='advice')navigateTo('#/strategies');
   setStateSlice('agents',{technicalBusy:true,technical:{symbol,status:'LOADING'}});
@@ -604,6 +610,22 @@ function initEvents() {
   });
 
   document.addEventListener('click', async (event) => {
+    if(event.target.closest?.('[data-forward-start]')){await forwardTracker?.start();return;}
+    if(event.target.closest?.('[data-forward-stop]')){forwardTracker?.stop();return;}
+    if(event.target.closest?.('[data-forward-export]')){
+      try{setStateSlice('forward',{exportFile:forwardTracker.export(),exportMessage:'這是此刻的本機研究快照，可下載或複製保存。'});}
+      catch(error){setStateSlice('forward',{error:String(error.message)});}
+      render();return;
+    }
+    if(event.target.closest?.('[data-forward-download]')){
+      if(appState.forward.exportFile){downloadResearchFile(appState.forward.exportFile);setStateSlice('forward',{exportMessage:'已送出下載請求；若未下載，可複製紀錄。'});render();}return;
+    }
+    if(event.target.closest?.('[data-forward-copy]')){
+      if(!appState.forward.exportFile)return;
+      try{await navigator.clipboard.writeText(appState.forward.exportFile.text);setStateSlice('forward',{exportMessage:'前向追蹤紀錄已複製。'});}
+      catch{setStateSlice('forward',{exportMessage:'請在文字框手動全選複製。'});}
+      render();return;
+    }
     const adviceSymbol=event.target.closest?.('[data-agent-advice-symbol]');
     if(adviceSymbol){
       if(appState.agents.tradePlans?.[adviceSymbol.dataset.agentAdviceSymbol]){
@@ -1025,6 +1047,14 @@ function init() {
   syncComparisonHistory();
   syncCoinHistory();
   setStateSlice('agents',{planHistory:loadAgentPlanHistory()});
+  let forwardStorage;
+  try{forwardStorage=window.localStorage;}catch{}
+  forwardTracker=createForwardController({storage:forwardStorage,locks:navigator.locks,WebSocketClass:window.WebSocket,visible:()=>document.visibilityState==='visible',onChange:view=>{setStateSlice('forward',view);render();}});
+  forwardTracker.load();
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState!=='visible')forwardTracker.stop('頁面進入背景；未完成樣本待覆核');});
+  window.addEventListener('pagehide',()=>forwardTracker.stop('頁面離開；未完成樣本待覆核'));
+  window.addEventListener('offline',()=>forwardTracker.stop('網路已離線；未完成樣本待覆核'));
+  window.addEventListener('storage',event=>forwardTracker.storageChanged(event.key));
   initEvents();
   render();
   refreshMarket();
