@@ -62,6 +62,8 @@ test('rendered outlook names uncertainty and never presents reference ranges as 
   const html=trendOutlookView(technical,record,{now});
   for(const label of ['短線','中期','長期','上行情境','下行情境','整理情境','失效／重新評估','不是進場、止盈或止損','尚未有此持有週期的獨立進出場驗證','未計算勝率','不驗證本報告的預測能力'])assert.ok(html.includes(label),label);
   assert.doesNotMatch(html,/decision-levels|data-real-order|data-paper-open/);
+  assert.doesNotMatch(html,/undefined/);
+  for(const period of ['1 小時','4 小時','日線'])assert.ok(html.includes(`${period}的前 20 根區間`),period);
   assert.doesNotMatch(trendOutlookView(technical,record,{now:now+OUTLOOK_TTL}),/上行情境|160 USDT/);
   assert.doesNotMatch(trendOutlookView(technical,record,{now,filter:'position'}),/data-outlook="intraday"/);
   assert.match(trendOutlookView({...technical,symbol:'<script>'},record,{now}),/&lt;script&gt;/);

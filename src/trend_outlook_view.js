@@ -11,7 +11,7 @@ export function trendOutlookView(technical,record,{now=Date.now(),filter='all',c
   const shortGate=record?.symbol===technical.symbol?agentPlanStatus(record,now):null;
   const cards=horizons.map(h=>{
     if(h.status!=='VALID')return `<article class="outlook-card" data-outlook="${h.key}"><div class="outlook-title"><h4>${h.name} · ${h.window}</h4><span>資料待核對</span></div><p>${h.frameText}</p><p>${esc(h.reason)}</p></article>`;
-    const f=h.anchor,e=f.outlook,anchor=anchorNames[h.anchor];
+    const f=h.anchor,e=f.outlook,anchor=anchorNames[f.interval];
     const action=h.bias==='bull'?'偏多觀察：等待回調守穩或放量突破，不追漲。':h.bias==='bear'?'偏空觀察：等待反彈受阻或放量跌破，不因跌深就猜底。':'觀望：週期尚未同向，先等待方向與結構確認。';
     const invalidate=h.bias==='bull'?`${anchor}收盤跌回 20 期均線下方，或所需週期轉為分歧，撤回偏多觀察。`:h.bias==='bear'?`${anchor}收盤站回 20 期均線上方，或所需週期轉為分歧，撤回偏空觀察。`:'任一方向收盤突破區間仍須重新分析；不可直接沿用整理判斷。';
     const execution=h.key==='intraday'?(shortGate?.key==='plan'?'已有獨立的一小時條件式計畫；仍需核對方向、有效期限與風險。':`目前短線計畫：${shortGate?.label || '尚未擬定'}，不提供新的進場許可。`):'中長期僅提供觀察建議；尚未有此持有週期的獨立進出場驗證，不套用一小時點位。';
