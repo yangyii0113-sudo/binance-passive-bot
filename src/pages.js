@@ -1,3 +1,4 @@
+import { trendOutlookView } from './trend_outlook_view.js';
 import { smcReference } from './smc_reference.js';
 import { agentTradePlanView } from './agent_trade_plan_view.js';
 import { agentAdvicePanel, agentHistoryPanel } from './agent_workflow_view.js';
@@ -1056,8 +1057,8 @@ function technicalAgentPanel(state){
       <button type="button" class="primary-inline-btn" data-agent-technical-run ${state.agents?.technicalBusy?'disabled':''}>${state.agents?.technicalBusy?'分析與擬定中…':'分析並擬定交易計畫'}</button>
     </form>
     ${technical?.symbol?'<button type="button" class="secondary-btn agent-summary-link" data-agent-key="advice">查看進退場摘要</button>':''}
-    ${technical?.status==='LIVE' ? `<div class="agent-consensus"><span>多週期共識</span><strong>${displayText(technical.consensus)}</strong><small>${displayMarketSource(technical.source)}</small></div>` : ''}
-    ${frameHtml}
+    ${trendOutlookView(technical,state.agents?.tradePlans?.[technical?.symbol],{filter})}
+    ${technical?.status==='LIVE'?`<details class="core-disclosure" data-search="technical-indicators"><summary>逐週期指標明細</summary>${frameHtml}</details>`:frameHtml}
     ${technical?.symbol?agentTradePlanView(state.agents?.tradePlans?.[technical.symbol],{symbol:technical.symbol,comparison:state.agents?.planComparisons?.[technical.symbol],comparisonBusy:state.agents?.planComparisonBusy || state.pullback?.comparing}):''}
     ${add ? `<div class="agent-single-action">${add}</div>` : ''}
   </div>`;

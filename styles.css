@@ -2292,6 +2292,26 @@ button, a, input, select, summary { scroll-margin-block:16px 110px; }
 .advanced-tool-grid{padding-bottom:14px}
 .workflow-help{margin-bottom:0}
 .agent-summary-link{min-height:44px;font-size:14px}
+.trend-outlook,.advice-with-outlook{min-width:0}
+.trend-outlook{border:1px solid #665124;border-radius:14px;padding:14px;background:#161817}
+.outlook-heading h3{font-size:20px;line-height:1.4;margin:0 0 6px;color:#f1ce89}
+.outlook-heading>span{font-size:13px;color:#c8cbd0}
+.trend-outlook p,.trend-outlook li{font-size:14px;line-height:1.7;color:#d3d6db;overflow-wrap:anywhere}
+.trend-outlook .outlook-overview{font-size:16px;font-weight:650;color:#efd49b}
+.outlook-grid{display:grid;grid-template-columns:1fr;gap:12px}
+.outlook-card{min-width:0;border:1px solid #4c4b46;border-radius:12px;padding:12px;background:#101213}
+.outlook-title{display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:space-between}
+.outlook-title h4{font-size:16px;margin:0;line-height:1.5;color:#ece7dc}
+.outlook-title>span{font-size:13px;padding:5px 8px;border-radius:8px;background:#302719;color:#eed098}
+.outlook-card .outlook-frames{font-size:12px;color:#b7bfcc;margin:6px 0}
+.outlook-card .outlook-action{font-weight:650}
+.outlook-card .outlook-execution{font-size:13px;padding:8px;border-left:2px solid #ad8b47;background:#1c1d1b}
+.trend-outlook .outlook-boundary{font-size:13px;color:#b7bfcc}
+.trend-outlook ul{padding-left:20px}
+.trend-outlook button{width:100%;min-height:44px;white-space:normal;font-size:14px}
+.trend-outlook .core-metrics{grid-template-columns:1fr}
+.advice-with-outlook>.core-disclosure .trend-outlook{padding:0;border:0;background:transparent}
+@media(min-width:1100px){.trend-outlook>.outlook-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.advice-with-outlook .outlook-grid{grid-template-columns:1fr}}
 .plan-status-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:12px 0}
 .plan-status-pair>div{min-width:0;padding:10px;border:1px solid #51504c;border-radius:10px;background:#151719}
 .plan-status-pair dt{font-size:12px;color:#bfc4cd;line-height:1.5}

@@ -1,3 +1,4 @@
+import { frameOutlookEvidence } from './trend_outlook.js';
 const FUTURES_BASE = 'https://fapi.binance.com/fapi/v1/klines';
 const SPOT_PUBLIC_BASE = 'https://data-api.binance.vision/api/v3/klines';
 
@@ -30,12 +31,15 @@ async function fetchClosed(symbol, interval){
   const payload = await response.json();
   if(!Array.isArray(payload)) throw new Error(`${interval} Kline payload invalid`);
   const now = Date.now();
+  const number=v=>v===null||v===undefined||v===''?NaN:Number(v);
   return {
+    checkedAt:now,
     candles: payload
       .filter(k => Number(k?.[6]) < now)
       .map(k => ({
         openTime:Number(k[0]),
         closeTime:Number(k[6]),
+        open:number(k[1]),high:number(k[2]),low:number(k[3]),volume:number(k[5]),
         close:Number(k[4])
       }))
       .filter(k => Number.isFinite(k.close)),
@@ -82,7 +86,8 @@ export async function analyzeMultiTimeframe(symbol){
   const settled = await Promise.all(FRAMES.map(async ([interval,label])=>{
     try{
       const fetched = await fetchClosed(clean,interval);
-      return { ...analyzeFrame(interval,label,fetched.candles), source:fetched.source };
+      return { ...analyzeFrame(interval,label,fetched.candles), source:fetched.source,
+        outlook:frameOutlookEvidence(fetched.candles,interval,fetched.checkedAt) };
     }catch(error){
       return {interval,label,status:'ERROR',direction:'錯誤',error:String(error?.message||error)};
     }

@@ -1,3 +1,4 @@
+import { OUTLOOK_TTL } from './trend_outlook.js';
 import { loadCoinHistory, saveCoinAnalysis, restoreCoinAnalysis } from './coin_analysis_history.js';
 import { loadComparisonHistory, saveComparisonRun, restoreComparisonRun } from './comparison_history.js';
 import { runComparisonBatch } from './comparison_batch.js';
@@ -96,7 +97,10 @@ let agentPlanExpiryTimer;
 function scheduleAgentPlanExpiry() {
   clearTimeout(agentPlanExpiryTimer);
   const now=Date.now();
-  const times=Object.values(appState.agents.tradePlans || {}).map(r=>Math.min(r.snapshotUntil,r.row?.analysis?.validUntil)).filter(t=>Number.isFinite(t)&&t>now);
+  const technical=appState.agents.technical;
+  const times=Object.values(appState.agents.tradePlans || {}).flatMap(r=>[Math.min(r.snapshotUntil,r.row?.analysis?.validUntil),r.checkedAt+OUTLOOK_TTL])
+    .concat(Date.parse(technical?.updatedAt)+OUTLOOK_TTL,(technical?.frames || []).map(f=>f.outlook?.validUntil))
+    .flat().filter(t=>Number.isFinite(t)&&t>now);
   if(times.length) agentPlanExpiryTimer=setTimeout(()=>{render();scheduleAgentPlanExpiry();},Math.min(...times)-now+20);
 }
 function writeAgentPlan(symbol, record) {

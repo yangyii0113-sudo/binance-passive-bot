@@ -1,3 +1,4 @@
+import { trendOutlookView } from './trend_outlook_view.js';
 import { agentDecisionCard } from './agent_decision_view.js';
 import { FAMILY_NAMES } from './strategy_families.js';
 import { escapeHtml as esc, displayDate } from './ui.js';
@@ -5,7 +6,7 @@ import { agentComparisonView } from './agent_comparison_view.js';
 
 export function agentAdvicePanel(state, now=Date.now()) {
   const records=Object.values(state.agents?.tradePlans || {}).sort((a,b)=>(b.checkedAt || 0)-(a.checkedAt || 0));
-  return `<section class="agent-panel-stack agent-advice-panel" aria-label="交易建議">${records.length?records.map(record=>agentDecisionCard(record,{now})).join(''):'<div class="empty-state"><strong>尚無交易建議</strong><span>先完成分析；通過核對的進場、止損與止盈會直接整理於此。</span><button type="button" class="primary-inline-btn" data-agent-key="technical">開始分析</button></div>'}</section>`;
+  return `<section class="agent-panel-stack agent-advice-panel" aria-label="交易建議">${records.length?records.map(record=>`<div class="advice-with-outlook">${agentDecisionCard(record,{now})}${state.agents?.technical?.symbol===record.symbol?trendOutlookView(state.agents.technical,record,{now,compact:true}):''}</div>`).join(''):'<div class="empty-state"><strong>尚無交易建議</strong><span>先完成分析；通過核對的進場、止損與止盈會直接整理於此。</span><button type="button" class="primary-inline-btn" data-agent-key="technical">開始分析</button></div>'}</section>`;
 }
 
 export function agentHistoryPanel(state) {
