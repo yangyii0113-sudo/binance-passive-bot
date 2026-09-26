@@ -1,3 +1,4 @@
+import { coinLogo } from './coin_logo.js';
 import { rankStrongRows } from './strong_candidates.js';
 import { agentPlanStatus } from './agent_trade_plan.js';
 import { researchRiskScenario } from './research_risk_view.js';
@@ -69,7 +70,7 @@ export function homeOpportunityView(state,now=Date.now()) {
     <div class="home-opportunity-filters" role="group" aria-label="首頁候選篩選"><button type="button" data-home-opportunity-filter="all" aria-pressed="${filter==='all'}">全部候選 ${model.rows.length}</button><button type="button" data-home-opportunity-filter="plan" aria-pressed="${filter==='plan'}">有有效計畫 ${model.ready}</button><span>尚未核對 ${model.unchecked}</span></div>
     ${model.reason?`<p class="home-opportunity-empty" role="status">${esc(model.reason)}</p>`:!visible.length?`<div class="home-opportunity-empty" role="status"><strong>${filter==='plan'?'目前沒有通過核對的計畫':'目前沒有符合選幣條件的標的'}</strong><p>${filter==='plan'?'可查看全部候選的等待原因；不補足訊號。':'僅選擇符合漲幅與流動性條件的幣種，不補足名額。'}</p>${filter==='plan'?'<button type="button" class="secondary-btn" data-home-opportunity-filter="all">查看全部候選</button>':''}</div>`:''}
     <div class="home-opportunity-grid">${visible.map(row=>`<article class="home-opportunity-card home-opportunity-${row.key}" data-home-opportunity="${esc(row.symbol)}" aria-label="${esc(row.symbol)} 首頁候選">
-      <div class="home-opportunity-heading"><h3>${esc(row.symbol)}</h3><span>強勢第 ${row.rank} 名</span></div>
+      <div class="home-opportunity-heading"><div class="coin-identity">${coinLogo(row.symbol)}<h3>${esc(row.symbol)}</h3></div><span>強勢第 ${row.rank} 名</span></div>
       <dl class="home-opportunity-market"><div><dt>市場強度</dt><dd>${row.strength.toFixed(1)}<small>／100</small></dd></div><div><dt>24 小時</dt><dd>+${row.change.toFixed(2)}%</dd></div><div><dt>成交額</dt><dd>${(row.volume/1e6).toFixed(1)}<small> 百萬 USDT</small></dd></div></dl>
       <div class="home-entry-state" data-home-entry-state="${row.key}"><span>進場條件</span><strong>${row.label}</strong></div>
       <p class="home-entry-reason">${esc(row.reason)}</p>

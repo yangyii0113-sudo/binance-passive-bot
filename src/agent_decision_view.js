@@ -1,3 +1,4 @@
+import { coinLogo } from './coin_logo.js';
 import { agentPlanStatus } from './agent_trade_plan.js';
 import { FAMILY_NAMES } from './strategy_families.js';
 import { researchRiskScenario } from './research_risk_view.js';
@@ -39,7 +40,7 @@ export function agentDecisionCard(record, {now=Date.now()}={}) {
   const {result}=agentPlanPresentation(record,now), symbol=esc(record.symbol);
   const waits=result.key==='wait'?(record.row?.analysis?.strategies || []).map(p=>`<li><strong>${esc(FAMILY_NAMES[p.key])}</strong>：${esc(p.reason || '等待收盤條件成立')}</li>`).join(''):'';
   return `<article class="agent-decision-card" aria-label="${symbol} 進退場摘要">
-    <div class="decision-heading"><h3>${symbol}</h3><span>短線 · 1 小時策略</span></div>
+    <div class="decision-heading"><div class="coin-identity">${coinLogo(record.symbol,undefined,true)}<h3>${symbol}</h3></div><span>短線 · 1 小時策略</span></div>
     <div class="decision-verdict" data-advice-verdict="${result.key}"><span>目前建議</span><strong>${agentActionLabel(record,now)}</strong></div>
     <p class="decision-reason" role="status">${result.key==='plan'?'僅列入條件式模擬觀察，尚未確認觸發或成交。只在下列條件與期限內觀察。':esc(result.reason)}</p>
     ${result.plans.length?result.plans.map(plan=>{

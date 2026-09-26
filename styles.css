@@ -243,9 +243,12 @@ select:focus,.form-grid input:focus{border-color:rgba(241,184,75,.35)}
 .calendar-event-main small{color:var(--muted);font-size:.66rem;overflow-wrap:anywhere}
 .calendar-time{flex:0 0 auto;color:#777a80;font-size:.64rem;text-align:right}
 .premium-calendar{width:100%;color:inherit;text-align:left}
-.coin-logo{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;overflow:hidden;background:#0f1011;border:1px solid rgba(255,255,255,.08);box-shadow:inset 0 1px 0 rgba(255,255,255,.05)}
+.coin-logo{width:34px;height:34px;flex-shrink:0;border-radius:50%;display:grid;place-items:center;overflow:hidden;position:relative;background:#0f1011;border:1px solid rgba(255,255,255,.08);box-shadow:inset 0 1px 0 rgba(255,255,255,.05)}
 .coin-logo.large{width:44px;height:44px;flex:0 0 44px}
-.coin-logo img{width:100%;height:100%;object-fit:cover;display:block}
+.coin-logo img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;opacity:0;background:#0f1011}
+.coin-logo img[hidden],.coin-logo-fallback[hidden]{display:none}
+.coin-identity{display:flex;align-items:center;gap:8px;min-width:0}
+.coin-identity strong,.coin-identity h3{min-width:0;overflow-wrap:anywhere}
 .coin-logo-fallback{width:100%;height:100%;display:grid;place-items:center;background:linear-gradient(145deg,#efb44c,#d99629);color:#19130b;font-weight:900;font-size:.84rem}
 .coin-logo.large .coin-logo-fallback{font-size:1rem}
 @media(max-width:700px){
@@ -2349,9 +2352,9 @@ button, a, input, select, summary { scroll-margin-block:16px 110px; }
 .advice-start{min-width:0}
 .advice-symbols{display:flex;flex-wrap:wrap;gap:8px}
 .advice-symbol-btn{flex:1 1 140px;min-width:0;text-align:left;min-height:58px;padding:10px 12px;border-radius:10px;border:1px solid #555752;background:#141719;color:#e7e8e5;cursor:pointer}
-.advice-symbol-btn strong,.advice-symbol-btn span{display:block;overflow-wrap:anywhere;line-height:1.5}
+.advice-symbol-btn strong,.advice-symbol-btn>.advice-symbol-status{display:block;overflow-wrap:anywhere;line-height:1.5}
 .advice-symbol-btn strong{font-size:15px}
-.advice-symbol-btn span{font-size:12px;color:#c3c8cf;margin-top:3px}
+.advice-symbol-btn>.advice-symbol-status{font-size:12px;color:#c3c8cf;margin-top:6px}
 .advice-symbol-btn[aria-pressed="true"]{border-color:#f0be55;background:#30291b;box-shadow:inset 0 0 0 1px #f0be55}
 .advice-symbol-btn:focus-visible{outline:2px solid #f0be55;outline-offset:3px}
 .decision-verdict{margin:14px 0 8px;padding:12px;border-radius:10px;background:#101314;border-left:4px solid #b6aaa0}

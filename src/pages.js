@@ -1,3 +1,4 @@
+import { coinLogo } from './coin_logo.js';
 import { adviceResultsPage } from './advice_forward_view.js';
 import { researchOverview } from './research_overview.js';
 import { trendOutlookView } from './trend_outlook_view.js';
@@ -98,21 +99,6 @@ function marketSymbolOptions(state, limit = 40){
   }
   if(!symbols.length) symbols.push('BTCUSDT','ETHUSDT','SOLUSDT');
   return symbols.map(symbol => `<option value="${symbol}" ${selected === symbol ? 'selected' : ''}>${symbol.replace(/USDT$/,' / USDT')}</option>`).join('');
-}
-function coinCode(symbol){
-  const normalized = String(symbol || '').toUpperCase().replace(/[^A-Z0-9]/g,'').replace(/USDT$/,'');
-  const base = normalized.replace(/^1000/,'');
-  return base ? base.toLowerCase() : null;
-}
-function coinLogo(symbol, fallback = '•', large = false){
-  const code = coinCode(symbol);
-  if(!code) return `<span class="coin-logo ${large ? 'large' : ''}"><span class="coin-logo-fallback">${fallback}</span></span>`;
-  const src = `https://assets.coincap.io/assets/icons/${code}@2x.png`;
-  return `<span class="coin-logo ${large ? 'large' : ''}">
-    <img src="${src}" alt="${code.toUpperCase()}" loading="lazy" referrerpolicy="no-referrer"
-      onerror="this.hidden=true;this.nextElementSibling.hidden=false">
-    <span class="coin-logo-fallback" hidden>${fallback}</span>
-  </span>`;
 }
 function messageBar(state){
   return state.ui?.message ? `<div class="flash-message">${displayText(state.ui.message)}</div>` : '';
