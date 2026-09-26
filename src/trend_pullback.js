@@ -1,3 +1,4 @@
+import { rankStrongRows } from './strong_candidates.js';
 import { analyzeCoin } from './coin_analysis.js';
 import { refineTargets } from './target_analysis.js';
 // TP01 is an isolated research scanner. No order or production execution calls.
@@ -39,13 +40,7 @@ export function strongPullbackCandidates(market, contracts, now=Date.now()) {
   if(market?.status!=='LIVE'||!Number.isFinite(age)||age<0||age>120000) throw new Error('市場資料尚未更新，請稍後重新分析');
   if(!Array.isArray(contracts?.symbols)) throw new Error('無法確認加密貨幣合約清單');
   const eligible=new Set(contracts.symbols.filter(x=>x.status==='TRADING'&&x.contractType==='PERPETUAL'&&x.quoteAsset==='USDT'&&x.underlyingType==='COIN').map(x=>x.symbol));
-  const seen=new Set();
-  return (market.universeRows||[]).flatMap(row=>{
-    const symbol=String(row?.[1]||'').replace(/\s|\//g,'');
-    const change=Number(row?.[3]),volume=Number(row?.[4]),strength=Number(row?.[5]);
-    if(seen.has(symbol)||!eligible.has(symbol)||row?.[5]==null||![change,volume,strength].every(Number.isFinite)||change<=0||change>=30||volume<10000000||strength<0||strength>100)return [];
-    seen.add(symbol);return [{symbol,change,volume,strength}];
-  }).sort((a,b)=>b.strength-a.strength||b.volume-a.volume||a.symbol.localeCompare(b.symbol)).slice(0,10).map((x,i)=>({...x,rank:i+1}));
+  return rankStrongRows(market.universeRows||[],eligible);
 }
 export async function scanPullbacks(candidates=[],{fetcher=fetch,onProgress=()=>{}}={}){
   if(!Array.isArray(candidates)||candidates.length>10||new Set(candidates.map(x=>x.symbol)).size!==candidates.length)throw new Error('分析清單無效');

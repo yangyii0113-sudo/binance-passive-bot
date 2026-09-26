@@ -607,6 +607,7 @@ export function homePage(state,now=Date.now()) {
     ${isCrypto?researchOverview(state,now):stockEmptyState('股市研究尚未接入')}
 
     ${calendarPanel(state)}
+    <details class="core-disclosure home-secondary"><summary>其他市場排行與研究工具</summary>
     ${homeSectionTabs(state)}
 
     <section class="panel ranking-panel home-section-panel ${homeSection==='market'?'is-active':''}">
@@ -661,6 +662,7 @@ export function homePage(state,now=Date.now()) {
       </div>
       ${isCrypto ? strategyOpportunity(state) : stockEmptyState('股市策略模組待接入')}
     </section>
+    </details>
   </div>`;
 }
 

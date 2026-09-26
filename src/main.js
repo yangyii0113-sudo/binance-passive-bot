@@ -1,4 +1,5 @@
 import { OUTLOOK_TTL } from './trend_outlook.js';
+import { homeCandidates, runHomeChecks } from './home_opportunities.js';
 import { createForwardController } from './advice_forward_controller.js';
 import { forwardFeedFacts } from './advice_forward_view.js';
 import { loadCoinHistory, saveCoinAnalysis, restoreCoinAnalysis } from './coin_analysis_history.js';
@@ -161,6 +162,27 @@ async function runAgentTechnical(value, {origin='使用者選幣 · 多週期分
       navigateTo('#/advice');
     }
   } finally {setStateSlice('agents',{technicalBusy:false});render();}
+}
+
+async function checkHomePlans(symbol=null) {
+  if(appState.ui.homeCheck?.running||appState.agents.technicalBusy||appState.pullback.loading||appState.pullback.comparing)return;
+  appState.ui.homeCheck={running:true,completed:0,total:0,failed:0,error:null};
+  appState.ui.message='';render();
+  try {
+    const market=await loadMarketSnapshot();setMarketState(market);
+    const candidates=homeCandidates(market);
+    if(candidates.reason)throw new Error(candidates.reason);
+    const symbols=candidates.rows.filter(r=>!symbol||r.symbol===symbol).map(r=>r.symbol);
+    if(!symbols.length)throw new Error(symbol?'這檔已不在目前強勢候選中，請依最新名單核對。':'目前沒有符合條件的強勢候選，不補足名額。');
+    appState.ui.homeCheck={...appState.ui.homeCheck,total:symbols.length};render();
+    const results=await runHomeChecks(symbols,{
+      check:value=>refreshAgentPlan(value,{origin:'首頁強勢候選 · 進場條件核對'}),
+      onProgress:progress=>{appState.ui.homeCheck={...appState.ui.homeCheck,...progress};render();}
+    });
+    for(const result of results)if(!result.ok)writeAgentPlan(result.symbol,{symbol:result.symbol,status:'BLOCKED',reason:'本次核對未完成，請重新核對。'});
+    appState.ui.message=`首頁核對完成 ${symbols.length} 檔；請依每檔狀態查看計畫或等待原因。`;
+  } catch(error){appState.ui.homeCheck.error=String(error.message||'首頁核對失敗，請稍後重試');}
+  finally{appState.ui.homeCheck.running=false;render();}
 }
 
 async function compareAgentPlan(symbol) {
@@ -645,6 +667,17 @@ function initEvents() {
     if(adviceFilter&&['all','plan','wait','attention'].includes(adviceFilter.dataset.adviceFilter)){
       appState.ui.adviceFilter=adviceFilter.dataset.adviceFilter;render();return;
     }
+    const homeSort=event.target.closest?.('[data-home-opportunity-sort]');
+    if(homeSort&&['strength','readiness'].includes(homeSort.dataset.homeOpportunitySort)){
+      appState.ui.homeOpportunitySort=homeSort.dataset.homeOpportunitySort;render();return;
+    }
+    const homeFilter=event.target.closest?.('[data-home-opportunity-filter]');
+    if(homeFilter&&['all','plan'].includes(homeFilter.dataset.homeOpportunityFilter)){
+      appState.ui.homeOpportunityFilter=homeFilter.dataset.homeOpportunityFilter;render();return;
+    }
+    if(event.target.closest?.('[data-home-check-all]')){await checkHomePlans();return;}
+    const homeCheckSymbol=event.target.closest?.('[data-home-check-symbol]');
+    if(homeCheckSymbol){await checkHomePlans(homeCheckSymbol.dataset.homeCheckSymbol);return;}
     if(event.target.closest?.('[data-home-research]')){
       appState.ui.strategyWorkspace='signals';navigateTo('#/strategies');return;
     }

@@ -1,5 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import * as homeModule from '../src/home_opportunities.js';
+import { researchOverview } from '../src/research_overview.js';
 import { pages } from '../src/pages.js';
 import { appState, setStateSlice } from '../src/state.js';
 import { normalizePaperSnapshot } from '../src/services/paper.js';
@@ -163,4 +165,67 @@ test('active comparison does not show a not-started message',()=>{
  const s=state();s.ui.strategyWorkspace='signals';s.pullback={comparing:true,rows:[{symbol:'UNIUSDT',status:'WAIT'}]};
  const html=pages.strategies(s);
  assert.match(html,/正在計算策略績效/);assert.doesNotMatch(html,/尚未執行比較/);
+});
+
+
+function homeFixture(){
+  const now=2400*3600000+120000,s=state();
+  Object.assign(s.market,{cryptoOnly:true,updatedAt:new Date(now).toISOString(),contractVerifiedAt:new Date(now).toISOString(),universeRows:[
+    ['','AAA / USDT','100',12,5e7,99],['','BBB / USDT','100',4,2e7,80],['','CCC / USDT','100',3,2e7,75],
+    ['','SPIKE / USDT','100',31,8e8,100],['','LOW / USDT','100',8,1e6,98],['','DOWN / USDT','100',-10,1e8,97]
+  ]});
+  const p={key:'breakout',status:'SETUP',side:'LONG',entry:100,stop:95,tp1:110,tp2:120,signalAt:2400*3600000-1,expiresAt:2401*3600000};
+  s.agents.tradePlans={BBBUSDT:{symbol:'BBBUSDT',status:'LIVE',checkedAt:now,snapshotUntil:now+60000,
+    marketSnapshot:{price:98,high:99,low:97,barOpen:2400*3600000,requestedAt:now,receivedAt:now},
+    row:{symbol:'BBBUSDT',analysis:{status:'VALID',analyzedAt:now,closedAt:p.signalAt,validUntil:p.expiresAt,strategies:[p,{key:'structured',status:'WAIT',reason:'等待回調'},{key:'meanReversion',status:'WAIT',reason:'等待震盪'}]}}}};
+  return {s,now};
+}
+test('home ranks liquid rising candidates separately from gated entry status',()=>{
+  const {s,now}=homeFixture(),before=structuredClone(s),html=researchOverview(s,now);
+  assert.match(html,/data-home-opportunity="AAAUSDT"/);assert.match(html,/data-home-opportunity="BBBUSDT"/);
+  assert.doesNotMatch(html,/data-home-opportunity="(?:SPIKE|LOW|DOWN)USDT"/);
+  assert.ok(html.indexOf('data-home-opportunity="AAAUSDT"')<html.indexOf('data-home-opportunity="BBBUSDT"'));
+  assert.match(html,/data-home-check-symbol="AAAUSDT"/);assert.match(html,/data-agent-advice-symbol="BBBUSDT"/);
+  assert.match(html,/市場強度排序/);assert.match(html,/進場條件排序/);assert.match(html,/分數不是勝率/);
+  assert.deepEqual(s,before);
+  s.ui.homeOpportunitySort='readiness';const sorted=researchOverview(s,now);
+  assert.ok(sorted.indexOf('data-home-opportunity="BBBUSDT"')<sorted.indexOf('data-home-opportunity="AAAUSDT"'));
+});
+test('home never upgrades expired, mismatched or historical plans and gives an empty filter recovery',()=>{
+  const {s,now}=homeFixture();s.ui.homeOpportunityFilter='plan';
+  assert.match(researchOverview(s,now),/data-home-opportunity="BBBUSDT"/);
+  for(const change of [r=>r.snapshotUntil=now,r=>r.historical=true,r=>r.row.symbol='AAAUSDT',r=>delete r.marketSnapshot]){
+    const copy=structuredClone(s);change(copy.agents.tradePlans.BBBUSDT);
+    const html=researchOverview(copy,now);assert.doesNotMatch(html,/data-home-opportunity=/);
+    assert.match(html,/目前沒有通過核對的計畫/);assert.match(html,/data-home-opportunity-filter="all"/);
+  }
+});
+test('home hides candidate ranks when market or contract verification is stale',()=>{
+  const {s,now}=homeFixture();
+  for(const change of [m=>m.status='STALE',m=>m.cryptoOnly=false,m=>m.updatedAt=new Date(now-100000).toISOString(),m=>m.contractVerifiedAt=new Date(now-301000).toISOString(),m=>m.contractVerifiedAt=new Date(now+1).toISOString()]){
+    const copy=structuredClone(s);change(copy.market);
+    assert.doesNotMatch(researchOverview(copy,now),/data-home-opportunity=/);
+    assert.match(researchOverview(copy,now),/data-home-check-all/);
+  }
+});
+test('home has at most ten unique candidates and keeps out-of-list plans separate',()=>{
+  const {s,now}=homeFixture();s.market.universeRows=Array.from({length:15},(_,i)=>['',`C${i} / USDT`,'10',3,2e7,90-i]);
+  s.market.universeRows.push(s.market.universeRows[0]);
+  const html=researchOverview(s,now);
+  assert.equal((html.match(/data-home-opportunity="/g)||[]).length,10);
+  assert.doesNotMatch(html,/data-home-opportunity="BBBUSDT"/);
+  assert.match(html,/href="#\/advice"/);
+});
+
+
+test('home batch limits concurrent checks and preserves every result after a failure',async()=>{
+  assert.equal(typeof homeModule.runHomeChecks,'function');
+  let active=0,peak=0;const progress=[];
+  const results=await homeModule.runHomeChecks(['AAAUSDT','BBBUSDT','CCCUSDT'],{check:async symbol=>{
+    active++;peak=Math.max(peak,active);await new Promise(resolve=>setTimeout(resolve,5));active--;
+    if(symbol==='BBBUSDT')throw new Error('離線');return {symbol,status:'LIVE'};
+  },onProgress:value=>progress.push(value.completed)});
+  assert.equal(peak,2);assert.deepEqual(results.map(r=>[r.symbol,r.ok]),[['AAAUSDT',true],['BBBUSDT',false],['CCCUSDT',true]]);
+  assert.deepEqual(progress,[1,2,3]);assert.equal(results[1].error,'離線');
+  let calls=0;await assert.rejects(homeModule.runHomeChecks(['AAAUSDT','AAAUSDT'],{check:()=>calls++}));assert.equal(calls,0);
 });
