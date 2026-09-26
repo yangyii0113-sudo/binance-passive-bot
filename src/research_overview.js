@@ -15,7 +15,7 @@ export function researchOverview(state,now=Date.now()){
   const closed=dataError?null:(f.book?.rows||[]).filter(r=>r.status==='CLOSED').length;
   return `<section class="panel research-home" aria-label="研究工作台">
     <div class="research-home-heading"><span class="research-eyebrow">強勢前 10 檔 · 獨立核對進場</span><span class="research-mode">僅模擬研究</span></div>
-    <h1>強勢幣與進場條件，一次看清楚</h1><p class="research-lead">先從高流動性標的選出強勢候選，再逐檔核對交易條件。市場強勢與有效計畫分開呈現。</p>
+    <h1>強勢幣與進場條件</h1><p class="research-lead">前 10 檔強勢候選，逐檔核對進場條件。</p>
     ${homeOpportunityView(state,now)}
     <details class="core-disclosure home-evidence"><summary>市場概況與研究紀錄</summary>
     <div class="research-market-context"><strong>${fresh?'24 小時市場概況':'行情待更新'}</strong>${fresh?`<span>追蹤範圍 ${rows.length} 檔 · 上漲 ${up} · 下跌 ${down} · 持平 ${rows.length-up-down}</span>`:'<span>目前行情尚未完成最新核對；請更新後再選幣。</span>'}<small>${fresh?'僅反映追蹤幣種的漲跌分布，不代表多週期趨勢。':'保留舊資料供參考，不視為現在的進場依據。'}${Number.isFinite(at)?` 更新：${esc(displayDate(at))}`:''}</small></div>
