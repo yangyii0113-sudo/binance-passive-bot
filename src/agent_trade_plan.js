@@ -19,24 +19,29 @@ export async function generateAgentTradePlan(value, { fetcher=fetch, scanner=sca
     if (!contract || contract.status!=='TRADING' || contract.contractType!=='PERPETUAL' || contract.quoteAsset!=='USDT' || contract.underlyingType!=='COIN') {
       return blocked(symbol, '尚未確認為可交易的加密貨幣永續合約，停止產生點位');
     }
-    let hourly = null;
+    let hourly = null, hourlyRequestedAt = null, hourlyReceivedAt = null;
     const checkedFetcher = async (url, options) => {
+      const requestedAt = clock();
       const result = await fetcher(url, {...options,cache:'no-store'});
       const data = await result.json();
-      if (url.includes('interval=1h&')) hourly = data;
+      if (url.includes('interval=1h&') && result.ok) {
+        hourly = data; hourlyRequestedAt = requestedAt; hourlyReceivedAt = clock();
+      }
       return {ok:result.ok, status:result.status, json:async()=>data};
     };
     const [row] = await scanner([{symbol}], {fetcher:checkedFetcher});
     const now = clock();
     if (!row || row.symbol!==symbol) return blocked(symbol, '分析結果與標的不符，停止產生點位');
-    const record = {symbol, status:'LIVE', checkedAt:now, snapshotUntil:now+SNAPSHOT_TTL, row};
-    const category = coinCategory(row, now);
-    if (category!=='plan') return record;
+    const record = {symbol, status:'LIVE', checkedAt:now, snapshotUntil:(hourlyRequestedAt ?? now)+SNAPSHOT_TTL, row};
     // A closed-bar setup cannot be offered as a new entry after its threshold was touched.
-    const current = Array.isArray(hourly) && hourly.find(r=>Array.isArray(r) && +r[0]===Math.floor(now/H)*H);
+    const currentBars = Array.isArray(hourly) ? hourly.filter(r=>Array.isArray(r) && +r[0]===Math.floor(now/H)*H) : [];
+    const current = currentBars.length===1 && currentBars[0];
     const currentValid = current && [0,1,2,3,4,6].every(k=>current[k]!==null && current[k]!=='' && Number.isFinite(+current[k])) &&
       Math.min(+current[1],+current[2],+current[3],+current[4])>0 && +current[2]>=Math.max(+current[1],+current[4]) &&
       +current[3]<=Math.min(+current[1],+current[4]) && +current[6]===+current[0]+H-1;
+    if(currentValid) record.marketSnapshot={price:+current[4],high:+current[2],low:+current[3],barOpen:+current[0],requestedAt:hourlyRequestedAt,receivedAt:hourlyReceivedAt};
+    const category = coinCategory(row, now);
+    if (category!=='plan') return record;
     record.row = {...row, analysis:{...row.analysis, strategies:row.analysis.strategies.map(plan=>{
       if (plan.status!=='SETUP') return plan;
       if (!currentValid) return {...plan,status:'BLOCKED',reason:'缺少當前一小時行情，無法確認是否已錯過進場，請重新產生'};
@@ -67,6 +72,13 @@ export function agentPlanStatus(record, now=Date.now()) {
   const category=coinCategory(record.row,now);
   if (category==='conflict') return {key:'conflict',label:'方向衝突',reason:'策略出現相反方向，不合併為進場計畫；等待方向釐清。',plans:[]};
   const plans=a.strategies.filter(p=>p.status==='SETUP');
+  const q=record.marketSnapshot;
+  if(plans.length && (!q || ![q.price,q.high,q.low,q.barOpen,q.requestedAt,q.receivedAt].every(Number.isFinite) ||
+    q.price<=0 || q.low<=0 || q.high<q.price || q.low>q.price || q.requestedAt>q.receivedAt || q.receivedAt>record.checkedAt ||
+    q.barOpen!==Math.floor(now/H)*H || q.requestedAt<q.barOpen || record.snapshotUntil>q.requestedAt+SNAPSHOT_TTL ||
+    plans.some(p=>p.side==='LONG'?q.high>=p.entry || q.low<=p.stop:q.low<=p.entry || q.high>=p.stop))) {
+    return {key:'blocked',label:'行情快照未通過核對',reason:'參考價、當根區間或取得時間無法核對，停止顯示點位；請重新分析。',plans:[]};
+  }
   if (plans.some(p=>!researchRiskScenario(p) || researchRiskScenario(p).netRewardRisk<1 || !Number.isFinite(p.expiresAt) || p.expiresAt<=now || p.expiresAt!==a.validUntil || p.signalAt!==a.closedAt)) {
     return {key:'blocked',label:'點位未通過核對',reason:'方向、成本後風報比或有效期限異常，停止產生點位。',plans:[]};
   }

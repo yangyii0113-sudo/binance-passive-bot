@@ -8,7 +8,7 @@ import { adviceResultsPage, forwardTrackingBar } from '../src/advice_forward_vie
 const H=3600000,now=2400*H+120000;
 function record(side='LONG',key='breakout'){
   const p={key,status:'SETUP',side,entry:100,stop:side==='LONG'?95:105,tp1:side==='LONG'?110:90,tp2:side==='LONG'?120:80,signalAt:2400*H-1,expiresAt:2401*H};
-  return {symbol:'UNIUSDT',status:'LIVE',checkedAt:now,snapshotUntil:now+60000,row:{symbol:'UNIUSDT',analysis:{status:'VALID',analyzedAt:now,closedAt:p.signalAt,validUntil:p.expiresAt,strategies:['breakout','structured','meanReversion'].map(k=>k===key?p:{key:k,status:'WAIT',reason:'等待條件'})}}};
+  return {symbol:'UNIUSDT',status:'LIVE',checkedAt:now,snapshotUntil:now+60000,marketSnapshot:{price:side==='LONG'?98:102,high:side==='LONG'?99:103,low:side==='LONG'?97:101,barOpen:2400*H,requestedAt:now,receivedAt:now},row:{symbol:'UNIUSDT',analysis:{status:'VALID',analyzedAt:now,closedAt:p.signalAt,validUntil:p.expiresAt,strategies:['breakout','structured','meanReversion'].map(k=>k===key?p:{key:k,status:'WAIT',reason:'等待條件'})}}};
 }
 const tick=(id,price,time=now+(id-10)*100)=>({id,price,time,eventTime:time,receivedAt:time});
 function setup(side='LONG',key='breakout'){
@@ -116,7 +116,7 @@ test('manual reconnection cannot resurrect a gap or admit an analysis from the o
   const old=h.c.ticket('UNIUSDT');h.c.register(record(),old);h.time(now+100);h.sockets[0].send(11,100);
   h.sockets[0].onclose?.({code:1006});const filled=structuredClone(h.c.view().book.rows[0]);assert.equal(filled.status,'GAP');
   assert.equal(h.c.reconnect('UNIUSDT'),true);assert.equal(h.c.reconnect('UNIUSDT'),false);h.sockets[1].open();h.sockets[1].send(900,99);
-  const stale=record('LONG','structured');stale.checkedAt=now+100;stale.snapshotUntil=now+60100;
+  const stale=record('LONG','structured');stale.checkedAt=now+100;stale.snapshotUntil=now+60100;stale.marketSnapshot.requestedAt=now+100;stale.marketSnapshot.receivedAt=now+100;
   h.c.register(stale,old);assert.equal(h.c.view().book.rows.length,1);assert.deepEqual(h.c.view().book.rows[0],filled);
   h.c.register(stale,h.c.ticket('UNIUSDT'));assert.equal(h.c.view().book.rows.length,2);assert.equal(h.c.view().book.rows[1].status,'PENDING');h.c.stop();
 });

@@ -1,3 +1,4 @@
+import { formatPlanPrice as quote, priceMove, planExitGuide } from './plan_levels_view.js';
 import { researchRiskView } from './research_risk_view.js';
 import { coinAnalysisCards, coinHistoryPanel } from './coin_analysis_view.js';
 import { strategyFamilyPanel } from './strategy_family_view.js';
@@ -6,7 +7,6 @@ import { batchComparisonPanel } from './comparison_batch_view.js';
 import { displayText } from './display.js';
 const escape = v => String(v ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const number = v => v!==null && v!==undefined && v!=='' && Number.isFinite(Number(v)) && Number(v)>0 ? Number(v) : null;
-const quote = v => number(v)===null?'—':Number(v).toLocaleString('en-US',{minimumFractionDigits:3,maximumFractionDigits:Number(v)<1?8:3});
 export function entryPlan(plan,{research=false}={}) {
   const entry=number(plan.entry), stop=number(plan.stop);
   const risk=entry&&stop?Math.abs(entry-stop)/entry*100:null;
@@ -14,11 +14,11 @@ export function entryPlan(plan,{research=false}={}) {
   return `<div class="entry-plan" aria-label="進場、止盈與止損點位">
     <div class="entry-plan-primary"><span>${research?`進場點位 · ${plan.side==='SHORT'?'跌破':'突破'}門檻`:'進場點位 · 報價參考'}</span><strong>${quote(entry)} <small>USDT</small></strong><p>${research?`等待${plan.side==='SHORT'?'向下跌破':'向上突破'}確認；此價格不是已成交價格`:'即時報價估算，尚未確認可進場'}</p></div>
     <div class="entry-plan-exits">
-      <div class="entry-plan-target"><span>第一止盈</span><strong>${quote(plan.tp1)} <small>USDT</small></strong><small>${research?`${rewardR(plan.tp1)} 倍風險距離 · 規劃平倉 50%`:'固定百分比參考'}</small></div>
-      <div class="entry-plan-target"><span>第二止盈</span><strong>${quote(plan.tp2)} <small>USDT</small></strong><small>${research?`${rewardR(plan.tp2)} 倍風險距離 · 規劃平倉剩餘 50%`:'固定百分比參考'}</small></div>
+      <div class="entry-plan-target"><span>第一止盈</span><strong>${quote(plan.tp1)} <small>USDT</small></strong><small>${research?`${priceMove(entry,Number(plan.tp1))} · ${rewardR(plan.tp1)} 倍風險距離 · 規劃平倉 50%`:'固定百分比參考'}</small></div>
+      <div class="entry-plan-target"><span>第二止盈</span><strong>${quote(plan.tp2)} <small>USDT</small></strong><small>${research?`${priceMove(entry,Number(plan.tp2))} · ${rewardR(plan.tp2)} 倍風險距離 · 規劃平倉剩餘 50%`:'固定百分比參考'}</small></div>
       <div class="entry-plan-stop"><span>止損點</span><strong>${quote(stop)} <small>USDT</small></strong><small>${risk===null?'風險距離待確認':`距進場 ${risk.toFixed(2)}%`}</small></div>
     </div>
-    ${research?researchRiskView(plan):''}
+    ${research?`<p class="decision-price-note">以上價格變動不是淨報酬；研究門檻未對齊交易所委託精度。</p>${planExitGuide(plan)}${researchRiskView(plan)}`:''}
     ${plan.targetAnalysis?`<div class="target-analysis"><strong>止盈依據</strong><p>${escape(displayText(plan.targetAnalysis.basis))}</p><p>前方結構：${quote(plan.targetAnalysis.structure)} USDT · 平均真實波幅：${quote(plan.targetAnalysis.atr)}</p><p>分批淨風報比：${plan.targetAnalysis.netRewardRisk.toFixed(2)}（兩段止盈均成交的情境，非預期收益）</p><p>假設單邊手續費 0.05%＋滑價 0.02%，未含資金費率。</p><p>第一止盈後，剩餘部位從下一根起移至成本保護停損；跳空仍可能虧損。</p></div>`:''}
   </div>`;
 }

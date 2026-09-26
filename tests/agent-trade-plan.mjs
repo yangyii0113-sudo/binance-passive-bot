@@ -17,14 +17,14 @@ const H=3600000, now=2400*H+120000;
 function fixture(side='LONG') {
   const plan={key:'breakout',status:'SETUP',side,entry:100,stop:side==='LONG'?95:105,tp1:side==='LONG'?110:90,tp2:side==='LONG'?120:80,signalAt:2400*H-1,expiresAt:2401*H};
   const row={symbol:'UNIUSDT',analysis:{status:'VALID',analyzedAt:now,closedAt:plan.signalAt,validUntil:plan.expiresAt,strategies:[plan,{key:'structured',status:'WAIT',reason:'等待回調'},{key:'meanReversion',status:'WAIT',reason:'等待震盪'}]}};
-  return {symbol:row.symbol,status:'LIVE',checkedAt:now,snapshotUntil:now+60000,row};
+  return {symbol:row.symbol,status:'LIVE',checkedAt:now,snapshotUntil:now+60000,marketSnapshot:{price:side==='LONG'?98:102,high:side==='LONG'?99:103,low:side==='LONG'?97:101,barOpen:2400*H,requestedAt:now,receivedAt:now},row};
 }
-async function generate({side='LONG',contract={},current,fail=false,missing=false}={}) {
-  const r=fixture(side), calls=[];
+async function generate({side='LONG',contract={},current,fail=false,missing=false,delay=0}={}) {
+  const r=fixture(side), calls=[];let clockNow=now;
   const bar=current || [2400*H,side==='LONG'?98:102,side==='LONG'?99:103,side==='LONG'?97:101,side==='LONG'?98:102,100,2401*H-1];
   const fetcher=async url=>{calls.push(url);if(fail)throw new Error('offline');return {ok:true,json:async()=>url.includes('exchangeInfo')?{symbols:[{symbol:'UNIUSDT',status:'TRADING',contractType:'PERPETUAL',quoteAsset:'USDT',underlyingType:'COIN',...contract}]}:missing?[]:[bar]};};
-  const scanner=async (candidates,{fetcher})=>{assert.equal(candidates[0].symbol,'UNIUSDT');await fetcher('https://fapi.binance.com/fapi/v1/klines?symbol=UNIUSDT&interval=1h&limit=601');return [r.row];};
-  return {record:await generateAgentTradePlan('uni / usdt',{fetcher,scanner,clock:()=>now}),calls};
+  const scanner=async (candidates,{fetcher})=>{assert.equal(candidates[0].symbol,'UNIUSDT');await fetcher('https://fapi.binance.com/fapi/v1/klines?symbol=UNIUSDT&interval=1h&limit=601');clockNow+=delay;return [r.row];};
+  return {record:await generateAgentTradePlan('uni / usdt',{fetcher,scanner,clock:()=>clockNow}),calls};
 }
 test('advice filtering cannot keep a selected expired plan in the actionable group',()=>{
   const live=fixture(),old={...fixture(),symbol:'SOLUSDT',snapshotUntil:now-1};
@@ -240,4 +240,54 @@ test('direct advice route exposes an actionable empty state and preserves separa
   assert.doesNotMatch(html,/class="agent-tabs"|data-pullback-scan|decision-levels/);
   assert.deepEqual(s,before);
   s.ui.strategyWorkspace='signals';assert.match(pages.strategies(s),/data-pullback-scan/);
+});
+
+
+test('plan levels preserve small coin price differences in summary and full strategy',()=>{
+  const r=fixture(),p=r.row.analysis.strategies[0];
+  for(const scale of [1,1e8]) {
+    Object.assign(p,{entry:0.000000012345*scale,stop:0.000000011*scale, tp1:0.000000015*scale,tp2:0.000000018*scale});
+    Object.assign(r.marketSnapshot,{price:0.000000012*scale,high:0.0000000121*scale,low:0.0000000119*scale});
+    const levels=scale===1?['0.000000012345','0.000000011','0.000000015','0.000000018']:['1.2345','1.100','1.500','1.800'];
+    for(const html of [agentDecisionCard(r,{now}),agentTradePlanView(r,{now})]) {
+      for(const level of levels)assert.ok(html.includes(level),level);
+      assert.doesNotMatch(html,/NaN|Infinity/);
+    }
+  }
+});
+test('decision explains directional price changes and strategy-specific stop handling',()=>{
+  for(const side of ['LONG','SHORT']){
+    const r=fixture(side),p=r.row.analysis.strategies[0];
+    let html=agentDecisionCard(r,{now});
+    assert.match(html,side==='LONG'?/價格上漲 10.00%/:/價格下跌 10.00%/);
+    assert.match(html,side==='LONG'?/價格下跌 5.00%/:/價格上漲 5.00%/);
+    assert.match(html,/第一止盈之後/);assert.match(html,/止損維持/);
+    assert.match(html,/價格變動不是淨報酬/);
+    r.row.analysis.strategies[1].key='breakout';p.key='structured';
+    html=agentDecisionCard(r,{now});
+    assert.match(html,/下一根一小時 K 棒起/);assert.match(html,/成本保護止損/);
+    assert.match(html,/48 根/);
+  }
+});
+test('slow analysis cannot grant an extra minute to an old market snapshot',async()=>{
+  const {record}=await generate({delay:61000});
+  assert.equal(agentPlanStatus(record,now+61000).key,'expired');
+  assert.doesNotMatch(agentDecisionCard(record,{now:now+61000}),/decision-levels/);
+});
+test('fresh plans expose a dated candle snapshot and signed distance to entry',async()=>{
+  for(const side of ['LONG','SHORT']){
+    const {record}=await generate({side});
+    const html=agentDecisionCard(record,{now});
+    assert.match(html,/核對時參考價/);assert.match(html,/非串流報價/);
+    assert.match(html,side==='LONG'?/尚需上漲 2.04%/:/尚需下跌 1.96%/);
+    assert.equal(record.marketSnapshot.price,side==='LONG'?98:102);
+  }
+});
+test('missing or inconsistent snapshot provenance blocks displayable entry levels',async()=>{
+  const {record}=await generate();
+  for(const mutate of [r=>delete r.marketSnapshot,r=>r.marketSnapshot.price=1000,r=>r.marketSnapshot.receivedAt=now+1,r=>r.marketSnapshot.requestedAt=now-61000,r=>r.marketSnapshot.barOpen-=H]){
+    const r=structuredClone(record);mutate(r);
+    assert.notEqual(agentPlanStatus(r,now).key,'plan');
+    assert.doesNotMatch(agentDecisionCard(r,{now}),/decision-levels/);
+  }
 });

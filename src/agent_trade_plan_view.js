@@ -4,7 +4,6 @@ import { FAMILY_NAMES } from './strategy_families.js';
 import { entryPlan } from './entry_plan.js';
 import { escapeHtml as esc, displayDate } from './ui.js';
 import { agentComparisonView } from './agent_comparison_view.js';
-import { researchProtectionStop } from './research_risk_view.js';
 
 const rules = {
   structured:'4 小時價格、50／200 期指數均線與斜率同向；1 小時回踩 20 期均線後收回，以同向實體收盤，距均線不超過一倍平均真實波幅。',
@@ -19,12 +18,11 @@ export function agentTradePlanView(record, {symbol=record?.symbol || '', now=Dat
     <div class="agent-plan-heading"><div><span class="research-kicker">分析結果 → 交易計畫 · 僅模擬研究</span><h3>${name} · 交易計畫</h3></div><button type="button" class="secondary-btn" data-agent-plan-refresh="${name}" ${loading?'disabled':''}>${loading?'擬定中…':'重新產生計畫'}</button></div>
     ${agentPlanStateView(record,now)}
     <p role="status">${esc(state.reason)}</p>
-    ${record?.checkedAt?`<p class="strategy-note">行情核對：${displayDate(record.checkedAt)} · 點位顯示核對有效一分鐘</p>`:''}
+    ${record?.checkedAt?`<p class="strategy-note">行情核對：${displayDate(record.checkedAt)} · 從行情請求開始計算，點位核對最長一分鐘</p>`:''}
     ${state.plans.map(plan=>`<article class="agent-plan-scenario">
       <h4>${esc(FAMILY_NAMES[plan.key])} · ${plan.side==='LONG'?'做多':'做空'}</h4>
       <p class="agent-plan-expiry">進場有效至 ${displayDate(plan.expiresAt)}，到時未觸發即取消。</p>
       ${entryPlan(plan,{research:true})}
-      ${plan.key==='structured'?`<p class="agent-plan-expiry">第一止盈後的成本保護止損：${researchProtectionStop(plan)?.toLocaleString('en-US',{maximumFractionDigits:8}) ?? '—'} USDT；下一根起生效，含假設手續費與滑價，仍有跳空風險。</p>`:''}
       <details class="core-disclosure" data-search="${name} ${plan.key} 完整進退場規則"><summary>完整進退場規則與失效條件</summary><p>${esc(rules[plan.key])}</p><ol>
         <li>進場：僅下一根一小時 K 棒內，${plan.side==='LONG'?'向上突破':'向下跌破'}門檻才形成觸發條件；門檻為訊號棒${plan.side==='LONG'?'最高':'最低'}價加上方向性 0.1 倍平均真實波幅。不追已觸發或跳過門檻的行情。</li>
         <li>止損：最近五根${plan.side==='LONG'?'最低':'最高'}價外加 0.2 倍平均真實波幅；觸及止損即退出全部剩餘部位，不放寬止損、不攤平。</li>

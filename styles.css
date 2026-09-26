@@ -2454,3 +2454,18 @@ button, a, input, select, summary { scroll-margin-block:16px 110px; }
   .forward-record summary { flex-direction:column; align-items:flex-start; }
   .forward-record .core-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); }
 }
+
+/* Entry and exit clarity: preserve full research price precision on phones. */
+.decision-quote{display:grid;gap:5px;padding:12px;margin-bottom:12px;background:#181d21;border:1px solid #3b4856;border-radius:10px;font-size:13px;color:#d6dce3;overflow-wrap:anywhere}
+.decision-quote strong{font-variant-numeric:tabular-nums;color:#f3f4f6}
+.decision-quote small,.decision-price-note{font-size:11px;line-height:1.6;color:#b7c1cd}
+.decision-levels dd{overflow-wrap:anywhere}
+.decision-levels .decision-target{border-color:#416f62}
+.decision-levels .decision-target dd{color:#9ee3ca}
+.decision-levels .decision-stop dd{color:#ffb6b3}
+.decision-levels>div>small{display:block;margin-top:5px;line-height:1.5}
+.plan-exit-guide{padding:12px;border:1px solid #425063;border-radius:10px;background:#171d24;margin:12px 0;color:#d2d8e1;font-size:12px;line-height:1.7;overflow-wrap:anywhere}
+.plan-exit-guide h5{font-size:13px;color:#efcf8c;margin:0 0 5px}
+.plan-exit-guide p{margin:5px 0}
+.plan-exit-guide .core-disclosure{margin-bottom:0}
+@media(max-width:430px){.decision-levels{grid-template-columns:1fr}.decision-levels dd{font-size:23px}.decision-levels .decision-entry dd{font-size:27px}}
