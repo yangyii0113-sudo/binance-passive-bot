@@ -12,6 +12,6 @@ export function coinLogo(symbol, fallback, large = false) {
   const src = bundled.has(code) ? new URL(`./assets/coins/${code}.svg`, import.meta.url).href : `https://assets.coincap.io/assets/icons/${code}@2x.png`;
   return `<span class="coin-logo ${large ? 'large' : ''}" aria-hidden="true">
     <span class="coin-logo-fallback" title="${label} 代號">${text}</span>
-    ${code ? `<img src="${esc(src)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onload="this.style.opacity='1';this.previousElementSibling.hidden=true" onerror="this.hidden=true;this.previousElementSibling.hidden=false">` : ''}
+    ${code ? `<img class="${bundled.has(code) ? 'coin-logo-bundled' : ''}" src="${esc(src)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onload="this.style.opacity='1';this.previousElementSibling.hidden=true" onerror="this.hidden=true;this.previousElementSibling.hidden=false">` : ''}
   </span>`;
 }

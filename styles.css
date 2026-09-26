@@ -246,6 +246,7 @@ select:focus,.form-grid input:focus{border-color:rgba(241,184,75,.35)}
 .coin-logo{width:34px;height:34px;flex-shrink:0;border-radius:50%;display:grid;place-items:center;overflow:hidden;position:relative;background:#0f1011;border:1px solid rgba(255,255,255,.08);box-shadow:inset 0 1px 0 rgba(255,255,255,.05)}
 .coin-logo.large{width:44px;height:44px;flex:0 0 44px}
 .coin-logo img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;opacity:0;background:#0f1011}
+.coin-logo img.coin-logo-bundled{background:#f5f5f3;padding:3px;box-sizing:border-box}
 .coin-logo img[hidden],.coin-logo-fallback[hidden]{display:none}
 .coin-identity{display:flex;align-items:center;gap:8px;min-width:0}
 .coin-identity strong,.coin-identity h3{min-width:0;overflow-wrap:anywhere}
