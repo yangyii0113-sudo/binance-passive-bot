@@ -15,7 +15,7 @@ export function coinAnalysisCards(snapshot,now,renderPlan,renderMarket=()=> ''){
  }
  const historical=snapshot.analysisHistorical===true;
  const market=row=>historical?'':renderMarket(row);
- const compare=row=>`<button class="secondary-btn" type="button" data-pullback-compare="${esc(row.symbol)}" ${snapshot.loading||snapshot.comparing||historical?'disabled':''}>${snapshot.comparing&&snapshot.comparingSymbol===row.symbol?'正在比較…':`比較 ${esc(row.symbol)} 三策略 · 90 天`}</button>`;
+ const compare=row=>`<div class="coin-card-actions"><button class="primary-inline-btn" type="button" data-agent-analyze="${esc(row.symbol)}" ${snapshot.loading||snapshot.comparing?'disabled':''}>${historical?'重新分析目前行情':'核對即時交易建議'}</button><button class="secondary-btn" type="button" data-pullback-compare="${esc(row.symbol)}" ${snapshot.loading||snapshot.comparing||historical?'disabled':''}>${snapshot.comparing&&snapshot.comparingSymbol===row.symbol?'正在比較…':`比較 ${esc(row.symbol)} 三策略 · 90 天`}</button></div>`;
  const category=row=>historical?'historical':coinCategory(row,now);
  const filters=[['all','全部'],['plan','有研究計畫'],['wait','等待條件'],['issue','資料／衝突／過期']];
  const matches=(row,key)=>key==='all'||(key==='issue'?['blocked','conflict','expired'].includes(category(row)):category(row)===key);

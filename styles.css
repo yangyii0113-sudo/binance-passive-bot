@@ -2407,6 +2407,9 @@ button, a, input, select, summary { scroll-margin-block:16px 110px; }
 .decision-waits h4 { margin:0 0 8px; font-size:15px; color:#f0ce83; }
 .decision-waits .agent-plan-waits { margin:0; padding-left:20px; }
 .decision-waits li { margin:10px 0; }
+.coin-card-actions { display:grid; gap:8px; margin-top:14px; }
+.coin-card-actions button { width:100%; min-width:0; min-height:44px; white-space:normal; line-height:1.5; font-size:14px; padding:10px 12px; }
+.coin-card-actions button:focus-visible { outline:2px solid #f3c56c; outline-offset:3px; }
 .research-home :focus-visible,.home-stack button:focus-visible,.agent-advice-panel :focus-visible { outline:2px solid #f3c56c; outline-offset:3px; }
 @media(max-width:560px){
   .research-home { padding:16px; }

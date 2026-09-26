@@ -100,6 +100,15 @@ test('one coin has one main card and one comparison action', () => {
   assert.match(html,/固定百分比點位/);assert.match(html,/非研究進場計畫/);
   assert.deepEqual(s,before);
 });
+test('scanned coin cards hand off the exact symbol to fresh advice and block actions during a scan',()=>{
+  const s=state();s.ui.strategyWorkspace='signals';s.market.rows=[];
+  s.pullback={rows:[{symbol:'UNIUSDT',status:'WAIT',reason:'等待收盤條件'}]};
+  const before=structuredClone(s),html=pages.strategies(s);
+  assert.equal((html.match(/data-agent-analyze="UNIUSDT"/g)||[]).length,1);
+  assert.deepEqual(s,before);
+  s.pullback.loading=true;
+  assert.match(pages.strategies(s),/data-agent-analyze="UNIUSDT"[^>]*disabled/);
+});
 
 test('scan lifecycle shows exactly one truthful empty state', () => {
   const s=state();s.ui.strategyWorkspace='signals';s.market.rows=[];
