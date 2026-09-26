@@ -12,6 +12,7 @@ import { agentHistoryPanel, agentAdvicePanel } from '../src/agent_workflow_view.
 import { agentPlanPresentation, agentDecisionCard } from '../src/agent_decision_view.js';
 import { pages } from '../src/pages.js';
 import { appState } from '../src/state.js';
+import { adviceDisplayStatus } from '../src/advice_display_status.js';
 
 const H=3600000, now=2400*H+120000;
 function fixture(side='LONG') {
@@ -19,6 +20,47 @@ function fixture(side='LONG') {
   const row={symbol:'UNIUSDT',analysis:{status:'VALID',analyzedAt:now,closedAt:plan.signalAt,validUntil:plan.expiresAt,strategies:[plan,{key:'structured',status:'WAIT',reason:'等待回調'},{key:'meanReversion',status:'WAIT',reason:'等待震盪'}]}};
   return {symbol:row.symbol,status:'LIVE',checkedAt:now,snapshotUntil:now+60000,marketSnapshot:{price:side==='LONG'?98:102,high:side==='LONG'?99:103,low:side==='LONG'?97:101,barOpen:2400*H,requestedAt:now,receivedAt:now},row};
 }
+
+test('advice distinguishes waiting, skipped, missed, invalidated and incomplete research without changing eligibility',()=>{
+  const cases=[
+    ['WAIT','尚未收盤突破前 20 根最高／最低價','wait','尚未收盤突破'],
+    ['WAIT','收盤已突破區間；等待訊號棒成交量達前 20 根均量的 1.5 倍','wait','突破量能不足'],
+    ['SKIP','扣除基本成本後，分批目標風報比不足 1','skip','空間／風報不足'],
+    ['WAIT','本根已觸及進場門檻，無法當作新的進場機會；等待下一次收盤重新分析','skip','已錯過進場'],
+    ['WAIT','本根已觸及失效止損位置，取消計畫；等待新訊號','skip','計畫已失效'],
+    ['BLOCKED','缺少當前一小時行情','attention','資料待核對'],
+    ['SKIP','新的研究限制原因','skip','略過本次方案']
+  ];
+  for(const [status,reason,group,label] of cases){
+    const record=fixture();Object.assign(record.row.analysis.strategies[0],{status,reason});
+    const before=structuredClone(record),display=adviceDisplayStatus(record,now);
+    assert.equal(display.group,group);assert.equal(display.label,label);
+    assert.equal(display.gate.key,'wait');assert.equal(display.gate.plans.length,0);
+    const html=agentDecisionCard(record,{now});
+    assert.match(html,new RegExp(label));assert.ok(html.includes(reason));
+    assert.match(html,/下一步：|訊號收盤/);assert.doesNotMatch(html,/decision-levels/);
+    const shown=agentAdvicePanel({agents:{tradePlans:{UNIUSDT:record}},ui:{adviceFilter:group}},now);
+    assert.match(shown,/data-selected-advice="UNIUSDT"/);
+    const other=agentAdvicePanel({agents:{tradePlans:{UNIUSDT:record}},ui:{adviceFilter:group==='wait'?'attention':'wait'}},now);
+    assert.doesNotMatch(other,/data-selected-advice=/);
+    assert.deepEqual(record,before);
+  }
+});
+test('expired or blocked gates suppress all current-looking strategy reasons and levels',()=>{
+  const r=fixture();Object.assign(r.row.analysis.strategies[0],{status:'WAIT',reason:'收盤已突破區間；等待訊號棒成交量達前 20 根均量的 1.5 倍'});
+  for(const mutate of [x=>x.snapshotUntil=now,x=>x.historical=true,x=>x.row.analysis.strategies.pop()]){
+    const record=structuredClone(r);mutate(record);
+    const display=adviceDisplayStatus(record,now),html=agentDecisionCard(record,{now});
+    assert.equal(display.group,'attention');assert.deepEqual(display.details,[]);
+    assert.doesNotMatch(html,/突破量能不足|訊號棒成交量|decision-levels/);
+  }
+});
+test('a valid independent plan remains a plan despite other waiting or skipped strategies',()=>{
+  const r=fixture();Object.assign(r.row.analysis.strategies[1],{status:'SKIP',reason:'最近支撐／壓力不足 1R 空間，略過'});
+  const before=structuredClone(r),display=adviceDisplayStatus(r,now);
+  assert.equal(display.group,'plan');assert.equal(display.gate.plans.length,1);
+  assert.match(agentDecisionCard(r,{now}),/decision-levels/);assert.deepEqual(r,before);
+});
 async function generate({side='LONG',contract={},current,fail=false,missing=false,delay=0}={}) {
   const r=fixture(side), calls=[];let clockNow=now;
   const bar=current || [2400*H,side==='LONG'?98:102,side==='LONG'?99:103,side==='LONG'?97:101,side==='LONG'?98:102,100,2401*H-1];

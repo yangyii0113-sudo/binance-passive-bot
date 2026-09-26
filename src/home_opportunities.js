@@ -1,8 +1,8 @@
 import { coinLogo } from './coin_logo.js';
+import { adviceDisplayStatus } from './advice_display_status.js';
 import { rankStrongRows } from './strong_candidates.js';
 import { agentPlanStatus } from './agent_trade_plan.js';
 import { researchRiskScenario } from './research_risk_view.js';
-import { FAMILY_NAMES } from './strategy_families.js';
 import { MARKET_REFRESH_MS } from './config.js';
 import { escapeHtml as esc, displayDate } from './ui.js';
 
@@ -43,15 +43,13 @@ export function homeOpportunities(state,now=Date.now()) {
     const strategies=record?.row?.analysis?.strategies||[];
     const partial=Array.isArray(strategies)&&strategies.some(p=>p.status==='BLOCKED');
     const key=result.key==='wait'&&partial?'blocked':result.key;
+    const display=adviceDisplayStatus(record,now);
     let reason=result.reason;
     if(key==='empty')reason='市場強度已排序；尚未核對三策略與進場時效。';
     if(key==='plan')reason=partial?'僅列通過核對的方案；其他策略仍有資料缺漏。':'收盤結構、當根門檻與成本後空間已核對；等待新觸發。';
-    if(key==='wait'&&Array.isArray(strategies)){
-      const waiting=strategies.find(p=>p.status==='SKIP')||strategies.find(p=>p.reason);
-      if(waiting)reason=`${FAMILY_NAMES[waiting.key]||'策略'}：${waiting.reason||'等待條件'}`;
-    }
+    if(result.key==='wait')reason=display.reason;
     const ratios=result.plans.map(p=>researchRiskScenario(p)?.netRewardRisk).filter(Number.isFinite);
-    return {...candidate,key,label:labels[key],reason,ratios,until:key==='plan'?Math.min(record.snapshotUntil,record.row.analysis.validUntil):null};
+    return {...candidate,key,label:result.key==='wait'?display.label:labels[key],reason,ratios,until:key==='plan'?Math.min(record.snapshotUntil,record.row.analysis.validUntil):null};
   });
   if(state.ui?.homeOpportunitySort==='readiness')rows.sort((a,b)=>priority[a.key]-priority[b.key]||a.rank-b.rank);
   return {...selection,rows,ready:rows.filter(r=>r.key==='plan').length,unchecked:rows.filter(r=>r.key==='empty').length};

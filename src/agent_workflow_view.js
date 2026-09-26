@@ -1,4 +1,5 @@
 import { coinLogo } from './coin_logo.js';
+import { adviceDisplayStatus } from './advice_display_status.js';
 import { trendOutlookView } from './trend_outlook_view.js';
 import { agentDecisionCard, agentActionLabel } from './agent_decision_view.js';
 import { agentPlanStatus } from './agent_trade_plan.js';
@@ -10,16 +11,16 @@ import { forwardTrackingBar } from './advice_forward_view.js';
 export function agentAdvicePanel(state, now=Date.now(), {analysisForm=''}={}) {
   const records=Object.values(state.agents?.tradePlans || {}).filter(Boolean).sort((a,b)=>(b.checkedAt || 0)-(a.checkedAt || 0));
   const ready=records.filter(r=>agentPlanStatus(r,now).key==='plan');
-  const filters=[['all','全部'],['plan','有計畫'],['wait','等條件'],['attention','需處理']];
+  const filters=[['all','全部'],['plan','有計畫'],['wait','等條件'],['skip','略過／失效'],['attention','需處理']];
   const active=filters.some(([key])=>key===state.ui?.adviceFilter)?state.ui.adviceFilter:'all';
-  const matches=(r,key)=>{const status=agentPlanStatus(r,now).key;return key==='all'||(key==='attention'?!['plan','wait'].includes(status):status===key);};
+  const matches=(r,key)=>key==='all'||adviceDisplayStatus(r,now).group===key;
   const visible=records.filter(r=>matches(r,active));
   const selected=visible.find(r=>r.symbol===state.ui?.adviceSymbol) || visible.find(r=>agentPlanStatus(r,now).key==='plan') || visible[0];
   const symbol=esc(selected?.symbol || '');
   return `<section class="agent-panel-stack agent-advice-panel" aria-label="交易建議總覽">
     <div class="advice-intro"><strong>${records.length?`目前 ${ready.length} 檔有條件式模擬計畫`:'先選幣種，直接取得交易建議'}</strong><p>${records.length?'先選幣種，再看「目前建議」與點位。狀態不代表勝率或獲利排名。':'分析完成會直接顯示：現在該做什麼、進場條件、止盈、止損。條件不足時會清楚列出等待原因。'}</p></div>
     ${records.length?`<div class="advice-filters" role="group" aria-label="依建議狀態篩選">${filters.map(([key,label])=>`<button type="button" data-advice-filter="${key}" aria-pressed="${key===active}">${label}<span>${records.filter(r=>matches(r,key)).length}</span></button>`).join('')}</div>
-      ${selected?`<div class="advice-symbols" role="group" aria-label="選擇要看的交易建議">${visible.map(r=>`<button type="button" class="advice-symbol-btn" data-agent-advice-symbol="${esc(r.symbol)}" aria-pressed="${r===selected}"><span class="coin-identity">${coinLogo(r.symbol)}<strong>${esc(r.symbol)}</strong></span><span class="advice-symbol-status">${agentActionLabel(r,now)}</span></button>`).join('')}</div>
+      ${selected?`<div class="advice-symbols" role="group" aria-label="選擇要看的交易建議">${visible.map(r=>`<button type="button" class="advice-symbol-btn" data-agent-advice-symbol="${esc(r.symbol)}" data-advice-reason="${adviceDisplayStatus(r,now).code}" aria-pressed="${r===selected}"><span class="coin-identity">${coinLogo(r.symbol)}<strong>${esc(r.symbol)}</strong></span><span class="advice-symbol-status">${agentActionLabel(r,now)}</span></button>`).join('')}</div>
       <div class="advice-with-outlook" data-selected-advice="${symbol}">${agentDecisionCard(selected,{now})}${state.agents?.technical?.symbol===selected.symbol?trendOutlookView(state.agents.technical,selected,{now,compact:true}):''}</div>`:'<div class="empty-state"><strong>此分類目前沒有建議</strong><span>可切換全部，或分析其他幣種；不以其他分類的舊點位補足。</span><button type="button" class="secondary-btn" data-advice-filter="all">查看全部建議</button></div>'}
       <details class="core-disclosure" data-search="advice-new-analysis"><summary>分析其他幣種</summary>${analysisForm}</details>`:`<div class="advice-start">${analysisForm || '<button type="button" class="primary-inline-btn" data-agent-key="technical">開始分析</button>'}<p>尚無本次分析；歷史研究紀錄不會自動變成目前可用點位。</p></div>`}
     ${forwardTrackingBar(state)}

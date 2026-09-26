@@ -664,7 +664,7 @@ function initEvents() {
       return;
     }
     const adviceFilter=event.target.closest?.('[data-advice-filter]');
-    if(adviceFilter&&['all','plan','wait','attention'].includes(adviceFilter.dataset.adviceFilter)){
+    if(adviceFilter&&['all','plan','wait','skip','attention'].includes(adviceFilter.dataset.adviceFilter)){
       appState.ui.adviceFilter=adviceFilter.dataset.adviceFilter;render();return;
     }
     const homeSort=event.target.closest?.('[data-home-opportunity-sort]');
