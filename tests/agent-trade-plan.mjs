@@ -26,6 +26,30 @@ async function generate({side='LONG',contract={},current,fail=false,missing=fals
   const scanner=async (candidates,{fetcher})=>{assert.equal(candidates[0].symbol,'UNIUSDT');await fetcher('https://fapi.binance.com/fapi/v1/klines?symbol=UNIUSDT&interval=1h&limit=601');return [r.row];};
   return {record:await generateAgentTradePlan('uni / usdt',{fetcher,scanner,clock:()=>now}),calls};
 }
+test('advice filtering cannot keep a selected expired plan in the actionable group',()=>{
+  const live=fixture(),old={...fixture(),symbol:'SOLUSDT',snapshotUntil:now-1};
+  const state={agents:{tradePlans:{UNIUSDT:live,SOLUSDT:old}},ui:{adviceSymbol:'SOLUSDT',adviceFilter:'plan'}};
+  const before=structuredClone(state),html=agentAdvicePanel(state,now);
+  assert.match(html,/data-selected-advice="UNIUSDT"/);
+  assert.doesNotMatch(html,/data-agent-advice-symbol="SOLUSDT"/);
+  assert.deepEqual(state,before);
+  state.ui.adviceFilter='attention';
+  const review=agentAdvicePanel(state,now);
+  assert.match(review,/data-selected-advice="SOLUSDT"/);
+  assert.doesNotMatch(review,/data-agent-advice-symbol="UNIUSDT"|decision-levels/);
+});
+test('an empty advice filter gives a recovery action without borrowing another group plan',()=>{
+  const html=agentAdvicePanel({agents:{tradePlans:{UNIUSDT:fixture()}},ui:{adviceFilter:'attention'}},now);
+  assert.match(html,/此分類目前沒有建議/);assert.match(html,/data-advice-filter="all"/);
+  assert.doesNotMatch(html,/data-selected-advice=|decision-levels/);
+});
+test('decision risk amounts appear only for valid gated plans and remain hypothetical',()=>{
+  const good=agentDecisionCard(fixture(),{now});
+  assert.match(good,/直接止損情境/);assert.match(good,/−2.50/);assert.match(good,/研究本金 1,000 USDT/);
+  assert.match(good,/非預期收益/);
+  const expired=agentDecisionCard({...fixture(),snapshotUntil:now},{now});
+  assert.doesNotMatch(expired,/直接止損情境|decision-levels/);
+});
 test('agent plans support non-BTC/ETH futures and both directions with complete conditional exits',async()=>{
   for(const side of ['LONG','SHORT']) {
     const {record,calls}=await generate({side});

@@ -1,4 +1,5 @@
 import { adviceResultsPage } from './advice_forward_view.js';
+import { researchOverview } from './research_overview.js';
 import { trendOutlookView } from './trend_outlook_view.js';
 import { smcReference } from './smc_reference.js';
 import { agentTradePlanView } from './agent_trade_plan_view.js';
@@ -551,7 +552,7 @@ function homeSectionTabs(state){
   const items = [
     ['market','市場排行','◉'],
     ['strong','市場機會前五名','◆'],
-    ['focus','國際焦點','◌'],
+    ['focus','事件研究框架','◌'],
     ['strategy','策略機會','◎']
   ];
   return `<div class="home-section-tabs" role="tablist" aria-label="首頁內容分頁">
@@ -562,7 +563,7 @@ function homeSectionTabs(state){
   </div>`;
 }
 
-export function homePage(state) {
+export function homePage(state,now=Date.now()) {
   const homeSection = state.ui?.homeSection || 'market';
   const assetClass = state.ui?.assetClass || 'crypto';
   const isCrypto = assetClass === 'crypto';
@@ -603,24 +604,7 @@ export function homePage(state) {
 
   return `<div class="page-stack home-stack">${messageBar(state)}
     ${assetClassSwitcher(state)}
-    <div class="hero-grid">
-      <section class="panel hero-card direction-card">
-        <div class="hero-label"><span class="hero-icon">◈</span>市場方向</div>
-        <div class="direction-layout">
-          <div class="direction-primary">
-            <strong class="direction-value">${market.direction}</strong>
-            <span class="hero-kicker">${marketStatusLabel(market)}</span>
-          </div>
-          <div class="direction-divider"></div>
-          <p>關注國際動態與資金變化，保持靈活應對。</p>
-        </div>
-      </section>
-      <section class="panel hero-card event-card" data-event-calendar role="button" tabindex="0" aria-expanded="${Boolean(state.ui?.calendarOpen)}">
-        <div class="hero-label"><span class="hero-icon">▣</span>事件日曆</div>
-        <p>追蹤重要經濟數據與市場事件。</p>
-        <div class="event-bottom"><span class="focus-tag">模板</span><span>${state.ui?.calendarOpen ? '收合' : '查看本週'} ›</span></div>
-      </section>
-    </div>
+    ${isCrypto?researchOverview(state,now):stockEmptyState('股市研究尚未接入')}
 
     ${calendarPanel(state)}
     ${homeSectionTabs(state)}
@@ -652,8 +636,8 @@ export function homePage(state) {
 
     <section class="panel focus-panel home-section-panel ${homeSection==='focus'?'is-active':''}">
       <div class="section-head premium-head">
-        <div class="section-title"><span class="section-symbol">◌</span>國際焦點</div>
-        <span class="section-quiet">靜態資料</span>
+        <div class="section-title"><span class="section-symbol">◌</span>事件研究框架</div>
+        <span class="section-quiet">靜態教學 · 非即時新聞</span>
       </div>
       <div class="focus-layout">
         ${focusCard(focusA, 0, true)}

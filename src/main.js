@@ -156,6 +156,7 @@ async function runAgentTechnical(value, {origin='使用者選幣 · 多週期分
     appState.ui.message=`${symbol} 分析完成，交易建議已整理。`;
     if(currentRoute()==='strategies' && appState.ui.strategyWorkspace==='agents' && appState.ui.agentKey==='technical' && appState.ui.selectedSymbol===symbol){
       appState.ui.adviceSymbol=symbol;
+      appState.ui.adviceFilter='all';
       appState.ui.agentKey='advice';
       navigateTo('#/advice');
     }
@@ -633,11 +634,19 @@ function initEvents() {
     if(adviceSymbol){
       if(appState.agents.tradePlans?.[adviceSymbol.dataset.agentAdviceSymbol]){
         appState.ui.adviceSymbol=adviceSymbol.dataset.agentAdviceSymbol;
+        if(currentRoute()!=='advice')appState.ui.adviceFilter='all';
         appState.ui.message='';
         appState.ui.strategyWorkspace='agents';appState.ui.agentKey='advice';
         navigateTo('#/advice');
       }
       return;
+    }
+    const adviceFilter=event.target.closest?.('[data-advice-filter]');
+    if(adviceFilter&&['all','plan','wait','attention'].includes(adviceFilter.dataset.adviceFilter)){
+      appState.ui.adviceFilter=adviceFilter.dataset.adviceFilter;render();return;
+    }
+    if(event.target.closest?.('[data-home-research]')){
+      appState.ui.strategyWorkspace='signals';navigateTo('#/strategies');return;
     }
     const selectedAnalysis=event.target.closest?.('[data-agent-analyze]');
     if(selectedAnalysis){await runAgentTechnical(selectedAnalysis.dataset.agentAnalyze,{origin:'市場篩選 · 一鍵分析'});return;}

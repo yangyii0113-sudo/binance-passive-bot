@@ -53,11 +53,12 @@ export function agentDecisionCard(record, {now=Date.now()}={}) {
           <div><dt>第二止盈 · 剩餘 50%</dt><dd>${quote(plan.tp2)} <small>USDT</small></dd></div>
         </dl>
         <p class="decision-trigger"><strong>何時考慮：</strong>先重新核對行情；確認仍有效後，${plan.side==='LONG'?'向上突破':'向下跌破'} ${quote(plan.entry)} USDT 才觀察觸發。已觸及門檻、已失效或過期，就取消本次計畫，不追價。</p>
-        <p class="decision-reward">成本後目標風報比 <strong>${risk.netRewardRisk.toFixed(2)}</strong><span>兩段目標各成交一半的情境，非預期收益；未含資金費率。</span></p>
+        <dl class="decision-money" aria-label="成本後研究情境"><div><dt>直接止損情境</dt><dd>−${risk.stopLoss.toFixed(2)} <small>USDT</small></dd></div><div><dt>兩段止盈各 50%</dt><dd>${risk.targetPnl.toFixed(2)} <small>USDT</small></dd></div></dl>
+        <p class="decision-reward">成本後目標風報比 <strong>${risk.netRewardRisk.toFixed(2)}</strong><span>固定研究本金 1,000 USDT、風險預算 0.25%，非你的帳戶額度。以上為情境，非預期收益；未含資金費率與額外跳空，止損金額不是最大可能損失。</span></p>
         <p class="decision-validity">進場有效至 ${displayDate(plan.expiresAt)}；點位核對有效至 ${displayDate(record.snapshotUntil)}，先到者為準。</p>
       </section>`;
     }).join(''):`<div class="decision-no-levels"><strong>${result.key==='loading'?'正在核對，暫不顯示點位。':'進場／止盈／止損：目前不提供'}</strong><span>${result.key==='wait'?'下一步：等下列收盤條件成立，再重新核對行情。':result.key==='loading'?'完成後會顯示結論。':'下一步：重新核對行情後，再決定是否建立計畫。'}</span></div>`}
-    ${waits?`<details class="core-disclosure" data-search="wait-reasons-${symbol}"><summary>各策略在等什麼？</summary><ul class="agent-plan-waits">${waits}</ul></details>`:''}
+    ${waits?`<section class="decision-waits" aria-label="各策略等待條件"><h4>各策略在等什麼？</h4><ul class="agent-plan-waits">${waits}</ul></section>`:''}
     ${result.plans.length>1?'<p>同幣多方案沒有經驗證的優先順序，請分別判讀，不可重複累加部位。</p>':''}
     <div class="decision-actions"><button type="button" class="primary-inline-btn" data-agent-plan-refresh="${symbol}" ${result.key==='loading'?'disabled':''}>${result.key==='loading'?'核對中…':'更新這檔建議'}</button><button type="button" class="secondary-btn" data-agent-plan-open="${symbol}">查看完整策略依據</button></div>
     <details class="core-disclosure" data-search="advice-integrity-${symbol}"><summary>資料狀態與核對時間</summary>${agentPlanStateView(record,now)}<p>行情核對：${Number.isFinite(record.checkedAt)?displayDate(record.checkedAt):'尚未完成'}。點位核對有效一分鐘，換根後需重新分析。</p></details>

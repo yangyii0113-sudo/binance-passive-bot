@@ -31,6 +31,18 @@ test('candidate and all agent views translate display states without changing st
   assert.deepEqual(s.candidates, before.candidates);
   assert.deepEqual(s.agents, before.agents);
 });
+test('home research entry labels stale or future market snapshots without claiming a current direction',()=>{
+  const now=Date.now(),s=state();s.market.direction='偏多';
+  for(const stamp of [null,new Date(now-300000).toISOString(),new Date(now+10000).toISOString()]){
+    s.market.updatedAt=stamp;
+    const html=pages.home(s,now);
+    assert.match(html,/行情待更新/);assert.doesNotMatch(html,/direction-value">偏多/);
+  }
+  s.market.updatedAt=new Date(now).toISOString();
+  const html=pages.home(s,now);
+  assert.match(html,/追蹤範圍 1 檔/);assert.match(html,/上漲 1/);assert.match(html,/下跌 0/);
+  assert.match(html,/data-home-research/);assert.match(html,/href="#\/advice-results"/);
+});
 
 test('missing performance metrics remain unavailable rather than displaying zero', () => {
   const s = state();
