@@ -1,5 +1,6 @@
 import { OUTLOOK_TTL } from './trend_outlook.js';
 import { createAdviceMonitor } from './advice_monitor.js';
+import { createAnalysisBatchFetcher } from './analysis_batch_fetcher.js';
 import { homeCandidates, runHomeChecks } from './home_opportunities.js';
 import { createForwardController } from './advice_forward_controller.js';
 import { forwardFeedFacts } from './advice_forward_view.js';
@@ -114,7 +115,7 @@ function writeAgentPlan(symbol, record) {
   setStateSlice('agents', {tradePlans:{...appState.agents.tradePlans,[symbol]:record}});
   scheduleAgentPlanExpiry();
 }
-function refreshAgentPlan(value, {origin='重新核對', technical,automatic=false,isCurrent=()=>true}={}) {
+function refreshAgentPlan(value, {origin='重新核對', technical,automatic=false,isCurrent=()=>true,fetcher=fetch}={}) {
   const symbol=normalizePlanSymbol(value);
   if (pendingAgentPlans.has(symbol)) return pendingAgentPlans.get(symbol);
   forwardTracker?.watchSymbol(symbol);
@@ -122,7 +123,7 @@ function refreshAgentPlan(value, {origin='重新核對', technical,automatic=fal
   const previous=appState.agents.tradePlans[symbol];
   const loading={symbol,status:'LOADING'};
   if(!automatic||!previous){writeAgentPlan(symbol,loading);render();}
-  const task=generateAgentTradePlan(symbol).then(record=>{
+  const task=generateAgentTradePlan(symbol,{fetcher}).then(record=>{
     if(!isCurrent()){
       if(appState.agents.tradePlans[symbol]===loading)writeAgentPlan(symbol,{symbol,status:'BLOCKED',reason:'自動核對已暫停；恢復後重新判定。'});
       return record;
@@ -160,7 +161,8 @@ async function automaticAdviceScan(isCurrent) {
   const extra=/^[\p{L}\p{N}]+USDT$/u.test(selected)&&!candidates.rows.some(r=>r.symbol===selected)?selected:null;
   monitoredSymbols=[...candidates.rows.map(r=>r.symbol),...(extra?[extra]:[])];
   for(const symbol of monitoredSymbols)forwardTracker?.watchSymbol(symbol);
-  const check=symbol=>isCurrent()?refreshAgentPlan(symbol,{origin:'平台自動核對',automatic:true,isCurrent}):Promise.resolve(null);
+  const fetcher=createAnalysisBatchFetcher();
+  const check=symbol=>isCurrent()?refreshAgentPlan(symbol,{origin:'平台自動核對',automatic:true,isCurrent,fetcher}):Promise.resolve(null);
   const results=await runHomeChecks(candidates.rows.map(r=>r.symbol),{check});
   const records=results.filter(r=>r.ok&&r.value).map(r=>r.value);
   if(extra&&isCurrent()){const r=await check(extra);if(r)records.push(r);}
@@ -670,7 +672,11 @@ function initEvents() {
     if(event.target.closest?.('[data-auto-check-toggle]')){adviceMonitor?.setEnabled(!adviceMonitor.view().enabled);return;}
     if(event.target.closest?.('[data-monitor-track]')){
       await forwardTracker?.start();
-      adviceMonitor?.pause();await adviceMonitor?.tick();return;
+      if(forwardTracker?.view().enabled){
+        if(!adviceMonitor.view().enabled)adviceMonitor.setEnabled(true);
+        else {adviceMonitor.pause();await adviceMonitor.tick();}
+      }
+      return;
     }
     if(event.target.closest?.('[data-forward-start]')){await forwardTracker?.start();return;}
     if(event.target.closest?.('[data-forward-stop]')){forwardTracker?.stop();return;}

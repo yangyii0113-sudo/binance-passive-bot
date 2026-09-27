@@ -27,7 +27,8 @@ export function createAdviceMonitor({scan,clock=Date.now,available=()=>true,onCh
     notify();
   }
   function forward(view) {
-    if(!enabled||!available()||!view.enabled||view.error||view.dataError)return;
+    // Pausing new-plan checks does not silence separately enabled tracking.
+    if(!available()||!view.enabled||view.error||view.dataError)return;
     for(const row of view.book?.rows||[]) {
       if(!row.plan||row.createdAt<startedAt)continue;
       for(const e of row.events||[]) {
