@@ -1,4 +1,5 @@
 import { coinLogo } from './coin_logo.js';
+import { readinessView } from './advice_monitor_view.js';
 import { adviceDisplayStatus } from './advice_display_status.js';
 import { agentPlanStatus } from './agent_trade_plan.js';
 import { FAMILY_NAMES } from './strategy_families.js';
@@ -43,9 +44,10 @@ export function agentDecisionCard(record, {now=Date.now()}={}) {
   return `<article class="agent-decision-card" aria-label="${symbol} 進退場摘要">
     <div class="decision-heading"><div class="coin-identity">${coinLogo(record.symbol,undefined,true)}<h3>${symbol}</h3></div><span>短線 · 1 小時策略</span></div>
     <div class="decision-verdict" data-advice-verdict="${result.key}"><span>目前建議</span><strong>${agentActionLabel(record,now)}</strong></div>
+    ${readinessView(record,now)}
     <p class="decision-reason" role="status">${result.key==='plan'?'僅列入條件式模擬觀察，尚未確認觸發或成交。只在下列條件與期限內觀察。':esc(display.reason)}</p>
     ${display.details.length?`<p class="decision-next"><strong>下一步：</strong>${esc(display.next)}</p>`:''}
-    ${result.key==='plan'?'':strategyEvidenceView(record,{now})}
+    ${result.key==='plan'?'':`<details class="core-disclosure" data-search="decision-evidence-${symbol}"><summary>查看平台判定依據</summary>${strategyEvidenceView(record,{now})}</details>`}
     ${result.plans.length?result.plans.map(plan=>{
       const risk=researchRiskScenario(plan), snapshot=record.marketSnapshot;
       return `<section class="decision-scenario" aria-label="${esc(FAMILY_NAMES[plan.key])} 點位摘要">

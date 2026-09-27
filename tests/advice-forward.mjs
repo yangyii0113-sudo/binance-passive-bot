@@ -84,10 +84,10 @@ test('storage reload, corruption, quota, conflicting writers and malformed PnL f
   const a=setup();step(a.book,11,100);step(a.book,12,120);a.row.fills[1].fee=0;assert.throws(()=>validateForwardBook(a.book));
 });
 
-function controllerHarness(storage=memory(),locks={request:(_name,_opts,fn)=>Promise.resolve(fn({}))}){
+function controllerHarness(storage=memory(),locks={request:(_name,_opts,fn)=>Promise.resolve(fn({}))},trackedSymbols=()=>[]){
   const sockets=[],health=[];let time=now,visible=true,watchdog,changes=0;
   class WS{constructor(url){this.url=url;this.closed=false;sockets.push(this);}close(){this.closed=true;}open(){this.onopen?.({});}send(id,price){this.onmessage?.({data:JSON.stringify({e:'aggTrade',s:'UNIUSDT',a:id,p:String(price),T:time,E:time,st:1})});}}
-  const c=createForwardController({storage,locks,WebSocketClass:WS,clock:()=>time,visible:()=>visible,onChange:()=>changes++,onHealth:x=>health.push(x),interval:fn=>{watchdog=fn;return 1;},cancelInterval:()=>{}});
+  const c=createForwardController({storage,locks,WebSocketClass:WS,clock:()=>time,visible:()=>visible,trackedSymbols,onChange:()=>changes++,onHealth:x=>health.push(x),interval:fn=>{watchdog=fn;return 1;},cancelInterval:()=>{}});
   return {c,storage,sockets,health,changes:()=>changes,time:t=>{time=t;},hide:()=>{visible=false;},watchdog:()=>watchdog()};
 }
 test('controller starts an isolated stream, records new analysis, closes on hidden, and never restores entries',async()=>{
@@ -97,6 +97,14 @@ test('controller starts an isolated stream, records new analysis, closes on hidd
   h.time(now+100);h.sockets[0].send(11,100);assert.equal(h.c.view().book.rows[0].status,'OPEN');
   h.hide();h.watchdog();assert.equal(h.c.view().book.rows[0].status,'GAP');assert.equal(h.c.view().enabled,false);assert.equal(h.sockets[0].closed,true);
   const fresh=controllerHarness(h.storage);fresh.c.load();await fresh.c.start();assert.equal(fresh.c.view().book.rows[0].status,'GAP');assert.equal(fresh.sockets.length,0);fresh.c.stop();
+});
+test('automatic candidate batch retains each stream before a plan exists and releases removed candidates',async()=>{
+ let symbols=['UNIUSDT','SOLUSDT'];const h=controllerHarness(undefined,undefined,()=>symbols);
+ await h.c.start();h.c.watchSymbol('UNIUSDT');h.c.watchSymbol('SOLUSDT');
+ assert.equal(h.sockets[0].closed,false);assert.equal(h.c.view().feeds.length,2);
+ symbols=['SOLUSDT','BTCUSDT'];h.c.watchSymbol('BTCUSDT');
+ assert.equal(h.sockets[0].closed,true);assert.equal(h.sockets[1].closed,false);
+ h.c.stop();assert.ok(h.sockets.every(s=>s.closed));
 });
 test('connection diagnostics distinguish failure before handshake from missing first trade',async()=>{
   const a=controllerHarness();await a.c.start();a.c.watchSymbol('UNIUSDT');a.time(now+10001);a.watchdog();

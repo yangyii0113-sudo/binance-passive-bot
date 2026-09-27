@@ -1,7 +1,7 @@
 import { activeForward, advanceForward, emptyForwardBook, expireForward, FEED_GAP_MS, interruptForward, normalizeForwardTick, registerForwardAdvice, tickContinuity } from './advice_forward.js';
 import { createForwardStore, exportForwardBook, FORWARD_STORAGE_KEY } from './advice_forward_store.js';
 
-export function createForwardController({storage,locks,WebSocketClass,clock=Date.now,onChange=()=>{},onHealth=()=>{},visible=()=>true,interval=setInterval,cancelInterval=clearInterval}={}){
+export function createForwardController({storage,locks,WebSocketClass,clock=Date.now,onChange=()=>{},onHealth=()=>{},visible=()=>true,trackedSymbols=()=>[],interval=setInterval,cancelInterval=clearInterval}={}){
   const store=createForwardStore(storage),feeds=new Map();
   let book=emptyForwardBook(),enabled=false,starting=false,error=null,dataError=null,note='尚未啟動；只記錄啟動後的新分析',releaseLock,timer,epoch=0,generation=0,lastFeeds=[];
   const feedViews=()=>[...feeds].map(([symbol,f])=>({symbol,status:f.status,startedAt:f.startedAt,openedAt:f.openedAt,lastAt:f.last?.receivedAt??null,lastPrice:f.last?.price??null,received:f.received,issue:f.issue,reason:f.reason,closeCode:f.closeCode,diagnosedAt:f.diagnosedAt}));
@@ -22,7 +22,7 @@ export function createForwardController({storage,locks,WebSocketClass,clock=Date
   function watchSymbol(symbol){
     if(!enabled||!visible()||!/^[\p{L}\p{N}]+USDT$/u.test(symbol))return;
     if(['LIVE','CONNECTING','WAITING'].includes(feeds.get(symbol)?.status))return;
-    for(const [key,f] of feeds)if(key!==symbol&&!book.rows.some(r=>r.symbol===key&&activeForward(r))){disconnect(f);feeds.delete(key);}
+    for(const [key,f] of feeds)if(key!==symbol&&!trackedSymbols().includes(key)&&!book.rows.some(r=>r.symbol===key&&activeForward(r))){disconnect(f);feeds.delete(key);}
     if(feeds.size>=12&&!feeds.has(symbol)){note='即時行情觀察上限已滿';notify();return;}
     const f={socket:null,generation:++generation,startedAt:clock(),openedAt:null,received:0,issue:null,reason:'',closeCode:null,diagnosedAt:null,status:'CONNECTING',last:null,barOpen:null,high:null,low:null};feeds.set(symbol,f);
     const current=()=>enabled&&feeds.get(symbol)===f&&f.status!=='BLOCKED';

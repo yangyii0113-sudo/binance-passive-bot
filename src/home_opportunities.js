@@ -1,6 +1,9 @@
 import { coinLogo } from './coin_logo.js';
+import { adviceMonitorView, readinessView } from './advice_monitor_view.js';
 import { adviceDisplayStatus } from './advice_display_status.js';
 import { strategyEvidenceView } from './strategy_evidence_view.js';
+import { formatPlanPrice } from './plan_levels_view.js';
+import { FAMILY_NAMES } from './strategy_families.js';
 import { rankStrongRows } from './strong_candidates.js';
 import { agentPlanStatus } from './agent_trade_plan.js';
 import { researchRiskScenario } from './research_risk_view.js';
@@ -50,7 +53,7 @@ export function homeOpportunities(state,now=Date.now()) {
     if(key==='plan')reason=partial?'僅列通過核對的方案；其他策略仍有資料缺漏。':'收盤結構、當根門檻與成本後空間已核對；等待新觸發。';
     if(result.key==='wait')reason=display.reason;
     const ratios=result.plans.map(p=>researchRiskScenario(p)?.netRewardRisk).filter(Number.isFinite);
-    return {...candidate,key,label:result.key==='wait'?display.label:labels[key],reason,ratios,evidence:mismatch?'':strategyEvidenceView(record,{now,compact:true}),until:key==='plan'?Math.min(record.snapshotUntil,record.row.analysis.validUntil):null};
+    return {...candidate,key,label:result.key==='wait'?display.label:labels[key],reason,ratios,plans:result.plans,readiness:mismatch?'':readinessView(record,now),evidence:mismatch?'':strategyEvidenceView(record,{now,compact:true}),until:key==='plan'?Math.min(record.snapshotUntil,record.row.analysis.validUntil):null};
   });
   if(state.ui?.homeOpportunitySort==='readiness')rows.sort((a,b)=>priority[a.key]-priority[b.key]||a.rank-b.rank);
   return {...selection,rows,ready:rows.filter(r=>r.key==='plan').length,unchecked:rows.filter(r=>r.key==='empty').length};
@@ -62,6 +65,7 @@ export function homeOpportunityView(state,now=Date.now()) {
   const sort=ui.homeOpportunitySort==='readiness'?'readiness':'strength',filter=ui.homeOpportunityFilter==='plan'?'plan':'all';
   const visible=model.rows.filter(r=>filter==='all'||r.key==='plan');
   return `<section class="home-opportunities" aria-label="強勢幣與進場條件">
+    ${adviceMonitorView(state,now)}
     <div class="research-home-actions"><button type="button" class="primary-inline-btn" data-home-check-all ${busy?'disabled':''}>${batch.running?`核對中 ${batch.completed||0}／${batch.total||0}`:'更新並核對前 10 檔'}</button><a class="secondary-btn" href="#/advice">全部交易建議</a></div>
     <p class="home-check-progress" role="status">${batch.running?'依本次開始時的名單逐檔核對，完成後可查看進退場建議。':batch.error?esc(batch.error):batch.completed?`上次核對 ${batch.completed} 檔${batch.failed?`，${batch.failed} 檔未完成`:''}；目前狀態仍依各檔時效判斷。`:'先看市場強度，再核對能否形成新的進場計畫。'}</p>
     <div class="home-ranking-controls" role="group" aria-label="首頁排序">${[['strength','市場強度排序'],['readiness','進場條件排序']].map(([key,label])=>`<button type="button" data-home-opportunity-sort="${key}" aria-pressed="${key===sort}">${label}</button>`).join('')}</div>
@@ -73,6 +77,8 @@ export function homeOpportunityView(state,now=Date.now()) {
       <dl class="home-opportunity-market"><div><dt>市場強度</dt><dd>${row.strength.toFixed(1)}<small>／100</small></dd></div><div><dt>24 小時</dt><dd>+${row.change.toFixed(2)}%</dd></div><div><dt>成交額</dt><dd>${(row.volume/1e6).toFixed(1)}<small> 百萬 USDT</small></dd></div></dl>
       <div class="home-entry-state" data-home-entry-state="${row.key}"><span>進場條件</span><strong>${row.label}</strong></div>
       <p class="home-entry-reason">${esc(row.reason)}</p>
+      ${row.readiness}
+      ${row.key==='plan'?row.plans.map(p=>`<div class="home-ready-plan"><strong>${FAMILY_NAMES[p.key]} · ${p.side==='LONG'?'做多':'做空'} · 等待觸發</strong><dl><div><dt>進場門檻</dt><dd>${formatPlanPrice(p.entry)}</dd></div><div><dt>止損</dt><dd>${formatPlanPrice(p.stop)}</dd></div><div><dt>第一止盈</dt><dd>${formatPlanPrice(p.tp1)}</dd></div><div><dt>第二止盈</dt><dd>${formatPlanPrice(p.tp2)}</dd></div></dl><small>單位 USDT · 條件式模擬，尚未成交</small></div>`).join(''):''}
       ${row.evidence}
       ${row.key==='plan'?`<p class="home-entry-evidence">${row.ratios.length} 個獨立方案 · 最低目標淨風報 ${Math.min(...row.ratios).toFixed(2)}<br>核對有效至 ${esc(displayDate(row.until))}</p>`:''}
       ${['plan','wait','conflict'].includes(row.key)?`<button type="button" class="${row.key==='plan'?'primary-inline-btn':'secondary-btn'}" data-agent-advice-symbol="${esc(row.symbol)}">${row.key==='plan'?'查看進退場計畫':'查看條件與數值'}</button>`:`<button type="button" class="secondary-btn" data-home-check-symbol="${esc(row.symbol)}" ${busy||row.key==='loading'?'disabled':''}>${row.key==='loading'?'正在核對…':row.key==='empty'?'核對進場條件':'重新核對'}</button>`}

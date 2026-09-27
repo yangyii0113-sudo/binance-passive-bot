@@ -1,4 +1,5 @@
 import { OUTLOOK_TTL } from './trend_outlook.js';
+import { createAdviceMonitor } from './advice_monitor.js';
 import { homeCandidates, runHomeChecks } from './home_opportunities.js';
 import { createForwardController } from './advice_forward_controller.js';
 import { forwardFeedFacts } from './advice_forward_view.js';
@@ -97,6 +98,8 @@ function candidateBySymbol(symbol) {
 // Session-only plans: restored research never restores executable-looking levels.
 const pendingAgentPlans = new Map();
 let forwardTracker;
+let adviceMonitor;
+let monitoredSymbols=[];
 let agentPlanExpiryTimer;
 function scheduleAgentPlanExpiry() {
   clearTimeout(agentPlanExpiryTimer);
@@ -111,22 +114,30 @@ function writeAgentPlan(symbol, record) {
   setStateSlice('agents', {tradePlans:{...appState.agents.tradePlans,[symbol]:record}});
   scheduleAgentPlanExpiry();
 }
-function refreshAgentPlan(value, {origin='重新核對', technical}={}) {
+function refreshAgentPlan(value, {origin='重新核對', technical,automatic=false,isCurrent=()=>true}={}) {
   const symbol=normalizePlanSymbol(value);
   if (pendingAgentPlans.has(symbol)) return pendingAgentPlans.get(symbol);
   forwardTracker?.watchSymbol(symbol);
   const forwardTicket=forwardTracker?.ticket(symbol);
-  writeAgentPlan(symbol,{symbol,status:'LOADING'});
-  render();
+  const previous=appState.agents.tradePlans[symbol];
+  const loading={symbol,status:'LOADING'};
+  if(!automatic||!previous){writeAgentPlan(symbol,loading);render();}
   const task=generateAgentTradePlan(symbol).then(record=>{
+    if(!isCurrent()){
+      if(appState.agents.tradePlans[symbol]===loading)writeAgentPlan(symbol,{symbol,status:'BLOCKED',reason:'自動核對已暫停；恢復後重新判定。'});
+      return record;
+    }
     writeAgentPlan(symbol,record);
     forwardTracker?.register(record,forwardTicket);
+    adviceMonitor?.observe(record);
     try {
+      const fingerprint=r=>JSON.stringify([r?.status,r?.row?.analysis?.closedAt,r?.row?.analysis?.strategies?.map(p=>[p.key,p.status,p.reason,p.side,p.entry,p.stop,p.tp1,p.tp2])]);
+      if(automatic&&fingerprint(previous)===fingerprint(record))return record;
       const source=technical || (appState.agents.technical?.symbol===symbol?appState.agents.technical:candidateBySymbol(symbol)?.technical);
       const technicalAt=Date.parse(source?.updatedAt);
       const fresh=source?.status==='LIVE' && Number.isFinite(technicalAt) && Date.now()-technicalAt>=0 && Date.now()-technicalAt<=120000;
       setStateSlice('agents',{planHistory:saveAgentPlanHistory(record,{origin,consensus:fresh?source.consensus:'未重新分析',technicalAt:fresh?technicalAt:null}),planExport:null});
-      appState.ui.message=`${symbol} 交易計畫已更新並保存研究結論。`;
+      if(!automatic)appState.ui.message=`${symbol} 交易計畫已更新並保存研究結論。`;
     } catch(error) {
       setStateSlice('agents',{planHistory:{...appState.agents.planHistory,error:String(error.message)}});
     }
@@ -135,6 +146,28 @@ function refreshAgentPlan(value, {origin='重新核對', technical}={}) {
     .finally(()=>{pendingAgentPlans.delete(symbol);render();});
   pendingAgentPlans.set(symbol,task);
   return task;
+}
+
+async function automaticAdviceScan(isCurrent) {
+  if(appState.ui.homeCheck?.running||appState.agents.technicalBusy||appState.pullback.loading||appState.pullback.comparing||pendingAgentPlans.size)
+    throw new Error('其他分析正在執行；下一輪自動核對。');
+  const market=await loadMarketSnapshot();
+  if(!isCurrent())return [];
+  setMarketState(market);
+  const candidates=homeCandidates(market);
+  if(candidates.reason)throw new Error(candidates.reason);
+  const selected=normalizePlanSymbol(appState.ui.adviceSymbol);
+  const extra=/^[\p{L}\p{N}]+USDT$/u.test(selected)&&!candidates.rows.some(r=>r.symbol===selected)?selected:null;
+  monitoredSymbols=[...candidates.rows.map(r=>r.symbol),...(extra?[extra]:[])];
+  for(const symbol of monitoredSymbols)forwardTracker?.watchSymbol(symbol);
+  const check=symbol=>isCurrent()?refreshAgentPlan(symbol,{origin:'平台自動核對',automatic:true,isCurrent}):Promise.resolve(null);
+  const results=await runHomeChecks(candidates.rows.map(r=>r.symbol),{check});
+  const records=results.filter(r=>r.ok&&r.value).map(r=>r.value);
+  if(extra&&isCurrent()){const r=await check(extra);if(r)records.push(r);}
+  if(!isCurrent())return [];
+  if(!appState.ui.adviceSymbol&&records.length)appState.ui.adviceSymbol=records[0].symbol;
+  if(results.some(r=>!r.ok))throw new Error('部分幣種核對失敗；請依各檔狀態判讀，稍後自動重試。');
+  return records;
 }
 
 async function runAgentTechnical(value, {origin='使用者選幣 · 多週期分析',persistCandidate=false}={}) {
@@ -634,6 +667,11 @@ function initEvents() {
   });
 
   document.addEventListener('click', async (event) => {
+    if(event.target.closest?.('[data-auto-check-toggle]')){adviceMonitor?.setEnabled(!adviceMonitor.view().enabled);return;}
+    if(event.target.closest?.('[data-monitor-track]')){
+      await forwardTracker?.start();
+      adviceMonitor?.pause();await adviceMonitor?.tick();return;
+    }
     if(event.target.closest?.('[data-forward-start]')){await forwardTracker?.start();return;}
     if(event.target.closest?.('[data-forward-stop]')){forwardTracker?.stop();return;}
     const reconnectFeed=event.target.closest?.('[data-forward-reconnect]');
@@ -1085,6 +1123,7 @@ function ensureValidRouteOnFreshOpen() {
 
 function init() {
   ensureValidRouteOnFreshOpen();
+  if(!appState.ui.homeOpportunitySort)appState.ui.homeOpportunitySort='readiness';
   const cached = cachedMarketSnapshot();
   if (cached) setMarketState(cached);
   syncCandidates();
@@ -1094,8 +1133,11 @@ function init() {
   setStateSlice('agents',{planHistory:loadAgentPlanHistory()});
   let forwardStorage;
   try{forwardStorage=window.localStorage;}catch{}
-  forwardTracker=createForwardController({storage:forwardStorage,locks:navigator.locks,WebSocketClass:window.WebSocket,visible:()=>document.visibilityState==='visible',
-    onChange:view=>{setStateSlice('forward',{...view,...(view.dataError?{exportFile:null,exportMessage:null}:{})});render();},
+  adviceMonitor=createAdviceMonitor({scan:automaticAdviceScan,available:()=>document.visibilityState==='visible'&&navigator.onLine&&['home','advice'].includes(currentRoute()),
+    onChange:view=>{setStateSlice('adviceMonitor',view);render();}});
+  setStateSlice('adviceMonitor',adviceMonitor.view());
+  forwardTracker=createForwardController({storage:forwardStorage,locks:navigator.locks,WebSocketClass:window.WebSocket,visible:()=>document.visibilityState==='visible',trackedSymbols:()=>monitoredSymbols,
+    onChange:view=>{setStateSlice('forward',{...view,...(view.dataError?{exportFile:null,exportMessage:null}:{})});adviceMonitor?.forward(view);render();},
     onHealth:({feeds})=>{
       setStateSlice('forward',{feeds});
       for(const element of document.querySelectorAll('[data-forward-facts]')){
@@ -1105,18 +1147,22 @@ function init() {
     }
   });
   forwardTracker.load();
-  document.addEventListener('visibilitychange',()=>{if(document.visibilityState!=='visible')forwardTracker.stop('頁面進入背景；未完成樣本待覆核');});
-  window.addEventListener('pagehide',()=>forwardTracker.stop('頁面離開；未完成樣本待覆核'));
-  window.addEventListener('offline',()=>forwardTracker.stop('網路已離線；未完成樣本待覆核'));
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState!=='visible'){adviceMonitor.pause();forwardTracker.stop('頁面進入背景；未完成樣本待覆核');}else void adviceMonitor.tick();});
+  window.addEventListener('pagehide',()=>{adviceMonitor.pause();forwardTracker.stop('頁面離開；未完成樣本待覆核');});
+  window.addEventListener('offline',()=>{adviceMonitor.pause();forwardTracker.stop('網路已離線；未完成樣本待覆核');});
+  window.addEventListener('online',()=>void adviceMonitor.tick());
   window.addEventListener('storage',event=>forwardTracker.storageChanged(event.key));
   initEvents();
   render();
+  adviceMonitor.start();
   refreshMarket();
   loadIndependentSnapshots();
   setInterval(refreshMarket, MARKET_REFRESH_MS);
 }
 
 window.addEventListener('hashchange', () => {
+  adviceMonitor?.pause();
+  void adviceMonitor?.tick();
   render();
   const symbol=appState.ui.pendingPlanFocus;
   appState.ui.pendingPlanFocus=null;
