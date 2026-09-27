@@ -6,11 +6,7 @@ on:
       - main
     paths:
       - .github/workflows/lite-pages-publish.yml
-  workflow_run:
-    workflows:
-      - FOXYYA Lite Deploy Check
-    types:
-      - completed
+      - v12/staging/foxyya-lite/**
   workflow_dispatch:
 
 permissions:
@@ -24,32 +20,34 @@ concurrency:
 
 jobs:
   deploy:
-    if: github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'foxyya-lite-railway-deploy')
+    # This cutover only takes effect after review and merge to main.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: v12/staging/foxyya-lite
     environment:
       name: foxyya-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Checkout FOXYYA Lite
+      - name: Checkout exact main revision
         uses: actions/checkout@v4
         with:
-          ref: foxyya-lite-railway-deploy
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test source that will be published
+        run: npm test
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Prepare static site
-        run: |
-          BUILD_SHA="$(git rev-parse --short HEAD)"
-          mkdir -p "_site/releases/$BUILD_SHA"
-          sed "s#./styles.css#./releases/$BUILD_SHA/styles.css#g; s#./src/main.js#./releases/$BUILD_SHA/src/main.js#g" index.html > _site/index.html
-          cp package.json _site/
-          cp styles.css "_site/releases/$BUILD_SHA/"
-          cp -R src "_site/releases/$BUILD_SHA/src"
-          printf '{"build":"%s"}\n' "$BUILD_SHA" > _site/build.json
-          echo "Publishing FOXYYA Lite build $BUILD_SHA"
+        run: npm run build
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
         with:
-          path: _site
+          path: v12/staging/foxyya-lite/dist
       - name: Deploy FOXYYA Lite
         id: deployment
         uses: actions/deploy-pages@v4

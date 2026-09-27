@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b0b0c" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <title>FOXYYA 輕量版</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand-lockup" href="#/" aria-label="FOXYYA 首頁">
+        <svg class="brand-mark" viewBox="0 0 48 48" role="img" aria-label="FOXYYA 狐狸標誌">
+          <defs>
+            <linearGradient id="foxyya-left" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#ff542e"/>
+              <stop offset="100%" stop-color="#f28a22"/>
+            </linearGradient>
+            <linearGradient id="foxyya-right" x1="1" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#ffc13d"/>
+              <stop offset="100%" stop-color="#f28a22"/>
+            </linearGradient>
+          </defs>
+          <path d="M4 4L21 11V30L12 38L7 28Z" fill="url(#foxyya-left)"/>
+          <path d="M44 4L27 11V30L36 38L41 28Z" fill="url(#foxyya-right)"/>
+          <path d="M14 17L24 24L34 17L30 34L24 44L18 34Z" fill="#ff9b27"/>
+          <path d="M18 34L24 44L30 34L24 37Z" fill="#f4c04b"/>
+          <path d="M14 17L21 20L24 24L18 24Z" fill="#e94a2a" opacity=".9"/>
+          <path d="M34 17L27 20L24 24L30 24Z" fill="#f4b52e" opacity=".95"/>
+        </svg>
+        <span class="brand-copy">
+          <span class="brand">FOXYYA</span>
+          <span class="brand-sub">一起更聰明地投資</span>
+        </span>
+      </a>
+      <div class="top-actions">
+        <div class="brand-status" aria-label="FOXYYA 市場狀態">
+          <span>FOXYYA</span>
+          <small>市場情報中心</small>
+        </div>
+      </div>
+    </header>
+
+    <label class="searchbar" aria-label="搜尋">
+      <span>⌕</span>
+      <input id="global-search" type="search" placeholder="搜尋幣種、策略或事件" autocomplete="off" />
+    </label>
+    <main id="app" aria-live="polite"></main>
+
+    <nav class="bottom-nav" aria-label="主要導覽">
+      <a href="#/" data-route="home"><span class="nav-icon">⌂</span><span>首頁</span></a>
+      <a href="#/advice" data-route="strategies"><span class="nav-icon">▥</span><span>交易建議</span></a>
+      <a href="#/orders" data-route="orders"><span class="nav-icon">▤</span><span>持倉訂單</span></a>
+      <a href="#/lab" data-route="lab"><span class="nav-icon">⌬</span><span>策略實驗室</span></a>
+    </nav>
+  </div>
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>

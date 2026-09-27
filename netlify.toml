@@ -1,0 +1,7 @@
+# Only the PR preview changes. Production site settings remain untouched.
+[context.deploy-preview]
+  command = "npm --prefix v12/staging/foxyya-lite test && npm --prefix v12/staging/foxyya-lite run build"
+  publish = "v12/staging/foxyya-lite/dist"
+
+[context.deploy-preview.environment]
+  NODE_VERSION = "22"
