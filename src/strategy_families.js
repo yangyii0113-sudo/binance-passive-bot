@@ -11,21 +11,24 @@ export function familyPlan(rows,kind,now){
  const last=rows.at(-1),prev=rows.at(-2);
  const atr=mean(rows.slice(-14).map((r,i)=>Math.max(+r[2]-r[3],Math.abs(+r[2]-rows[rows.length-15+i][4]),Math.abs(+r[3]-rows[rows.length-15+i][4]))));
  if(!(atr>0))return wait('波動不足');
- let side,center;
+ let side,center,observations;
  if(kind==='breakout'){
   const channel=rows.slice(-21,-1),upper=Math.max(...channel.map(r=>+r[2])),lower=Math.min(...channel.map(r=>+r[3]));
   const averageVolume=mean(channel.map(r=>+r[5]));
   side=+last[4]>upper?'LONG':+last[4]<lower?'SHORT':null;
-  if(!side)return wait('尚未收盤突破前 20 根最高／最低價');
-  if(averageVolume<=0||+last[5]<averageVolume*1.5)return wait('收盤已突破區間；等待訊號棒成交量達前 20 根均量的 1.5 倍');
+  observations={version:'strategy-conditions-v1',closedAt:+last[6],close:+last[4],side,upper,lower,averageVolume,lastVolume:+last[5],volumeRatio:averageVolume>0?+last[5]/averageVolume:null,breakout:!!side,volumePassed:averageVolume>0&&+last[5]>=averageVolume*1.5};
+  if(!side)return {...wait('尚未收盤突破前 20 根最高／最低價'),observations};
+  if(averageVolume<=0||+last[5]<averageVolume*1.5)return {...wait('收盤已突破區間；等待訊號棒成交量達前 20 根均量的 1.5 倍'),observations};
  }else{
   // Freeze the band before the excursion/reclaim pair: neither bar alters its own threshold.
   const base=rows.slice(-22,-2).map(r=>+r[4]);center=mean(base);
   const sd=Math.sqrt(mean(base.map(x=>(x-center)**2)));
   const recent=mean(rows.slice(-20).map(r=>+r[4])),slow=mean(rows.slice(-50).map(r=>+r[4]));
-  if(sd<=0||Math.abs(recent-slow)>atr*.5)return wait('等待均線靠攏的震盪區間');
+  observations={version:'strategy-conditions-v1',closedAt:+last[6],close:+last[4],previousClose:+prev[4],center,sd,lower:center-2*sd,upper:center+2*sd,atr,ma20:recent,ma50:slow,rangePassed:sd>0&&Math.abs(recent-slow)<=atr*.5,
+    longReclaim:+prev[4]<center-2*sd&&+last[4]>center-2*sd&&+last[4]<center,shortReclaim:+prev[4]>center+2*sd&&+last[4]<center+2*sd&&+last[4]>center};
+  if(sd<=0||Math.abs(recent-slow)>atr*.5)return {...wait('等待均線靠攏的震盪區間'),observations};
   side=+prev[4]<center-2*sd&&+last[4]>center-2*sd&&+last[4]<center?'LONG':+prev[4]>center+2*sd&&+last[4]<center+2*sd&&+last[4]>center?'SHORT':null;
-  if(!side)return wait('等待偏離兩倍標準差後收回區間');
+  if(!side)return {...wait('等待偏離兩倍標準差後收回區間'),observations};
  }
  const sign=side==='LONG'?1:-1;
  const entry=(sign===1?+last[2]:+last[3])+sign*atr*.1;
@@ -33,11 +36,12 @@ export function familyPlan(rows,kind,now){
  const risk=sign*(entry-stop);
  const tp2=kind==='meanReversion'?center:entry+sign*2*risk;
  const tp1=kind==='meanReversion'?entry+(tp2-entry)*.5:entry+sign*risk;
- if(!(risk>0)||Math.min(entry,stop,tp1,tp2)<=0||sign*(tp1-entry)<=0)return wait('目標已越過進場點，取消計畫');
+ if(!(risk>0)||Math.min(entry,stop,tp1,tp2)<=0||sign*(tp1-entry)<=0)return {...wait('目標已越過進場點，取消計畫'),observations};
  // Net full-target reward / stop risk at base costs; no threshold optimisation.
  const {fee,slippage}=EXIT_COSTS;
  const fill=entry*(1+sign*slippage);
  const net=target=>{const exit=target*(1-sign*slippage);return sign*(exit-fill)-fee*(fill+exit);};
- if((net(tp1)+net(tp2))/2/(-net(stop))<1)return {status:'SKIP',reason:'扣除基本成本後，分批目標風報比不足 1'};
- return {status:'SETUP',side,entry,stop,tp1,tp2,atr,signalAt:+last[6],expiresAt:now+H};
+ observations.netRewardRisk=(net(tp1)+net(tp2))/2/(-net(stop));
+ if((net(tp1)+net(tp2))/2/(-net(stop))<1)return {status:'SKIP',reason:'扣除基本成本後，分批目標風報比不足 1',observations};
+ return {status:'SETUP',side,entry,stop,tp1,tp2,atr,signalAt:+last[6],expiresAt:now+H,observations};
 }

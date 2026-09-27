@@ -1,5 +1,6 @@
 import { coinLogo } from './coin_logo.js';
 import { adviceDisplayStatus } from './advice_display_status.js';
+import { strategyEvidenceView } from './strategy_evidence_view.js';
 import { rankStrongRows } from './strong_candidates.js';
 import { agentPlanStatus } from './agent_trade_plan.js';
 import { researchRiskScenario } from './research_risk_view.js';
@@ -49,7 +50,7 @@ export function homeOpportunities(state,now=Date.now()) {
     if(key==='plan')reason=partial?'僅列通過核對的方案；其他策略仍有資料缺漏。':'收盤結構、當根門檻與成本後空間已核對；等待新觸發。';
     if(result.key==='wait')reason=display.reason;
     const ratios=result.plans.map(p=>researchRiskScenario(p)?.netRewardRisk).filter(Number.isFinite);
-    return {...candidate,key,label:result.key==='wait'?display.label:labels[key],reason,ratios,until:key==='plan'?Math.min(record.snapshotUntil,record.row.analysis.validUntil):null};
+    return {...candidate,key,label:result.key==='wait'?display.label:labels[key],reason,ratios,evidence:mismatch?'':strategyEvidenceView(record,{now,compact:true}),until:key==='plan'?Math.min(record.snapshotUntil,record.row.analysis.validUntil):null};
   });
   if(state.ui?.homeOpportunitySort==='readiness')rows.sort((a,b)=>priority[a.key]-priority[b.key]||a.rank-b.rank);
   return {...selection,rows,ready:rows.filter(r=>r.key==='plan').length,unchecked:rows.filter(r=>r.key==='empty').length};
@@ -72,8 +73,9 @@ export function homeOpportunityView(state,now=Date.now()) {
       <dl class="home-opportunity-market"><div><dt>市場強度</dt><dd>${row.strength.toFixed(1)}<small>／100</small></dd></div><div><dt>24 小時</dt><dd>+${row.change.toFixed(2)}%</dd></div><div><dt>成交額</dt><dd>${(row.volume/1e6).toFixed(1)}<small> 百萬 USDT</small></dd></div></dl>
       <div class="home-entry-state" data-home-entry-state="${row.key}"><span>進場條件</span><strong>${row.label}</strong></div>
       <p class="home-entry-reason">${esc(row.reason)}</p>
+      ${row.evidence}
       ${row.key==='plan'?`<p class="home-entry-evidence">${row.ratios.length} 個獨立方案 · 最低目標淨風報 ${Math.min(...row.ratios).toFixed(2)}<br>核對有效至 ${esc(displayDate(row.until))}</p>`:''}
-      ${['plan','wait','conflict'].includes(row.key)?`<button type="button" class="${row.key==='plan'?'primary-inline-btn':'secondary-btn'}" data-agent-advice-symbol="${esc(row.symbol)}">${row.key==='plan'?'查看進退場計畫':'查看等待原因'}</button>`:`<button type="button" class="secondary-btn" data-home-check-symbol="${esc(row.symbol)}" ${busy||row.key==='loading'?'disabled':''}>${row.key==='loading'?'正在核對…':row.key==='empty'?'核對進場條件':'重新核對'}</button>`}
+      ${['plan','wait','conflict'].includes(row.key)?`<button type="button" class="${row.key==='plan'?'primary-inline-btn':'secondary-btn'}" data-agent-advice-symbol="${esc(row.symbol)}">${row.key==='plan'?'查看進退場計畫':'查看條件與數值'}</button>`:`<button type="button" class="secondary-btn" data-home-check-symbol="${esc(row.symbol)}" ${busy||row.key==='loading'?'disabled':''}>${row.key==='loading'?'正在核對…':row.key==='empty'?'核對進場條件':'重新核對'}</button>`}
     </article>`).join('')}</div>
     <details class="core-disclosure" data-search="home-ranking-rules"><summary>選幣、成本與排序依據</summary><p>從已核對的加密貨幣永續合約中，選擇 24 小時漲幅大於 0%、小於 30%，成交額至少 1,000 萬 USDT 的前 10 檔；不足不補。兩種排序使用同一份候選名單。</p><p>進場狀態另核對三策略收盤條件、當根是否已觸及門檻、資料時間、方向與成本後空間。假設單邊手續費 0.05%＋滑價 0.02%，未含資金費率；成交額篩選不等於已驗證訂單簿深度。</p><p>名單隨行情更新；每檔計畫另有短期有效期限。多方案不重複累加部位，分數不是勝率。</p><button type="button" class="secondary-btn" data-home-research>完整強勢研究</button></details>
   </section>`;

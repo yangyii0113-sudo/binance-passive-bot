@@ -5,6 +5,7 @@ import { FAMILY_NAMES } from './strategy_families.js';
 import { researchRiskScenario } from './research_risk_view.js';
 import { escapeHtml as esc, displayDate } from './ui.js';
 import { formatPlanPrice as quote, priceMove, planExitGuide } from './plan_levels_view.js';
+import { strategyEvidenceView } from './strategy_evidence_view.js';
 
 // Presentation only: the existing gate is the sole source of displayable levels.
 export function agentPlanPresentation(record, now=Date.now()) {
@@ -39,12 +40,12 @@ export function agentActionLabel(record, now=Date.now()) {
 }
 export function agentDecisionCard(record, {now=Date.now()}={}) {
   const display=adviceDisplayStatus(record,now), result=display.gate, symbol=esc(record.symbol);
-  const waits=display.details.map(p=>`<li><strong>${esc(p.family)} · ${esc(p.label)}</strong><span>${esc(p.reason)}</span></li>`).join('');
   return `<article class="agent-decision-card" aria-label="${symbol} 進退場摘要">
     <div class="decision-heading"><div class="coin-identity">${coinLogo(record.symbol,undefined,true)}<h3>${symbol}</h3></div><span>短線 · 1 小時策略</span></div>
     <div class="decision-verdict" data-advice-verdict="${result.key}"><span>目前建議</span><strong>${agentActionLabel(record,now)}</strong></div>
     <p class="decision-reason" role="status">${result.key==='plan'?'僅列入條件式模擬觀察，尚未確認觸發或成交。只在下列條件與期限內觀察。':esc(display.reason)}</p>
-    ${waits?`<p class="decision-next"><strong>下一步：</strong>${esc(display.next)}</p><details class="decision-waits core-disclosure"><summary>查看三策略原因</summary><ul class="agent-plan-waits">${waits}</ul><p>以上是各策略的獨立判斷；任一方案通過完整核對且無方向衝突，即可形成條件式模擬計畫。</p></details><p class="decision-check-time">訊號收盤 ${displayDate(record.row.analysis.closedAt)} · 行情核對 ${displayDate(record.checkedAt)}</p>`:''}
+    ${display.details.length?`<p class="decision-next"><strong>下一步：</strong>${esc(display.next)}</p>`:''}
+    ${result.key==='plan'?'':strategyEvidenceView(record,{now})}
     ${result.plans.length?result.plans.map(plan=>{
       const risk=researchRiskScenario(plan), snapshot=record.marketSnapshot;
       return `<section class="decision-scenario" aria-label="${esc(FAMILY_NAMES[plan.key])} 點位摘要">
@@ -65,6 +66,7 @@ export function agentDecisionCard(record, {now=Date.now()}={}) {
       </section>`;
     }).join(''):`<div class="decision-no-levels"><strong>${result.key==='loading'?'正在核對，暫不顯示點位。':'進場／止盈／止損：目前不提供'}</strong>${result.key==='wait'?'':`<span>${result.key==='loading'?'完成後會顯示結論。':`下一步：${esc(display.next)}`}</span>`}</div>`}
     ${result.plans.length>1?'<p>同幣多方案沒有經驗證的優先順序，請分別判讀，不可重複累加部位。</p>':''}
+    ${result.key==='plan'?strategyEvidenceView(record,{now}):''}
     <div class="decision-actions"><button type="button" class="primary-inline-btn" data-agent-plan-refresh="${symbol}" ${result.key==='loading'?'disabled':''}>${result.key==='loading'?'核對中…':'更新這檔建議'}</button><button type="button" class="secondary-btn" data-agent-plan-open="${symbol}">查看完整策略依據</button></div>
     <details class="core-disclosure" data-search="advice-integrity-${symbol}"><summary>資料狀態與核對時間</summary>${agentPlanStateView(record,now)}<p>行情核對：${Number.isFinite(record.checkedAt)?displayDate(record.checkedAt):'尚未完成'}。從行情請求開始計算，點位核對最長一分鐘；換根後需重新分析。研究價格未對齊交易所委託精度。</p></details>
     <p class="decision-lock">真實下單鎖定 · 正式帳本、最新淨值與完整部位尚未核對。</p>

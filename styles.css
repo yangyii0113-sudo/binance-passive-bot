@@ -2510,3 +2510,33 @@ button, a, input, select, summary { scroll-margin-block:16px 110px; }
 .home-secondary>summary{min-height:44px;align-content:center;color:#c8cbd0;font-size:14px}
 .home-secondary .home-section-tabs{margin-top:12px}
 @media(max-width:600px){.home-opportunity-grid{grid-template-columns:1fr}.research-home h1{font-size:22px}.home-opportunity-card{padding:13px}.home-opportunity-market dd{font-size:14px}.home-ranking-controls button{font-size:12px}.home-opportunity-filters button{flex:1}}
+
+/* Closed-candle observations explain existing gates without authorizing entries. */
+.strategy-evidence-compact{display:grid;gap:7px;padding:10px 0;border-top:1px solid #353c42}
+.strategy-evidence-compact>div{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 10px;font-size:12px;line-height:1.6}
+.strategy-evidence-compact span{color:#aeb9c5}
+.strategy-evidence-compact strong{color:#dce5e9;font-weight:600}
+.strategy-evidence-compact>p{margin:2px 0 0;font-size:11px;line-height:1.6;color:#b9c2cc}
+.strategy-evidence{min-width:0;border-top:1px solid #4c473b;margin-top:16px;padding-top:14px}
+.strategy-evidence h4{margin:0;font-size:16px;color:#f0ce83}
+.agent-decision-card .evidence-intro,.agent-decision-card .evidence-time{font-size:12px;color:#bfc4cd;line-height:1.7}
+.agent-decision-card .evidence-directions{font-size:13px;color:#d6d9de}
+.evidence-strategy{margin:10px 0;border:1px solid #4a4c47;border-radius:10px;background:#141719;overflow-wrap:anywhere}
+.evidence-strategy>summary{min-height:44px;padding:12px;cursor:pointer;color:#efddb6;line-height:1.65}
+.evidence-strategy>summary>span{display:inline-flex;flex-wrap:wrap;gap:4px 10px;max-width:100%;vertical-align:top}
+.evidence-strategy summary strong{font-size:14px}
+.evidence-strategy summary b{font-size:12px;font-weight:500;color:#d2d7dd}
+.evidence-strategy summary small{display:block;font-size:12px;color:#b9c2cc;margin-top:4px;font-variant-numeric:tabular-nums}
+.evidence-strategy>summary:focus-visible{outline:2px solid #efbd5b;outline-offset:2px;border-radius:8px}
+.evidence-strategy[open]>summary{border-bottom:1px solid #353c42}
+.evidence-checks{margin:0;padding:0 12px;display:grid;grid-template-columns:minmax(0,1fr)}
+.evidence-check{min-width:0;padding:12px 0;border-bottom:1px solid #353c42}
+.evidence-check:last-child{border-bottom:0}
+.evidence-check dt{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 8px;color:#e2e6e8;font-size:13px;font-weight:600;line-height:1.65}
+.evidence-check dt span{font-size:11px;font-weight:500;color:#e7c77e}
+.evidence-check[data-check-state="pass"] dt span{color:#afe5c9}
+.evidence-check[data-check-state="unknown"] dt span{color:#b9c2cc}
+.evidence-check dd{margin:5px 0 0;font-size:13px;color:#ccd3da;line-height:1.75;font-variant-numeric:tabular-nums}
+.evidence-check dd small{display:block;margin-top:4px;font-size:12px;color:#aeb9c5}
+.agent-decision-card .evidence-reason,.agent-decision-card .evidence-distance,.agent-decision-card .evidence-missing,.agent-decision-card .evidence-next{font-size:12px;line-height:1.75;margin:10px 12px;color:#bdc6ce}
+.agent-decision-card .evidence-next{padding-top:10px;border-top:1px solid #353c42;color:#efd094}
