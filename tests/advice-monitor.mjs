@@ -4,7 +4,14 @@ import { createAdviceMonitor, AUTO_CHECK_MS } from '../src/advice_monitor.js';
 import { pullbackReadiness } from '../src/entry_readiness.js';
 import { adviceMonitorView } from '../src/advice_monitor_view.js';
 import { agentDecisionCard } from '../src/agent_decision_view.js';
+import { appState, setStateSlice } from '../src/state.js';
 const H=3600000,now=2400*H+120000;
+test('application initialization accepts monitor updates through its registered state slice',()=>{
+ const before=structuredClone(appState.adviceMonitor);
+ const m=createAdviceMonitor({scan:async()=>[],onChange:v=>setStateSlice('adviceMonitor',v)});
+ m.pause();assert.equal(appState.adviceMonitor.paused,true);assert.equal(appState.adviceMonitor.enabled,true);
+ Object.assign(appState.adviceMonitor,before);
+});
 function record(side='LONG') {
  const p={key:'structured',status:'SETUP',side,entry:100,stop:side==='LONG'?95:105,tp1:side==='LONG'?110:90,tp2:side==='LONG'?120:80,signalAt:2400*H-1,expiresAt:2401*H,
   observations:{version:'strategy-conditions-v1',closedAt:2400*H-1,side,ema20:100,open:side==='LONG'?100:101,close:side==='LONG'?101:100,high:102,low:99}};
