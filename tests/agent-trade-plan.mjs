@@ -97,7 +97,7 @@ test('agent plans support non-BTC/ETH futures and both directions with complete 
     const {record,calls}=await generate({side});
     assert.equal(calls.length,2);assert.equal(agentPlanStatus(record,now).key,'plan');
     const html=agentTradePlanView(record,{now});
-    for(const label of ['100.000','進場有效至','第一止盈','第二止盈','止損點','48 根','失效條件','成本後情境','目前計畫仍未通過跨期、前向與完整成交驗證','真實下單維持鎖定']) assert.ok(html.includes(label),label);
+    for(const label of ['100.00','進場有效至','第一止盈','第二止盈','止損點','48 根','失效條件','成本後情境','目前計畫仍未通過跨期、前向與完整成交驗證','真實下單維持鎖定']) assert.ok(html.includes(label),label);
     assert.ok(html.includes(side==='LONG'?'做多':'做空'));
     assert.doesNotMatch(html,/data-paper-open|data-paper-close|data-real-order/);
   }
@@ -228,13 +228,13 @@ test('decision summaries use gated levels for either side and never restore expi
   for(const side of ['LONG','SHORT']){
     const record=fixture(side), before=structuredClone(record);
     const html=agentDecisionCard(record,{now});
-    for(const text of ['100.000','止損點','第一止盈','第二止盈','成本後目標風報比','正式帳本、最新淨值與完整部位尚未核對',side==='LONG'?'向上突破':'向下跌破'])assert.ok(html.includes(text),text);
+    for(const text of ['100.00','止損點','第一止盈','第二止盈','成本後目標風報比','正式帳本、最新淨值與完整部位尚未核對',side==='LONG'?'向上突破':'向下跌破'])assert.ok(html.includes(text),text);
     assert.doesNotMatch(html,/data-paper-open|data-real-order|保證盈利/);
     assert.deepEqual(record,before);
     for(const mutate of [r=>r.snapshotUntil=now,r=>r.historical=true,r=>r.row.analysis.strategies[0].stop=r.row.analysis.strategies[0].entry,r=>r.row.analysis.strategies={wrong:true}]){
       const invalid=structuredClone(record);mutate(invalid);
       const blocked=agentDecisionCard(invalid,{now});
-      assert.doesNotMatch(blocked,/decision-levels|100\.000/);
+      assert.doesNotMatch(blocked,/decision-levels|100\.00/);
       assert.match(blocked,/暫不進場/);
     }
   }
@@ -267,12 +267,12 @@ test('advice displays one selected coin without borrowing another coin levels or
   assert.match(html,/data-selected-advice="SOLUSDT"/);
   assert.equal((html.match(/class="agent-decision-card"/g)||[]).length,1);
   assert.match(html,/目前 1 檔有條件式模擬計畫/);
-  assert.doesNotMatch(html,/decision-levels|100\.000/);
+  assert.doesNotMatch(html,/decision-levels|100\.00/);
   assert.match(html,/暫不進場 · 等待條件/);
   assert.deepEqual(s,before);
   s.ui.adviceSymbol=null;assert.match(agentAdvicePanel(s,now),/data-selected-advice="UNIUSDT"/);
   s.ui.adviceSymbol='UNIUSDT';const expired=agentAdvicePanel(s,now+60000);
-  assert.match(expired,/目前 0 檔有條件式模擬計畫/);assert.doesNotMatch(expired,/decision-levels|100\.000/);
+  assert.match(expired,/目前 0 檔有條件式模擬計畫/);assert.doesNotMatch(expired,/decision-levels|100\.00/);
 });
 
 test('direct advice route exposes an actionable empty state and preserves separate research views',()=>{
@@ -285,15 +285,18 @@ test('direct advice route exposes an actionable empty state and preserves separa
 });
 
 
-test('plan levels preserve small coin price differences in summary and full strategy',()=>{
+test('plan displays use two decimals without rounding strategy inputs or showing tiny prices as zero',()=>{
   const r=fixture(),p=r.row.analysis.strategies[0];
   for(const scale of [1,1e8]) {
     Object.assign(p,{entry:0.000000012345*scale,stop:0.000000011*scale, tp1:0.000000015*scale,tp2:0.000000018*scale});
     Object.assign(r.marketSnapshot,{price:0.000000012*scale,high:0.0000000121*scale,low:0.0000000119*scale});
-    const levels=scale===1?['0.000000012345','0.000000011','0.000000015','0.000000018']:['1.2345','1.100','1.500','1.800'];
+    const before=structuredClone(r);
+    const levels=scale===1?['小於 0.01']:['1.23','1.10','1.50','1.80'];
     for(const html of [agentDecisionCard(r,{now}),agentTradePlanView(r,{now})]) {
       for(const level of levels)assert.ok(html.includes(level),level);
       assert.doesNotMatch(html,/NaN|Infinity/);
+      if(scale===1)assert.doesNotMatch(html,/>0\.00(?:[ <])/);
+      assert.deepEqual(r,before);
     }
   }
 });

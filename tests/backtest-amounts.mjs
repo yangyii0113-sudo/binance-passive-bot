@@ -84,8 +84,8 @@ test('derived signal targets disclose their fixed percentage and separation from
   s.market.rows=[['₿','BTC / USDT','100',5,1e9,90]];
   s.ui.strategyWorkspace='signals';
   const text=visible(pages.strategies(s));
-  assert.match(text,/第一止盈 102\.000/);
-  assert.match(text,/第二止盈 103\.500/);
+  assert.match(text,/第一止盈 102\.00/);
+  assert.match(text,/第二止盈 103\.50/);
   assert.match(text,/固定百分比/);
   assert.match(text,/未納入 指數均線回測/);
 });

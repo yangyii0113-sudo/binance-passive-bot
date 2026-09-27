@@ -1,13 +1,12 @@
 import { researchProtectionStop } from './research_risk_view.js';
 
-// Research prices retain up to 12 significant digits. Formatting never changes
-// the strategy levels or pretends to round an executable exchange order.
+// Display prices to two decimal places; strategy levels keep their full precision.
 export function formatPlanPrice(value) {
   if (value===null || value===undefined || value==='' || !Number.isFinite(Number(value)) || Number(value)<=0) return '—';
   const n=Number(value);
-  if(n<1e-18) return n.toExponential(11);
-  const decimals=Math.min(20,Math.max(3,11-Math.floor(Math.log10(n))));
-  return n.toLocaleString('en-US',{minimumFractionDigits:3,maximumFractionDigits:decimals});
+  // A positive sub-cent price must not look like a zero-price entry or stop.
+  if(n<0.005) return '小於 0.01';
+  return n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
 }
 
 export function priceMove(from,to,{pending=false}={}) {
