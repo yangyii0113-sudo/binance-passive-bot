@@ -1360,7 +1360,7 @@ export function strategiesPage(state) {
     ${strategyWorkspaceTabs(state)}
     ${workspace === 'signals' && isCrypto ? '<div class="signal-source-note">24 小時動能用於選幣；下方以 1 小時與 4 小時收盤資料研究三策略。動能達標、研究條件成立與成交是不同狀態。</div>' : ''}
     ${section(workspace === 'agents' && state.ui?.agentKey==='advice' ? '交易建議' : workspace === 'signals' ? '交易訊號' : workspace === 'agents' || workspace === 'candidates' ? '交易研究' : '策略研發', content, badge(workspace === 'signals' ? (isCrypto ? '輕量版訊號' : '無資料') : workspace === 'agents' || workspace === 'candidates' ? '僅模擬 · 實盤鎖定' : '策略研發'))}
-    ${(workspace === 'review' || (workspace === 'agents' && ['risk','review','playbook'].includes(state.ui?.agentKey))) ? ledgerNotice(state.results) : ''}
+    ${(workspace === 'review' || (workspace === 'agents' && ['risk','review','playbook'].includes(state.ui?.agentKey))) ? ledgerNotice(state.ui?.agentKey === 'risk' || state.ui?.agentKey === 'playbook' ? state.paper : state.results) : ''}
     ${strategyAdvancedTools(state)}
   </div>`;
 }
