@@ -3,9 +3,11 @@ import { readinessView } from './advice_monitor_view.js';
 import { adviceDisplayStatus } from './advice_display_status.js';
 import { agentPlanStatus } from './agent_trade_plan.js';
 import { FAMILY_NAMES } from './strategy_families.js';
-import { researchRiskScenario } from './research_risk_view.js';
+import { researchRiskScenario, riskPathView } from './research_risk_view.js';
+import { coinTrendView } from './coin_trend_view.js';
+import { agentComparisonView } from './agent_comparison_view.js';
 import { escapeHtml as esc, displayDate } from './ui.js';
-import { formatPlanPrice as quote, priceMove, planExitGuide } from './plan_levels_view.js';
+import { formatPlanPrice as quote, priceMove, planExitGuide, exactPlanLevelsView } from './plan_levels_view.js';
 import { strategyEvidenceView } from './strategy_evidence_view.js';
 
 // Presentation only: the existing gate is the sole source of displayable levels.
@@ -39,12 +41,13 @@ export function agentActionLabel(record, now=Date.now()) {
   const display=adviceDisplayStatus(record,now);
   return ['empty','loading','plan'].includes(display.gate.key)?display.label:`暫不進場 · ${display.label}`;
 }
-export function agentDecisionCard(record, {now=Date.now()}={}) {
+export function agentDecisionCard(record, {now=Date.now(),comparison,comparisonBusy=false}={}) {
   const display=adviceDisplayStatus(record,now), result=display.gate, symbol=esc(record.symbol);
   return `<article class="agent-decision-card" aria-label="${symbol} 進退場摘要">
     <div class="decision-heading"><div class="coin-identity">${coinLogo(record.symbol,undefined,true)}<h3>${symbol}</h3></div><span>短線 · 1 小時策略</span></div>
     <div class="decision-verdict" data-advice-verdict="${result.key}"><span>目前建議</span><strong>${agentActionLabel(record,now)}</strong></div>
     ${readinessView(record,now)}
+    ${coinTrendView(record,{now})}
     <p class="decision-reason" role="status">${result.key==='plan'?'僅列入條件式模擬觀察，尚未確認觸發或成交。只在下列條件與期限內觀察。':esc(display.reason)}</p>
     ${display.details.length?`<p class="decision-next"><strong>下一步：</strong>${esc(display.next)}</p>`:''}
     ${result.key==='plan'?'':`<details class="core-disclosure" data-search="decision-evidence-${symbol}"><summary>查看平台判定依據</summary>${strategyEvidenceView(record,{now})}</details>`}
@@ -59,16 +62,19 @@ export function agentDecisionCard(record, {now=Date.now()}={}) {
           <div class="decision-target"><dt>第二止盈 · 平倉剩餘 50%</dt><dd>${quote(plan.tp2)} <small>USDT</small></dd><small>從進場${priceMove(plan.entry,plan.tp2)}</small></div>
           <div class="decision-stop"><dt>止損點 · 退出全部剩餘部位</dt><dd>${quote(plan.stop)} <small>USDT</small></dd><small>從進場${priceMove(plan.entry,plan.stop)} · 不放寬止損</small></div>
         </dl>
+        ${exactPlanLevelsView(plan)}
         <p class="decision-price-note">以上價格變動不是淨報酬；尚未扣除成本與計入分批比例。</p>
         <p class="decision-trigger"><strong>何時考慮：</strong>先重新核對行情；確認仍有效後，${plan.side==='LONG'?'向上突破':'向下跌破'} ${quote(plan.entry)} USDT 才觀察觸發。已觸及門檻、已失效或過期，就取消本次計畫，不追價。</p>
         ${planExitGuide(plan)}
         <dl class="decision-money" aria-label="成本後研究情境"><div><dt>直接止損情境</dt><dd>−${risk.stopLoss.toFixed(2)} <small>USDT</small></dd></div><div><dt>兩段止盈各 50%</dt><dd>${risk.targetPnl.toFixed(2)} <small>USDT</small></dd></div></dl>
         <p class="decision-reward">成本後目標風報比 <strong>${risk.netRewardRisk.toFixed(2)}</strong><span>固定研究本金 1,000 USDT、風險預算 0.25%，非你的帳戶額度。以上為情境，非預期收益；未含資金費率與額外跳空，止損金額不是最大可能損失。</span></p>
+        ${riskPathView(plan,risk)}
         <p class="decision-validity">進場有效至 ${displayDate(plan.expiresAt)}；點位核對有效至 ${displayDate(record.snapshotUntil)}，先到者為準。</p>
       </section>`;
     }).join(''):`<div class="decision-no-levels"><strong>${result.key==='loading'?'正在核對，暫不顯示點位。':'進場／止盈／止損：目前不提供'}</strong>${result.key==='wait'?'':`<span>${result.key==='loading'?'完成後會顯示結論。':`下一步：${esc(display.next)}`}</span>`}</div>`}
     ${result.plans.length>1?'<p>同幣多方案沒有經驗證的優先順序，請分別判讀，不可重複累加部位。</p>':''}
-    ${result.key==='plan'?strategyEvidenceView(record,{now}):''}
+    ${result.key==='plan'?`<details class="core-disclosure" data-search="decision-evidence-${symbol}"><summary>查看平台判定依據</summary>${strategyEvidenceView(record,{now})}</details>`:''}
+    ${agentComparisonView(comparison,record.symbol,{now,compact:true,busy:comparisonBusy,allowed:record.status==='LIVE'&&record.row?.analysis?.status==='VALID'})}
     <div class="decision-actions"><button type="button" class="primary-inline-btn" data-agent-plan-refresh="${symbol}" ${result.key==='loading'?'disabled':''}>${result.key==='loading'?'核對中…':'更新這檔建議'}</button><button type="button" class="secondary-btn" data-agent-plan-open="${symbol}">查看完整策略依據</button></div>
     <details class="core-disclosure" data-search="advice-integrity-${symbol}"><summary>資料狀態與核對時間</summary>${agentPlanStateView(record,now)}<p>行情核對：${Number.isFinite(record.checkedAt)?displayDate(record.checkedAt):'尚未完成'}。從行情請求開始計算，點位核對最長一分鐘；換根後需重新分析。研究價格未對齊交易所委託精度。</p></details>
     <p class="decision-lock">真實下單鎖定 · 正式帳本、最新淨值與完整部位尚未核對。</p>

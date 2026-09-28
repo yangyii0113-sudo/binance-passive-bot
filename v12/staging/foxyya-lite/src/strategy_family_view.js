@@ -1,12 +1,7 @@
 import { FAMILY_NAMES } from './strategy_families.js';
+import { familyAssessment } from './strategy_performance.js';
+export { familyAssessment } from './strategy_performance.js';
 const n=v=>Number.isFinite(v)?v.toFixed(2):'—';
-export function familyAssessment(row){
- if(!row?.holdout||!row?.stress||!Number.isInteger(row.holdout.trades)||row.holdout.trades<0||![row.holdout.netPnl,row.stress.netPnl].every(Number.isFinite))return '資料不足';
- if(row.holdout.trades<20)return '樣本不足';
- if(row.holdout.netPnl<=0)return '後段未盈利';
- if(row.stress.netPnl<=0)return '成本壓力未通過';
- return '待跨期及前向驗證';
-}
 export function strategyFamilyPanel(result){
  const families=result?.families;
  if(!families)return '<p>此筆歷史未包含多策略比較；重新比較才會產生，不回填舊紀錄。</p>';
