@@ -4,7 +4,10 @@ import { generateAgentTradePlan, agentPlanStatus } from '../src/agent_trade_plan
 import { agentTradePlanView } from '../src/agent_trade_plan_view.js';
 import { loadAgentPlanHistory, saveAgentPlanHistory, exportAgentPlanHistory } from '../src/agent_plan_history.js';
 import { agentComparisonView, restoredAgentComparisons } from '../src/agent_comparison_view.js';
-import { researchProtectionStop } from '../src/research_risk_view.js';
+import { researchProtectionStop, researchRiskScenario, riskPathView } from '../src/research_risk_view.js';
+import { coinTrendSummary, coinTrendView } from '../src/coin_trend_view.js';
+import { comparisonEvidence } from '../src/strategy_performance.js';
+import { replayTrade } from '../src/pullback_replay.js';
 import { EXIT_COSTS } from '../src/target_analysis.js';
 import { cryptoContractTickers, normalizeUniverse, cachedMarketSnapshot } from '../src/market.js';
 import { MARKET_CACHE_KEY } from '../src/config.js';
@@ -171,7 +174,7 @@ test('exported records are safely quoted, review-only and contain no fabricated 
 
 function comparisonFixture() {
   const metrics={trades:9,signals:11,skipped:2,netPnl:15,netReturnPct:1.5,winRate:55,profitFactor:1.3,avgPnl:15/9,closedDrawdownPct:1};
-  return {status:'LIVE',updatedAt:new Date(now).toISOString(),result:{symbol:'UNIUSDT',version:'TP01-S1',start:now-90*24*H,split:now-27*24*H,end:now,families:{version:'families-v1',rows:['pullback','structured','breakout','meanReversion'].map(key=>({key,development:metrics,holdout:metrics,stress:{...metrics,netPnl:8}}))}}};
+  return {status:'LIVE',updatedAt:new Date(now).toISOString(),result:{symbol:'UNIUSDT',version:'TP01-S1',start:now-90*24*H,split:now-27*24*H,end:now,families:{version:'families-v1',rows:['pullback','structured','breakout','meanReversion'].map(key=>({key,development:metrics,holdout:metrics,stress:{...metrics,netPnl:8,netReturnPct:0.8,avgPnl:8/9}}))}}};
 }
 test('matching research comparisons survive restore without authorizing expired plans',()=>{
   const c=comparisonFixture();
@@ -335,4 +338,74 @@ test('missing or inconsistent snapshot provenance blocks displayable entry level
     assert.notEqual(agentPlanStatus(r,now).key,'plan');
     assert.doesNotMatch(agentDecisionCard(r,{now}),/decision-levels/);
   }
+});
+
+test('trend summary uses the matching fresh closed-bar analysis without changing entry eligibility',()=>{
+ const r=fixture();Object.assign(r.row.analysis,{lastClose:98,hourlyDirection:'LONG',fourHourlyDirection:'LONG',atrPct:2,volumeRatio:1.8,emaDistanceAtr:1.2});
+ const before=structuredClone(r),gate=agentPlanStatus(r,now);
+ assert.match(coinTrendSummary(r,now).label,/同向偏多/);
+ assert.match(coinTrendView(r,{now}),/1.80 倍|超過 1 倍波幅/);
+ assert.deepEqual(agentPlanStatus(r,now),gate);assert.deepEqual(r,before);
+ r.row.analysis.hourlyDirection='SHORT';assert.equal(coinTrendSummary(r,now).opposed,true);
+ assert.match(coinTrendView(r,{now}),/方向分歧/);
+ r.row.analysis.hourlyDirection='MIXED';assert.equal(coinTrendSummary(r,now).opposed,false);
+ r.row.analysis.volumeRatio=null;assert.match(coinTrendView(r,{now}),/無法計算/);
+ for(const mutate of [x=>x.snapshotUntil=now,x=>x.row.symbol='ETHUSDT',x=>x.row.analysis.atrPct=null,x=>x.row.analysis.emaDistanceAtr=NaN,x=>x.row.analysis.hourlyDirection='BOGUS',x=>x.historical=true]){
+  const bad=structuredClone(before);mutate(bad);assert.equal(coinTrendSummary(bad,now).valid,false);
+  assert.doesNotMatch(coinTrendView(bad,{now}),/1.80 倍|同向偏多/);
+ }
+});
+test('profit evidence rejects wrong symbols, future periods, missing families and unreconciled numbers',()=>{
+ const c=comparisonFixture();assert.equal(comparisonEvidence(c,'UNIUSDT',now).valid,true);
+ for(const mutate of [
+  x=>x.result.symbol='ETHUSDT',x=>x.updatedAt=new Date(now+1).toISOString(),x=>x.result.end=now+1,
+  x=>x.result.split=x.result.start,x=>x.result.families.rows.pop(),x=>x.result.families.rows[1].key='pullback',
+  x=>x.result.families.rows[0].stress.avgPnl=99,x=>x.result.families.rows[0].holdout.netReturnPct=99,
+  x=>x.result.families.rows[0].holdout.winRate=101,x=>x.result.families.rows[0].holdout.closedDrawdownPct=-1,
+  x=>x.result.families.rows[0].holdout.trades=-1,x=>x.result.version='future-version'
+ ]){
+  const bad=structuredClone(c);mutate(bad);assert.equal(comparisonEvidence(bad,'UNIUSDT',now).valid,false);
+  assert.doesNotMatch(agentComparisonView(bad,'UNIUSDT',{compact:true,now}),/1.50%|profitability-row/);
+ }
+});
+test('zero-trade evidence stays unknown and historical profitable studies do not become current success probabilities',()=>{
+ const c=comparisonFixture(),zero={trades:0,netPnl:0,netReturnPct:0,winRate:null,profitFactor:null,avgPnl:null,closedDrawdownPct:0};
+ for(const row of c.result.families.rows)row.development=row.holdout=row.stress={...zero};
+ assert.equal(comparisonEvidence(c,'UNIUSDT',now).valid,true);
+ const html=agentComparisonView(c,'UNIUSDT',{compact:true,now});
+ assert.match(html,/尚無樣本/);assert.doesNotMatch(html,/0.00%/);
+ const good=comparisonFixture();good.historical=true;
+ const historical=agentComparisonView(good,'UNIUSDT',{compact:true,now});
+ assert.match(historical,/歷史比較（唯讀）/);assert.match(historical,/樣本不足 · 後段 9 筆/);
+ assert.doesNotMatch(historical,/成功率 [\d]|最佳策略|最高勝率/);
+});
+test('advice exposes one matching profitability comparison and folds detailed strategy evidence',()=>{
+ const s=structuredClone(appState);s.agents.tradePlans={UNIUSDT:fixture()};s.agents.planComparisons={UNIUSDT:comparisonFixture()};
+ const html=agentAdvicePanel(s,now);
+ assert.equal((html.match(/data-agent-plan-compare="UNIUSDT"/g)||[]).length,1);
+ assert.equal((html.match(/class="profitability-row"/g)||[]).length,3);
+ assert.match(html,/<details class="core-disclosure" data-search="decision-evidence-UNIUSDT"><summary>查看平台判定依據/);
+ assert.match(html,/獲利能力 · 歷史證據/);
+ s.agents.planComparisons={ETHUSDT:comparisonFixture()};assert.doesNotMatch(agentAdvicePanel(s,now),/1.50%/);
+ s.agents.planComparisons={UNIUSDT:comparisonFixture()};
+ const expired=agentAdvicePanel(s,now+60000);assert.match(expired,/歷史證據/);assert.doesNotMatch(expired,/decision-levels|risk-paths-/);
+});
+test('exit risk scenarios reconcile with the separate replay engine for long and short paths',()=>{
+ const near=(a,b)=>assert.ok(Math.abs(a-b)<1e-8,`${a} != ${b}`);
+ for(const side of ['LONG','SHORT']){
+  const p=fixture(side).row.analysis.strategies[0],before=structuredClone(p),r=researchRiskScenario(p);
+  const bars=side==='LONG'?[[H,99,111,98,110,100,2*H-1],[2*H,110,111,94,96,100,3*H-1]]:[[H,101,102,89,90,100,2*H-1],[2*H,90,106,89,104,100,3*H-1]];
+  near(r.tp1ThenStop,replayTrade(p,bars).returnPerUnit*r.quantity);
+  assert.ok(r.tp1ThenStop<r.targetPnl);assert.equal(r.tp1ThenProtection,null);
+  const protectedPlan={...p,key:'structured'},protectedRisk=researchRiskScenario(protectedPlan);
+  near(protectedRisk.tp1ThenProtection,replayTrade(protectedPlan,bars,{protect:true}).returnPerUnit*protectedRisk.quantity);
+  assert.ok(protectedRisk.tp1ThenProtection>protectedRisk.tp1ThenStop);
+  const targets=side==='LONG'?[[H,99,121,98,120,100,2*H-1]]:[[H,101,102,79,80,100,2*H-1]];
+  near(r.targetPnl,replayTrade(p,targets).returnPerUnit*r.quantity);
+  near(r.stressTargetPnl,replayTrade(p,targets,{fee:EXIT_COSTS.fee*2,slippage:EXIT_COSTS.slippage*2}).returnPerUnit*r.quantity);
+  assert.ok(r.stressRewardRisk<r.netRewardRisk);assert.deepEqual(p,before);
+  assert.match(riskPathView(protectedPlan),/保護止損/);assert.doesNotMatch(riskPathView(p),/下根觸及保護止損/);
+  assert.equal(researchRiskScenario({...p,stop:p.entry}),null);assert.equal(riskPathView({...p,stop:p.entry}),'');
+  const same={...p,tp2:p.tp1};assert.equal(researchRiskScenario(same).tp1ThenStop,null);assert.match(riskPathView(same),/兩個止盈目標相同/);
+ }
 });

@@ -2566,3 +2566,22 @@ button, a, input, select, summary { scroll-margin-block:16px 110px; }
 .home-ready-plan dt{font-size:12px;color:#b9c8c2}
 .home-ready-plan dd{margin:4px 0 0;font-size:16px;font-weight:650;color:#eef4e8;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
 .home-ready-plan>small{font-size:11px;color:#bbc9c3;line-height:1.6}
+
+.decision-trend{margin:12px 0;padding:12px;border:1px solid #384650;border-radius:10px;background:#151d21;min-width:0}
+.analysis-heading{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:baseline;justify-content:space-between}
+.analysis-heading h4{margin:0;font-size:15px;color:#e6d3a5}
+.analysis-heading>strong{font-size:13px;color:#c1d9cd;line-height:1.6}
+.analysis-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:12px 0}
+.analysis-metrics>div{min-width:0}
+.analysis-metrics dt{font-size:12px;line-height:1.6;color:#b8c4ce}
+.analysis-metrics dd{margin:5px 0 0;font-size:15px;font-weight:600;line-height:1.6;color:#e7dfcc;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.decision-trend p,.risk-paths p,.profitability-row p{font-size:12px!important;line-height:1.7;color:#bdc8ce}
+.agent-decision-card .agent-plan-comparison{border-top:1px solid #55452b;padding-top:14px;margin-top:14px;min-width:0}
+.agent-decision-card .agent-plan-comparison h4{font-size:16px;margin:0}
+.agent-decision-card .agent-plan-comparison p{font-size:12px;line-height:1.7;overflow-wrap:anywhere}
+.agent-decision-card .agent-plan-comparison button{min-height:44px;white-space:normal}
+.profitability-row{border:1px solid #444c4e;border-radius:8px;background:#13191b;padding:0 12px;margin:8px 0;min-width:0}
+.profitability-row>summary{padding:12px 0;min-height:44px;box-sizing:border-box;cursor:pointer;font-size:13px;line-height:1.7;overflow-wrap:anywhere}
+.profitability-row>summary>span{display:block;color:#d6c7a3;margin-top:4px}
+.profitability-row[open]>summary{border-bottom:1px solid #354044}
+@media(max-width:380px){.analysis-metrics{gap:10px}.analysis-metrics dd{font-size:14px}}
