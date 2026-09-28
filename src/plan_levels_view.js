@@ -9,6 +9,16 @@ export function formatPlanPrice(value) {
   return n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
 }
 
+// Keep the compact two-decimal display, but make distinct research thresholds
+// readable when that display collapses them to the same price.
+export function exactPlanLevelsView(plan){
+  const fields=[['進場門檻',plan?.entry],['第一止盈',plan?.tp1],['第二止盈',plan?.tp2],['止損點',plan?.stop]];
+  if(fields.some(([,v])=>typeof v!=='number'||!Number.isFinite(v)||v<=0))return '';
+  const values=fields.map(([,v])=>v),labels=values.map(formatPlanPrice);
+  if(!labels.includes('小於 0.01')&&new Set(labels).size===new Set(values).size)return '';
+  return `<details class="core-disclosure exact-plan-levels" data-search="exact-plan-${plan.entry}-${plan.stop}"><summary>兩位顯示不足以區分，查看精確研究點位</summary><dl class="analysis-metrics">${fields.map(([name,value])=>`<div><dt>${name}</dt><dd>${String(value)} USDT</dd></div>`).join('')}</dl><p>以上保留策略計算值；仍未對齊交易所委託精度，僅供研究核對。</p></details>`;
+}
+
 export function priceMove(from,to,{pending=false}={}) {
   if (![from,to].every(v=>typeof v==='number'&&Number.isFinite(v)&&v>0)) return '價格距離待核對';
   const change=(to/from-1)*100, magnitude=Math.abs(change);

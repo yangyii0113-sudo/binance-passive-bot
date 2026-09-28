@@ -20,7 +20,8 @@ export function coinTrendView(record,{now=Date.now()}={}){
  const t=coinTrendSummary(record,now);
  if(!t.valid)return `<section class="decision-trend" aria-label="幣種趨勢判讀"><h4>幣種趨勢</h4><p>${esc(t.reason)}</p></section>`;
  return `<section class="decision-trend" aria-label="幣種趨勢判讀"><div class="analysis-heading"><h4>幣種趨勢</h4><strong>${t.label}</strong></div>
- <dl class="analysis-metrics"><div><dt>1 小時／4 小時</dt><dd>${t.hourly}／${t.fourHourly}</dd></div><div><dt>收盤棒量能／前 20 根均量</dt><dd>${t.volumeRatio===null?'無法計算':`${t.volumeRatio.toFixed(2)} 倍`}</dd></div></dl>
+ <dl class="analysis-metrics"><div><dt>1 小時方向</dt><dd>${t.hourly}</dd></div><div><dt>4 小時方向</dt><dd>${t.fourHourly}</dd></div></dl>
+ <p>收盤棒量能／前 20 根均量：${t.volumeRatio===null?'無法計算':`${t.volumeRatio.toFixed(2)} 倍`}。</p>
  <p>${t.reason}</p><details class="core-disclosure" data-search="trend-facts-${esc(record.symbol)}"><summary>波動、均線距離與收盤依據</summary>
  <p>1 小時平均波幅占收盤價 ${t.atrPct.toFixed(2)}%；收盤在 20 期均線${t.emaDistanceAtr>=0?'上':'下'}方 ${Math.abs(t.emaDistanceAtr).toFixed(2)} 倍波幅。${t.extended?'距均線超過 1 倍波幅，回調方案有不追價限制。':''}</p>
  <p>完整收盤 ${displayDate(t.closedAt)}。量能、趨勢與波幅是條件資訊，並非勝率；日線／週線另見短中長期情勢對照。</p></details></section>`;

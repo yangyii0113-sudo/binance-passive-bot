@@ -8,6 +8,7 @@ import { researchProtectionStop, researchRiskScenario, riskPathView } from '../s
 import { coinTrendSummary, coinTrendView } from '../src/coin_trend_view.js';
 import { comparisonEvidence } from '../src/strategy_performance.js';
 import { replayTrade } from '../src/pullback_replay.js';
+import { exactPlanLevelsView, formatPlanPrice } from '../src/plan_levels_view.js';
 import { EXIT_COSTS } from '../src/target_analysis.js';
 import { cryptoContractTickers, normalizeUniverse, cachedMarketSnapshot } from '../src/market.js';
 import { MARKET_CACHE_KEY } from '../src/config.js';
@@ -408,4 +409,19 @@ test('exit risk scenarios reconcile with the separate replay engine for long and
   assert.equal(researchRiskScenario({...p,stop:p.entry}),null);assert.equal(riskPathView({...p,stop:p.entry}),'');
   const same={...p,tp2:p.tp1};assert.equal(researchRiskScenario(same).tp1ThenStop,null);assert.match(riskPathView(same),/兩個止盈目標相同/);
  }
+});
+
+test('colliding two-decimal prices have a gated precision disclosure without changing primary formatting',()=>{
+ const r=fixture(),p=r.row.analysis.strategies[0];
+ assert.equal(exactPlanLevelsView(p),'');
+ for(const [entry,stop,tp1,tp2] of [[0.0021,0.002,0.0023,0.0025],[1.001,1.0001,1.004,1.009]]){
+  Object.assign(p,{entry,stop,tp1,tp2});
+  Object.assign(r.marketSnapshot,{price:(entry+stop)/2,low:stop+(entry-stop)*.1,high:entry-(entry-stop)*.1});
+  const before=structuredClone(r),html=agentDecisionCard(r,{now});
+  assert.match(html,/兩位顯示不足以區分/);
+  for(const value of [entry,stop,tp1,tp2])assert.ok(exactPlanLevelsView(p).includes(`${String(value)} USDT`));
+  assert.deepEqual(r,before);assert.doesNotMatch(agentDecisionCard(r,{now:now+60000}),/exact-plan-levels/);
+ }
+ assert.equal(formatPlanPrice(1.2345),'1.23');assert.equal(formatPlanPrice(0.0021),'小於 0.01');
+ assert.equal(exactPlanLevelsView({...p,entry:'<script>'}),'');
 });

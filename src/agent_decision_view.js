@@ -7,7 +7,7 @@ import { researchRiskScenario, riskPathView } from './research_risk_view.js';
 import { coinTrendView } from './coin_trend_view.js';
 import { agentComparisonView } from './agent_comparison_view.js';
 import { escapeHtml as esc, displayDate } from './ui.js';
-import { formatPlanPrice as quote, priceMove, planExitGuide } from './plan_levels_view.js';
+import { formatPlanPrice as quote, priceMove, planExitGuide, exactPlanLevelsView } from './plan_levels_view.js';
 import { strategyEvidenceView } from './strategy_evidence_view.js';
 
 // Presentation only: the existing gate is the sole source of displayable levels.
@@ -62,6 +62,7 @@ export function agentDecisionCard(record, {now=Date.now(),comparison,comparisonB
           <div class="decision-target"><dt>第二止盈 · 平倉剩餘 50%</dt><dd>${quote(plan.tp2)} <small>USDT</small></dd><small>從進場${priceMove(plan.entry,plan.tp2)}</small></div>
           <div class="decision-stop"><dt>止損點 · 退出全部剩餘部位</dt><dd>${quote(plan.stop)} <small>USDT</small></dd><small>從進場${priceMove(plan.entry,plan.stop)} · 不放寬止損</small></div>
         </dl>
+        ${exactPlanLevelsView(plan)}
         <p class="decision-price-note">以上價格變動不是淨報酬；尚未扣除成本與計入分批比例。</p>
         <p class="decision-trigger"><strong>何時考慮：</strong>先重新核對行情；確認仍有效後，${plan.side==='LONG'?'向上突破':'向下跌破'} ${quote(plan.entry)} USDT 才觀察觸發。已觸及門檻、已失效或過期，就取消本次計畫，不追價。</p>
         ${planExitGuide(plan)}
