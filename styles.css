@@ -2585,3 +2585,13 @@ button, a, input, select, summary { scroll-margin-block:16px 110px; }
 .profitability-row>summary>span{display:block;color:#d6c7a3;margin-top:4px}
 .profitability-row[open]>summary{border-bottom:1px solid #354044}
 @media(max-width:380px){.analysis-metrics{gap:10px}.analysis-metrics dd{font-size:14px}}
+
+/* Compact action cards: levels and risk first, supporting evidence on demand. */
+.action-section-title{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:19px;margin:20px 0 12px}.action-section-title small{font-size:12px;font-weight:400;color:#b6c0ca}
+.home-opportunity-plan{background:linear-gradient(145deg,#15251f,#15191c);border-color:#397959}.home-opportunity-wait{border-color:#776238}
+.action-market-detail summary{font-size:12px;color:#b8c1cc;cursor:pointer;min-height:32px;line-height:1.8}.action-market-detail .home-opportunity-market{border:0}
+.home-opportunity-card .home-entry-reason{font-size:13px;margin:0;line-height:1.7}.home-opportunity-card .home-entry-state{border:0;padding:0}.home-opportunity-card .home-entry-state>span{display:none}
+.home-ready-plan dl>div:nth-child(2) dd{color:#ff8a91}.home-ready-plan dl>div:nth-child(3) dd,.home-ready-plan dl>div:nth-child(4) dd{color:#67dfa6}
+.price-map-caption{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:#bdc9c1;margin:14px 0 0}.price-map-track{position:relative;height:12px;background:#252c2a;border-radius:8px;margin:30px 0 12px}
+.price-map-zone{position:absolute;height:100%;top:0}.price-map-zone.risk{background:#753b46}.price-map-zone.reward{background:#216945}.price-map-mark{position:absolute;top:-3px;height:18px;width:2px;background:#fff;transform:translateX(-50%);font-style:normal}.price-map-mark b{position:absolute;top:-21px;left:50%;transform:translateX(-50%);font-size:10px;font-weight:500}.price-map-mark.stop b{color:#ff8a91}.price-map-mark.tp1 b,.price-map-mark.tp2 b{color:#67dfa6}.price-map-mark.tp2 b{top:20px}.price-map-quote{position:absolute;top:2px;width:8px;height:8px;background:#fff;border:2px solid #15191c;border-radius:50%;transform:translateX(-50%);box-shadow:0 0 0 1px #fff}
+.price-map-key{font-size:11px!important;color:#c0cbc5;line-height:1.7;margin:25px 0 8px!important}.home-ready-plan .action-risk-metrics{grid-template-columns:1fr 1fr;border-top:1px solid #344e40;padding-top:10px}.home-ready-plan .action-risk-metrics dd{font-size:14px}.home-ready-plan .action-risk-metrics .risk-money{color:#ff8a91}.action-risk-detail summary,.action-evidence summary{font-size:12px;min-height:32px;cursor:pointer}.action-risk-detail p{font-size:12px;line-height:1.7}.home-ready-plan .exact-plan-levels dd{font-size:12px;word-break:break-all}

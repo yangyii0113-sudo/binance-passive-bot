@@ -1,3 +1,4 @@
+import { homePlanVisual } from './plan_price_map.js';
 import { coinLogo } from './coin_logo.js';
 import { adviceMonitorView, readinessView } from './advice_monitor_view.js';
 import { adviceDisplayStatus } from './advice_display_status.js';
@@ -36,8 +37,8 @@ export function homeCandidates(market={},now=Date.now()) {
   return {rows:rankStrongRows(market.universeRows||market.rows||[]),reason:null};
 }
 
-const labels={plan:'有有效計畫 · 未成交',empty:'尚未核對',loading:'正在核對',wait:'等待條件',expired:'已過期 · 需更新',blocked:'資料待核對',conflict:'方向衝突'};
-const priority={plan:0,empty:1,expired:2,loading:3,wait:4,blocked:5,conflict:6};
+const labels={plan:'✓ 條件成立 · 僅模擬',empty:'尚未核對',loading:'正在核對',wait:'等待條件',expired:'已過期 · 需更新',blocked:'資料待核對',conflict:'方向衝突'};
+const priority={plan:0,wait:1,empty:2,expired:3,loading:4,blocked:5,conflict:6};
 export function homeOpportunities(state,now=Date.now()) {
   const selection=homeCandidates(state.market,now);
   const rows=selection.rows.map(candidate=>{
@@ -53,16 +54,16 @@ export function homeOpportunities(state,now=Date.now()) {
     if(key==='plan')reason=partial?'僅列通過核對的方案；其他策略仍有資料缺漏。':'收盤結構、當根門檻與成本後空間已核對；等待新觸發。';
     if(result.key==='wait')reason=display.reason;
     const ratios=result.plans.map(p=>researchRiskScenario(p)?.netRewardRisk).filter(Number.isFinite);
-    return {...candidate,key,label:result.key==='wait'?display.label:labels[key],reason,ratios,plans:result.plans,readiness:mismatch?'':readinessView(record,now),evidence:mismatch?'':strategyEvidenceView(record,{now,compact:true}),until:key==='plan'?Math.min(record.snapshotUntil,record.row.analysis.validUntil):null};
+    return {...candidate,quote:key==='plan'?record.marketSnapshot?.price:null,key,label:result.key==='wait'?display.label:labels[key],reason,ratios,plans:result.plans,readiness:mismatch?'':readinessView(record,now),evidence:mismatch?'':strategyEvidenceView(record,{now,compact:true}),until:key==='plan'?Math.min(record.snapshotUntil,record.row.analysis.validUntil):null};
   });
-  if(state.ui?.homeOpportunitySort==='readiness')rows.sort((a,b)=>priority[a.key]-priority[b.key]||a.rank-b.rank);
+  if(state.ui?.homeOpportunitySort!=='strength')rows.sort((a,b)=>priority[a.key]-priority[b.key]||a.rank-b.rank);
   return {...selection,rows,ready:rows.filter(r=>r.key==='plan').length,unchecked:rows.filter(r=>r.key==='empty').length};
 }
 
 export function homeOpportunityView(state,now=Date.now()) {
   const model=homeOpportunities(state,now),ui=state.ui||{},batch=ui.homeCheck||{};
   const busy=batch.running||state.agents?.technicalBusy||state.pullback?.loading||state.pullback?.comparing;
-  const sort=ui.homeOpportunitySort==='readiness'?'readiness':'strength',filter=ui.homeOpportunityFilter==='plan'?'plan':'all';
+  const sort=ui.homeOpportunitySort==='strength'?'strength':'readiness',filter=ui.homeOpportunityFilter==='plan'?'plan':'all';
   const visible=model.rows.filter(r=>filter==='all'||r.key==='plan');
   return `<section class="home-opportunities" aria-label="強勢幣與進場條件">
     ${adviceMonitorView(state,now)}
@@ -72,14 +73,14 @@ export function homeOpportunityView(state,now=Date.now()) {
     <p class="home-ranking-explainer">${sort==='strength'?'依 24 小時動能與成交額排序，分數不是勝率。':'依核對狀態分組，同組維持強勢名次；不代表獲利或勝率排名。'}</p>
     <div class="home-opportunity-filters" role="group" aria-label="首頁候選篩選"><button type="button" data-home-opportunity-filter="all" aria-pressed="${filter==='all'}">全部候選 ${model.rows.length}</button><button type="button" data-home-opportunity-filter="plan" aria-pressed="${filter==='plan'}">有有效計畫 ${model.ready}</button><span>尚未核對 ${model.unchecked}</span></div>
     ${model.reason?`<p class="home-opportunity-empty" role="status">${esc(model.reason)}</p>`:!visible.length?`<div class="home-opportunity-empty" role="status"><strong>${filter==='plan'?'目前沒有通過核對的計畫':'目前沒有符合選幣條件的標的'}</strong><p>${filter==='plan'?'可查看全部候選的等待原因；不補足訊號。':'僅選擇符合漲幅與流動性條件的幣種，不補足名額。'}</p>${filter==='plan'?'<button type="button" class="secondary-btn" data-home-opportunity-filter="all">查看全部候選</button>':''}</div>`:''}
-    <div class="home-opportunity-grid">${visible.map(row=>`<article class="home-opportunity-card home-opportunity-${row.key}" data-home-opportunity="${esc(row.symbol)}" aria-label="${esc(row.symbol)} 首頁候選">
+    <h2 class="action-section-title">今日行動 <small>條件式模擬 · 未成交</small></h2><div class="home-opportunity-grid">${visible.map(row=>`<article class="home-opportunity-card home-opportunity-${row.key}" data-home-opportunity="${esc(row.symbol)}" aria-label="${esc(row.symbol)} 首頁候選">
       <div class="home-opportunity-heading"><div class="coin-identity">${coinLogo(row.symbol)}<h3>${esc(row.symbol)}</h3></div><span>強勢第 ${row.rank} 名</span></div>
-      <dl class="home-opportunity-market"><div><dt>市場強度</dt><dd>${row.strength.toFixed(1)}<small>／100</small></dd></div><div><dt>24 小時</dt><dd>+${row.change.toFixed(2)}%</dd></div><div><dt>成交額</dt><dd>${(row.volume/1e6).toFixed(1)}<small> 百萬 USDT</small></dd></div></dl>
+      <details class="action-market-detail"><summary>市場強度 ${row.strength.toFixed(1)} · 24 小時 +${row.change.toFixed(2)}%</summary><dl class="home-opportunity-market"><div><dt>市場強度</dt><dd>${row.strength.toFixed(1)}<small>／100</small></dd></div><div><dt>24 小時</dt><dd>+${row.change.toFixed(2)}%</dd></div><div><dt>成交額</dt><dd>${(row.volume/1e6).toFixed(1)}<small> 百萬 USDT</small></dd></div></dl></details>
       <div class="home-entry-state" data-home-entry-state="${row.key}"><span>進場條件</span><strong>${row.label}</strong></div>
       <p class="home-entry-reason">${esc(row.reason)}</p>
-      ${row.readiness}
-      ${row.key==='plan'?row.plans.map(p=>`<div class="home-ready-plan"><strong>${FAMILY_NAMES[p.key]} · ${p.side==='LONG'?'做多':'做空'} · 等待觸發</strong><dl><div><dt>進場門檻</dt><dd>${formatPlanPrice(p.entry)}</dd></div><div><dt>止損</dt><dd>${formatPlanPrice(p.stop)}</dd></div><div><dt>第一止盈</dt><dd>${formatPlanPrice(p.tp1)}</dd></div><div><dt>第二止盈</dt><dd>${formatPlanPrice(p.tp2)}</dd></div></dl><small>單位 USDT · 條件式模擬，尚未成交</small></div>`).join(''):''}
-      ${row.evidence}
+
+      ${row.key==='plan'?row.plans.map(p=>`<div class="home-ready-plan"><strong>${FAMILY_NAMES[p.key]} · ${p.side==='LONG'?'做多':'做空'} · 等待觸發</strong><dl><div><dt>進場門檻</dt><dd>${formatPlanPrice(p.entry)}</dd></div><div><dt>止損</dt><dd>${formatPlanPrice(p.stop)}</dd></div><div><dt>第一止盈</dt><dd>${formatPlanPrice(p.tp1)}</dd></div><div><dt>第二止盈</dt><dd>${formatPlanPrice(p.tp2)}</dd></div></dl><small>單位 USDT · 1 小時策略 · 條件式模擬，尚未成交</small>${homePlanVisual(p,row.quote)}</div>`).join(''):''}
+      <details class="core-disclosure action-evidence" data-search="home-evidence-${esc(row.symbol)}"><summary>查看三策略與回踩確認</summary>${row.readiness}${row.evidence}</details>
       ${row.key==='plan'?`<p class="home-entry-evidence">${row.ratios.length} 個獨立方案 · 最低目標淨風報 ${Math.min(...row.ratios).toFixed(2)}<br>核對有效至 ${esc(displayDate(row.until))}</p>`:''}
       ${['plan','wait','conflict'].includes(row.key)?`<button type="button" class="${row.key==='plan'?'primary-inline-btn':'secondary-btn'}" data-agent-advice-symbol="${esc(row.symbol)}">${row.key==='plan'?'查看進退場計畫':'查看條件與數值'}</button>`:`<button type="button" class="secondary-btn" data-home-check-symbol="${esc(row.symbol)}" ${busy||row.key==='loading'?'disabled':''}>${row.key==='loading'?'正在核對…':row.key==='empty'?'核對進場條件':'重新核對'}</button>`}
     </article>`).join('')}</div>

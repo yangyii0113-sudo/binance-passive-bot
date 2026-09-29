@@ -181,7 +181,7 @@ function homeFixture(){
   return {s,now};
 }
 test('home ranks liquid rising candidates separately from gated entry status',()=>{
-  const {s,now}=homeFixture(),before=structuredClone(s),html=researchOverview(s,now);
+  const {s,now}=homeFixture();s.ui.homeOpportunitySort='strength';const before=structuredClone(s),html=researchOverview(s,now);
   assert.match(html,/data-home-opportunity="AAAUSDT"/);assert.match(html,/data-home-opportunity="BBBUSDT"/);
   assert.doesNotMatch(html,/data-home-opportunity="(?:SPIKE|LOW|DOWN)USDT"/);
   assert.ok(html.indexOf('data-home-opportunity="AAAUSDT"')<html.indexOf('data-home-opportunity="BBBUSDT"'));
@@ -228,4 +228,24 @@ test('home batch limits concurrent checks and preserves every result after a fai
   assert.equal(peak,2);assert.deepEqual(results.map(r=>[r.symbol,r.ok]),[['AAAUSDT',true],['BBBUSDT',false],['CCCUSDT',true]]);
   assert.deepEqual(progress,[1,2,3]);assert.equal(results[1].error,'離線');
   let calls=0;await assert.rejects(homeModule.runHomeChecks(['AAAUSDT','AAAUSDT'],{check:()=>calls++}));assert.equal(calls,0);
+});
+
+ test('home action cards prioritize gated plans and suppress maps for unsafe evidence',()=>{
+ const {s,now}=homeFixture(),html=researchOverview(s,now);
+ assert.ok(html.indexOf('data-home-opportunity="BBBUSDT"')<html.indexOf('data-home-opportunity="AAAUSDT"'));
+ assert.match(html,/價格位置圖/);assert.match(html,/預估止損損失/);
+ assert.match(html,/<details[^>]*data-search="home-evidence-BBBUSDT">/);
+ for(const change of [r=>r.snapshotUntil=now,r=>r.historical=true,r=>r.row.symbol='AAAUSDT',r=>delete r.marketSnapshot]){
+ const copy=structuredClone(s);change(copy.agents.tradePlans.BBBUSDT);
+ assert.doesNotMatch(researchOverview(copy,now),/價格位置圖|預估止損損失/);
+ }
+});
+ test('price maps preserve long and short ordering and do not clamp outside quotes',async()=>{
+ const {planPriceMap}=await import('../src/plan_price_map.js');
+ const long={side:'LONG',entry:100,stop:90,tp1:110,tp2:120};
+ const a=planPriceMap(long,130);assert.ok(a.stop<a.entry&&a.entry<a.tp1&&a.tp1<a.tp2&&a.tp2<a.quote);
+ const b=planPriceMap({side:'SHORT',entry:100,stop:110,tp1:90,tp2:80},70);assert.ok(b.quote<b.tp2&&b.tp2<b.tp1&&b.tp1<b.entry&&b.entry<b.stop);
+ assert.equal(planPriceMap(long,null).quote,null);
+ assert.equal(planPriceMap({...long,stop:105},100),null);
+ const same=planPriceMap({...long,tp2:110},100);assert.equal(same.tp1,same.tp2);
 });
