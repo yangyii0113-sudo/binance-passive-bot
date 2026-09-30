@@ -287,3 +287,23 @@ test('compact monitor retains stop controls, errors and foreground boundary',asy
   assert.match(visible,/data-forward-stop/);assert.match(visible,/核對失敗/);
   assert.match(visible,/沒有離線推播/);assert.match(visible,/data-auto-check-toggle/);
 });
+
+test('home expiry and distance reveal separate clocks without resurrecting stale prices',()=>{
+  const {s,now}=homeFixture();
+  const html=researchOverview(s,now);
+  assert.match(html,/行情快照剩 1 分 0 秒/);
+  assert.match(html,/收盤策略剩/);
+  assert.match(html,/核對時距進場門檻 2.04%/);
+  const expired=structuredClone(s);expired.agents.tradePlans.BBBUSDT.snapshotUntil=now;
+  const stale=researchOverview(expired,now);
+  assert.doesNotMatch(stale,/行情快照剩|核對時距進場門檻/);
+});
+
+test('watch filter remains inside fresh top ten and never upgrades entry eligibility',()=>{
+  const {s,now}=homeFixture();s.ui.homeWatchedSymbols=['AAAUSDT','OUTSIDEUSDT'];s.ui.homeOpportunityFilter='watch';
+  const html=researchOverview(s,now);
+  assert.match(html,/data-home-opportunity="AAAUSDT"/);
+  assert.doesNotMatch(html,/data-home-opportunity="(?:BBB|OUTSIDE)USDT"/);
+  assert.match(html,/尚未核對/);
+  s.market.status='STALE';assert.doesNotMatch(researchOverview(s,now),/data-home-opportunity=/);
+});

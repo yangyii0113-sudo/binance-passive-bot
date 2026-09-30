@@ -65,6 +65,7 @@ export const appState = {
     assetClass: 'crypto',
     marketSort: 'popular',
     homeSection: 'market',
+    homeWatchedSymbols: [],
     strategyFilter: 'all',
     strategyWorkspace: 'signals',
     strategyTimeframe: '1h',

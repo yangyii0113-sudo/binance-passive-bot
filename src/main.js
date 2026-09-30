@@ -716,8 +716,16 @@ function initEvents() {
       appState.ui.homeOpportunitySort=homeSort.dataset.homeOpportunitySort;render();return;
     }
     const homeFilter=event.target.closest?.('[data-home-opportunity-filter]');
-    if(homeFilter&&['all','plan'].includes(homeFilter.dataset.homeOpportunityFilter)){
+    if(homeFilter&&['all','plan','watch'].includes(homeFilter.dataset.homeOpportunityFilter)){
       appState.ui.homeOpportunityFilter=homeFilter.dataset.homeOpportunityFilter;render();return;
+    }
+    const watchToggle=event.target.closest?.('[data-home-watch-symbol]');
+    if(watchToggle){
+      const symbol=watchToggle.dataset.homeWatchSymbol;
+      if(!/^[A-Z0-9]+USDT$/.test(symbol))return;
+      const current=Array.isArray(appState.ui.homeWatchedSymbols)?appState.ui.homeWatchedSymbols:[];
+      appState.ui.homeWatchedSymbols=current.includes(symbol)?current.filter(s=>s!==symbol):[...current,symbol].slice(-10);
+      render();return;
     }
     if(event.target.closest?.('[data-home-check-all]')){await checkHomePlans();return;}
     const homeCheckSymbol=event.target.closest?.('[data-home-check-symbol]');
