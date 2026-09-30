@@ -16,7 +16,9 @@ function observations(p,a){
   const o=p.observations;
   if(o?.version!=='strategy-conditions-v1'||o.closedAt!==a.closedAt)return null;
   const required=({structured:['open','high','low','close','ema20','atr','closeFour','ema50Four','ema200Four','ema50FourPrevious'],breakout:['close','upper','lower','averageVolume','lastVolume'],meanReversion:['close','previousClose','center','sd','lower','upper','atr','ma20','ma50']})[p.key];
-  return required?.every(k=>Number.isFinite(o[k]))?o:null;
+  return required?.every(k=>Number.isFinite(o[k]))&&o.close>0&&
+    (p.key==='breakout'?o.averageVolume>0:o.atr>0)&&
+    (p.key!=='structured'||(o.ema20>0&&o.ema50FourPrevious>0))?o:null;
 }
 function stateLabel(p,gate){
   if(p.status==='SETUP')return gate.key==='plan'&&gate.plans.some(x=>x.key===p.key)?'等待觸發 · 僅模擬':'方向衝突 · 暫停';
@@ -24,7 +26,7 @@ function stateLabel(p,gate){
 }
 function compactValue(p,o){
   if(!o)return '分項數值待更新';
-  if(p.key==='structured')return `收盤距均線 ${number((o.close/o.ema20-1)*100)}% · ${number(Math.abs(o.close-o.ema20)/o.atr)} 倍波幅`;
+  if(p.key==='structured')return `收盤距均線 ${number((o.close/o.ema20-1)*100)}% · ${number(Math.abs(o.close-o.ema20)/o.atr)} 倍波幅／門檻 ≤ 1.00 倍`;
   if(p.key==='breakout')return `收盤棒量能 ${number(o.volumeRatio)} 倍／門檻 ≥ 1.50 倍`;
   return `均線距離 ${number(Math.abs(o.ma20-o.ma50)/o.atr)} 倍波幅／門檻 ≤ 0.50`;
 }
@@ -67,4 +69,15 @@ export function strategyEvidenceView(record,{now=Date.now(),compact=false}={}){
     ${plans.map(p=>`<details class="evidence-strategy" data-search="evidence-${esc(record.symbol)}-${p.key}" ${display.primary?.familyKey===p.key?'open':''}><summary><span><strong>${names[p.key]}</strong><b>${esc(stateLabel(p,gate))}</b></span><small>${esc(compactValue(p,p.observations))}</small></summary>${p.status!=='SETUP'&&p.reason?`<p class="evidence-reason">${esc(p.reason)}</p>`:''}${checks(p,p.observations,a,gate)}<p class="evidence-next">${p.status==='SETUP'?(gate.key==='plan'?'下一步：重新核對後，依上方有效門檻觀察新觸發。':'方向衝突，暫停所有新進場方案。'):`下一步：${esc(strategyWaitDetail(p).next)}`}</p></details>`).join('')}
     <p class="evidence-time">數值依最近已收盤 1 小時 K 棒：${displayDate(a.closedAt)}；行情核對 ${displayDate(record.checkedAt)}，有效至 ${displayDate(Math.min(record.snapshotUntil,a.validUntil))}。均線與區間界線是判斷參考，不是進場價。</p>
   </section>`;
+}
+
+// Read-only summary: the original strategy gate remains the source of eligibility.
+export function strategyConditionSummaryView(record,{now=Date.now()}={}) {
+  const gate=agentPlanStatus(record,now),a=record?.row?.analysis;
+  if(!['plan','wait','conflict'].includes(gate.key)||record.row.symbol!==record.symbol)return '';
+  return `<div class="condition-summary" aria-label="策略目前數值與門檻">${a.strategies.map(p=>{
+    const o=observations(p,a);
+    const flags=!o?[]:p.key==='structured'?[['觸及均線',o.touched],['收回',o.reclaimed],['同向收盤',o.bodyAligned]]:p.key==='breakout'?[['收盤突破',o.breakout],['量能',o.volumePassed]]:[['震盪環境',o.rangePassed],['偏離收回',o.longReclaim===true||o.shortReclaim===true?true:o.longReclaim===false&&o.shortReclaim===false?false:null]];
+    return `<div><strong>${esc(names[p.key]||p.key)} · ${esc(stateLabel(p,gate))}</strong><span>${esc(compactValue(p,o))}</span>${flags.length?`<small>${flags.map(([label,v])=>`${label}：${mark(v)[1]}`).join(' · ')}</small>`:''}</div>`;
+  }).join('')}<small>已收盤棒觀測；分項通過不等於可進場，參考值不是進場價。</small></div>`;
 }

@@ -249,3 +249,41 @@ test('home batch limits concurrent checks and preserves every result after a fai
  assert.equal(planPriceMap({...long,stop:105},100),null);
  const same=planPriceMap({...long,tp2:110},100);assert.equal(same.tp1,same.tp2);
 });
+
+test('market health matches candidate freshness and escapes upstream errors',async()=>{
+  const {marketHealth,marketHealthView}=await import('../src/market_health_view.js');
+  const {s,now}=homeFixture();
+  assert.equal(marketHealth(s.market,now).key,'fresh');
+  for(const patch of [{status:'STALE'},{status:'ERROR'},{updatedAt:new Date(now+1).toISOString()},{updatedAt:new Date(now-100000).toISOString()},{cryptoOnly:false},{contractVerifiedAt:new Date(now-301000).toISOString()}]){
+    const market={...s.market,...patch};
+    assert.equal(marketHealth(market,now).key,'unavailable');
+    assert.equal(homeModule.homeCandidates(market,now).rows.length,0);
+    assert.match(marketHealthView(market,now),/不代表市場沒有交易機會/);
+  }
+  assert.equal(marketHealth({},now).age,null);
+  const html=marketHealthView({status:'ERROR',error:new Error('<script>bad</script>')},now);
+  assert.doesNotMatch(html,/<script>/);assert.match(html,/&lt;script&gt;/);
+});
+
+test('visible condition summaries respect expiry, identity and invalid denominators',async()=>{
+  const {strategyConditionSummaryView}=await import('../src/strategy_evidence_view.js');
+  const {s,now}=homeFixture(),r=s.agents.tradePlans.BBBUSDT;
+  const p=r.row.analysis.strategies[0];
+  p.observations={version:'strategy-conditions-v1',closedAt:r.row.analysis.closedAt,close:100,upper:99,lower:90,averageVolume:100,lastVolume:160,volumeRatio:1.6,breakout:true,volumePassed:true};
+  assert.match(strategyConditionSummaryView(r,{now}),/1.60 倍／門檻 ≥ 1.50/);
+  assert.equal(strategyConditionSummaryView(r,{now:now+60001}),'');
+  const mismatch=structuredClone(r);mismatch.row.symbol='AAAUSDT';
+  assert.equal(strategyConditionSummaryView(mismatch,{now}),'');
+  p.observations.averageVolume=0;
+  assert.match(strategyConditionSummaryView(r,{now}),/分項數值待更新/);
+});
+
+test('compact monitor retains stop controls, errors and foreground boundary',async()=>{
+  const {adviceMonitorView}=await import('../src/advice_monitor_view.js');
+  const {s,now}=homeFixture();
+  s.adviceMonitor={enabled:true,error:'核對失敗',alerts:[]};s.forward={enabled:true};
+  const html=adviceMonitorView(s,now,{compact:true});
+  const visible=html.replace(/<details[\s\S]*?<\/details>/g,'');
+  assert.match(visible,/data-forward-stop/);assert.match(visible,/核對失敗/);
+  assert.match(visible,/沒有離線推播/);assert.match(visible,/data-auto-check-toggle/);
+});
