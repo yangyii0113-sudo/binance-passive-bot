@@ -1,9 +1,9 @@
+import { fetchMarketJson } from './market_request.js';
 import {
   CORE_MARKET_SYMBOLS,
   MARKET_SYMBOLS,
   MARKET_MAX_ROWS,
-  MARKET_LIQUIDITY_POOL,
-  MARKET_TIMEOUT_MS
+  MARKET_LIQUIDITY_POOL
 } from './config.js';
 import { readMarketCache, writeMarketCache } from './cache.js';
 import { STATUS } from './status.js';
@@ -23,10 +23,7 @@ async function fetchCryptoContracts() {
   if(contractCache && age>=0 && age<300000) return contractCache;
   if(pendingContracts) return pendingContracts;
   pendingContracts=(async()=>{
-    const response=await fetch('https://fapi.binance.com/fapi/v1/exchangeInfo',{cache:'no-store',signal:AbortSignal.timeout(MARKET_TIMEOUT_MS)});
-    if(!response.ok) throw new Error('無法核對加密貨幣合約清單');
-    const data=await response.json();
-    if(!Array.isArray(data?.symbols) || !data.symbols.length) throw new Error('合約清單格式異常');
+    const data=await fetchMarketJson('contracts');
     contractCache={symbols:data.symbols,checkedAt:Date.now()};
     return contractCache;
   })().finally(()=>{pendingContracts=null;});
@@ -123,21 +120,7 @@ function normalizeUniverse(payload) {
 }
 
 async function fetchAllTickers() {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), MARKET_TIMEOUT_MS);
-  try {
-    const response = await fetch('https://fapi.binance.com/fapi/v1/ticker/24hr', {
-      method: 'GET',
-      cache: 'no-store',
-      signal: controller.signal
-    });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const data = await response.json();
-    if (!Array.isArray(data)) throw new Error('Invalid ticker payload');
-    return data;
-  } finally {
-    clearTimeout(timeout);
-  }
+  return fetchMarketJson('tickers');
 }
 
 export function cachedMarketSnapshot() {
@@ -168,6 +151,8 @@ export async function loadMarketSnapshot() {
     const summary = deriveMarketSummary(rows);
     const snapshot = {
       status: STATUS.LIVE,
+      error:null,
+      marketDiagnostic:null,
       cryptoOnly:true,
       contractVerifiedAt:new Date(contracts.checkedAt).toISOString(),
       updatedAt: new Date().toISOString(),
@@ -181,7 +166,7 @@ export async function loadMarketSnapshot() {
     return snapshot;
   } catch (error) {
     const cached = cachedMarketSnapshot();
-    if (cached) return { ...cached, error };
+    if (cached) return { ...cached, error,marketDiagnostic:error.marketDiagnostic||null };
     const fallbackRows = MARKET_SYMBOLS.map(({ icon, display }) => [icon, display, '—', null, null, null]);
     return {
       status: STATUS.ERROR,
@@ -191,7 +176,8 @@ export async function loadMarketSnapshot() {
       rows: fallbackRows.slice(0, MARKET_MAX_ROWS),
       universeRows: fallbackRows,
       universeSize: fallbackRows.length,
-      error
+      error,
+      marketDiagnostic:error.marketDiagnostic||null
     };
   }
 }

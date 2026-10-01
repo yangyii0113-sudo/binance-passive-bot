@@ -145,3 +145,12 @@ test('stopping during an in-flight analysis rejects the delayed result',async t=
   const work=r.check('UNIUSDT');await entered;r.stop();finish(record(h.now()));await work;
   assert.equal(h.store.snapshot().rows.length,0);
 });
+
+test('preflight stops after denied REST and cannot claim readiness from REST alone',async()=>{
+  const {researchPreflight}=await import('../research-service/preflight.mjs');
+  let streamCalls=0;
+  const denied=await researchPreflight({request:async()=>{throw new Error('HTTP 451');},stream:async()=>{streamCalls++;return {ok:true};}});
+  assert.equal(denied.ready,false);assert.equal(denied.checks.length,1);assert.equal(streamCalls,0);
+  const noStream=await researchPreflight({request:async()=>[],stream:async()=>({ok:false,reason:'斷線'})});
+  assert.equal(noStream.ready,false);assert.equal(noStream.checks.length,3);
+});

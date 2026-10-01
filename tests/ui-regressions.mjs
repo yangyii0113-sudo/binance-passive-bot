@@ -307,3 +307,13 @@ test('watch filter remains inside fresh top ten and never upgrades entry eligibi
   assert.match(html,/尚未核對/);
   s.market.status='STALE';assert.doesNotMatch(researchOverview(s,now),/data-home-opportunity=/);
 });
+
+test('public market failures keep response evidence distinct from unknown network failures',async()=>{
+  const {fetchMarketJson}=await import('../src/market_request.js');
+  for(const [status,kind] of [[451,'restricted'],[429,'rate'],[418,'rate'],[500,'http']]){
+    await assert.rejects(fetchMarketJson('contracts',{fetcher:async()=>({ok:false,status})}),e=>e.marketDiagnostic.kind===kind&&e.marketDiagnostic.httpStatus===status&&e.marketDiagnostic.endpoint==='/fapi/v1/exchangeInfo');
+  }
+  await assert.rejects(fetchMarketJson('tickers',{fetcher:async()=>{throw new TypeError('Failed to fetch');}}),e=>e.marketDiagnostic.kind==='network'&&e.marketDiagnostic.httpStatus===null&&!e.message.includes('HTTP 451'));
+  await assert.rejects(fetchMarketJson('tickers',{fetcher:async()=>{throw Object.assign(new Error(),{name:'TimeoutError'});}}),e=>e.marketDiagnostic.kind==='timeout');
+  await assert.rejects(fetchMarketJson('tickers',{fetcher:async()=>({ok:true,status:200,json:async()=>({})})}),e=>e.marketDiagnostic.kind==='payload');
+});

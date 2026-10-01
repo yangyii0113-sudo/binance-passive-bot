@@ -50,6 +50,7 @@ globalThis.fetch = async (url) => {
   return { ok: false, status: 404, json: async () => ({}) };
 };
 
+const validMarketFetch=globalThis.fetch;
 const live = await loadMarketSnapshot();
 assert.equal(live.status, STATUS.LIVE, 'Market must enter LIVE on valid Binance payloads');
 assert.ok(live.rows.length >= 7, 'Market must expose a broader liquid universe');
@@ -84,6 +85,13 @@ const error = await loadMarketSnapshot();
 assert.equal(error.status, STATUS.ERROR, 'Market must enter ERROR when no cache exists');
 assert.ok(error.rows.length > 3, 'Fallback universe must not collapse to three coins');
 assert.equal(error.rows.every((row) => row[2] === '—'), true, 'ERROR must not fabricate prices');
+
+globalThis.fetch=validMarketFetch;
+const recovered=await loadMarketSnapshot();
+const mergedMarket={...error,...recovered};
+assert.equal(mergedMarket.status,STATUS.LIVE);
+assert.equal(mergedMarket.error,null,'Recovered state must clear the earlier network error');
+assert.equal(mergedMarket.marketDiagnostic,null,'Recovered state must clear earlier diagnostics');
 
 globalThis.fetch = async () => ({ ok: false, status: 404, json: async () => ({}) });
 const [strategy, paper, results, backtest] = await Promise.all([

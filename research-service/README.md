@@ -67,3 +67,20 @@ docker run -d --name foxyya-independent-research --restart unless-stopped \
 - 實際 main 程序可啟動、回應及正常停止。此工作環境 Binance REST 請求逾時時，`/healthz` 200、`/readyz` 503、`ready:false`、結案數 0、損益 null，未產生虛構樣本。
 - Railway 唯讀盤點：研究專案的 staging 與 backup helper 均顯示 FAILED；staging 最近失敗紀錄為健康檢查 HTTP 404。已有 /data 與 /backup 掛載，但本輪未檢查磁碟內容、未接管或新增付費服務。
 - 尚無本服務在外部主機的連續行情／24 小時運行證據，也未連線使用者 Mac mini。本輪不能宣稱全天候上線完成。
+
+## 主機連線預檢（2026-10-01）
+
+在準備部署的主機、專案根目錄執行（Node.js 24）：
+
+```sh
+node research-service/preflight.mjs
+```
+
+此命令只讀取公開合約與行情，檢查兩筆連續的 WebSocket 成交，之後立即關閉連線；不寫入研究帳本、不啟動交易或背景服務。REST 失敗就停止，不切換代理或替代網路。
+
+- `ready: true`：此次 REST 與兩筆連續行情通過，仍需正式程序、持久磁碟、重啟與 24 小時觀察驗收。
+- `restricted`／HTTP 451：來源拒絕該連線環境，須確認來源的使用資格或洽來源客服；不繞過限制。
+- `network`：沒有取得 HTTP 回應，原因仍未知。`timeout`：請求逾時。兩者都不是已證實的地區限制。
+- `rate`：來源限流。`payload`：資料格式不符。預檢不改變 fail-closed 條件。
+
+2026-10-01 此工作環境用 curl 實測合約清單回應 HTTP 451，內容明確表示 restricted location；僅能證明此工作環境的限制，不能代替使用者手機或 Mac mini 的測試。當日 Railway 研究 Staging 仍是 2026-09-14 FAILED，來源仍指向 v12 舊分支，尚無此獨立服務上線證據。
