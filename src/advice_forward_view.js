@@ -18,6 +18,10 @@ function feedCard(feed,state){
     ${enabled&&feed.status==='LIVE'?`<div class="history-actions"><button type="button" class="secondary-btn" data-agent-plan-refresh="${esc(feed.symbol)}" ${loading?'disabled':''}>${loading?'核對中…':'重新核對新建議'}</button></div>`:''}
   </li>`;
 }
+export function forwardDiagnostics(state,{full=false}={}){
+  const f=state.forward||{},feeds=f.feeds||[];
+  return feeds.length?`<details class="forward-diagnostics" data-search="forward-diagnostics" ${full||feeds.some(x=>x.status==='BLOCKED')?'open':''}><summary>${f.enabled?'行情連線狀態':'上次行情觀測'} · ${feeds.length} 檔</summary><ul class="forward-feeds">${feeds.map(x=>feedCard(x,state)).join('')}</ul></details>`:'';
+}
 export function forwardTrackingBar(state,{full=false}={}){
   const f=state.forward||{},rows=f.book?.rows||[];
   const feeds=f.feeds||[],live=feeds.filter(x=>x.status==='LIVE').length;
@@ -26,7 +30,7 @@ export function forwardTrackingBar(state,{full=false}={}){
     ${[...new Set([f.error,f.dataError].filter(Boolean))].map(e=>`<p role="alert">${esc(e)}</p>`).join('')}
     <div class="history-actions">${f.enabled?'<button type="button" class="secondary-btn" data-forward-stop>停止追蹤</button>':`<button type="button" class="primary-inline-btn" data-forward-start ${f.starting?'disabled':''}>${f.starting?'正在啟動…':'開始本機前向追蹤'}</button>`}${full?'<a class="secondary-btn" href="#/advice">回到交易建議</a>':`<a class="secondary-btn" href="#/advice-results">建議成效 · ${rows.length} 筆</a>`}</div>
     <p>只在此頁保持前景時觀察；關閉、背景或斷線即停止未完成樣本。不補造過往成交。</p>
-    ${feeds.length?`<details class="forward-diagnostics" data-search="forward-diagnostics" ${full||feeds.some(x=>x.status==='BLOCKED')?'open':''}><summary>${f.enabled?'行情連線狀態':'上次行情觀測'} · ${feeds.length} 檔</summary><ul class="forward-feeds">${feeds.map(x=>feedCard(x,state)).join('')}</ul></details>`:''}
+    ${forwardDiagnostics(state,{full})}
   </section>`;
 }
 function sampleCard(row,enabled){
@@ -70,15 +74,15 @@ export function adviceResultsPage(state){
   const unresolved=!f.enabled?rows.filter(activeForward).length:0;
   return `<div class="page-stack forward-page">${section('建議成效',`
     <div class="advice-intro"><strong>${s.closed?'已累積本機研究結案，仍須檢查樣本與缺漏':'尚無足夠證據判定建議是否有效'}</strong><p>這裡追蹤建議提出之後的結果。每筆都是獨立模擬研究，與歷史回測、手動模擬交易及正式帳本分開。</p></div>
-    ${forwardTrackingBar(state,{full:true})}
     <div class="metric-grid">${metric('完整結案',s.closed)}${metric('結案勝率',num(s.winRate,'%'))}${metric('平均研究淨損益',num(s.average,' USDT'))}${metric('獲利因子',num(s.profitFactor))}</div>
     <p class="guard-note">${dataError?'資料異常，停止計算成效。':'僅完整結案納入勝率；零損益也列入分母。無虧損樣本時不顯示獲利因子。少量樣本不能證明策略有效。'}</p>
-    <dl class="core-metrics forward-coverage"><div><dt>全部登錄</dt><dd>${rows.length}</dd></div><div><dt>等待觸發</dt><dd>${f.enabled?s.pending:0}</dd></div><div><dt>模擬持倉／分段出場</dt><dd>${f.enabled?s.open:0}</dd></div><div><dt>中斷或未完成待確認</dt><dd>${s.gap+unresolved}</dd></div><div><dt>未觸發到期／取消</dt><dd>${s.cancelled}</dd></div><div><dt>無可追蹤計畫／未追蹤</dt><dd>${s.noSetup+s.notTracked}</dd></div></dl>
-    <p>所有等待、取消、未追蹤與中斷都保留，避免只看到成功案例。背景停止會造成樣本偏差，這不是全天候策略績效。</p>
+    <details class="core-disclosure" data-search="forward-coverage"><summary>樣本分布與缺漏 · ${s.gap+unresolved+s.notTracked} 筆待確認／未追蹤</summary><dl class="core-metrics forward-coverage"><div><dt>全部登錄</dt><dd>${rows.length}</dd></div><div><dt>等待觸發</dt><dd>${f.enabled?s.pending:0}</dd></div><div><dt>模擬持倉／分段出場</dt><dd>${f.enabled?s.open:0}</dd></div><div><dt>中斷或未完成待確認</dt><dd>${s.gap+unresolved}</dd></div><div><dt>未觸發到期／取消</dt><dd>${s.cancelled}</dd></div><div><dt>無可追蹤計畫／未追蹤</dt><dd>${s.noSetup+s.notTracked}</dd></div></dl>
+    <p>所有等待、取消、未追蹤與中斷都保留，避免只看到成功案例。背景停止會造成樣本偏差，這不是全天候策略績效。</p></details>
+    ${forwardTrackingBar(state,{full:true})}
     <details class="core-disclosure" data-search="forward-assumptions"><summary>追蹤範圍、成本與出場規則</summary><p>每筆獨立以 1,000 USDT、0.25% 風險預算、名目上限 1 倍觀察。不同樣本可同時存在，不能相加當成帳戶報酬或組合風險核准。</p><p>只登錄啟動後的新分析；沿用原策略與核對期限。登錄後需連續成交越過門檻才模擬進場，跳價超過 0.02% 取消；不是保證成交。</p><p>第一止盈平一半、第二止盈平剩餘。止損使用較差觀測價；結構策略的成本保護於下一個小時生效。第 48 根一小時棒結束後以首筆連續觀測價格退出；與歷史收盤回測模型不同。</p><p>每邊費率 0.05%、滑價 0.02%；未含資金費率、交易所數量精度及市場深度。R 為研究淨損益除以原始成本後止損風險，跳空虧損可能超過 1 R。</p><p>只保存於此瀏覽器，上限 500 筆，不自動刪除。匯出包含點位與事件，但未經外部認證。即時行情缺漏、超過十秒無資料或進入背景即停止，不能補算。</p><p>僅模擬研究、真實下單鎖定、不回補。正式帳本、最新帳戶淨值與 Production Execution V2 不由此模組核准。</p></details>
     ${rows.length&&!dataError?`<details class="core-disclosure" data-search="forward-groups"><summary>依幣種／策略比較</summary><div class="forward-table-wrap"><table><thead><tr><th scope="col">組別</th><th scope="col">結案／登錄</th><th scope="col">勝率</th><th scope="col">平均淨損益</th><th scope="col">平均 R／樣本</th><th scope="col">獲利因子</th><th scope="col">中斷／未追蹤</th></tr></thead><tbody>${grouped(rows,r=>r.symbol)}${grouped(rows,r=>FAMILY_NAMES[r.plan?.key]||'無可追蹤計畫')}</tbody></table></div><p>平均淨損益單位 USDT；平均 R 僅使用有原始風險的完整結案，括號為可計算樣本數。分組互不排除，同一樣本會分別出現在幣種與策略組；不可相加。未含資金費率；樣本少或缺漏多時不可排名。</p></details>`:''}
     <div class="history-actions"><button type="button" class="secondary-btn" data-forward-export ${!rows.length||dataError?'disabled':''}>匯出完整追蹤紀錄</button></div>
     ${file?`<section class="agent-export-preview" aria-label="前向追蹤匯出預覽"><strong>${esc(file.filename)}</strong><textarea aria-label="前向追蹤匯出內容" readonly rows="8">${esc(file.text)}</textarea><div class="history-actions"><button type="button" class="secondary-btn" data-forward-download>下載紀錄</button><button type="button" class="secondary-btn" data-forward-copy>複製紀錄</button></div>${f.exportMessage?`<p role="status">${esc(f.exportMessage)}</p>`:''}</section>`:''}
-    <h3>逐筆追蹤 · 最新在前</h3>${!dataError?`<div class="home-opportunity-filters" role="group" aria-label="追蹤紀錄狀態篩選">${Object.entries(filters).map(([key,label])=>`<button type="button" data-forward-result-filter="${key}" aria-pressed="${key===filter}">${label} ${filterForwardRows(rows,key).length}</button>`).join('')}</div><p>篩選只改變逐筆顯示；上方成效與分組統計仍使用全部紀錄。</p>`:''}${dataError?'<p>紀錄異常，暫停展示逐筆成效；原始資料保留。</p>':visible.length?[...visible].reverse().map(r=>sampleCard(r,f.enabled)).join(''):rows.length?'<div class="empty-state"><strong>此狀態沒有紀錄</strong><button type="button" class="secondary-btn" data-forward-result-filter="all">查看全部紀錄</button></div>':'<div class="empty-state"><strong>尚無前向紀錄</strong><span>先開始本機前向追蹤，再回到交易建議重新分析幣種。舊研究紀錄不會變成成交。</span></div>'}
+    <h3>逐筆追蹤 · 最新在前</h3>${!dataError?`<div class="home-opportunity-filters forward-result-filters" role="group" aria-label="追蹤紀錄狀態篩選">${Object.entries(filters).map(([key,label])=>`<button type="button" data-forward-result-filter="${key}" aria-pressed="${key===filter}">${label} ${filterForwardRows(rows,key).length}</button>`).join('')}</div><p>篩選只改變逐筆顯示；上方成效與分組統計仍使用全部紀錄。</p>`:''}${dataError?'<p>紀錄異常，暫停展示逐筆成效；原始資料保留。</p>':visible.length?[...visible].reverse().map(r=>sampleCard(r,f.enabled)).join(''):rows.length?'<div class="empty-state"><strong>此狀態沒有紀錄</strong><button type="button" class="secondary-btn" data-forward-result-filter="all">查看全部紀錄</button></div>':'<div class="empty-state"><strong>尚無前向紀錄</strong><span>先開始本機前向追蹤，再回到交易建議重新分析幣種。舊研究紀錄不會變成成交。</span></div>'}
   `)}</div>`;
 }
