@@ -66,6 +66,8 @@ export const appState = {
     marketSort: 'popular',
     homeSection: 'market',
     homeWatchedSymbols: [],
+    homePreferencesError: null,
+    homeWatchNotice: '',
     strategyFilter: 'all',
     strategyWorkspace: 'signals',
     strategyTimeframe: '1h',

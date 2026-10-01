@@ -2,6 +2,7 @@ import { OUTLOOK_TTL } from './trend_outlook.js';
 import { createAdviceMonitor } from './advice_monitor.js';
 import { createAnalysisBatchFetcher } from './analysis_batch_fetcher.js';
 import { homeCandidates, runHomeChecks } from './home_opportunities.js';
+import { loadHomePreferences, saveHomePreferences, toggleHomeWatch } from './home_preferences.js';
 import { createForwardController } from './advice_forward_controller.js';
 import { forwardFeedFacts } from './advice_forward_view.js';
 import { loadCoinHistory, saveCoinAnalysis, restoreCoinAnalysis } from './coin_analysis_history.js';
@@ -55,6 +56,13 @@ function syncCoinHistory(){
   const history=loadCoinHistory();
   setStateSlice('pullback',{analysisHistory:history.runs,analysisStorageError:history.error});
   if(history.runs[0])setStateSlice('pullback',restoreCoinAnalysis(history.runs[0]));
+}
+
+function persistHomePreferences(){
+  try{
+    saveHomePreferences({symbols:appState.ui.homeWatchedSymbols,sort:appState.ui.homeOpportunitySort});
+    appState.ui.homePreferencesError=null;
+  }catch(error){appState.ui.homePreferencesError=error.message;}
 }
 
 function syncCandidates() {
@@ -717,7 +725,7 @@ function initEvents() {
     }
     const homeSort=event.target.closest?.('[data-home-opportunity-sort]');
     if(homeSort&&['strength','readiness'].includes(homeSort.dataset.homeOpportunitySort)){
-      appState.ui.homeOpportunitySort=homeSort.dataset.homeOpportunitySort;render();return;
+      appState.ui.homeOpportunitySort=homeSort.dataset.homeOpportunitySort;persistHomePreferences();render();return;
     }
     const homeFilter=event.target.closest?.('[data-home-opportunity-filter]');
     if(homeFilter&&['all','plan','watch'].includes(homeFilter.dataset.homeOpportunityFilter)){
@@ -726,9 +734,14 @@ function initEvents() {
     const watchToggle=event.target.closest?.('[data-home-watch-symbol]');
     if(watchToggle){
       const symbol=watchToggle.dataset.homeWatchSymbol;
-      if(!/^[A-Z0-9]+USDT$/.test(symbol))return;
       const current=Array.isArray(appState.ui.homeWatchedSymbols)?appState.ui.homeWatchedSymbols:[];
-      appState.ui.homeWatchedSymbols=current.includes(symbol)?current.filter(s=>s!==symbol):[...current,symbol].slice(-10);
+      // Saved symbols remain removable; only fresh ranked candidates can be added.
+      if(!current.includes(symbol)&&!homeCandidates(appState.market).rows.some(row=>row.symbol===symbol))return;
+      try{
+        appState.ui.homeWatchedSymbols=toggleHomeWatch(current,symbol);
+        appState.ui.homeWatchNotice=current.includes(symbol)?`已取消關注 ${symbol}。`:`已關注 ${symbol}。`;
+        persistHomePreferences();
+      }catch(error){appState.ui.homeWatchNotice=error.message;}
       render();return;
     }
     if(event.target.closest?.('[data-home-check-all]')){await checkHomePlans();return;}
@@ -1141,7 +1154,8 @@ function ensureValidRouteOnFreshOpen() {
 
 function init() {
   ensureValidRouteOnFreshOpen();
-  if(!appState.ui.homeOpportunitySort)appState.ui.homeOpportunitySort='readiness';
+  const preferences=loadHomePreferences();
+  setStateSlice('ui',{homeWatchedSymbols:preferences.symbols,homeOpportunitySort:preferences.sort,homePreferencesError:preferences.error});
   const cached = cachedMarketSnapshot();
   if (cached) setMarketState(cached);
   syncCandidates();

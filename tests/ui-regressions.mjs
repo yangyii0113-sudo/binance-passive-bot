@@ -6,6 +6,7 @@ import { pages } from '../src/pages.js';
 import { appState, setStateSlice } from '../src/state.js';
 import { normalizePaperSnapshot } from '../src/services/paper.js';
 import { normalizeResultsSnapshot } from '../src/services/results.js';
+import { HOME_PREFS_KEY, loadHomePreferences, saveHomePreferences, toggleHomeWatch } from '../src/home_preferences.js';
 
 const visibleText = html => html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ');
 function state() {
@@ -306,6 +307,43 @@ test('watch filter remains inside fresh top ten and never upgrades entry eligibi
   assert.doesNotMatch(html,/data-home-opportunity="(?:BBB|OUTSIDE)USDT"/);
   assert.match(html,/尚未核對/);
   s.market.status='STALE';assert.doesNotMatch(researchOverview(s,now),/data-home-opportunity=/);
+});
+
+test('home preferences restore only watched symbols and sorting without retaining trading data',()=>{
+  const data=new Map(),storage={getItem:key=>data.get(key)??null,setItem:(key,value)=>data.set(key,value)};
+  saveHomePreferences({symbols:['SOLUSDT','幣安人生USDT'],sort:'strength',plans:[{entry:100}],enabled:true},storage);
+  assert.deepEqual(JSON.parse(data.get(HOME_PREFS_KEY)),{version:1,symbols:['SOLUSDT','幣安人生USDT'],sort:'strength'});
+  assert.deepEqual(loadHomePreferences(storage),{symbols:['SOLUSDT','幣安人生USDT'],sort:'strength',error:null});
+});
+
+test('invalid or unavailable saved preferences report the problem and do not overwrite stored data',()=>{
+  for(const raw of ['{',JSON.stringify({version:2,symbols:[],sort:'strength'}),JSON.stringify({version:1,symbols:['<script>USDT'],sort:'strength'}),JSON.stringify({version:1,symbols:['SOLUSDT','SOLUSDT'],sort:'strength'})]){
+    let writes=0;
+    const loaded=loadHomePreferences({getItem:()=>raw,setItem:()=>writes++});
+    assert.deepEqual(loaded.symbols,[]);assert.equal(loaded.sort,'readiness');assert.ok(loaded.error);assert.equal(writes,0);
+  }
+  assert.ok(loadHomePreferences({getItem:()=>{throw new Error('disabled');}}).error);
+  assert.throws(()=>saveHomePreferences({symbols:['SOLUSDT'],sort:'readiness'},{setItem:()=>{throw new Error('quota');}}),/僅本次頁面有效/);
+});
+
+test('watch list limit never silently replaces an existing symbol and removals free capacity',()=>{
+  const symbols=Array.from({length:10},(_,i)=>`COIN${i}USDT`),before=[...symbols];
+  assert.throws(()=>toggleHomeWatch(symbols,'EXTRAUSDT'),/最多關注 10 檔/);
+  assert.deepEqual(symbols,before);
+  const remaining=toggleHomeWatch(symbols,'COIN0USDT');
+  assert.equal(remaining.length,9);assert.equal(toggleHomeWatch(remaining,'幣安人生USDT').length,10);
+});
+
+test('watch management keeps out-of-ranking symbols removable without adding candidates or stale prices',()=>{
+  const {s,now}=homeFixture();s.ui.homeWatchedSymbols=['AAAUSDT','OUTSIDEUSDT'];s.ui.homeOpportunityFilter='watch';
+  let html=researchOverview(s,now);
+  assert.match(html,/管理關注清單 · 2／10/);assert.match(html,/關注候選 1/);
+  assert.match(html,/data-home-watch-symbol="OUTSIDEUSDT"/);assert.match(html,/本輪未入選/);
+  assert.doesNotMatch(html,/data-home-opportunity="OUTSIDEUSDT"/);
+  s.market.status='STALE';s.ui.homePreferencesError='無法儲存；僅本次頁面有效。';
+  html=researchOverview(s,now);
+  assert.match(html,/行情待核對/);assert.match(html,/僅本次頁面有效/);
+  assert.doesNotMatch(html,/data-home-opportunity=|行情快照剩|核對時距進場門檻/);
 });
 
 test('public market failures keep response evidence distinct from unknown network failures',async()=>{
