@@ -186,3 +186,27 @@ test('late callbacks from a replaced socket cannot change the new feed or past g
   const before=h.c.view();late({data:JSON.stringify({e:'aggTrade',s:'UNIUSDT',a:11,p:'100',T:now,E:now})});
   assert.deepEqual(h.c.view(),before);h.c.stop();
 });
+
+test('group metrics exclude incomplete samples and disclose missing risk denominators',async()=>{
+  const {forwardGroupMetrics,filterForwardRows}=await import('../src/advice_forward_view.js');
+  const {book,row}=setup();step(book,11,100);step(book,12,110);step(book,13,120);
+  const pending=structuredClone(row);pending.status='GAP';pending.id+=':gap';
+  const rows=[row,pending],group=forwardGroupMetrics(rows,r=>r.symbol)[0];
+  assert.equal(group.closed,1);assert.equal(group.total,2);assert.equal(group.rSamples,1);
+  assert.equal(group.averageR,samplePnl(row)/row.initialRisk);assert.equal(group.gap,1);
+  assert.deepEqual(filterForwardRows(rows,'closed'),[row]);
+  assert.deepEqual(filterForwardRows(rows,'attention'),[pending]);
+  const invalidRisk=structuredClone(row);invalidRisk.initialRisk=0;
+  assert.equal(forwardGroupMetrics([invalidRisk],r=>r.symbol)[0].averageR,null);
+});
+
+test('result filters do not change performance totals or expose invalid records',()=>{
+  const {book}=setup();step(book,11,100);step(book,12,110);step(book,13,120);
+  const state={forward:{book,enabled:false},ui:{forwardResultFilter:'active'}};
+  const html=adviceResultsPage(state);
+  assert.match(html,/此狀態沒有紀錄/);assert.match(html,/完整結案 1/);
+  assert.match(html,/平均 R／樣本/);assert.match(html,/上方成效與分組統計仍使用全部紀錄/);
+  state.forward.dataError='損壞';const blocked=adviceResultsPage(state);
+  assert.doesNotMatch(blocked,/data-forward-result-filter|平均 R／樣本/);
+  assert.match(blocked,/停止計算成效/);
+});

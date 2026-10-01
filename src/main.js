@@ -687,6 +687,10 @@ function initEvents() {
       catch(error){setStateSlice('forward',{error:String(error.message)});}
       render();return;
     }
+    const resultFilter=event.target.closest?.('[data-forward-result-filter]');
+    if(resultFilter&&['all','active','closed','attention','inactive'].includes(resultFilter.dataset.forwardResultFilter)){
+      appState.ui.forwardResultFilter=resultFilter.dataset.forwardResultFilter;render();return;
+    }
     if(event.target.closest?.('[data-forward-download]')){
       if(appState.forward.exportFile){downloadResearchFile(appState.forward.exportFile);setStateSlice('forward',{exportMessage:'已送出下載請求；若未下載，可複製紀錄。'});render();}return;
     }
