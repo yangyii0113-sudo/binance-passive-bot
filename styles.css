@@ -2346,8 +2346,24 @@ button, a, input, select, summary { scroll-margin-block:16px 110px; }
 .agent-decision-card .decision-lock{font-size:13px;padding:10px;border-radius:8px;background:#101213;color:#bfc4cd}
 .decision-actions{display:grid;grid-template-columns:1fr;gap:8px;margin-top:12px}
 .decision-actions button{width:100%;min-height:44px;font-size:14px;white-space:normal}
-@media(min-width:760px){.decision-actions{grid-template-columns:repeat(2,minmax(0,1fr))}.agent-advice-panel{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}.advanced-tool-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
-.agent-advice-panel{grid-template-columns:minmax(0,1fr)}
+@media(min-width:760px){.decision-actions{grid-template-columns:repeat(2,minmax(0,1fr))}.advanced-tool-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.agent-advice-panel{grid-template-columns:minmax(0,1fr);gap:14px}
+.advice-rail,.advice-stage{display:grid;align-content:start;gap:12px;min-width:0}
+.advice-rail{padding:16px;border:1px solid #454139;border-radius:16px;background:linear-gradient(160deg,#1d1c19,#131619)}
+.advice-stage{padding:2px 0}
+.advice-awaiting{display:grid;gap:8px;padding:24px;border:1px dashed #786b50;border-radius:16px;background:linear-gradient(145deg,#232019,#15191b)}
+.advice-awaiting span{font-size:13px;color:#d9b86f}
+.advice-awaiting strong{font-size:21px;color:#f2eee5}
+.advice-awaiting p{margin:0;font-size:14px;line-height:1.65;color:#c8cdd1}
+@media(min-width:860px){
+  .agent-advice-panel{grid-template-columns:minmax(260px,.7fr) minmax(0,1.5fr);gap:16px;align-items:start}
+  .agent-advice-panel .advice-filters{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .agent-advice-panel .advice-symbols{display:grid;grid-template-columns:1fr}
+  .agent-advice-panel .advice-symbol-btn{width:100%}
+  .agent-advice-panel .advice-start .agent-inline-form{display:grid;grid-template-columns:1fr}
+  .agent-advice-panel .advice-start .agent-inline-form button{width:100%}
+}
+@media(min-width:1180px){.app-shell:has(.agent-advice-panel){width:min(100%,1180px)}}
 .advice-intro strong{font-size:17px;line-height:1.5;color:#f0cf8b}
 .advice-intro p,.advice-start p{font-size:14px;line-height:1.65;color:#bfc4cd;margin:8px 0}
 .advice-start{min-width:0}
