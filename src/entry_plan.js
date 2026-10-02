@@ -25,7 +25,8 @@ export function entryPlan(plan,{research=false}={}) {
 }
 export function pullbackPanel(state,now=Date.now(),{renderMarket}={}) {
   const snapshot=state.pullback||{};
-  return `<section id="coin-analysis" tabindex="-1" class="pullback-panel" aria-label="趨勢回調研究一號"><div class="pullback-heading"><div><span class="research-kicker">強勢前 10 檔 · 研究版 · 僅模擬</span><h3>強勢幣分析 · 三策略條件</h3><p>選幣 → 策略條件 → 進出場與風險 → 績效證據</p></div><button type="button" class="primary-btn" data-pullback-scan ${snapshot.loading||snapshot.comparing?'disabled':''}>${snapshot.loading?(snapshot.total?`分析中 ${snapshot.completed||0}／${snapshot.total}`:'正在更新行情…'):snapshot.analysisHistorical?'重新分析目前強勢幣':'分析強勢前 10 檔進場點位'}</button></div>
+  return `<section id="coin-analysis" tabindex="-1" class="pullback-panel" aria-label="趨勢回調研究一號"><div class="pullback-heading"><div><span class="research-kicker">強勢前 10 檔 · 研究版 · 僅模擬</span><h3>交易訊號 · 確認與進退場計畫</h3><p>先看目前判定，再看方向、進場、止盈、止損與有效期限。</p></div><button type="button" class="primary-btn" data-pullback-scan ${snapshot.loading||snapshot.comparing?'disabled':''}>${snapshot.loading?(snapshot.total?`分析中 ${snapshot.completed||0}／${snapshot.total}`:'正在更新行情…'):snapshot.analysisHistorical?'重新分析目前強勢幣':'分析強勢前 10 檔進場點位'}</button></div>
+    <div class="coin-overview" aria-label="交易訊號判讀"><strong>訊號怎麼判讀</strong><p>等待條件：列出缺少的確認與下一步。研究條件成立：展開進退場計畫，仍需核對即時觸發。已觸發與成交：須有前向觀測紀錄，不能由收盤快照推定。</p><p>三種策略分別判斷：趨勢回調、區間突破、均值回歸。行情或期限無法核對、策略方向衝突時，不提供有效進場點位。</p></div>
     <p class="guard-note">僅模擬研究 · 真實下單鎖定 · 排名與評分不代表勝率</p>
     ${snapshot.scannedAt?`<p class="strategy-note">${snapshot.analysisHistorical?'歷史行情':'行情更新'}：${escape(new Date(snapshot.scannedAt).toLocaleString('zh-TW'))} · ${snapshot.total} 檔</p>`:''}
     ${snapshot.analysisHistorical?'<p role="status">歷史分析（唯讀，非目前行情）；舊點位不沿用，請重新分析。</p>':''}
