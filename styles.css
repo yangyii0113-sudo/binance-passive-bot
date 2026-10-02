@@ -2628,3 +2628,12 @@ button, a, input, select, summary { scroll-margin-block:16px 110px; }
   .forward-result-filters{grid-template-columns:repeat(2,minmax(0,1fr))}
   .forward-result-filters button:last-child{grid-column:1/-1}
 }
+
+/* Evidence-led surge watch; no prediction score or execution controls. */
+.surge-watch{margin:16px 0;padding:18px;border:1px solid #846a34;border-radius:18px;background:linear-gradient(135deg,#252116,#15191d)}
+.surge-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.surge-heading h2{margin:4px 0;font-size:22px}.surge-heading span,.surge-watch>p{color:#c4b88e;font-size:13px;line-height:1.6}
+.surge-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.surge-card{min-width:0;padding:16px;border:1px solid #554c36;border-radius:14px;background:#15191d;overflow-wrap:anywhere}
+.surge-identity{display:flex;align-items:center;gap:10px;margin-bottom:12px}.surge-identity img{width:36px;height:36px}.surge-state{display:block;color:#f4c75a;font-size:15px}
+.surge-card dl{margin:12px 0;display:grid;gap:10px}.surge-card dl>div{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}.surge-card dt{color:#a9afb5;font-size:12px}.surge-card dd{margin:0;font-size:13px}.surge-card p{font-size:12px;line-height:1.6}.surge-risk{color:#c4b88e}.surge-card button{width:100%;min-height:44px}
+@media(max-width:1100px){.surge-grid{grid-template-columns:1fr}.surge-card dl{grid-template-columns:repeat(2,minmax(0,1fr))}.surge-card dl>div{display:block}.surge-card dd{margin-top:4px}}
+@media(max-width:480px){.surge-watch{padding:12px}.surge-heading h2{font-size:20px}}

@@ -1,3 +1,4 @@
+import { surgeWatchView } from './surge_watch_view.js';
 import { marketHealthView } from './market_health_view.js';
 import { validHomeWatchSymbol } from './home_preferences.js';
 import { homePlanVisual } from './plan_price_map.js';
@@ -82,6 +83,7 @@ export function homeOpportunityView(state,now=Date.now()) {
   return `<section class="home-opportunities" aria-label="強勢幣與進場條件">
     ${marketHealthView(state.market,now)}
     <div class="research-home-actions"><button type="button" class="primary-inline-btn" data-home-check-all ${busy?'disabled':''}>${batch.running?`核對中 ${batch.completed||0}／${batch.total||0}`:'更新並核對前 10 檔'}</button><a class="secondary-btn" href="#/advice">全部交易建議</a></div>
+    ${surgeWatchView(model,state.agents?.tradePlans,now)}
     ${batch.running||batch.error||batch.completed?`<p class="home-check-progress" role="status">${batch.running?'依本次開始時的名單逐檔核對，完成後可查看進退場建議。':batch.error?esc(batch.error):batch.completed?`上次核對 ${batch.completed} 檔${batch.failed?`，${batch.failed} 檔未完成`:''}；目前狀態仍依各檔時效判斷。`:''}</p>`:''}
     ${model.rows.length?`<div class="home-ranking-controls" role="group" aria-label="首頁排序">${[['strength','動能／流動性排序'],['readiness','進場條件排序']].map(([key,label])=>`<button type="button" data-home-opportunity-sort="${key}" aria-pressed="${key===sort}">${label}</button>`).join('')}</div>
     <p class="home-ranking-explainer">${sort==='strength'?'依 24 小時動能與成交額排序，分數不是勝率。':'依核對狀態分組，同組維持強勢名次；不代表獲利或勝率排名。'}</p>

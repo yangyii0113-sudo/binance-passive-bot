@@ -380,3 +380,18 @@ test('unavailable home removes empty filters and repeated errors while retaining
   assert.match(html,/data-home-check-all/);assert.match(html,/data-market-health="unavailable"/);
   assert.ok(html.indexOf('data-home-check-all')<html.indexOf('class="advice-monitor"'));
 });
+
+test('surge evidence never converts momentum, stale observations or short plans into a long breakout',async()=>{
+ const {surgeEvidence,surgeWatchView}=await import('../src/surge_watch_view.js');
+ const {s,now}=homeFixture(),r=s.agents.tradePlans.BBBUSDT,p=r.row.analysis.strategies[0];
+ assert.equal(surgeEvidence(r,'BBBUSDT',now).plan,false);
+ p.observations={version:'strategy-conditions-v1',closedAt:r.row.analysis.closedAt,close:98,upper:97,lower:90,averageVolume:100,lastVolume:160};
+ assert.equal(surgeEvidence(r,'BBBUSDT',now).plan,true);
+ assert.equal(surgeEvidence(r,'AAAUSDT',now).plan,false);
+ assert.equal(surgeEvidence(r,'BBBUSDT',now+60001).plan,false);
+ p.observations.closedAt--;assert.equal(surgeEvidence(r,'BBBUSDT',now).plan,false);p.observations.closedAt++;
+ p.observations.averageVolume=0;assert.equal(surgeEvidence(r,'BBBUSDT',now).volume,null);p.observations.averageVolume=100;
+ p.observations.lastVolume=140;assert.equal(surgeEvidence(r,'BBBUSDT',now).plan,false);p.observations.lastVolume=160;
+ const before=structuredClone(s);surgeWatchView(homeModule.homeOpportunities(s,now),s.agents.tradePlans,now);assert.deepEqual(s,before);
+ s.market.status='STALE';assert.doesNotMatch(surgeWatchView(homeModule.homeOpportunities(s,now),s.agents.tradePlans,now),/data-surge-candidate=/);
+});
