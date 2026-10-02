@@ -1,6 +1,9 @@
 name: FOXYYA Lite Deploy Check
 
 on:
+  pull_request:
+    branches:
+      - foxyya-lite-railway-deploy
   push:
     branches:
       - foxyya-lite-railway-deploy

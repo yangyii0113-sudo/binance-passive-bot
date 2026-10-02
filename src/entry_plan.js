@@ -25,14 +25,15 @@ export function entryPlan(plan,{research=false}={}) {
 }
 export function pullbackPanel(state,now=Date.now(),{renderMarket}={}) {
   const snapshot=state.pullback||{};
-  return `<section id="coin-analysis" tabindex="-1" class="pullback-panel" aria-label="趨勢回調研究一號"><div class="pullback-heading"><div><span class="research-kicker">強勢前 10 檔 · 研究版 · 僅模擬</span><h3>強勢幣分析 · 三策略條件</h3><p>選幣 → 策略條件 → 進出場與風險 → 績效證據</p></div><button type="button" class="primary-btn" data-pullback-scan ${snapshot.loading||snapshot.comparing?'disabled':''}>${snapshot.loading?(snapshot.total?`分析中 ${snapshot.completed||0}／${snapshot.total}`:'正在更新行情…'):snapshot.analysisHistorical?'重新分析目前強勢幣':'分析強勢前 10 檔進場點位'}</button></div>
+  return `<section id="coin-analysis" tabindex="-1" class="pullback-panel" aria-label="趨勢回調研究一號"><div class="pullback-heading"><div><span class="research-kicker">強勢前 10 檔 · 研究版 · 僅模擬</span><h3>交易訊號 · 確認與進退場計畫</h3><p>先看目前判定，再看方向、進場、止盈、止損與有效期限。</p></div><button type="button" class="primary-btn" data-pullback-scan ${snapshot.loading||snapshot.comparing?'disabled':''}>${snapshot.loading?(snapshot.total?`分析中 ${snapshot.completed||0}／${snapshot.total}`:'正在更新行情…'):snapshot.analysisHistorical?'重新分析目前強勢幣':'分析強勢前 10 檔進場點位'}</button></div>
+    <div class="coin-overview" aria-label="交易訊號判讀"><strong>訊號怎麼判讀</strong><p>等待條件：列出缺少的確認與下一步。研究條件成立：展開進退場計畫，仍需核對即時觸發。已觸發與成交：須有前向觀測紀錄，不能由收盤快照推定。</p><p>三種策略分別判斷：趨勢回調、區間突破、均值回歸。行情或期限無法核對、策略方向衝突時，不提供有效進場點位。</p></div>
     <p class="guard-note">僅模擬研究 · 真實下單鎖定 · 排名與評分不代表勝率</p>
     ${snapshot.scannedAt?`<p class="strategy-note">${snapshot.analysisHistorical?'歷史行情':'行情更新'}：${escape(new Date(snapshot.scannedAt).toLocaleString('zh-TW'))} · ${snapshot.total} 檔</p>`:''}
     ${snapshot.analysisHistorical?'<p role="status">歷史分析（唯讀，非目前行情）；舊點位不沿用，請重新分析。</p>':''}
     ${snapshot.analysisStorageError?`<p role="alert">${escape(snapshot.analysisStorageError)}</p>`:''}
     <p class="risk-boundary">正式部位額度尚不可核對：缺少最新帳戶淨值與完整現有部位，無法確認組合風險 ≤1.5%；下方僅提供固定本金研究情境。</p>
     <div class="core-tools"><button type="button" class="secondary-btn" data-scroll-target="smc-reference">SMC 速查 ↓</button></div>
-    <details class="core-disclosure" data-search="selection-rules"><summary>選幣規則與指標定義</summary><p>每次更新行情，從高流動性加密貨幣永續合約選出上漲標的，依市場強度、成交額排序。排除漲幅達 30% 或成交額低於 1,000 萬 USDT；不足 10 檔不補足。</p><p>三策略使用同一批完整收盤資料。相對量能對照前 20 根均量；波幅為 14 期平滑平均真實波幅；均線距離正值在上方、負值在下方。</p><p>研究條件成立不代表已成交或驗證通過，止盈／止損不會送出真實訂單。</p></details>
+    <details class="core-disclosure" data-search="selection-rules"><summary>動能分計算與選幣規則</summary><p><strong>計分公式：</strong>固定 40 分＋24 小時漲跌幅絕對值（最多計入 12%）× 3.3＋成交額排名分（0～20 分）。成交額排名以本次高流動性候選池為準，最多 40 檔；排名第一為 20 分、最後為 0 分，單一標的時為 20 分。</p><p>例如漲幅 5%、成交額排名第一，得分 76.5；不代表 76.5% 勝率。漲幅超過 12% 不再增加動能分。此分數反映已發生的動能與成交額，未納入多週期趨勢、進場觸發或訂單簿深度；高分可能已過度延伸。尚無分數對後續報酬的前向校準結果。</p><p>每次更新行情，從高流動性加密貨幣永續合約選出上漲標的，依24 小時動能／流動性分、成交額排序。排除漲幅達 30% 或成交額低於 1,000 萬 USDT；不足 10 檔不補足。</p><p>三策略使用同一批完整收盤資料。相對量能對照前 20 根均量；波幅為 14 期平滑平均真實波幅；均線距離正值在上方、負值在下方。</p><p>研究條件成立不代表已成交或驗證通過，止盈／止損不會送出真實訂單。</p></details>
     <details class="core-disclosure" data-search="analysis-history"><summary>分析紀錄 · ${snapshot.analysisHistory?.length||0} 次</summary>${coinHistoryPanel({...snapshot,analysisStorageError:null})}</details>
     ${coinAnalysisCards(snapshot,now,entryPlan,renderMarket)}
     ${comparisonPanel(snapshot)}

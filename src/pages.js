@@ -459,7 +459,7 @@ function strongCoinDetail(state, strong){
       <div><span>24 小時動能</span><strong class="${changeNum>=0?'up':'down'}">${changeNum>=0?'+':''}${changeNum.toFixed(2)}%</strong></div>
       <div><span>全市場流動性排名</span><strong>#${evidence.liquidityRank} / ${evidence.universeSize}</strong></div>
       <div><span>交易適宜度</span><strong>${displayStatus(evidence.tradabilityStatus)} · ${evidence.tradabilityScore}</strong></div>
-      <div><span>市場強度</span><strong>${scoreNum.toFixed(0)} / 100</strong></div>
+      <div><span>24 小時動能／流動性分</span><strong>${scoreNum.toFixed(0)} / 100</strong></div>
       <div><span>研究評分</span><strong>${evidence.composite} / 100</strong></div>
       <div><span>策略匹配</span><strong>${displayStrategyMatch(evidence.strategyMatch)}</strong></div>
       <div><span>曝險檢查</span><strong>${displayStatus(evidence.riskLabel)}</strong></div>
@@ -475,7 +475,7 @@ function strongCoinDetail(state, strong){
     <div class="strong-actions strong-actions-three">
       <button class="candidate-add-btn" data-candidate-add="${selected}"
         data-candidate-source="市場偵察 · 綜合強勢前五名"
-        data-candidate-reason="市場機會前五名 · 研究評分 ${evidence.composite} · 市場強度 ${scoreNum.toFixed(0)}"
+        data-candidate-reason="市場機會前五名 · 研究評分 ${evidence.composite} · 24 小時動能／流動性分 ${scoreNum.toFixed(0)}"
         data-candidate-score="${scoreNum.toFixed(0)}"
         data-candidate-direction="${changeNum >= 0 ? '偏多' : '偏空'}" type="button">＋ 加入候選</button>
       <button class="secondary-btn" data-use-backtest="${selected}" type="button">歷史回測</button>
@@ -504,7 +504,7 @@ function strongCoinCards(state){
     </button>`;
   }).join('')}</div>
   ${strongCoinDetail(state,strong)}
-  <div class="strong-note">動態前五名從完整高流動性全市場標的池中產生：市場強度 50%＋交易適宜度 20%＋技術面 12%＋策略驗證 10%＋風險 8%。缺資料採中性值；風險或交易適宜度判定為「阻擋」者不進前五名。僅作研究優先序。</div>`;
+  <div class="strong-note">動態前五名從完整高流動性全市場標的池中產生：24 小時動能／流動性分 50%＋交易適宜度 20%＋技術面 12%＋策略驗證 10%＋風險 8%。缺資料採中性值；風險或交易適宜度判定為「阻擋」者不進前五名。僅作研究優先序。</div>`;
 }
 function tab(label,key,active,attr){
   return `<button type="button" class="tab-btn ${active===key?'active':''}" ${attr}="${key}">${label}</button>`;
