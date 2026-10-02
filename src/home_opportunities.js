@@ -63,7 +63,7 @@ export function homeOpportunities(state,now=Date.now()) {
     const key=result.key==='wait'&&partial?'blocked':result.key;
     const display=adviceDisplayStatus(record,now);
     let reason=result.reason;
-    if(key==='empty')reason='市場強度已排序；尚未核對三策略與進場時效。';
+    if(key==='empty')reason='24 小時動能／流動性分已排序；尚未核對三策略與進場時效。';
     if(key==='plan')reason=partial?'僅列通過核對的方案；其他策略仍有資料缺漏。':'收盤結構、當根門檻與成本後空間已核對；等待新觸發。';
     if(result.key==='wait')reason=display.reason;
     const ratios=result.plans.map(p=>researchRiskScenario(p)?.netRewardRisk).filter(Number.isFinite);
@@ -83,7 +83,7 @@ export function homeOpportunityView(state,now=Date.now()) {
     ${marketHealthView(state.market,now)}
     <div class="research-home-actions"><button type="button" class="primary-inline-btn" data-home-check-all ${busy?'disabled':''}>${batch.running?`核對中 ${batch.completed||0}／${batch.total||0}`:'更新並核對前 10 檔'}</button><a class="secondary-btn" href="#/advice">全部交易建議</a></div>
     ${batch.running||batch.error||batch.completed?`<p class="home-check-progress" role="status">${batch.running?'依本次開始時的名單逐檔核對，完成後可查看進退場建議。':batch.error?esc(batch.error):batch.completed?`上次核對 ${batch.completed} 檔${batch.failed?`，${batch.failed} 檔未完成`:''}；目前狀態仍依各檔時效判斷。`:''}</p>`:''}
-    ${model.rows.length?`<div class="home-ranking-controls" role="group" aria-label="首頁排序">${[['strength','市場強度排序'],['readiness','進場條件排序']].map(([key,label])=>`<button type="button" data-home-opportunity-sort="${key}" aria-pressed="${key===sort}">${label}</button>`).join('')}</div>
+    ${model.rows.length?`<div class="home-ranking-controls" role="group" aria-label="首頁排序">${[['strength','動能／流動性排序'],['readiness','進場條件排序']].map(([key,label])=>`<button type="button" data-home-opportunity-sort="${key}" aria-pressed="${key===sort}">${label}</button>`).join('')}</div>
     <p class="home-ranking-explainer">${sort==='strength'?'依 24 小時動能與成交額排序，分數不是勝率。':'依核對狀態分組，同組維持強勢名次；不代表獲利或勝率排名。'}</p>
     <div class="home-opportunity-filters" role="group" aria-label="首頁候選篩選"><button type="button" data-home-opportunity-filter="all" aria-pressed="${filter==='all'}">全部候選 ${model.rows.length}</button><button type="button" data-home-opportunity-filter="plan" aria-pressed="${filter==='plan'}">有有效計畫 ${model.ready}</button><button type="button" data-home-opportunity-filter="watch" aria-pressed="${filter==='watch'}">關注候選 ${model.rows.filter(r=>watched.includes(r.symbol)).length}</button><span>尚未核對 ${model.unchecked}</span></div>`:''}
     <details class="core-disclosure home-watchlist" data-search="home-watchlist"><summary>管理關注清單 · ${watched.length}／10</summary>
@@ -96,17 +96,17 @@ export function homeOpportunityView(state,now=Date.now()) {
     ${model.reason?`<p class="home-opportunity-empty" role="status">${esc(model.reason)}</p>`:!visible.length?`<div class="home-opportunity-empty" role="status"><strong>${filter==='plan'?'目前沒有通過核對的計畫':filter==='watch'?'目前關注的幣種不在強勢前 10 檔':'目前沒有符合選幣條件的標的'}</strong><p>${filter==='plan'?'可查看全部候選的等待原因；不補足訊號。':filter==='watch'?'關注只影響顯示，不增加候選或放寬進場條件。':'僅選擇符合漲幅與流動性條件的幣種，不補足名額。'}</p>${filter!=='all'?'<button type="button" class="secondary-btn" data-home-opportunity-filter="all">查看全部候選</button>':''}</div>`:''}
     ${visible.length?'<h2 class="action-section-title">今日行動 <small>條件式模擬 · 未成交</small></h2>':''}<div class="home-opportunity-grid">${visible.map(row=>`<article class="home-opportunity-card home-opportunity-${row.key}" data-home-opportunity="${esc(row.symbol)}" aria-label="${esc(row.symbol)} 首頁候選">
       <div class="home-opportunity-heading"><div class="coin-identity">${coinLogo(row.symbol)}<h3>${esc(row.symbol)}</h3></div><span>強勢第 ${row.rank} 名</span><button type="button" class="home-watch-toggle" data-home-watch-symbol="${esc(row.symbol)}" aria-pressed="${watched.includes(row.symbol)}" aria-label="${watched.includes(row.symbol)?'取消關注':'關注'} ${esc(row.symbol)}">${watched.includes(row.symbol)?'★ 已關注':'☆ 關注'}</button></div>
-      <details class="action-market-detail"><summary>市場強度 ${row.strength.toFixed(1)} · 24 小時 +${row.change.toFixed(2)}%</summary><dl class="home-opportunity-market"><div><dt>市場強度</dt><dd>${row.strength.toFixed(1)}<small>／100</small></dd></div><div><dt>24 小時</dt><dd>+${row.change.toFixed(2)}%</dd></div><div><dt>成交額</dt><dd>${(row.volume/1e6).toFixed(1)}<small> 百萬 USDT</small></dd></div></dl></details>
-      <div class="home-entry-state" data-home-entry-state="${row.key}"><span>進場條件</span><strong>${row.label}</strong></div>
+      <details class="action-market-detail"><summary>24 小時動能／流動性分 ${row.strength.toFixed(1)} · 24 小時 +${row.change.toFixed(2)}%</summary><dl class="home-opportunity-market"><div><dt>24 小時動能／流動性分</dt><dd>${row.strength.toFixed(1)}<small>／100</small></dd></div><div><dt>24 小時</dt><dd>+${row.change.toFixed(2)}%</dd></div><div><dt>成交額</dt><dd>${(row.volume/1e6).toFixed(1)}<small> 百萬 USDT</small></dd></div></dl></details>
+      <div class="home-entry-state" data-home-entry-state="${row.key}"><span>進場確認</span><strong>${row.label}</strong></div>
       <p class="home-entry-reason">${esc(row.reason)}</p>
       ${row.key!=='plan'?row.conditions:''}
 
       ${row.key==='plan'?row.plans.map(p=>`<div class="home-ready-plan"><strong>${FAMILY_NAMES[p.key]} · ${p.side==='LONG'?'做多':'做空'} · 等待觸發</strong><dl><div><dt>進場門檻</dt><dd>${formatPlanPrice(p.entry)}</dd></div><div><dt>止損</dt><dd>${formatPlanPrice(p.stop)}</dd></div><div><dt>第一止盈</dt><dd>${formatPlanPrice(p.tp1)}</dd></div><div><dt>第二止盈</dt><dd>${formatPlanPrice(p.tp2)}</dd></div></dl><small>單位 USDT · 1 小時策略 · 條件式模擬，尚未成交</small>${planDistanceView(p,row.quote)}${homePlanVisual(p,row.quote)}</div>`).join(''):''}
-      <details class="core-disclosure action-evidence" data-search="home-evidence-${esc(row.symbol)}"><summary>查看三策略與回踩確認</summary>${row.readiness}${row.evidence}</details>
+      <details class="core-disclosure action-evidence" data-search="home-evidence-${esc(row.symbol)}"><summary>趨勢確認與三策略條件</summary>${row.readiness}${row.evidence}</details>
       ${row.key==='plan'?`<p class="home-entry-evidence">${row.ratios.length} 個獨立方案 · 最低目標淨風報 ${Math.min(...row.ratios).toFixed(2)}<br>行情快照剩 ${expiryCountdown(row.snapshotUntil,now)}（${esc(displayDate(row.snapshotUntil))}）<br>收盤策略剩 ${expiryCountdown(row.barUntil,now)}（${esc(displayDate(row.barUntil))}）；先到者為準</p>`:''}
       ${['plan','wait','conflict'].includes(row.key)?`<button type="button" class="${row.key==='plan'?'primary-inline-btn':'secondary-btn'}" data-agent-advice-symbol="${esc(row.symbol)}">${row.key==='plan'?'查看進退場計畫':'查看條件與數值'}</button>`:`<button type="button" class="secondary-btn" data-home-check-symbol="${esc(row.symbol)}" ${busy||row.key==='loading'?'disabled':''}>${row.key==='loading'?'正在核對…':row.key==='empty'?'核對進場條件':'重新核對'}</button>`}
     </article>`).join('')}</div>
     ${adviceMonitorView(state,now,{compact:true,sharedError:model.reason})}
-    <details class="core-disclosure" data-search="home-ranking-rules"><summary>選幣、成本與排序依據</summary><p>從已核對的加密貨幣永續合約中，選擇 24 小時漲幅大於 0%、小於 30%，成交額至少 1,000 萬 USDT 的前 10 檔；不足不補。兩種排序使用同一份候選名單。</p><p>進場狀態另核對三策略收盤條件、當根是否已觸及門檻、資料時間、方向與成本後空間。假設單邊手續費 0.05%＋滑價 0.02%，未含資金費率；成交額篩選不等於已驗證訂單簿深度。</p><p>名單隨行情更新；每檔計畫另有短期有效期限。多方案不重複累加部位，分數不是勝率。</p><button type="button" class="secondary-btn" data-home-research>完整強勢研究</button></details>
+    <details class="core-disclosure" data-search="home-ranking-rules"><summary>動能分計算、選幣與限制</summary><p><strong>計分公式：</strong>固定 40 分＋24 小時漲跌幅絕對值（最多計入 12%）× 3.3＋成交額排名分（0～20 分）。成交額排名以本次高流動性候選池為準，最多 40 檔；排名第一為 20 分、最後為 0 分，單一標的時為 20 分。</p><p>例如漲幅 5%、成交額排名第一，得分 76.5；不代表 76.5% 勝率。漲幅超過 12% 不再增加動能分。此分數反映已發生的動能與成交額，未納入多週期趨勢、進場觸發或訂單簿深度；高分可能已過度延伸。尚無分數對後續報酬的前向校準結果。</p><p>從已核對的加密貨幣永續合約中，選擇 24 小時漲幅大於 0%、小於 30%，成交額至少 1,000 萬 USDT 的前 10 檔；不足不補。兩種排序使用同一份候選名單。</p><p>進場狀態另核對三策略收盤條件、當根是否已觸及門檻、資料時間、方向與成本後空間。假設單邊手續費 0.05%＋滑價 0.02%，未含資金費率；成交額篩選不等於已驗證訂單簿深度。</p><p>名單隨行情更新；每檔計畫另有短期有效期限。多方案不重複累加部位，分數不是勝率。</p><button type="button" class="secondary-btn" data-home-research>完整強勢研究</button></details>
   </section>`;
 }

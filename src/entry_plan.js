@@ -33,7 +33,7 @@ export function pullbackPanel(state,now=Date.now(),{renderMarket}={}) {
     ${snapshot.analysisStorageError?`<p role="alert">${escape(snapshot.analysisStorageError)}</p>`:''}
     <p class="risk-boundary">正式部位額度尚不可核對：缺少最新帳戶淨值與完整現有部位，無法確認組合風險 ≤1.5%；下方僅提供固定本金研究情境。</p>
     <div class="core-tools"><button type="button" class="secondary-btn" data-scroll-target="smc-reference">SMC 速查 ↓</button></div>
-    <details class="core-disclosure" data-search="selection-rules"><summary>選幣規則與指標定義</summary><p>每次更新行情，從高流動性加密貨幣永續合約選出上漲標的，依市場強度、成交額排序。排除漲幅達 30% 或成交額低於 1,000 萬 USDT；不足 10 檔不補足。</p><p>三策略使用同一批完整收盤資料。相對量能對照前 20 根均量；波幅為 14 期平滑平均真實波幅；均線距離正值在上方、負值在下方。</p><p>研究條件成立不代表已成交或驗證通過，止盈／止損不會送出真實訂單。</p></details>
+    <details class="core-disclosure" data-search="selection-rules"><summary>動能分計算與選幣規則</summary><p><strong>計分公式：</strong>固定 40 分＋24 小時漲跌幅絕對值（最多計入 12%）× 3.3＋成交額排名分（0～20 分）。成交額排名以本次高流動性候選池為準，最多 40 檔；排名第一為 20 分、最後為 0 分，單一標的時為 20 分。</p><p>例如漲幅 5%、成交額排名第一，得分 76.5；不代表 76.5% 勝率。漲幅超過 12% 不再增加動能分。此分數反映已發生的動能與成交額，未納入多週期趨勢、進場觸發或訂單簿深度；高分可能已過度延伸。尚無分數對後續報酬的前向校準結果。</p><p>每次更新行情，從高流動性加密貨幣永續合約選出上漲標的，依24 小時動能／流動性分、成交額排序。排除漲幅達 30% 或成交額低於 1,000 萬 USDT；不足 10 檔不補足。</p><p>三策略使用同一批完整收盤資料。相對量能對照前 20 根均量；波幅為 14 期平滑平均真實波幅；均線距離正值在上方、負值在下方。</p><p>研究條件成立不代表已成交或驗證通過，止盈／止損不會送出真實訂單。</p></details>
     <details class="core-disclosure" data-search="analysis-history"><summary>分析紀錄 · ${snapshot.analysisHistory?.length||0} 次</summary>${coinHistoryPanel({...snapshot,analysisStorageError:null})}</details>
     ${coinAnalysisCards(snapshot,now,entryPlan,renderMarket)}
     ${comparisonPanel(snapshot)}

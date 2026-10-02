@@ -187,7 +187,7 @@ test('home ranks liquid rising candidates separately from gated entry status',()
   assert.doesNotMatch(html,/data-home-opportunity="(?:SPIKE|LOW|DOWN)USDT"/);
   assert.ok(html.indexOf('data-home-opportunity="AAAUSDT"')<html.indexOf('data-home-opportunity="BBBUSDT"'));
   assert.match(html,/data-home-check-symbol="AAAUSDT"/);assert.match(html,/data-agent-advice-symbol="BBBUSDT"/);
-  assert.match(html,/市場強度排序/);assert.match(html,/進場條件排序/);assert.match(html,/分數不是勝率/);
+  assert.match(html,/動能／流動性排序/);assert.match(html,/進場條件排序/);assert.match(html,/分數不是勝率/);
   assert.deepEqual(s,before);
   s.ui.homeOpportunitySort='readiness';const sorted=researchOverview(s,now);
   assert.ok(sorted.indexOf('data-home-opportunity="BBBUSDT"')<sorted.indexOf('data-home-opportunity="AAAUSDT"'));

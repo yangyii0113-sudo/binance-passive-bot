@@ -22,14 +22,14 @@ export function coinAnalysisCards(snapshot,now,renderPlan,renderMarket=()=> ''){
  const matches=(row,key)=>key==='all'||(key==='issue'?['blocked','conflict','expired'].includes(category(row)):category(row)===key);
  const active=filters.some(([k])=>k===snapshot.analysisFilter)?snapshot.analysisFilter:'all';
  const visible=historical?rows:rows.filter(r=>matches(r,active));
- return `<div class="coin-overview"><strong>${historical?`歷史分析 ${rows.length} 檔 · 不提供目前進場判斷`:`本次 ${rows.length} 檔 · ${rows.filter(r=>category(r)==='plan').length} 檔有研究計畫`}</strong><p>${historical?'保留當時市場強度與策略條件，不代表目前排名；請重新分析後再執行比較。':'保留市場強度順序；排名與分數不是勝率。篩選只改變卡片顯示，90 天批次比較仍使用本次全部幣種。'}</p></div>
+ return `<div class="coin-overview"><strong>${historical?`歷史分析 ${rows.length} 檔 · 不提供目前進場判斷`:`本次 ${rows.length} 檔 · ${rows.filter(r=>category(r)==='plan').length} 檔有研究計畫`}</strong><p>${historical?'保留當時24 小時動能／流動性分與策略條件，不代表目前排名；請重新分析後再執行比較。':'保留24 小時動能／流動性分順序；排名與分數不是勝率。篩選只改變卡片顯示，90 天批次比較仍使用本次全部幣種。'}</p></div>
  ${historical?'':`<div class="coin-filters" role="group" aria-label="幣種分析篩選">${filters.map(([k,label])=>`<button type="button" class="secondary-btn" data-coin-filter="${k}" aria-pressed="${k===active}">${label} ${rows.filter(r=>matches(r,k)).length}</button>`).join('')}</div>`}
  <div class="cards-grid coin-analysis-grid">${visible.map(row=>{
   const a=row.analysis,categoryKey=category(row),expired=categoryKey==='expired';
   if(!a){const stale=historical||row.expiresAt&&row.expiresAt<=now;return `<article class="detail-card"><strong>${esc(row.symbol)}</strong><p>${stale?'已過期，請重新分析':esc(row.reason||'請重新分析以取得三策略條件')}</p>${!stale&&row.status==='SETUP'?renderPlan(row,{research:true}):''}${market(row)}${compare(row)}</article>`;}
   return `<article class="detail-card coin-analysis-card" aria-label="${esc(row.symbol)} 幣種分析">
   <div class="strategy-card-head"><strong>${row.rank?`第 ${row.rank} 名 · `:''}${esc(row.symbol)}</strong><span class="signal-badge">${labels[categoryKey]}</span></div>
-  <p>市場強度 ${n(row.strength,1)}／100 · 24 小時 ${Number.isFinite(row.change)&&row.change>=0?'+':''}${n(row.change)}% · 成交額 ${Number.isFinite(row.volume)?`${(row.volume/1e6).toFixed(1)} 百萬 USDT`:'—'}</p>
+  <p>24 小時動能／流動性分 ${n(row.strength,1)}／100 · 24 小時 ${Number.isFinite(row.change)&&row.change>=0?'+':''}${n(row.change)}% · 成交額 ${Number.isFinite(row.volume)?`${(row.volume/1e6).toFixed(1)} 百萬 USDT`:'—'}</p>
   ${a.status!=='VALID'?`<p role="status">${esc(a.reason)}</p>`:`
   <p class="coin-reading">${historical?'歷史收盤條件，僅供回顧；舊進場點位未保存。':expired?'此分析已過期，舊點位已隱藏。':categoryKey==='conflict'?'不同策略給出相反方向，暫不列入有研究計畫。':a.aligned?`1 小時與 4 小時同向${direction(a.hourlyDirection)}；仍需逐項確認進場條件。`:'多週期方向尚未一致；各策略依自己的條件獨立判斷。'}</p>
   <details class="core-disclosure" data-search="facts-${esc(row.symbol)}" open><summary>方向、量能與波動數據</summary><dl class="coin-facts"><div><dt>1 小時方向</dt><dd>${direction(a.hourlyDirection)}</dd></div><div><dt>4 小時方向</dt><dd>${direction(a.fourHourlyDirection)}</dd></div><div><dt>收盤棒相對量能</dt><dd>${n(a.volumeRatio)} 倍</dd></div><div><dt>1 小時平均波幅／收盤價</dt><dd>${n(a.atrPct)}%</dd></div><div><dt>收盤離 20 期均線</dt><dd>${n(a.emaDistanceAtr)} 倍波幅</dd></div><div><dt>完整收盤資料</dt><dd>${historical?'當時已檢查':'已檢查'}</dd></div></dl></details>
