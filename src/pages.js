@@ -1,3 +1,4 @@
+import { formatPrice as quotePrice, exactPricesView } from './price_display.js';
 import { coinLogo } from './coin_logo.js';
 import { adviceResultsPage } from './advice_forward_view.js';
 import { researchOverview } from './research_overview.js';
@@ -58,13 +59,7 @@ function pct(value) {
 function valueOrDash(value) {
   return value === null || value === undefined || value === '' ? '—' : String(value);
 }
-function price(value) {
-  if (value == null || value === '') return '—';
-  const n = Number(value);
-  if (!Number.isFinite(n)) return '—';
-  const digits = n >= 1000 ? 2 : n >= 1 ? 3 : 5;
-  return n.toLocaleString('en-US',{minimumFractionDigits:digits,maximumFractionDigits:digits});
-}
+const price=quotePrice;
 function numberPrice(value){
   const n = Number(String(value || '').replace(/,/g,''));
   return Number.isFinite(n) ? n : null;
@@ -460,7 +455,7 @@ function strongCoinDetail(state, strong){
       <span class="strong-tier">綜合 ${evidence.composite} · ${tier}</span>
     </div>
     <div class="strong-detail-grid">
-      <div><span>最新價格</span><strong>${lastPrice}</strong></div>
+      <div><span>最新價格</span><strong>${quotePrice(lastPrice)}</strong></div>
       <div><span>24 小時動能</span><strong class="${changeNum>=0?'up':'down'}">${changeNum>=0?'+':''}${changeNum.toFixed(2)}%</strong></div>
       <div><span>全市場流動性排名</span><strong>#${evidence.liquidityRank} / ${evidence.universeSize}</strong></div>
       <div><span>交易適宜度</span><strong>${displayStatus(evidence.tradabilityStatus)} · ${evidence.tradabilityScore}</strong></div>
@@ -505,7 +500,7 @@ function strongCoinCards(state){
       </div>
       <div class="strong-score"><small>綜合分數</small><b>${evidence.composite}</b></div>
       <div class="strong-change ${changeNum>=0?'up':'down'}">${changeNum>=0?'+':''}${changeNum.toFixed(2)}%</div>
-      <div class="strong-price">${lastPrice}</div>
+      <div class="strong-price">${quotePrice(lastPrice)}</div>
     </button>`;
   }).join('')}</div>
   ${strongCoinDetail(state,strong)}
@@ -561,7 +556,7 @@ export function homePage(state,now=Date.now()) {
     return `<div class="coin-row" data-search="${symbol}">
       ${coinLogo(symbol, icon)}
       <strong>${symbol}</strong>
-      <span>${price}</span>
+      <span>${quotePrice(price)}</span>
       <b class="${changeClass} change-pill">${changeText}</b>
     </div>`;
   }).join('') : '';
@@ -972,14 +967,14 @@ function marketScoutPanel(state){
       <div class="agent-result-main">
         <div class="agent-result-title">
           <strong>${display}</strong>
-          <span>${last}</span>
+          <span>${quotePrice(last)}</span>
         </div>
         ${chips || `<span>${displayText(reason)}</span>`}
         <small class="agent-market-move ${ch>=0?'up':'down'}">${ch>=0?'+':''}${ch.toFixed(2)}% · ${mode==='universe' ? `流動性 #${evidence.liquidityRank}` : compactVolume(volume)}</small>
       </div>
       ${isComposite
         ? `<div class="agent-score-block"><small>研究</small><strong>${evidence.composite}</strong></div>`
-        : `<div class="agent-result-metric"><strong>${last}</strong><span class="${ch>=0?'up':'down'}">${ch>=0?'+':''}${ch.toFixed(2)}%</span></div>`}
+        : `<div class="agent-result-metric"><strong>${quotePrice(last)}</strong><span class="${ch>=0?'up':'down'}">${ch>=0?'+':''}${ch.toFixed(2)}%</span></div>`}
       <button type="button" class="candidate-add-btn agent-quick-add"
         data-candidate-add="${symbol}"
         data-candidate-source="${source}"
@@ -1364,6 +1359,7 @@ function paperPositions(paper){
         <span><small>保證金</small><strong>${money(p.margin)}</strong></span>
         <span><small>名目價值</small><strong>${money(p.notional)}</strong></span>
       </div>
+      ${exactPricesView([['進場價',p.entry ?? p.entry_fill],['標記價格',p.mark]])}
       ${p.id && paper.local ? `<button class="danger-btn full-width" data-paper-close="${p.id}" type="button">模擬平倉</button>` : ''}
     </article>`).join('')}</div>`;
 }

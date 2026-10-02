@@ -1,13 +1,7 @@
 import { researchProtectionStop } from './research_risk_view.js';
 
-// Display prices to two decimal places; strategy levels keep their full precision.
-export function formatPlanPrice(value) {
-  if (value===null || value===undefined || value==='' || !Number.isFinite(Number(value)) || Number(value)<=0) return '—';
-  const n=Number(value);
-  // A positive sub-cent price must not look like a zero-price entry or stop.
-  if(n<0.005) return '小於 0.01';
-  return n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
-}
+import { formatPrice as formatPlanPrice } from './price_display.js';
+export { formatPlanPrice };
 
 // Keep the compact two-decimal display, but make distinct research thresholds
 // readable when that display collapses them to the same price.

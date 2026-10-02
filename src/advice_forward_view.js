@@ -1,10 +1,12 @@
+import { formatPrice as price, exactPricesView } from './price_display.js';
+import { exactPlanLevelsView } from './plan_levels_view.js';
 import { activeForward, forwardSummary, samplePnl } from './advice_forward.js';
 import { FAMILY_NAMES } from './strategy_families.js';
 import { escapeHtml as esc, displayDate, section, metric } from './ui.js';
 
 const labels={PENDING:'等待觸發',OPEN:'模擬持倉',PARTIAL:'第一止盈已完成',CLOSED:'完整結案',GAP:'資料中斷 · 待覆核',EXPIRED:'未觸發到期',CANCELLED:'取消觀察',NOT_TRACKED:'未建立追蹤',NO_SETUP:'無可追蹤計畫',REGISTERED:'登錄建議',WATCHING:'開始觀察',TRIGGERED:'條件觸發',ENTRY:'模擬進場',TP1:'第一止盈',TP2:'第二止盈',STOP:'止損出場',TIME:'時間出場',PROTECTION:'成本保護生效'};
 const num=(n,suffix='')=>Number.isFinite(n)?`${n.toLocaleString('zh-TW',{maximumFractionDigits:2,minimumFractionDigits:2})}${suffix}`:'—';
-const price=n=>Number.isFinite(n)?n.toLocaleString('zh-TW',{maximumFractionDigits:8}):'—';
+const preciseNumber=n=>Number.isFinite(n)?n.toLocaleString('zh-TW',{maximumFractionDigits:8}):'—';
 export function forwardFeedFacts(feed){
   const count=Number.isInteger(feed.received)?feed.received:0;
   return `已接收 ${count.toLocaleString('zh-TW')} 筆合格行情${Number.isFinite(feed.lastAt)?` · 最後收到 ${displayDate(feed.lastAt)} · 最新觀測價 ${price(feed.lastPrice)}`:' · 尚無合格行情'}`;
@@ -37,9 +39,10 @@ function sampleCard(row,enabled){
   const p=row.plan,pnl=samplePnl(row),pendingReview=activeForward(row)&&!enabled;
   return `<details class="core-disclosure forward-record" data-search="${esc(row.id)}"><summary><span>${esc(row.symbol)} · ${p?esc(FAMILY_NAMES[p.key]):'分析結論'}</span><span>${pendingReview?'未完成 · 本頁未追蹤':labels[row.status]}${pnl!==null?` · ${num(pnl)} USDT`:''}</span></summary>
     <p>登錄於 ${displayDate(row.createdAt)} · ${labels[row.reason]||esc(row.reason)}</p>
-    ${p?`<p>原始建議（唯讀）：${p.side==='LONG'?'做多':'做空'} · ${esc(FAMILY_NAMES[p.key])}</p><dl class="core-metrics"><div><dt>原進場門檻</dt><dd>${price(p.entry)}</dd></div><div><dt>原止損</dt><dd>${price(p.stop)}</dd></div><div><dt>第一止盈</dt><dd>${price(p.tp1)}</dd></div><div><dt>第二止盈</dt><dd>${price(p.tp2)}</dd></div></dl><p>進場核對期限 ${displayDate(row.entryUntil)}；歷史點位不可直接用於現在下單。</p>`:''}
+    ${p?`<p>原始建議（唯讀）：${p.side==='LONG'?'做多':'做空'} · ${esc(FAMILY_NAMES[p.key])}</p><dl class="core-metrics"><div><dt>原進場門檻</dt><dd>${price(p.entry)}</dd></div><div><dt>原止損</dt><dd>${price(p.stop)}</dd></div><div><dt>第一止盈</dt><dd>${price(p.tp1)}</dd></div><div><dt>第二止盈</dt><dd>${price(p.tp2)}</dd></div></dl>${exactPlanLevelsView(p)}<p>進場核對期限 ${displayDate(row.entryUntil)}；歷史點位不可直接用於現在下單。</p>`:''}
     ${pendingReview?'<p>本頁沒有持續觀察這筆樣本；重新啟動會將未完成紀錄標為待覆核，不回補。</p>':''}
-    ${row.fills.length?`<ul class="forward-fills">${row.fills.map(f=>`<li>${labels[f.kind]} · ${displayDate(f.at)}<br>模擬價 ${price(f.price)} × ${price(f.qty)}；手續費 ${price(f.fee)} USDT</li>`).join('')}</ul>`:''}
+    ${exactPricesView(row.fills.map((f,i)=>['第 '+(i+1)+' 筆模擬成交價',f.price]))}
+    ${row.fills.length?`<ul class="forward-fills">${row.fills.map(f=>`<li>${labels[f.kind]} · ${displayDate(f.at)}<br>模擬價 ${price(f.price)} × ${preciseNumber(f.qty)}；手續費 ${preciseNumber(f.fee)} USDT</li>`).join('')}</ul>`:''}
     ${pnl!==null?`<p><strong>研究淨損益 ${num(pnl)} USDT · ${num(pnl/row.initialRisk)} R</strong>（未含資金費率）</p>`:'<p>尚無可計入成效的完整結案，損益不推算。</p>'}
     <ol class="forward-events">${row.events.map(e=>`<li>${displayDate(e.at)} · ${labels[e.type]||esc(e.type)}${e.tick?` · 觀測價 ${price(e.tick.price)}`:''}</li>`).join('')}</ol>
     <p>策略版本 ${esc(row.strategyVersion)} · 觀察版本 ${esc(row.version)}</p>

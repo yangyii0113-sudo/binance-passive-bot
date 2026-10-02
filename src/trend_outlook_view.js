@@ -1,8 +1,9 @@
+import { formatPrice as price, exactPricesView } from './price_display.js';
 import { buildTrendOutlook } from './trend_outlook.js';
 import { agentPlanStatus } from './agent_trade_plan.js';
 import { escapeHtml as esc, displayDate } from './ui.js';
 
-const price=value=>Number.isFinite(value)?value.toLocaleString('en-US',{maximumFractionDigits:8}):'—';
+
 const anchorNames={'1h':'1 小時','4h':'4 小時','1d':'日線'};
 export function trendOutlookView(technical,record,{now=Date.now(),filter='all',compact=false}={}){
   if(!technical?.symbol)return '';
@@ -21,7 +22,8 @@ export function trendOutlookView(technical,record,{now=Date.now(),filter='all',c
       <p class="outlook-execution">${esc(execution)}</p>
       <details class="core-disclosure" data-search="outlook-${esc(report.symbol)}-${h.key}"><summary>情勢預案、關鍵價與失效條件</summary>
         <p>${anchor}的前 20 根區間（不含最新收盤棒）：<strong>${price(e.rangeLow)}～${price(e.rangeHigh)} USDT</strong>。這是觀察邊界，不是進場、止盈或止損。</p>
-        <dl class="core-metrics"><div><dt>已收盤參考價</dt><dd>${price(f.last)} USDT</dd></div><div><dt>20／50 期均線</dt><dd>${price(f.ema20)}／${price(f.ema50)}</dd></div><div><dt>相對前 20 根均量</dt><dd>${e.relativeVolume===null?'無法計算':price(e.relativeVolume)+' 倍'}</dd></div><div><dt>14 根平均真實波幅</dt><dd>${price(e.atr)} USDT</dd></div></dl>
+        <dl class="core-metrics"><div><dt>已收盤參考價</dt><dd>${price(f.last)} USDT</dd></div><div><dt>20／50 期均線</dt><dd>${price(f.ema20)}／${price(f.ema50)}</dd></div><div><dt>相對前 20 根均量</dt><dd>${e.relativeVolume===null?'無法計算':e.relativeVolume.toFixed(2)+' 倍'}</dd></div><div><dt>14 根平均真實波幅</dt><dd>${price(e.atr)} USDT</dd></div></dl>
+        ${exactPricesView([['已收盤參考價',f.last],['區間下緣',e.rangeLow],['區間上緣',e.rangeHigh],['20 期均線',f.ema20],['50 期均線',f.ema50],['平均真實波幅',e.atr]])}
         <ul><li><strong>上行情境：</strong>${anchor}收盤站穩 ${price(e.rangeHigh)} 之上，20 期均線高於 50 期，其他所需週期同向且量能高於前 20 根均量，才列入偏多研究。</li>
         <li><strong>下行情境：</strong>${anchor}收盤跌破 ${price(e.rangeLow)}，20 期均線低於 50 期，其他所需週期同向且量能高於前 20 根均量，才列入偏空研究。</li>
         <li><strong>整理情境：</strong>未形成同向突破，或量能無法確認，維持觀望；不同週期不以票數抵銷衝突。</li>
