@@ -29,6 +29,8 @@ export function availableLogoSymbols(){return [...new Set([...catalog.keys(),...
 
 // Bundled fallbacks plus exchange-provided exact identities; never guess URLs or strip multipliers.
 const identities = {
+ ZEC:['Zcash','zec.svg'],DASH:['Dash','dash.svg'],FIL:['Filecoin','fil.svg'],SHIB:['Shiba Inu','shib.svg'],
+ '1000SHIB':['Shiba Inu · 每單位 1,000 枚','shib.svg'],
  BNB:['BNB','bnb.svg'],XRP:['XRP','xrp.svg'],DOGE:['Dogecoin','doge.svg'],ADA:['Cardano','ada.svg'],
  LINK:['Chainlink','link.svg'],AVAX:['Avalanche','avax.svg'],LTC:['Litecoin','ltc.svg'],BCH:['Bitcoin Cash','bch.svg'],
  DOT:['Polkadot','dot.svg'],APT:['Aptos','apt.svg'],TRX:['TRON','trx.svg'],ARB:['Arbitrum','arb.svg'],OP:['Optimism','op.svg'],

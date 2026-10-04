@@ -83,7 +83,7 @@ export function strategyConditionSummaryView(record,{now=Date.now()}={}) {
 }
 
 // One primary strategy checklist; detailed independent strategies remain available below.
-export function strategyActionSummary(record,{now=Date.now()}={}) {
+export function strategyActionSummary(record,{now=Date.now(),includeNext=true}={}) {
  const gate=agentPlanStatus(record,now),a=record?.row?.analysis;
  if(!['plan','wait'].includes(gate.key)||record.row.symbol!==record.symbol)return '';
  const display=adviceDisplayStatus(record,now);
@@ -95,5 +95,5 @@ export function strategyActionSummary(record,{now=Date.now()}={}) {
  const missing=flags.find(([,v])=>v!==true);
  const side=['LONG','SHORT'].includes(p.side)?p.side:['LONG','SHORT'].includes(o?.side)?o.side:null;
  const title=names[p.key]+(side?' · '+(side==='LONG'?'↗ 做多':'↘ 做空'):' · 方向待確認');
- return `<section class="strategy-action-summary" aria-label="主要策略確認清單"><strong>${esc(title)}</strong><div class="action-checks">${gate.key==='plan'?'<span class="pass">✓ 收盤條件</span><span class="pass">✓ 時效與風報</span><span class="pending">◷ 等待新觸發</span>':`${passed.slice(0,2).map(label=>`<span class="pass">✓ ${esc(label)}</span>`).join('')}<span class="pending">◷ ${esc(missing?.[0]||display.label)}</span>`}</div>${gate.key==='wait'&&o?`<small>${esc(compactValue(p,o))}</small>`:''}<p class="action-next"><b>下一步</b> ${esc(gate.key==='plan'?'重新核對後觀察新觸發；目前尚未成交。':display.next)}</p></section>`;
+ return `<section class="strategy-action-summary" aria-label="主要策略確認清單"><strong>${esc(title)}</strong><div class="action-checks">${gate.key==='plan'?'<span class="pass">✓ 收盤條件</span><span class="pass">✓ 時效與風報</span><span class="pending">◷ 等待新觸發</span>':`${passed.slice(0,2).map(label=>`<span class="pass">✓ ${esc(label)}</span>`).join('')}<span class="pending">◷ ${esc(missing?.[0]||display.label)}</span>`}</div>${gate.key==='wait'&&o?`<small>${esc(compactValue(p,o))}</small>`:''}${includeNext?`<p class="action-next"><b>下一步</b> ${esc(gate.key==='plan'?'重新核對後觀察新觸發；目前尚未成交。':display.next)}</p>`:''}</section>`;
 }

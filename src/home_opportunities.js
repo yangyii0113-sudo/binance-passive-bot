@@ -67,7 +67,7 @@ export function homeOpportunities(state,now=Date.now()) {
     if(key==='plan')reason=partial?'僅列通過核對的方案；其他策略仍有資料缺漏。':'收盤結構、當根門檻與成本後空間已核對；等待新觸發。';
     if(result.key==='wait')reason=display.reason;
     const ratios=result.plans.map(p=>researchRiskScenario(p)?.netRewardRisk).filter(Number.isFinite);
-    return {...candidate,quote:key==='plan'?record.marketSnapshot?.price:null,key,label:result.key==='wait'?display.label:labels[key],reason,ratios,plans:result.plans,readiness:mismatch?'':readinessView(record,now),conditions:mismatch?'':strategyConditionSummaryView(record,{now}),actionSummary:mismatch?'':strategyActionSummary(record,{now}),evidence:mismatch?'':strategyEvidenceView(record,{now,compact:true}),snapshotUntil:key==='plan'?record.snapshotUntil:null,barUntil:key==='plan'?record.row.analysis.validUntil:null};
+    return {...candidate,quote:key==='plan'?record.marketSnapshot?.price:null,key,label:result.key==='wait'?display.label:labels[key],reason,ratios,plans:result.plans,readiness:mismatch?'':readinessView(record,now),conditions:mismatch?'':strategyConditionSummaryView(record,{now}),actionSummary:mismatch?'':strategyActionSummary(record,{now,includeNext:false}),next:display.next,evidence:mismatch?'':strategyEvidenceView(record,{now,compact:true}),snapshotUntil:key==='plan'?record.snapshotUntil:null,barUntil:key==='plan'?record.row.analysis.validUntil:null};
   });
   if(state.ui?.homeOpportunitySort!=='strength')rows.sort((a,b)=>priority[a.key]-priority[b.key]||a.rank-b.rank);
   return {...selection,rows,ready:rows.filter(r=>r.key==='plan').length,unchecked:rows.filter(r=>r.key==='empty').length};
@@ -80,11 +80,12 @@ function actionCard(row,{watched,busy,now}) {
  const ready=row.key==='plan',status=labels[row.key];
  return `<article class="home-opportunity-card home-opportunity-${row.key}" data-home-opportunity="${esc(row.symbol)}" aria-label="${esc(row.symbol)} 首頁候選">
    <div class="home-opportunity-heading">${coinIdentity(row.symbol,{large:true})}<button type="button" class="home-watch-toggle" data-home-watch-symbol="${esc(row.symbol)}" aria-pressed="${watched.includes(row.symbol)}" aria-label="${watched.includes(row.symbol)?'取消關注':'關注'} ${esc(row.symbol)}">${watched.includes(row.symbol)?'★ 已關注':'☆ 關注'}</button></div>
-   <div class="home-entry-state ${ready?'priority-entry':''}" data-home-entry-state="${row.key}" ${ready?'data-priority-plan="true"':''}><strong>${ready?'★ 優先關注・等待觸發':status}</strong>${ready?'<small>條件已通過 · 僅模擬，尚未成交</small>':''}</div>
-   ${row.actionSummary||`<p class="action-next"><b>下一步</b> ${esc(row.key==='empty'?'先核對三策略與行情時效。':row.reason)}</p>`}
+   <div class="home-entry-state ${ready?'priority-entry':''}" data-home-entry-state="${row.key}" ${ready?'data-priority-plan="true"':''}><strong>${ready?'✓ 條件成立・待觸發':status}</strong>${ready?'<small>條件已通過 · 僅模擬，尚未成交</small>':''}</div>
+   ${row.actionSummary}
    ${ready?planCard(row.plans[0],row):''}
    ${ready&&row.plans.length>1?`<details class="core-disclosure" data-search="other-plans-${esc(row.symbol)}"><summary>其他獨立策略 ${row.plans.length-1} 個 · 不累加部位</summary>${row.plans.slice(1).map(p=>planCard(p,row,true)).join('')}</details>`:''}
    ${ready?`<p class="action-expiry">行情快照剩 ${expiryCountdown(row.snapshotUntil,now)}<small>收盤策略剩 ${expiryCountdown(row.barUntil,now)}；先到者失效</small></p>`:''}
+   <p class="action-next"><b>下一步</b> ${esc(ready?'重新核對後觀察新觸發；目前尚未成交。':row.key==='empty'?'先核對三策略與行情時效。':row.next)}</p>
    ${['plan','wait','conflict'].includes(row.key)?`<button type="button" class="${ready?'primary-inline-btn':'secondary-btn'}" data-agent-advice-symbol="${esc(row.symbol)}">${ready?'核對與查看完整計畫':'查看等待條件'}</button>`:`<button type="button" class="secondary-btn" data-home-check-symbol="${esc(row.symbol)}" ${busy||row.key==='loading'?'disabled':''}>${row.key==='loading'?'正在核對…':row.key==='empty'?'核對進場條件':'重新核對'}</button>`}
    <details class="core-disclosure action-evidence" data-search="home-evidence-${esc(row.symbol)}"><summary>查看依據與其他策略</summary><p>${esc(row.reason)}</p>${row.conditions}${row.readiness}${row.evidence}<dl class="home-opportunity-market"><div><dt>24 小時動能／流動性分</dt><dd>${row.strength.toFixed(1)}／100</dd></div><div><dt>24 小時漲幅</dt><dd>+${row.change.toFixed(2)}%</dd></div><div><dt>成交額</dt><dd>${(row.volume/1e6).toFixed(1)} 百萬 USDT</dd></div></dl><small>強勢第 ${row.rank} 名；分數不是勝率。${ready?`核對期限 ${esc(displayDate(row.snapshotUntil))}`:''}</small></details>
  </article>`;

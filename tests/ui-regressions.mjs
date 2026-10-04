@@ -473,7 +473,7 @@ test('priority attention appears only for a fresh eligible plan and never promis
  const {s,now}=homeFixture();
  const html=researchOverview(s,now);
  assert.equal((html.match(/data-priority-plan=/g)||[]).length,1);
- assert.match(html,/優先關注/);assert.doesNotMatch(html,/必買|趕快入場|保證獲利/);
+ assert.match(html,/條件成立・待觸發/);assert.doesNotMatch(html,/必買|趕快入場|保證獲利/);
  for(const change of [r=>r.snapshotUntil=now,r=>r.historical=true,r=>r.row.symbol='AAAUSDT',r=>delete r.marketSnapshot,r=>r.row.analysis.strategies[0].status='WAIT']){
   const copy=structuredClone(s);change(copy.agents.tradePlans.BBBUSDT);assert.doesNotMatch(researchOverview(copy,now),/data-priority-plan=/);
  }
@@ -492,4 +492,21 @@ test('live logo metadata rejects unsafe URLs and accepts newly listed exact asse
  mergeCoinCatalog([{assetCode:'LOGOTESTNEW',assetName:'New coin',logoUrl:'https://bin.bnbstatic.com/image/new.png',test:0},{assetCode:'LOGOTESTBAD',logoUrl:'https://bin.bnbstatic.com.evil.test/a.svg'}]);
  assert.match(coinLogo('LOGOTESTNEWUSDT'),/https:\/\/bin.bnbstatic.com\/image\/new.png/);
  assert.equal(coinInfo('LOGOTESTBADUSDT').logoUrl,null);
+});
+
+
+test('advice price map precedes next action and rejects unusable plans',async()=>{
+ const {agentDecisionCard}=await import('../src/agent_decision_view.js');
+ const {s,now}=homeFixture(),record=s.agents.tradePlans.BBBUSDT,before=structuredClone(record);
+ const html=agentDecisionCard(record,{now});
+ assert.match(html,/條件成立・待觸發/);
+ assert.ok(html.indexOf('coin-identity')<html.indexOf('decision-verdict'));
+ assert.ok(html.indexOf('decision-verdict')<html.indexOf('strategy-action-summary'));
+ assert.ok(html.indexOf('plan-price-map')<html.indexOf('decision-next'));
+ assert.match(html,/<details class="core-disclosure decision-cost-detail"><summary>出場規則與成本情境/);
+ assert.match(html,/decision-lock/);assert.deepEqual(record,before);
+ for(const change of [r=>r.snapshotUntil=now,r=>delete r.marketSnapshot,r=>r.row.symbol='WRONGUSDT',r=>r.row.analysis.strategies.push({...r.row.analysis.strategies[0],key:'structured',side:'SHORT',stop:105,tp1:90,tp2:80})]){
+  const r=structuredClone(record);change(r);
+  assert.doesNotMatch(agentDecisionCard(r,{now}),/plan-price-map|class="decision-levels"/);
+ }
 });

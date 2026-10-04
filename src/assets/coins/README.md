@@ -54,3 +54,7 @@ Explicit multiplier aliases (no general prefix stripping): 1000PEPE -> PEPE,
 Unknown symbols never borrow another token's logo. Image loading failures remain
 visible as the complete ticker. Complete live futures-universe coverage cannot
 be certified from this environment while exchangeInfo returns HTTP 451.
+
+## Offline identification additions — 2026-10-04
+
+ZEC, DASH, FIL and SHIB: unmodified SVGs from the same pinned Cryptofonts revision above, covered by the included GPL-3.0 license. Explicit 1000SHIB preserves its complete contract ticker and unit multiplier.
