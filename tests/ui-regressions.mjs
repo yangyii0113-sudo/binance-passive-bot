@@ -532,3 +532,12 @@ test('market recovery explains source evidence without treating unknown network 
  market.marketDiagnostic={...market.marketDiagnostic,kind:'restricted',httpStatus:451};
  assert.match(marketHealthView(market,2000),/HTTP 451/);assert.match(marketHealthView(market,2000),/使用資格/);
 });
+
+test('unanalysed candidate is not displayed as a completed waiting strategy',()=>{
+  const s=state(),now=Date.now();
+  s.market.updatedAt=new Date(now).toISOString();s.market.contractVerifiedAt=s.market.updatedAt;s.market.cryptoOnly=true;
+  s.agents.tradePlans={};
+  const html=homeModule.homeOpportunityView(s,now);
+  assert.match(html,/data-home-entry-state="empty"[^>]*><strong>◷ 尚未分析/);
+  assert.doesNotMatch(html,/data-home-entry-state="empty"[^>]*><strong>◷ 等待確認/);
+});

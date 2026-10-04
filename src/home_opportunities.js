@@ -40,7 +40,7 @@ export function homeCandidates(market={},now=Date.now()) {
   return {rows:rankStrongRows(market.universeRows||market.rows||[]),reason:null};
 }
 
-const labels={plan:'✓ 條件成立・待觸發',empty:'◷ 等待確認',loading:'◷ 正在核對',wait:'◷ 等待確認',expired:'! 已過期・重新核對',blocked:'! 暫停・資料待核對',conflict:'! 暫停・方向衝突'};
+const labels={plan:'✓ 條件成立・待觸發',empty:'◷ 尚未分析',loading:'◷ 正在核對',wait:'◷ 等待確認',expired:'! 已過期・重新核對',blocked:'! 暫停・資料待核對',conflict:'! 暫停・方向衝突'};
 export function expiryCountdown(until,now){
   if(!Number.isFinite(until)||until<=now)return '已到期';
   const seconds=Math.ceil((until-now)/1000);
