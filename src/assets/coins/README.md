@@ -30,3 +30,27 @@ are retained by their owners; use here is solely to identify the project.
 Added unmodified BNB, XRP, DOGE, ADA, LINK, AVAX, LTC, BCH, DOT, APT, TRX, ARB, OP and PEPE SVGs from the same Cryptofonts revision above. The included GPL-3.0 license applies to these fourteen assets as well.
 
 The exact `1000PEPEUSDT` mapping uses PEPE's identification image while preserving `1000PEPE` and explicitly showing the 1,000-unit contract multiplier. No generic stripping of numeric prefixes is permitted. Unmapped symbols use text, not guessed assets.
+
+## Full exchange catalog — 2026-10-04
+
+`src/assets/coins/catalog.json` now contains exact identifiers and official image URLs
+from Binance public asset metadata and Binance Alpha metadata:
+- https://www.binance.com/bapi/asset/v2/public/asset/asset/get-all-asset
+- https://www.binance.com/bapi/defi/v1/public/wallet-direct/buw/wallet/cex/alpha/all/token/list
+
+Test assets and fiat are excluded. Alpha entries with conflicting names for the
+same symbol are excluded; asset metadata takes precedence. URLs are restricted
+to Binance's HTTPS image hosts. These images remain their owners' trademarks;
+they are linked for identification and are not licensed under Cryptofonts GPL.
+The public asset catalog refreshes once per page load, independently of market
+or trading state; its failure preserves the bundled metadata snapshot.
+
+Explicit multiplier aliases (no general prefix stripping): 1000PEPE -> PEPE,
+1000BONK -> BONK, 1000SHIB -> SHIB, 1000LUNC -> LUNC. Binance listing sources:
+- https://www.binance.com/en/support/announcement/detail/5cbb189860c3412e8d526c7da7dae8c6
+- https://www.binance.com/en-NG/support/announcement/detail/fa934b93fea6494fb7361d45ca7cc98a
+- https://www.binance.com/en/support/announcement/detail/5b9bc7ef56834de895cf829af859207e
+
+Unknown symbols never borrow another token's logo. Image loading failures remain
+visible as the complete ticker. Complete live futures-universe coverage cannot
+be certified from this environment while exchangeInfo returns HTTP 451.

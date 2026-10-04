@@ -1,3 +1,4 @@
+import { refreshCoinCatalog } from './coin_logo.js';
 import { OUTLOOK_TTL } from './trend_outlook.js';
 import { createAdviceMonitor } from './advice_monitor.js';
 import { createAnalysisBatchFetcher } from './analysis_batch_fetcher.js';
@@ -1186,6 +1187,7 @@ function init() {
   window.addEventListener('storage',event=>forwardTracker.storageChanged(event.key));
   initEvents();
   render();
+  void refreshCoinCatalog().then(count=>{if(count)render();});
   adviceMonitor.start();
   refreshMarket();
   loadIndependentSnapshots();
@@ -1204,3 +1206,4 @@ window.addEventListener('hashchange', () => {
   else window.scrollTo({top:0, behavior:'instant'});
 });
 window.addEventListener('DOMContentLoaded', init);
+

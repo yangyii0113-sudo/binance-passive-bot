@@ -479,3 +479,17 @@ test('priority attention appears only for a fresh eligible plan and never promis
  }
  s.market.status='STALE';assert.doesNotMatch(researchOverview(s,now),/data-priority-plan=/);
 });
+
+test('exchange catalog resolves coins outside default list without guessing multipliers',async()=>{
+ const {coinInfo,coinLogo}=await import('../src/coin_logo.js');
+ for(const s of ['AAVE','INJ','FIL','WIF','TAO','TRUMP','SHIB','BONK']) assert.match(coinLogo(s+'USDT'),/<img/,s+' must have an actual logo');
+ assert.match(coinInfo('AAVEUSDT').name,/Aave/i);
+ assert.doesNotMatch(coinLogo('1000SOLUSDT'),/<img/);
+});
+
+test('live logo metadata rejects unsafe URLs and accepts newly listed exact assets',async()=>{
+ const {mergeCoinCatalog,coinInfo,coinLogo}=await import('../src/coin_logo.js');
+ mergeCoinCatalog([{assetCode:'LOGOTESTNEW',assetName:'New coin',logoUrl:'https://bin.bnbstatic.com/image/new.png',test:0},{assetCode:'LOGOTESTBAD',logoUrl:'https://bin.bnbstatic.com.evil.test/a.svg'}]);
+ assert.match(coinLogo('LOGOTESTNEWUSDT'),/https:\/\/bin.bnbstatic.com\/image\/new.png/);
+ assert.equal(coinInfo('LOGOTESTBADUSDT').logoUrl,null);
+});
