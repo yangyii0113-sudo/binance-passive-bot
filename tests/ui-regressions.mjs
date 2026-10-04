@@ -510,3 +510,25 @@ test('advice price map precedes next action and rejects unusable plans',async()=
   assert.doesNotMatch(agentDecisionCard(r,{now}),/plan-price-map|class="decision-levels"/);
  }
 });
+
+test('open disclosures stay independent across same-style sections and coin owners',async()=>{
+ const {disclosureStateKey}=await import('../src/ui.js');
+ const owner=label=>({parentElement:null,getAttribute:name=>name==='aria-label'?label:null});
+ const detail=(label,parent,search='')=>({dataset:{search},parentElement:parent,querySelector:()=>({textContent:label})});
+ const sol=owner('SOLUSDT 進退場摘要'),eth=owner('ETHUSDT 進退場摘要');
+ const cost=detail('出場規則與成本情境',sol),history=detail('歷史盈利證據與三策略比較',sol);
+ const opened=new Set([disclosureStateKey(cost)]);
+ assert.ok(opened.has(disclosureStateKey(detail('出場規則與成本情境',owner('SOLUSDT 進退場摘要')))));
+ assert.ok(!opened.has(disclosureStateKey(history)),'opening cost evidence must not open unrelated details');
+ assert.ok(!opened.has(disclosureStateKey(detail('出場規則與成本情境',eth))),'coin disclosures must not share state');
+ assert.equal(disclosureStateKey(detail('remaining 10 seconds',sol,'expiry')),disclosureStateKey(detail('remaining 8 seconds',sol,'expiry')),'explicit stable identifiers survive changing text');
+});
+
+test('market recovery explains source evidence without treating unknown network failure as a regional restriction',async()=>{
+ const {marketHealthView}=await import('../src/market_health_view.js');
+ const market={status:'ERROR',error:'連線失敗',marketDiagnostic:{kind:'network',checkedAt:1000,endpoint:'/fapi/v1/ticker/24hr',httpStatus:null}};
+ const html=marketHealthView(market,2000);
+ assert.match(html,/class="market-recovery"/);assert.match(html,/不能判定是來源限制/);assert.doesNotMatch(html,/HTTP 451|所在地被/);
+ market.marketDiagnostic={...market.marketDiagnostic,kind:'restricted',httpStatus:451};
+ assert.match(marketHealthView(market,2000),/HTTP 451/);assert.match(marketHealthView(market,2000),/使用資格/);
+});

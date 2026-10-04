@@ -2674,3 +2674,16 @@ button, a, input, select, summary { scroll-margin-block:16px 110px; }
 /* Priority means a checked plan awaiting a new trigger, never an unconditional buy. */
 .action-workspace .home-entry-state.priority-entry strong,.decision-verdict.priority-entry strong{background:#edc769;color:#17251f;border:1px solid #ffe7a4;box-shadow:0 0 0 3px #edc76915;font-weight:800;letter-spacing:.02em}
 .home-entry-state.priority-entry small{display:block;font-size:11px;line-height:1.6;color:#cbbd96;padding:6px 3px 0}
+
+/* Touch form controls remain readable without disabling user zoom. */
+#app input:not([type=checkbox]):not([type=radio]):not([type=range]), #app select, #app textarea {
+  min-height:44px; font-size:16px; max-width:100%; min-width:0;
+}
+.searchbar input { min-height:44px; font-size:16px; }
+button, summary { min-height:44px; }
+button { min-width:44px; }
+summary { padding-block:10px; }
+.market-recovery { color:#ead6a6; line-height:1.7; }
+@media (pointer:coarse), (max-width:1100px) {
+  input:not([type=checkbox]):not([type=radio]):not([type=range]), select, textarea {font-size:16px!important;}
+}

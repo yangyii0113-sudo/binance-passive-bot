@@ -1,3 +1,4 @@
+import { disclosureStateKey } from './ui.js';
 import { refreshCoinCatalog } from './coin_logo.js';
 import { OUTLOOK_TTL } from './trend_outlook.js';
 import { createAdviceMonitor } from './advice_monitor.js';
@@ -273,7 +274,7 @@ function render() {
         start:el.selectionStart, end:el.selectionEnd
       })) : [];
   const openDetails = context === renderedContext
-    ? [...root.querySelectorAll('details[open]')].map(el => el.dataset.search || el.className) : [];
+    ? [...root.querySelectorAll('details[open]')].map(el => disclosureStateKey(el)) : [];
   const page = pages[route] || pages.home;
   root.innerHTML = page(appState);
   renderedContext = context;
@@ -299,7 +300,7 @@ function render() {
     }
   }
   for (const el of root.querySelectorAll('details')) {
-    if (openDetails.includes(el.dataset.search || el.className)) el.open = true;
+    if (openDetails.includes(disclosureStateKey(el))) el.open = true;
   }
   markActiveNav(route, Boolean(pages[route]));
   const search = document.getElementById('global-search');

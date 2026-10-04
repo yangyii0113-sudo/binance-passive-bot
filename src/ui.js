@@ -30,3 +30,14 @@ export const metric = (label, value) => `
     <span>${label}</span>
     <strong>${value}</strong>
   </div>`;
+
+// A shared class name is not an identity: preserve only the section the user opened.
+export function disclosureStateKey(element) {
+  const owners=[];
+  for(let parent=element.parentElement;parent;parent=parent.parentElement){
+    const name=parent.getAttribute('data-home-opportunity')||parent.getAttribute('data-surge-candidate')||parent.getAttribute('aria-label');
+    if(name)owners.unshift(name);
+  }
+  const section=element.dataset.search||element.querySelector(':scope > summary')?.textContent.trim();
+  return section?JSON.stringify([owners,section]):null;
+}
