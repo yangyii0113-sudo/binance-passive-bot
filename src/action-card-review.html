@@ -10,7 +10,7 @@ const embedded=new URLSearchParams(location.search).has('frame'),content=documen
 if(!embedded){
  content.className='demo-stage';content.innerHTML='<div class="demo-shell"><iframe class="demo-frame" title="行動卡示例裝置" src="./action-card-review.html?frame=1"></iframe></div>';
  let fit=true;const select=document.querySelector('#device'),frame=document.querySelector('iframe'),shell=document.querySelector('.demo-shell');
- function resize(){const width=+select.value,height=width===1032?1376:width===1376?1032:1000,scale=fit?Math.min(1,(content.clientWidth-32)/width):1;frame.width=width;frame.height=height;frame.style.transform=`scale(${scale})`;shell.style.width=width*scale+'px';shell.style.height=height*scale+'px';document.querySelector('#fit').setAttribute('aria-pressed',String(fit));}
+ function resize(){const width=+select.value,height=width===1032?1376:width===1376?1032:844,scale=fit?Math.min(1,(content.clientWidth-32)/width):1;frame.width=width;frame.height=height;frame.style.transform=`scale(${scale})`;shell.style.width=width*scale+'px';shell.style.height=height*scale+'px';document.querySelector('#fit').setAttribute('aria-pressed',String(fit));}
  select.addEventListener('change',resize);document.querySelector('#fit').addEventListener('click',()=>{fit=!fit;resize()});window.addEventListener('resize',resize);resize();
 }else{
  document.querySelector('#outer-controls').remove();document.querySelector('#scenarios').hidden=false;content.className='demo-content';

@@ -42,7 +42,7 @@ test('advice distinguishes waiting, skipped, missed, invalidated and incomplete 
     assert.equal(display.gate.key,'wait');assert.equal(display.gate.plans.length,0);
     const html=agentDecisionCard(record,{now});
     assert.match(html,new RegExp(label));assert.ok(html.includes(reason));
-    assert.match(html,/下一步：|訊號收盤/);assert.doesNotMatch(html,/decision-levels/);
+    assert.match(html,/下一步：|訊號收盤/);assert.doesNotMatch(html,/(?:decision-levels|plan-price-map)/);
     const shown=agentAdvicePanel({agents:{tradePlans:{UNIUSDT:record}},ui:{adviceFilter:group}},now);
     assert.match(shown,/data-selected-advice="UNIUSDT"/);
     const other=agentAdvicePanel({agents:{tradePlans:{UNIUSDT:record}},ui:{adviceFilter:group==='wait'?'attention':'wait'}},now);
@@ -56,14 +56,14 @@ test('expired or blocked gates suppress all current-looking strategy reasons and
     const record=structuredClone(r);mutate(record);
     const display=adviceDisplayStatus(record,now),html=agentDecisionCard(record,{now});
     assert.equal(display.group,'attention');assert.deepEqual(display.details,[]);
-    assert.doesNotMatch(html,/突破量能不足|訊號棒成交量|decision-levels/);
+    assert.doesNotMatch(html,/突破量能不足|訊號棒成交量|(?:decision-levels|plan-price-map)/);
   }
 });
 test('a valid independent plan remains a plan despite other waiting or skipped strategies',()=>{
   const r=fixture();Object.assign(r.row.analysis.strategies[1],{status:'SKIP',reason:'最近支撐／壓力不足 1R 空間，略過'});
   const before=structuredClone(r),display=adviceDisplayStatus(r,now);
   assert.equal(display.group,'plan');assert.equal(display.gate.plans.length,1);
-  assert.match(agentDecisionCard(r,{now}),/decision-levels/);assert.deepEqual(r,before);
+  assert.match(agentDecisionCard(r,{now}),/(?:decision-levels|plan-price-map)/);assert.deepEqual(r,before);
 });
 async function generate({side='LONG',contract={},current,fail=false,missing=false,delay=0}={}) {
   const r=fixture(side), calls=[];let clockNow=now;
@@ -82,19 +82,19 @@ test('advice filtering cannot keep a selected expired plan in the actionable gro
   state.ui.adviceFilter='attention';
   const review=agentAdvicePanel(state,now);
   assert.match(review,/data-selected-advice="SOLUSDT"/);
-  assert.doesNotMatch(review,/data-agent-advice-symbol="UNIUSDT"|decision-levels/);
+  assert.doesNotMatch(review,/data-agent-advice-symbol="UNIUSDT"|(?:decision-levels|plan-price-map)/);
 });
 test('an empty advice filter gives a recovery action without borrowing another group plan',()=>{
   const html=agentAdvicePanel({agents:{tradePlans:{UNIUSDT:fixture()}},ui:{adviceFilter:'attention'}},now);
   assert.match(html,/此分類目前沒有建議/);assert.match(html,/data-advice-filter="all"/);
-  assert.doesNotMatch(html,/data-selected-advice=|decision-levels/);
+  assert.doesNotMatch(html,/data-selected-advice=|(?:decision-levels|plan-price-map)/);
 });
 test('decision risk amounts appear only for valid gated plans and remain hypothetical',()=>{
   const good=agentDecisionCard(fixture(),{now});
   assert.match(good,/直接止損情境/);assert.match(good,/−2.50/);assert.match(good,/研究本金 1,000 USDT/);
   assert.match(good,/非預期收益/);
   const expired=agentDecisionCard({...fixture(),snapshotUntil:now},{now});
-  assert.doesNotMatch(expired,/直接止損情境|decision-levels/);
+  assert.doesNotMatch(expired,/直接止損情境|(?:decision-levels|plan-price-map)/);
 });
 test('agent plans support non-BTC/ETH futures and both directions with complete conditional exits',async()=>{
   for(const side of ['LONG','SHORT']) {
@@ -232,13 +232,13 @@ test('decision summaries use gated levels for either side and never restore expi
   for(const side of ['LONG','SHORT']){
     const record=fixture(side), before=structuredClone(record);
     const html=agentDecisionCard(record,{now});
-    for(const text of ['100.00','止損點','第一止盈','第二止盈','成本後目標風報比','正式帳本、最新淨值與完整部位尚未核對',side==='LONG'?'向上突破':'向下跌破'])assert.ok(html.includes(text),text);
+    for(const text of ['100.00','止損','止盈一','止盈二','成本後目標風報比','正式帳本、最新淨值與完整部位尚未核對',side==='LONG'?'向上突破':'向下跌破'])assert.ok(html.includes(text),text);
     assert.doesNotMatch(html,/data-paper-open|data-real-order|保證盈利/);
     assert.deepEqual(record,before);
     for(const mutate of [r=>r.snapshotUntil=now,r=>r.historical=true,r=>r.row.analysis.strategies[0].stop=r.row.analysis.strategies[0].entry,r=>r.row.analysis.strategies={wrong:true}]){
       const invalid=structuredClone(record);mutate(invalid);
       const blocked=agentDecisionCard(invalid,{now});
-      assert.doesNotMatch(blocked,/decision-levels|100\.00/);
+      assert.doesNotMatch(blocked,/(?:decision-levels|plan-price-map)|100\.00/);
       assert.match(blocked,/暫不進場/);
     }
   }
@@ -261,7 +261,7 @@ test('strategy conditions and quote integrity remain independent display states'
   const conflict=fixture();conflict.row.analysis.strategies[1]={...fixture('SHORT').row.analysis.strategies[0],key:'structured'};
   assert.equal(agentPlanPresentation(conflict,now).strategy,'方向衝突');
   assert.equal(agentPlanPresentation(conflict,now).data,'本次核對完整');
-  assert.doesNotMatch(agentDecisionCard(conflict,{now}),/decision-levels/);
+  assert.doesNotMatch(agentDecisionCard(conflict,{now}),/(?:decision-levels|plan-price-map)/);
 });
 
 test('advice displays one selected coin without borrowing another coin levels or changing records',()=>{
@@ -271,19 +271,19 @@ test('advice displays one selected coin without borrowing another coin levels or
   assert.match(html,/data-selected-advice="SOLUSDT"/);
   assert.equal((html.match(/class="agent-decision-card"/g)||[]).length,1);
   assert.match(html,/目前 1 檔有條件式模擬計畫/);
-  assert.doesNotMatch(html,/decision-levels|100\.00/);
+  assert.doesNotMatch(html,/(?:decision-levels|plan-price-map)|100\.00/);
   assert.match(html,/暫不進場 · 等待條件/);
   assert.deepEqual(s,before);
   s.ui.adviceSymbol=null;assert.match(agentAdvicePanel(s,now),/data-selected-advice="UNIUSDT"/);
   s.ui.adviceSymbol='UNIUSDT';const expired=agentAdvicePanel(s,now+60000);
-  assert.match(expired,/目前 0 檔有條件式模擬計畫/);assert.doesNotMatch(expired,/decision-levels|100\.00/);
+  assert.match(expired,/目前 0 檔有條件式模擬計畫/);assert.doesNotMatch(expired,/(?:decision-levels|plan-price-map)|100\.00/);
 });
 
 test('direct advice route exposes an actionable empty state and preserves separate research views',()=>{
   const s=structuredClone(appState),before=structuredClone(s),html=pages.advice(s);
   assert.match(html,/選擇分析幣種/);assert.match(html,/產生交易建議/);
   assert.match(html,/data-agent-key="advice" role="tab" aria-selected="true"/);
-  assert.doesNotMatch(html,/class="agent-tabs"|data-pullback-scan|decision-levels/);
+  assert.doesNotMatch(html,/class="agent-tabs"|data-pullback-scan|(?:decision-levels|plan-price-map)/);
   assert.deepEqual(s,before);
   s.ui.strategyWorkspace='signals';assert.match(pages.strategies(s),/data-pullback-scan/);
 });
@@ -321,7 +321,7 @@ test('decision explains directional price changes and strategy-specific stop han
 test('slow analysis cannot grant an extra minute to an old market snapshot',async()=>{
   const {record}=await generate({delay:61000});
   assert.equal(agentPlanStatus(record,now+61000).key,'expired');
-  assert.doesNotMatch(agentDecisionCard(record,{now:now+61000}),/decision-levels/);
+  assert.doesNotMatch(agentDecisionCard(record,{now:now+61000}),/(?:decision-levels|plan-price-map)/);
 });
 test('fresh plans expose a dated candle snapshot and signed distance to entry',async()=>{
   for(const side of ['LONG','SHORT']){
@@ -337,7 +337,7 @@ test('missing or inconsistent snapshot provenance blocks displayable entry level
   for(const mutate of [r=>delete r.marketSnapshot,r=>r.marketSnapshot.price=1000,r=>r.marketSnapshot.receivedAt=now+1,r=>r.marketSnapshot.requestedAt=now-61000,r=>r.marketSnapshot.barOpen-=H]){
     const r=structuredClone(record);mutate(r);
     assert.notEqual(agentPlanStatus(r,now).key,'plan');
-    assert.doesNotMatch(agentDecisionCard(r,{now}),/decision-levels/);
+    assert.doesNotMatch(agentDecisionCard(r,{now}),/(?:decision-levels|plan-price-map)/);
   }
 });
 
@@ -389,7 +389,7 @@ test('advice exposes one matching profitability comparison and folds detailed st
  assert.match(html,/獲利能力 · 歷史證據/);
  s.agents.planComparisons={ETHUSDT:comparisonFixture()};assert.doesNotMatch(agentAdvicePanel(s,now),/1.50%/);
  s.agents.planComparisons={UNIUSDT:comparisonFixture()};
- const expired=agentAdvicePanel(s,now+60000);assert.match(expired,/歷史證據/);assert.doesNotMatch(expired,/decision-levels|risk-paths-/);
+ const expired=agentAdvicePanel(s,now+60000);assert.match(expired,/歷史證據/);assert.doesNotMatch(expired,/(?:decision-levels|plan-price-map)|risk-paths-/);
 });
 test('exit risk scenarios reconcile with the separate replay engine for long and short paths',()=>{
  const near=(a,b)=>assert.ok(Math.abs(a-b)<1e-8,`${a} != ${b}`);
