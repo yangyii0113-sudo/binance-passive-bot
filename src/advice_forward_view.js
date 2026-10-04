@@ -4,7 +4,7 @@ import { activeForward, forwardSummary, samplePnl } from './advice_forward.js';
 import { FAMILY_NAMES } from './strategy_families.js';
 import { escapeHtml as esc, displayDate, section, metric } from './ui.js';
 
-const labels={PENDING:'等待觸發',OPEN:'模擬持倉',PARTIAL:'第一止盈已完成',CLOSED:'完整結案',GAP:'資料中斷 · 待覆核',EXPIRED:'未觸發到期',CANCELLED:'取消觀察',NOT_TRACKED:'未建立追蹤',NO_SETUP:'無可追蹤計畫',REGISTERED:'登錄建議',WATCHING:'開始觀察',TRIGGERED:'條件觸發',ENTRY:'模擬進場',TP1:'第一止盈',TP2:'第二止盈',STOP:'止損出場',TIME:'時間出場',PROTECTION:'成本保護生效'};
+const labels={PENDING:'等待觸發',OPEN:'模擬持倉',PARTIAL:'第一止盈已完成',CLOSED:'完整結案',GAP:'資料中斷 · 待覆核',EXPIRED:'未觸發到期',CANCELLED:'取消觀察',NOT_TRACKED:'未建立追蹤',NO_SETUP:'無可追蹤計畫',REGISTERED:'登錄建議',WATCHING:'開始觀察',TRIGGERED:'已觸發 · 僅模擬',ENTRY:'模擬進場',TP1:'第一止盈',TP2:'第二止盈',STOP:'止損出場',TIME:'時間出場',PROTECTION:'成本保護生效'};
 const num=(n,suffix='')=>Number.isFinite(n)?`${n.toLocaleString('zh-TW',{maximumFractionDigits:2,minimumFractionDigits:2})}${suffix}`:'—';
 const preciseNumber=n=>Number.isFinite(n)?n.toLocaleString('zh-TW',{maximumFractionDigits:8}):'—';
 export function forwardFeedFacts(feed){
@@ -89,3 +89,4 @@ export function adviceResultsPage(state){
     <h3>逐筆追蹤 · 最新在前</h3>${!dataError?`<div class="home-opportunity-filters forward-result-filters" role="group" aria-label="追蹤紀錄狀態篩選">${Object.entries(filters).map(([key,label])=>`<button type="button" data-forward-result-filter="${key}" aria-pressed="${key===filter}">${label} ${filterForwardRows(rows,key).length}</button>`).join('')}</div><p>篩選只改變逐筆顯示；上方成效與分組統計仍使用全部紀錄。</p>`:''}${dataError?'<p>紀錄異常，暫停展示逐筆成效；原始資料保留。</p>':visible.length?[...visible].reverse().map(r=>sampleCard(r,f.enabled)).join(''):rows.length?'<div class="empty-state"><strong>此狀態沒有紀錄</strong><button type="button" class="secondary-btn" data-forward-result-filter="all">查看全部紀錄</button></div>':'<div class="empty-state"><strong>尚無前向紀錄</strong><span>先開始本機前向追蹤，再回到交易建議重新分析幣種。舊研究紀錄不會變成成交。</span></div>'}
   `)}</div>`;
 }
+

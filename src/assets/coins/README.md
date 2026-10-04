@@ -24,3 +24,9 @@ are retained by their owners; use here is solely to identify the project.
   https://www.binance.com/en-NG/support/announcement/detail/f4077219b5a441b5bf39413c603c5a7b
 - SAGA / Saga: https://saga.xyz/safari-pinned-tab.svg (saga.svg).
   Website's declared mask icon; official site https://saga.xyz/.
+
+## Default advice list coverage — 2026-10-04
+
+Added unmodified BNB, XRP, DOGE, ADA, LINK, AVAX, LTC, BCH, DOT, APT, TRX, ARB, OP and PEPE SVGs from the same Cryptofonts revision above. The included GPL-3.0 license applies to these fourteen assets as well.
+
+The exact `1000PEPEUSDT` mapping uses PEPE's identification image while preserving `1000PEPE` and explicitly showing the 1,000-unit contract multiplier. No generic stripping of numeric prefixes is permitted. Unmapped symbols use text, not guessed assets.

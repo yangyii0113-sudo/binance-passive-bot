@@ -2,6 +2,10 @@ import { escapeHtml as esc } from './ui.js';
 
 // Exact reviewed identities only. Never guess a logo URL or strip a contract multiplier.
 const identities = {
+ BNB:['BNB','bnb.svg'],XRP:['XRP','xrp.svg'],DOGE:['Dogecoin','doge.svg'],ADA:['Cardano','ada.svg'],
+ LINK:['Chainlink','link.svg'],AVAX:['Avalanche','avax.svg'],LTC:['Litecoin','ltc.svg'],BCH:['Bitcoin Cash','bch.svg'],
+ DOT:['Polkadot','dot.svg'],APT:['Aptos','apt.svg'],TRX:['TRON','trx.svg'],ARB:['Arbitrum','arb.svg'],OP:['Optimism','op.svg'],
+ PEPE:['Pepe','pepe.svg'],'1000PEPE':['Pepe · 1,000 倍合約單位','pepe.svg'],
  BTC:['Bitcoin','btc.svg'], ETH:['Ethereum','eth.svg'], SOL:['Solana','sol.svg'],
  QNT:['Quant','qnt.svg'], SEI:['Sei','sei.svg'], NEAR:['NEAR','near.svg'],
  SUI:['Sui','sui.svg'], ENA:['Ethena','ena.svg'], WLD:['World','wld.svg'],

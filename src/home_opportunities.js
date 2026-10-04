@@ -80,7 +80,7 @@ function actionCard(row,{watched,busy,now}) {
  const ready=row.key==='plan',status=labels[row.key];
  return `<article class="home-opportunity-card home-opportunity-${row.key}" data-home-opportunity="${esc(row.symbol)}" aria-label="${esc(row.symbol)} 首頁候選">
    <div class="home-opportunity-heading">${coinIdentity(row.symbol,{large:true})}<button type="button" class="home-watch-toggle" data-home-watch-symbol="${esc(row.symbol)}" aria-pressed="${watched.includes(row.symbol)}" aria-label="${watched.includes(row.symbol)?'取消關注':'關注'} ${esc(row.symbol)}">${watched.includes(row.symbol)?'★ 已關注':'☆ 關注'}</button></div>
-   <div class="home-entry-state" data-home-entry-state="${row.key}"><strong>${status}</strong></div>
+   <div class="home-entry-state ${ready?'priority-entry':''}" data-home-entry-state="${row.key}" ${ready?'data-priority-plan="true"':''}><strong>${ready?'★ 優先關注・等待觸發':status}</strong>${ready?'<small>條件已通過 · 僅模擬，尚未成交</small>':''}</div>
    ${row.actionSummary||`<p class="action-next"><b>下一步</b> ${esc(row.key==='empty'?'先核對三策略與行情時效。':row.reason)}</p>`}
    ${ready?planCard(row.plans[0],row):''}
    ${ready&&row.plans.length>1?`<details class="core-disclosure" data-search="other-plans-${esc(row.symbol)}"><summary>其他獨立策略 ${row.plans.length-1} 個 · 不累加部位</summary>${row.plans.slice(1).map(p=>planCard(p,row,true)).join('')}</details>`:''}

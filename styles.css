@@ -2671,3 +2671,6 @@ button, a, input, select, summary { scroll-margin-block:16px 110px; }
 .home-ready-plan .price-map-levels{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
 .home-ready-plan .price-map-levels dd{font-size:14px}.home-ready-plan .price-map-levels dt{font-size:11px}
 @media(max-width:700px){.home-ready-plan .price-map-levels dd{font-size:13px}.home-ready-plan .price-map-levels dt{font-size:10px}}
+/* Priority means a checked plan awaiting a new trigger, never an unconditional buy. */
+.action-workspace .home-entry-state.priority-entry strong,.decision-verdict.priority-entry strong{background:#edc769;color:#17251f;border:1px solid #ffe7a4;box-shadow:0 0 0 3px #edc76915;font-weight:800;letter-spacing:.02em}
+.home-entry-state.priority-entry small{display:block;font-size:11px;line-height:1.6;color:#cbbd96;padding:6px 3px 0}

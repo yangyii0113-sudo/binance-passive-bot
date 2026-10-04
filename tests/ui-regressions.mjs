@@ -460,3 +460,22 @@ test('price map spells out all price levels and reverses short price order',asyn
  assert.ok(short.indexOf('data-price-level="entry"')<short.indexOf('data-price-level="stop"'));
  assert.equal(planPriceMapView({...long,stop:101},98),'');
 });
+
+test('default advice symbols have exact bundled identity including explicit PEPE multiplier',async()=>{
+ const {coinInfo,coinLogo}=await import('../src/coin_logo.js');
+ for(const symbol of ['BTC','ETH','SOL','BNB','XRP','DOGE','ADA','LINK','AVAX','SUI','LTC','BCH','NEAR','DOT','APT','UNI','TRX','ARB','OP','1000PEPE'])assert.match(coinLogo(symbol+'USDT'),/coin-logo-bundled/,symbol);
+ assert.equal(coinInfo('1000PEPEUSDT').ticker,'1000PEPE');
+ assert.match(coinInfo('1000PEPEUSDT').name,/1,000/);
+ assert.equal(coinInfo('1000SOLUSDT').asset,null);
+});
+
+test('priority attention appears only for a fresh eligible plan and never promises a buy',()=>{
+ const {s,now}=homeFixture();
+ const html=researchOverview(s,now);
+ assert.equal((html.match(/data-priority-plan=/g)||[]).length,1);
+ assert.match(html,/優先關注/);assert.doesNotMatch(html,/必買|趕快入場|保證獲利/);
+ for(const change of [r=>r.snapshotUntil=now,r=>r.historical=true,r=>r.row.symbol='AAAUSDT',r=>delete r.marketSnapshot,r=>r.row.analysis.strategies[0].status='WAIT']){
+  const copy=structuredClone(s);change(copy.agents.tradePlans.BBBUSDT);assert.doesNotMatch(researchOverview(copy,now),/data-priority-plan=/);
+ }
+ s.market.status='STALE';assert.doesNotMatch(researchOverview(s,now),/data-priority-plan=/);
+});

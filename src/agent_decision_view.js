@@ -45,7 +45,7 @@ export function agentDecisionCard(record, {now=Date.now(),comparison,comparisonB
   const display=adviceDisplayStatus(record,now), result=display.gate, symbol=esc(record.symbol);
   return `<article class="agent-decision-card" aria-label="${symbol} 進退場摘要">
     <div class="decision-heading">${coinIdentity(record.symbol,{large:true})}<span>短線 · 1 小時策略</span></div>
-    <div class="decision-verdict" data-advice-verdict="${result.key}"><span>目前建議</span><strong>${agentActionLabel(record,now)}</strong></div>
+    <div class="decision-verdict ${result.key==='plan'?'priority-entry':''}" data-advice-verdict="${result.key}"><span>目前建議</span><strong>${result.key==='plan'?'★ 優先關注・等待觸發':agentActionLabel(record,now)}</strong></div>
     ${strategyActionSummary(record,{now})}
     <details class="core-disclosure" data-search="decision-trend-${symbol}"><summary>趨勢與資料核對</summary>${readinessView(record,now)}${coinTrendView(record,{now})}</details>
     <p class="decision-reason" role="status">${result.key==='plan'?'僅列入條件式模擬觀察，尚未確認觸發或成交。只在下列條件與期限內觀察。':esc(display.reason)}</p>
