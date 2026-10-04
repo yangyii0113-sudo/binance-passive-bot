@@ -73,8 +73,8 @@ export function homeOpportunities(state,now=Date.now()) {
   return {...selection,rows,ready:rows.filter(r=>r.key==='plan').length,unchecked:rows.filter(r=>r.key==='empty').length};
 }
 
-function planCard(p,row) {
-  return `<div class="home-ready-plan"><div class="action-plan-heading"><strong>${esc(FAMILY_NAMES[p.key])} · ${p.side==='LONG'?'↗ 做多':'↘ 做空'}</strong><small>1 小時 · 模擬未成交</small></div>${homePlanVisual(p,row.quote)}${planDistanceView(p,row.quote)}<details class="core-disclosure home-execution-guide"><summary>進場、分批止盈與取消規則</summary><p>目前僅是有效計畫，尚未成交。啟用前向模擬後，須在有效期限內以連續新行情確認觸發；更新前已觸及進場門檻不追補。</p><p>先觸及原止損、行情過期或中斷時停止進場判定；方向衝突時暫停。新核對結果須重新通過 Gate。</p><p>第一止盈 ${formatPlanPrice(p.tp1)} 出場 50%；第二止盈 ${formatPlanPrice(p.tp2)} 退出剩餘 50%。</p>${planExitGuide(p)}</details></div>`;
+function planCard(p,row,secondary=false) {
+  return `<div class="home-ready-plan"><div class="action-plan-heading">${secondary?`<strong>${esc(FAMILY_NAMES[p.key])}</strong>`:''}<small>1 小時 · 模擬未成交</small></div>${homePlanVisual(p,row.quote)}${planDistanceView(p,row.quote)}<details class="core-disclosure home-execution-guide"><summary>進場、分批止盈與取消規則</summary><p>目前僅是有效計畫，尚未成交。啟用前向模擬後，須在有效期限內以連續新行情確認觸發；更新前已觸及進場門檻不追補。</p><p>先觸及原止損、行情過期或中斷時停止進場判定；方向衝突時暫停。新核對結果須重新通過 Gate。</p><p>第一止盈 ${formatPlanPrice(p.tp1)} 出場 50%；第二止盈 ${formatPlanPrice(p.tp2)} 退出剩餘 50%。</p>${planExitGuide(p)}</details></div>`;
 }
 function actionCard(row,{watched,busy,now}) {
  const ready=row.key==='plan',status=labels[row.key];
@@ -83,7 +83,7 @@ function actionCard(row,{watched,busy,now}) {
    <div class="home-entry-state" data-home-entry-state="${row.key}"><strong>${status}</strong></div>
    ${row.actionSummary||`<p class="action-next"><b>下一步</b> ${esc(row.key==='empty'?'先核對三策略與行情時效。':row.reason)}</p>`}
    ${ready?planCard(row.plans[0],row):''}
-   ${ready&&row.plans.length>1?`<details class="core-disclosure" data-search="other-plans-${esc(row.symbol)}"><summary>其他獨立策略 ${row.plans.length-1} 個 · 不累加部位</summary>${row.plans.slice(1).map(p=>planCard(p,row)).join('')}</details>`:''}
+   ${ready&&row.plans.length>1?`<details class="core-disclosure" data-search="other-plans-${esc(row.symbol)}"><summary>其他獨立策略 ${row.plans.length-1} 個 · 不累加部位</summary>${row.plans.slice(1).map(p=>planCard(p,row,true)).join('')}</details>`:''}
    ${ready?`<p class="action-expiry">行情快照剩 ${expiryCountdown(row.snapshotUntil,now)}<small>收盤策略剩 ${expiryCountdown(row.barUntil,now)}；先到者失效</small></p>`:''}
    ${['plan','wait','conflict'].includes(row.key)?`<button type="button" class="${ready?'primary-inline-btn':'secondary-btn'}" data-agent-advice-symbol="${esc(row.symbol)}">${ready?'核對與查看完整計畫':'查看等待條件'}</button>`:`<button type="button" class="secondary-btn" data-home-check-symbol="${esc(row.symbol)}" ${busy||row.key==='loading'?'disabled':''}>${row.key==='loading'?'正在核對…':row.key==='empty'?'核對進場條件':'重新核對'}</button>`}
    <details class="core-disclosure action-evidence" data-search="home-evidence-${esc(row.symbol)}"><summary>查看依據與其他策略</summary><p>${esc(row.reason)}</p>${row.conditions}${row.readiness}${row.evidence}<dl class="home-opportunity-market"><div><dt>24 小時動能／流動性分</dt><dd>${row.strength.toFixed(1)}／100</dd></div><div><dt>24 小時漲幅</dt><dd>+${row.change.toFixed(2)}%</dd></div><div><dt>成交額</dt><dd>${(row.volume/1e6).toFixed(1)} 百萬 USDT</dd></div></dl><small>強勢第 ${row.rank} 名；分數不是勝率。${ready?`核對期限 ${esc(displayDate(row.snapshotUntil))}`:''}</small></details>
