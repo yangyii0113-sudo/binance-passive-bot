@@ -395,3 +395,31 @@ test('surge evidence never converts momentum, stale observations or short plans 
  const before=structuredClone(s);surgeWatchView(homeModule.homeOpportunities(s,now),s.agents.tradePlans,now);assert.deepEqual(s,before);
  s.market.status='STALE';assert.doesNotMatch(surgeWatchView(homeModule.homeOpportunities(s,now),s.agents.tradePlans,now),/data-surge-candidate=/);
 });
+
+test('hunting focus excludes expired and mismatched records and prioritizes verified evidence',async()=>{
+ const {surgeWatchView}=await import('../src/surge_watch_view.js');
+ const {s,now}=homeFixture(),r=s.agents.tradePlans.BBBUSDT;
+ const o={version:'strategy-conditions-v1',closedAt:r.row.analysis.closedAt,close:98,upper:97,lower:90,averageVolume:100,lastVolume:160};
+ r.row.analysis.strategies[0].observations=o;
+ let html=surgeWatchView(homeModule.homeOpportunities(s,now),s.agents.tradePlans,now);
+ assert.match(html,/data-surge-candidate="BBBUSDT"/);
+ assert.ok(html.indexOf('data-surge-candidate="BBBUSDT"')<html.indexOf('data-surge-candidate="AAAUSDT"'));
+ r.snapshotUntil=now;
+ html=surgeWatchView(homeModule.homeOpportunities(s,now),s.agents.tradePlans,now);
+ assert.doesNotMatch(html,/data-surge-candidate="BBBUSDT"/);
+ r.snapshotUntil=now+60000;r.row.symbol='AAAUSDT';
+ assert.doesNotMatch(surgeWatchView(homeModule.homeOpportunities(s,now),s.agents.tradePlans,now),/data-surge-candidate="BBBUSDT"/);
+});
+
+test('focused filters remove duplicate hunting cards and expired plans remove execution levels',()=>{
+ const {s,now}=homeFixture();
+ let html=researchOverview(s,now);
+ assert.match(html,/進場、分批止盈與取消規則/);
+ assert.match(html,/第一止盈 110\.00 出場 50%/);
+ assert.match(html,/止損維持 <strong>95\.00 USDT/);
+ s.ui.homeOpportunityFilter='plan';html=researchOverview(s,now);
+ assert.doesNotMatch(html,/data-surge-candidate=/);
+ assert.match(html,/data-home-opportunity="BBBUSDT"/);
+ s.agents.tradePlans.BBBUSDT.snapshotUntil=now;
+ assert.doesNotMatch(researchOverview(s,now),/home-execution-guide|第一止盈 110\.00 出場 50%/);
+});
