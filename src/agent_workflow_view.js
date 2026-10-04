@@ -1,3 +1,6 @@
+import { homeCandidates } from './home_opportunities.js';
+import { marketHealthView } from './market_health_view.js';
+import { researchPipelineView } from './research_pipeline_status.js';
 import { coinIdentity } from './coin_logo.js';
 import { adviceMonitorView } from './advice_monitor_view.js';
 import { adviceDisplayStatus } from './advice_display_status.js';
@@ -19,6 +22,8 @@ export function agentAdvicePanel(state, now=Date.now(), {analysisForm=''}={}) {
   const selected=visible.find(r=>r.symbol===state.ui?.adviceSymbol) || visible.find(r=>agentPlanStatus(r,now).key==='plan') || visible[0];
   const symbol=esc(selected?.symbol || '');
   return `<section class="agent-panel-stack agent-advice-panel" aria-label="交易建議總覽">
+    ${marketHealthView(state.market,now)}
+    ${researchPipelineView(state,homeCandidates(state.market,now),now)}
     <div class="advice-intro"><strong>${records.length?`目前 ${ready.length} 檔有條件式模擬計畫`:'先選幣種，直接取得交易建議'}</strong><p>${records.length?'先選幣種，再看「目前建議」與點位。狀態不代表勝率或獲利排名。':'分析完成會直接顯示：現在該做什麼、進場條件、止盈、止損。條件不足時會清楚列出等待原因。'}</p></div>
     ${records.length?`<div class="advice-filters" role="group" aria-label="依建議狀態篩選">${filters.map(([key,label])=>`<button type="button" data-advice-filter="${key}" aria-pressed="${key===active}">${label}<span>${records.filter(r=>matches(r,key)).length}</span></button>`).join('')}</div>
       ${selected?`<div class="advice-symbols" role="group" aria-label="選擇要看的交易建議">${visible.map(r=>`<button type="button" class="advice-symbol-btn" data-agent-advice-symbol="${esc(r.symbol)}" data-advice-reason="${adviceDisplayStatus(r,now).code}" aria-pressed="${r===selected}">${coinIdentity(r.symbol)}<span class="advice-symbol-status">${agentActionLabel(r,now)}</span></button>`).join('')}</div>

@@ -425,3 +425,44 @@ test('colliding two-decimal prices have a gated precision disclosure without cha
  assert.equal(formatPlanPrice(1.2345),'1.23');assert.equal(formatPlanPrice(0.0021),'小於 0.01');
  assert.equal(exactPlanLevelsView({...p,entry:'<script>'}),'');
 });
+
+test('research pipeline separates unavailable, incomplete and completed no-plan cohorts',async()=>{
+  const {researchPipelineStatus,researchPipelineView}=await import('../src/research_pipeline_status.js');
+  const selection={rows:[{symbol:'UNIUSDT'}]},record=fixture();
+  const state={market:{status:'LIVE',cryptoOnly:true,updatedAt:new Date(now).toISOString(),contractVerifiedAt:new Date(now).toISOString()},agents:{tradePlans:{}},ui:{}};
+  assert.equal(researchPipelineStatus(state,selection,now).key,'incomplete');
+  state.agents.tradePlans.UNIUSDT=record;
+  assert.equal(researchPipelineStatus(state,selection,now).counts.plan,1);
+  record.row.analysis.strategies[0]={key:'breakout',status:'WAIT',reason:'尚未收盤突破前 20 根最高／最低價'};
+  let model=researchPipelineStatus(state,selection,now);
+  assert.equal(model.key,'no-plan'); assert.equal(model.counts.wait,1); assert.equal(model.nextClose,2401*H);
+  record.row.analysis.strategies[0].status='BLOCKED';
+  assert.equal(researchPipelineStatus(state,selection,now).key,'incomplete');
+  record.snapshotUntil=now-1;
+  assert.equal(researchPipelineStatus(state,selection,now).counts.expired,1);
+  state.market.status='ERROR';
+  model=researchPipelineStatus(state,selection,now);
+  assert.equal(model.key,'data'); assert.deepEqual(model.rows,[]); assert.deepEqual(model.counts,{});
+  assert.doesNotMatch(researchPipelineView(state,selection,now),/本輪已核對幣種尚無有效新計畫/);
+});
+test('research counts current candidate scope and selected coin without treating history as market coverage',async()=>{
+  const {researchPipelineStatus}=await import('../src/research_pipeline_status.js');
+  const s={market:{status:'LIVE',cryptoOnly:true,updatedAt:new Date(now).toISOString(),contractVerifiedAt:new Date(now).toISOString()},agents:{tradePlans:{UNIUSDT:fixture(),OLDUSDT:{status:'BLOCKED'}}},ui:{}};
+  assert.equal(researchPipelineStatus(s,{rows:[]},now).key,'no-candidate');
+  s.ui.adviceSymbol='UNIUSDT';
+  assert.equal(researchPipelineStatus(s,{rows:[]},now).counts.plan,1);
+  assert.equal(researchPipelineStatus(s,{rows:[{symbol:'UNIUSDT'}]},now).rows.length,1);
+  s.agents.tradePlans.UNIUSDT.symbol='OTHERUSDT';
+  assert.equal(researchPipelineStatus(s,{rows:[{symbol:'UNIUSDT'}]},now).counts.blocked,1);
+});
+test('manual plan failure retains source evidence without authorizing any levels',async()=>{
+  for(const code of [451,429]){
+    const r=await generateAgentTradePlan('UNIUSDT',{fetcher:async()=>({ok:false,status:code}),clock:()=>now});
+    assert.equal(r.status,'BLOCKED');assert.equal(r.marketDiagnostic.httpStatus,code);
+    assert.equal(r.marketDiagnostic.kind,code===451?'restricted':'rate');
+    assert.deepEqual(agentPlanStatus(r,now).plans,[]);
+  }
+  const r=await generateAgentTradePlan('UNIUSDT',{fetcher:async()=>{throw new TypeError('Failed to fetch');},clock:()=>now});
+  assert.equal(r.marketDiagnostic.kind,'network');assert.equal(r.marketDiagnostic.httpStatus,null);
+  assert.match(r.reason,/無法判定/);
+});

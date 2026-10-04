@@ -1,3 +1,4 @@
+import { researchPipelineView } from './research_pipeline_status.js';
 import { marketHealthView } from './market_health_view.js';
 import { validHomeWatchSymbol } from './home_preferences.js';
 import { homePlanVisual } from './plan_price_map.js';
@@ -77,7 +78,7 @@ function planCard(p,row,secondary=false) {
   return `<div class="home-ready-plan"><div class="action-plan-heading">${secondary?`<strong>${esc(FAMILY_NAMES[p.key])}</strong>`:''}<small>1 小時 · 模擬未成交</small></div>${homePlanVisual(p,row.quote)}${planDistanceView(p,row.quote)}<details class="core-disclosure home-execution-guide"><summary>進場、分批止盈與取消規則</summary><p>目前僅是有效計畫，尚未成交。啟用前向模擬後，須在有效期限內以連續新行情確認觸發；更新前已觸及進場門檻不追補。</p><p>先觸及原止損、行情過期或中斷時停止進場判定；方向衝突時暫停。新核對結果須重新通過 Gate。</p><p>第一止盈 ${formatPlanPrice(p.tp1)} 出場 50%；第二止盈 ${formatPlanPrice(p.tp2)} 退出剩餘 50%。</p>${planExitGuide(p)}</details></div>`;
 }
 function actionCard(row,{watched,busy,now}) {
- const ready=row.key==='plan',status=labels[row.key];
+ const ready=row.key==='plan',status=row.label||labels[row.key];
  return `<article class="home-opportunity-card home-opportunity-${row.key}" data-home-opportunity="${esc(row.symbol)}" aria-label="${esc(row.symbol)} 首頁候選">
    <div class="home-opportunity-heading">${coinIdentity(row.symbol,{large:true})}<button type="button" class="home-watch-toggle" data-home-watch-symbol="${esc(row.symbol)}" aria-pressed="${watched.includes(row.symbol)}" aria-label="${watched.includes(row.symbol)?'取消關注':'關注'} ${esc(row.symbol)}">${watched.includes(row.symbol)?'★ 已關注':'☆ 關注'}</button></div>
    <div class="home-entry-state ${ready?'priority-entry':''}" data-home-entry-state="${row.key}" ${ready?'data-priority-plan="true"':''}><strong>${ready?'✓ 條件成立・待觸發':status}</strong>${ready?'<small>條件已通過 · 僅模擬，尚未成交</small>':''}</div>
@@ -101,6 +102,7 @@ export function homeOpportunityView(state,now=Date.now()) {
  const focus=ordered.slice(0,3),other=ordered.slice(3),options={watched,busy,now};
  return `<section class="home-opportunities action-workspace" aria-label="強勢幣與進場條件">
    ${marketHealthView(state.market,now)}
+   ${researchPipelineView(state,model,now)}
    <div class="research-home-actions"><button type="button" class="primary-inline-btn" data-home-check-all ${busy?'disabled':''}>${batch.running?`核對中 ${batch.completed||0}／${batch.total||0}`:'更新並核對前 10 檔'}</button><a class="secondary-btn" href="#/advice">全部交易建議</a></div>
    ${batch.running||batch.error||batch.completed?`<p class="home-check-progress" role="status">${batch.error?esc(batch.error):batch.running?'正在逐檔核對進場條件…':`已核對 ${batch.completed} 檔${batch.failed?`，${batch.failed} 檔未完成`:''}；依各檔時效判斷。`}</p>`:''}
    ${model.rows.length?`<div class="home-opportunity-filters" role="group" aria-label="首頁候選篩選"><button type="button" data-home-opportunity-filter="all" aria-pressed="${filter==='all'}">全部候選 ${model.rows.length}</button><button type="button" data-home-opportunity-filter="plan" aria-pressed="${filter==='plan'}">有有效計畫 ${model.ready}</button><button type="button" data-home-opportunity-filter="watch" aria-pressed="${filter==='watch'}">關注候選 ${model.rows.filter(r=>watched.includes(r.symbol)).length}</button></div>`:''}

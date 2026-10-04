@@ -1,3 +1,4 @@
+import { fetchMarketJson } from './market_request.js';
 import { scanPullbacks } from './trend_pullback.js';
 import { coinCategory } from './coin_analysis.js';
 import { researchRiskScenario } from './research_risk_view.js';
@@ -12,9 +13,7 @@ export async function generateAgentTradePlan(value, { fetcher=fetch, scanner=sca
   const symbol = normalizePlanSymbol(value);
   if (!/^[\p{L}\p{N}]+USDT$/u.test(symbol)) return blocked(symbol, '請選擇有效的穩定幣本位合約');
   try {
-    const response = await fetcher('https://fapi.binance.com/fapi/v1/exchangeInfo', {cache:'no-store',signal:AbortSignal.timeout(15000)});
-    if (!response.ok) return blocked(symbol, '合約清單無法讀取，停止產生點位');
-    const contracts = await response.json();
+    const contracts = await fetchMarketJson('contracts',{fetcher,timeoutMs:15000});
     const contract = contracts?.symbols?.find(x=>x.symbol===symbol);
     if (!contract || contract.status!=='TRADING' || contract.contractType!=='PERPETUAL' || contract.quoteAsset!=='USDT' || contract.underlyingType!=='COIN') {
       return blocked(symbol, '尚未確認為可交易的加密貨幣永續合約，停止產生點位');
@@ -54,8 +53,8 @@ export async function generateAgentTradePlan(value, { fetcher=fetch, scanner=sca
       return plan;
     })}};
     return record;
-  } catch {
-    return blocked(symbol, '無法取得完整合約行情；請稍後重新產生交易計畫');
+  } catch(error) {
+    return {...blocked(symbol, error?.marketDiagnostic?error.message:'無法取得完整合約行情；請稍後重新產生交易計畫'),...(error?.marketDiagnostic?{marketDiagnostic:error.marketDiagnostic}:{})};
   }
 }
 
