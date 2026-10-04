@@ -2687,3 +2687,4 @@ summary { padding-block:10px; }
 @media (pointer:coarse), (max-width:1100px) {
   input:not([type=checkbox]):not([type=radio]):not([type=range]), select, textarea {font-size:16px!important;}
 }
+#app button, #app summary { min-height:44px; }
