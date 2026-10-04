@@ -81,3 +81,19 @@ export function strategyConditionSummaryView(record,{now=Date.now()}={}) {
     return `<div><strong>${esc(names[p.key]||p.key)} · ${esc(stateLabel(p,gate))}</strong><span>${esc(compactValue(p,o))}</span>${flags.length?`<small>${flags.map(([label,v])=>`${label}：${mark(v)[1]}`).join(' · ')}</small>`:''}</div>`;
   }).join('')}<small>已收盤棒觀測；分項通過不等於可進場，參考值不是進場價。</small></div>`;
 }
+
+// One primary strategy checklist; detailed independent strategies remain available below.
+export function strategyActionSummary(record,{now=Date.now()}={}) {
+ const gate=agentPlanStatus(record,now),a=record?.row?.analysis;
+ if(!['plan','wait'].includes(gate.key)||record.row.symbol!==record.symbol)return '';
+ const display=adviceDisplayStatus(record,now);
+ const p=gate.plans[0]||a.strategies.find(p=>p.key===display.primary?.familyKey);
+ if(!p)return '';
+ const o=observations(p,a);
+ const flags=!o?[]:p.key==='structured'?[['趨勢方向',['LONG','SHORT'].includes(o.side)],['觸及均線',o.touched],['收回均線',o.reclaimed],['同向收盤',o.bodyAligned],['追價距離',o.withinAtr]]:p.key==='breakout'?[['收盤突破',o.breakout],['突破量能',o.volumePassed]]:[['震盪環境',o.rangePassed],['偏離收回',o.longReclaim===true||o.shortReclaim===true?true:o.longReclaim===false&&o.shortReclaim===false?false:null]];
+ const passed=flags.filter(([,v])=>v===true).map(([label])=>label);
+ const missing=flags.find(([,v])=>v!==true);
+ const side=['LONG','SHORT'].includes(p.side)?p.side:['LONG','SHORT'].includes(o?.side)?o.side:null;
+ const title=names[p.key]+(side?' · '+(side==='LONG'?'↗ 做多':'↘ 做空'):' · 方向待確認');
+ return `<section class="strategy-action-summary" aria-label="主要策略確認清單"><strong>${esc(title)}</strong><div class="action-checks">${gate.key==='plan'?'<span class="pass">✓ 收盤條件</span><span class="pass">✓ 時效與風報</span><span class="pending">◷ 等待新觸發</span>':`${passed.slice(0,2).map(label=>`<span class="pass">✓ ${esc(label)}</span>`).join('')}<span class="pending">◷ ${esc(missing?.[0]||display.label)}</span>`}</div>${gate.key==='wait'&&o?`<small>${esc(compactValue(p,o))}</small>`:''}<p class="action-next"><b>下一步</b> ${esc(gate.key==='plan'?'重新核對後觀察新觸發；目前尚未成交。':display.next)}</p></section>`;
+}

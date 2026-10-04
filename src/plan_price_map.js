@@ -15,10 +15,12 @@ export function planPriceMap(plan, snapshotPrice) {
 export function planPriceMapView(plan,quote) {
   const map=planPriceMap(plan,quote);if(!map)return '';
   const segment=(a,b,tone)=>`<span class="price-map-zone ${tone}" style="left:${Math.min(a,b)}%;width:${Math.abs(a-b)}%"></span>`;
+  const levels=[['stop','止損'],['entry','進場門檻'],['tp1','止盈一'],['tp2','止盈二']].sort((a,b)=>plan[a[0]]-plan[b[0]]);
   return `<div class="plan-price-map" aria-label="價格位置圖，價格由左向右遞增">
-    <div class="price-map-caption"><span>價格位置 · ${plan.side==='LONG'?'做多':'做空'}</span><span>低價 → 高價</span></div>
-    <div class="price-map-track" aria-hidden="true">${segment(map.stop,map.entry,'risk')}${segment(map.entry,map.tp2,'reward')}${[['stop','損'],['entry','進'],['tp1','一'],['tp2','二']].map(([key,label])=>`<i class="price-map-mark ${key}" style="left:${map[key]}%"><b>${label}</b></i>`).join('')}${map.quote===null?'':`<i class="price-map-quote" style="left:${map.quote}%"></i>`}</div>
-    <p class="price-map-key">損＝止損 · 進＝進場 · 一／二＝止盈${plan.tp1===plan.tp2?'（目標重合）':''}${map.quote===null?' · 參考價待更新':`<br>● 核對時參考價 ${esc(formatPlanPrice(quote))} USDT · 非即時串流`}</p>
+    <div class="price-map-caption"><span>${plan.side==='LONG'?'↗ 做多':'↘ 做空'} · USDT</span><span>低價 → 高價</span></div>
+    <div class="price-map-track" aria-hidden="true">${segment(map.stop,map.entry,'risk')}${segment(map.entry,map.tp2,'reward')}${levels.map(([key])=>`<i class="price-map-mark ${key}" style="left:${map[key]}%"></i>`).join('')}${map.quote===null?'':`<i class="price-map-quote" style="left:${map.quote}%"></i>`}</div>
+    <dl class="price-map-levels">${levels.map(([key,label])=>`<div class="level-${key}" data-price-level="${key}"><dt>${label}</dt><dd>${esc(formatPlanPrice(plan[key]))}</dd></div>`).join('')}</dl>
+    <p class="price-map-key">${map.quote===null?'參考價待更新':`● 核對時參考價 <strong>${esc(formatPlanPrice(quote))}</strong> · 非即時串流`}${plan.tp1===plan.tp2?' · 目標重合':''}</p>
   </div>`;
 }
 export function homePlanVisual(plan,quote) {

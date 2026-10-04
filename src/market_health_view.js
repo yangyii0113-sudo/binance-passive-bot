@@ -18,5 +18,6 @@ export function marketHealth(market={},now=Date.now()) {
 
 export function marketHealthView(market={},now=Date.now()) {
   const h=marketHealth(market,now),error=market.error?.message||(typeof market.error==='string'?market.error:'');
+  if(h.key==='fresh')return `<details class="market-health market-health-compact" data-market-health="fresh" data-search="market-health" aria-label="行情資料健康狀態"><summary>● 行情已核對 <small>${h.age} 秒前</small></summary><p>來源：Binance USD-M 公開行情</p><small>最後更新：${esc(displayDate(h.at))}</small><p>行情可用不代表策略成立；進場仍依各幣種的有效判定。</p></details>`;
   return `<section class="market-health" data-market-health="${h.key}" aria-label="行情資料健康狀態"><strong>${esc(h.reason)}</strong><span>來源：Binance USD-M 公開行情</span><small>最後更新：${Number.isFinite(h.at)?esc(displayDate(h.at)):'尚無紀錄'} · 資料年齡：${h.age===null?'無法核對':`${h.age} 秒`}</small>${h.key==='unavailable'?'<p>資料尚不可用，不代表市場沒有交易機會；暫不列出候選與點位。</p>':'<small>行情可用不代表策略成立；進場仍依各幣種的有效判定。</small>'}${error?`<details data-search="market-health-error"><summary>查看行情錯誤</summary><p>${esc(error)}</p>${market.marketDiagnostic?`<small>檢查端點 ${esc(market.marketDiagnostic.endpoint)} · ${esc(displayDate(market.marketDiagnostic.checkedAt))}${Number.isInteger(market.marketDiagnostic.httpStatus)?` · HTTP ${market.marketDiagnostic.httpStatus}`:' · 未取得 HTTP 狀態'}</small>`:''}</details>`:''}</section>`;
 }

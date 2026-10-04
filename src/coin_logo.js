@@ -1,17 +1,24 @@
 import { escapeHtml as esc } from './ui.js';
 
-const bundled = new Set(['btc','eth','sol','qnt','sei','near','sui','ena','wld','uni','lyn','saga']);
-
-// Shared by market rows, home candidates and advice. Keep identity visible even
-// while an external image is loading or unavailable.
-export function coinLogo(symbol, fallback, large = false) {
-  const base = String(symbol || '').toUpperCase().replace(/\s|\//g, '').replace(/USDT$/, '').replace(/^1000/, '');
-  const code = /^[A-Z0-9]+$/.test(base) ? base.toLowerCase() : '';
-  const label = esc(base || '幣種');
-  const text = esc(fallback || Array.from(base).slice(0, 3).join('') || '•');
-  const src = bundled.has(code) ? new URL(`./assets/coins/${code}.${code==='lyn'?'ico':'svg'}`, import.meta.url).href : `https://assets.coincap.io/assets/icons/${code}@2x.png`;
-  return `<span class="coin-logo ${large ? 'large' : ''}" aria-hidden="true">
-    <span class="coin-logo-fallback" title="${label} 代號" ${bundled.has(code)?'hidden':''}>${text}</span>
-    ${code ? `<img class="${bundled.has(code) ? 'coin-logo-bundled' : ''}" src="${esc(src)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onload="this.style.opacity='1';this.previousElementSibling.hidden=true" onerror="this.hidden=true;this.previousElementSibling.hidden=false">` : ''}
-  </span>`;
+// Exact reviewed identities only. Never guess a logo URL or strip a contract multiplier.
+const identities = {
+ BTC:['Bitcoin','btc.svg'], ETH:['Ethereum','eth.svg'], SOL:['Solana','sol.svg'],
+ QNT:['Quant','qnt.svg'], SEI:['Sei','sei.svg'], NEAR:['NEAR','near.svg'],
+ SUI:['Sui','sui.svg'], ENA:['Ethena','ena.svg'], WLD:['World','wld.svg'],
+ UNI:['Uniswap','uni.svg'], LYN:['Everlyn AI','lyn.ico'], SAGA:['Saga','saga.svg']
+};
+export function coinInfo(symbol) {
+ const contract=String(symbol||'').toUpperCase().replace(/\s|\//g,'');
+ const valid=/^[\p{L}\p{N}]+(?:USDT)?$/u.test(contract);
+ const ticker=valid?contract.replace(/USDT$/,''):'未知';
+ const match=valid?identities[ticker]:null;
+ return {contract:valid?contract:'未知幣種',ticker,name:match?.[0]||'',asset:match?.[1]||null};
+}
+export function coinLogo(symbol, _fallback, large=false) {
+ const info=coinInfo(symbol),src=info.asset?new URL(`./assets/coins/${info.asset}`,import.meta.url).href:null;
+ return `<span class="coin-logo ${large?'large':''}" aria-hidden="true"><span class="coin-logo-fallback" title="${esc(info.ticker)} 代號">${esc(info.ticker)}</span>${src?`<img class="coin-logo-bundled" src="${esc(src)}" alt="" loading="lazy" decoding="async" onload="this.style.opacity='1';this.previousElementSibling.hidden=true" onerror="this.hidden=true;this.previousElementSibling.hidden=false">`:''}</span>`;
+}
+export function coinIdentity(symbol,{large=false}={}) {
+ const info=coinInfo(symbol);
+ return `<div class="coin-identity">${coinLogo(symbol,null,large)}<div class="coin-name"><strong>${esc(info.ticker)}</strong>${info.name?`<span>${esc(info.name)}</span>`:''}<small>${esc(info.contract)}</small></div></div>`;
 }

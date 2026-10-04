@@ -9,7 +9,7 @@ ten assets. Project names and logos remain their respective owners' trademarks.
 These image files are used for identification, not endorsement.
 
 Only exact ticker mappings listed in coin_logo.js use these files. Other
-symbols retain the existing external source with a text fallback. Do not
+symbols display their complete ticker as a text fallback, with no guessed external URL. Do not
 substitute a similarly named token's logo for a missing asset.
 
 ## Project website identification assets

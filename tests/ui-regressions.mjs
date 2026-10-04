@@ -95,7 +95,7 @@ test('one coin has one main card and one comparison action', () => {
   s.pullback={rows:[{symbol:'UNIUSDT',status:'WAIT',reason:'等待收盤條件'}]};
   const before=structuredClone(s);
   const html=pages.strategies(s);
-  assert.equal((html.match(/<strong>UNIUSDT<\/strong>/g)||[]).length,1);
+  assert.equal((html.match(/<strong>UNI<\/strong>/g)||[]).length,1);
   assert.equal((html.match(/data-pullback-compare="UNIUSDT"/g)||[]).length,1);
   assert.doesNotMatch(html,/strategy-symbol">UNIUSDT/);
   assert.match(html,/strategy-symbol">ETHUSDT/);
@@ -185,7 +185,8 @@ test('home ranks liquid rising candidates separately from gated entry status',()
   const {s,now}=homeFixture();s.ui.homeOpportunitySort='strength';const before=structuredClone(s),html=researchOverview(s,now);
   assert.match(html,/data-home-opportunity="AAAUSDT"/);assert.match(html,/data-home-opportunity="BBBUSDT"/);
   assert.doesNotMatch(html,/data-home-opportunity="(?:SPIKE|LOW|DOWN)USDT"/);
-  assert.ok(html.indexOf('data-home-opportunity="AAAUSDT"')<html.indexOf('data-home-opportunity="BBBUSDT"'));
+  assert.ok(html.indexOf('data-home-opportunity="BBBUSDT"')<html.indexOf('data-home-opportunity="AAAUSDT"'));
+  assert.equal(homeModule.homeOpportunities(s,now).rows[0].symbol,'AAAUSDT','configured ranking remains intact beneath plan priority');
   assert.match(html,/data-home-check-symbol="AAAUSDT"/);assert.match(html,/data-agent-advice-symbol="BBBUSDT"/);
   assert.match(html,/動能／流動性排序/);assert.match(html,/進場條件排序/);assert.match(html,/分數不是勝率/);
   assert.deepEqual(s,before);
@@ -422,4 +423,40 @@ test('focused filters remove duplicate hunting cards and expired plans remove ex
  assert.match(html,/data-home-opportunity="BBBUSDT"/);
  s.agents.tradePlans.BBBUSDT.snapshotUntil=now;
  assert.doesNotMatch(researchOverview(s,now),/home-execution-guide|第一止盈 110\.00 出場 50%/);
+});
+
+
+test('action focus shows three unique candidates with valid plans first and keeps the rest accessible',()=>{
+ const {s,now}=homeFixture();s.ui.homeOpportunitySort='strength';
+ s.market.universeRows.push(['','DDD / USDT','100',2,2e7,74],['','EEE / USDT','100',1,2e7,72]);
+ const html=researchOverview(s,now),focus=html.match(/data-action-focus[\s\S]*?<\/div><!-- action-focus-end -->/)?.[0];
+ assert.ok(focus,'dedicated action focus');
+ assert.equal((focus.match(/data-home-opportunity=/g)||[]).length,3);
+ assert.ok(focus.indexOf('BBBUSDT')<focus.indexOf('AAAUSDT'),'eligible plan stays above momentum-only candidates');
+ assert.match(html,/<details[^>]*data-search="other-candidates"[^>]*>/);
+ assert.doesNotMatch(html,/data-surge-candidate=/);
+ for(const symbol of ['AAA','BBB','CCC','DDD','EEE'])assert.equal((html.match(new RegExp('data-home-opportunity="'+symbol+'USDT"','g'))||[]).length,1);
+});
+
+test('coin identity only uses reviewed local mappings and keeps the complete unknown symbol',async()=>{
+ const {coinLogo,coinIdentity}=await import('../src/coin_logo.js');
+ assert.doesNotMatch(coinLogo('1000SOLUSDT'),/<img|https:/,'do not strip contract multipliers into an unrelated logo');
+ assert.match(coinLogo('1000SOLUSDT'),/>1000SOL</);
+ assert.doesNotMatch(coinLogo('UNKNOWNUSDT'),/<img|https:/);
+ assert.match(coinLogo('SOLUSDT'),/coins\/sol.svg/);
+ assert.doesNotMatch(coinLogo('SOLUSDT'),/coin-logo-fallback[^>]*hidden/,'identity is visible while image loads');
+ assert.match(coinIdentity('SOLUSDT'),/Solana/);
+ assert.match(coinIdentity('SOLUSDT'),/>SOL</);
+ assert.doesNotMatch(coinLogo('<img onerror=alert(1)>USDT'),/<img/);
+});
+
+test('price map spells out all price levels and reverses short price order',async()=>{
+ const {planPriceMapView}=await import('../src/plan_price_map.js');
+ const long={key:'breakout',side:'LONG',entry:100,stop:95,tp1:110,tp2:120};
+ const html=planPriceMapView(long,98);
+ for(const text of ['止損','進場門檻','止盈一','止盈二','核對時參考價'])assert.ok(html.includes(text));
+ const short=planPriceMapView({...long,side:'SHORT',stop:105,tp1:90,tp2:80},102);
+ assert.ok(short.indexOf('data-price-level="tp2"')<short.indexOf('data-price-level="entry"'));
+ assert.ok(short.indexOf('data-price-level="entry"')<short.indexOf('data-price-level="stop"'));
+ assert.equal(planPriceMapView({...long,stop:101},98),'');
 });

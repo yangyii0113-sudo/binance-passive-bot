@@ -1,4 +1,4 @@
-import { coinLogo } from './coin_logo.js';
+import { coinIdentity } from './coin_logo.js';
 import { readinessView } from './advice_monitor_view.js';
 import { adviceDisplayStatus } from './advice_display_status.js';
 import { agentPlanStatus } from './agent_trade_plan.js';
@@ -8,7 +8,7 @@ import { coinTrendView } from './coin_trend_view.js';
 import { agentComparisonView } from './agent_comparison_view.js';
 import { escapeHtml as esc, displayDate } from './ui.js';
 import { formatPlanPrice as quote, priceMove, planExitGuide, exactPlanLevelsView } from './plan_levels_view.js';
-import { strategyEvidenceView } from './strategy_evidence_view.js';
+import { strategyActionSummary, strategyEvidenceView } from './strategy_evidence_view.js';
 
 // Presentation only: the existing gate is the sole source of displayable levels.
 export function agentPlanPresentation(record, now=Date.now()) {
@@ -44,10 +44,10 @@ export function agentActionLabel(record, now=Date.now()) {
 export function agentDecisionCard(record, {now=Date.now(),comparison,comparisonBusy=false}={}) {
   const display=adviceDisplayStatus(record,now), result=display.gate, symbol=esc(record.symbol);
   return `<article class="agent-decision-card" aria-label="${symbol} 進退場摘要">
-    <div class="decision-heading"><div class="coin-identity">${coinLogo(record.symbol,undefined,true)}<h3>${symbol}</h3></div><span>短線 · 1 小時策略</span></div>
+    <div class="decision-heading">${coinIdentity(record.symbol,{large:true})}<span>短線 · 1 小時策略</span></div>
     <div class="decision-verdict" data-advice-verdict="${result.key}"><span>目前建議</span><strong>${agentActionLabel(record,now)}</strong></div>
-    ${readinessView(record,now)}
-    ${coinTrendView(record,{now})}
+    ${strategyActionSummary(record,{now})}
+    <details class="core-disclosure"><summary>趨勢與資料核對</summary>${readinessView(record,now)}${coinTrendView(record,{now})}</details>
     <p class="decision-reason" role="status">${result.key==='plan'?'僅列入條件式模擬觀察，尚未確認觸發或成交。只在下列條件與期限內觀察。':esc(display.reason)}</p>
     ${display.details.length?`<p class="decision-next"><strong>下一步：</strong>${esc(display.next)}</p>`:''}
     ${result.key==='plan'?'':`<details class="core-disclosure" data-search="decision-evidence-${symbol}"><summary>查看平台判定依據</summary>${strategyEvidenceView(record,{now})}</details>`}
