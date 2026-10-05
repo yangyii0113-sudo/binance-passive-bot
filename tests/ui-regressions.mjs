@@ -566,3 +566,12 @@ test('research strategy summaries are concise while the complete waiting reason 
  assert.ok(summary);assert.doesNotMatch(summary,/這段完整原因/);
  assert.match(html,/這段完整原因保留在展開依據/);
 });
+
+
+test('home waiting verdict retains an explicit state beside its specific missing condition',()=>{
+ const {s,now}=homeFixture();
+ s.agents.tradePlans.BBBUSDT.row.analysis.strategies[0].status='WAIT';
+ const html=homeModule.homeOpportunityView(s,now);
+ assert.match(html,/data-home-entry-state="wait"[^>]*><strong>◷ 等待確認 · /);
+ assert.doesNotMatch(html,/plan-price-map/);
+});
