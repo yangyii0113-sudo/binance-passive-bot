@@ -575,3 +575,15 @@ test('home waiting verdict retains an explicit state beside its specific missing
  assert.match(html,/data-home-entry-state="wait"[^>]*><strong>◷ 等待確認 · /);
  assert.doesNotMatch(html,/plan-price-map/);
 });
+
+
+test('late logo load never hides the identity fallback after image failure',async()=>{
+ const {coinLogo}=await import('../src/coin_logo.js');
+ const html=coinLogo('SOLUSDT');
+ const load=new Function(html.match(/onload="([^"]+)"/)[1]);
+ const fail=new Function(html.match(/onerror="([^"]+)"/)[1]);
+ const image={hidden:false,style:{},previousElementSibling:{hidden:false}};
+ load.call(image);assert.equal(image.previousElementSibling.hidden,true);
+ fail.call(image);assert.equal(image.hidden,true);assert.equal(image.previousElementSibling.hidden,false);
+ load.call(image);assert.equal(image.previousElementSibling.hidden,false,'a late load must not blank both image and ticker');
+});

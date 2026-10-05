@@ -51,9 +51,10 @@ export function coinInfo(symbol) {
 }
 export function coinLogo(symbol, _fallback, large=false) {
  const info=coinInfo(symbol),src=info.asset?new URL(`./assets/coins/${info.asset}`,import.meta.url).href:info.logoUrl;
- return `<span class="coin-logo ${large?'large':''}" aria-hidden="true"><span class="coin-logo-fallback" title="${esc(info.ticker)} 代號">${esc(info.ticker)}</span>${src?`<img class="coin-logo-bundled" src="${esc(src)}" alt="" referrerpolicy="no-referrer" loading="lazy" decoding="async" onload="this.style.opacity='1';this.previousElementSibling.hidden=true" onerror="this.hidden=true;this.previousElementSibling.hidden=false">`:''}</span>`;
+ return `<span class="coin-logo ${large?'large':''}" aria-hidden="true"><span class="coin-logo-fallback" title="${esc(info.ticker)} 代號">${esc(info.ticker)}</span>${src?`<img class="coin-logo-bundled" src="${esc(src)}" alt="" referrerpolicy="no-referrer" loading="lazy" decoding="async" onload="if(!this.hidden){this.style.opacity='1';this.previousElementSibling.hidden=true}" onerror="this.hidden=true;this.previousElementSibling.hidden=false">`:''}</span>`;
 }
 export function coinIdentity(symbol,{large=false}={}) {
  const info=coinInfo(symbol);
  return `<div class="coin-identity">${coinLogo(symbol,null,large)}<div class="coin-name"><strong>${esc(info.ticker)}</strong>${info.name?`<span>${esc(info.name)}</span>`:''}<small>${esc(info.contract)}</small></div></div>`;
 }
+
