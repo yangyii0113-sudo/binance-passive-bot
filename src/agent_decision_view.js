@@ -1,3 +1,4 @@
+import { huntView } from './hunt_analysis.js';
 import { planPriceMapView } from './plan_price_map.js';
 import { coinIdentity } from './coin_logo.js';
 import { readinessView } from './advice_monitor_view.js';
@@ -49,6 +50,7 @@ export function agentDecisionCard(record, {now=Date.now(),comparison,comparisonB
     <div class="decision-heading">${coinIdentity(record.symbol,{large:true})}<span>短線 · 1 小時策略</span></div>
     <div class="decision-verdict ${result.key==='plan'?'priority-entry':''}" data-advice-verdict="${result.key}"><span>目前建議</span><strong>${result.key==='plan'?'✓ 條件成立・待觸發':agentActionLabel(record,now)}</strong></div>
     ${strategyActionSummary(record,{now,includeNext:false})}
+    ${result.key==='plan'&&record.row.analysis.strategies.some(p=>p.status==='BLOCKED')?'<p class="guard-note" role="status">部分策略缺資料，該策略暫停；僅顯示已通過核對的獨立計畫。</p>':''}
     <p class="decision-reason" role="status">${result.key==='plan'?'僅列入條件式模擬觀察，尚未確認觸發或成交。只在下列條件與期限內觀察。':esc(display.reason)}</p>
 
     ${result.key==='plan'?'':`<details class="core-disclosure" data-search="decision-evidence-${symbol}"><summary>查看平台判定依據</summary>${strategyEvidenceView(record,{now})}</details>`}
@@ -76,7 +78,7 @@ export function agentDecisionCard(record, {now=Date.now(),comparison,comparisonB
     <details class="core-disclosure"><summary>歷史盈利證據與三策略比較</summary>${agentComparisonView(comparison,record.symbol,{now,compact:true,busy:comparisonBusy,allowed:record.status==='LIVE'&&record.row?.analysis?.status==='VALID'})}</details>
     <p class="decision-next"><strong>下一步：</strong>${esc(display.next)}</p>
     <div class="decision-actions"><button type="button" class="primary-inline-btn" data-agent-plan-refresh="${symbol}" ${result.key==='loading'?'disabled':''}>${result.key==='loading'?'核對中…':'更新這檔建議'}</button><button type="button" class="secondary-btn" data-agent-plan-open="${symbol}">查看完整策略依據</button></div>
-    <details class="core-disclosure" data-search="decision-trend-${symbol}"><summary>趨勢與資料核對</summary>${readinessView(record,now)}${coinTrendView(record,{now})}</details>
+    ${record?.historical||record.status!=='LIVE'?'':huntView(record?.row?.analysis,now)}<details class="core-disclosure" data-search="decision-trend-${symbol}"><summary>趨勢與資料核對</summary>${readinessView(record,now)}${coinTrendView(record,{now})}</details>
     <details class="core-disclosure" data-search="advice-integrity-${symbol}"><summary>資料狀態與核對時間</summary>${agentPlanStateView(record,now)}<p>行情核對：${Number.isFinite(record.checkedAt)?displayDate(record.checkedAt):'尚未完成'}。從行情請求開始計算，點位核對最長一分鐘；換根後需重新分析。研究價格未對齊交易所委託精度。</p></details>
     <p class="decision-lock">真實下單鎖定 · 正式帳本、最新淨值與完整部位尚未核對。</p>
   </article>`;

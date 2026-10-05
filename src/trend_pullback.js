@@ -1,4 +1,4 @@
-import { rankStrongRows } from './strong_candidates.js';
+import { rankResearchRows } from './strong_candidates.js';
 import { analyzeCoin } from './coin_analysis.js';
 import { refineTargets } from './target_analysis.js';
 // TP01 is an isolated research scanner. No order or production execution calls.
@@ -40,13 +40,13 @@ export function pullbackPlan({hourly=[],fourHourly=[],now=Date.now()}={}) {
     return {status:'SETUP',side,entry,stop,atr:volatility,tp1:entry+sign*risk,tp2:entry+sign*2*risk,signalAt:b.end,expiresAt:b.end+1+H,reason:'研究條件成立；等待下一根 1 小時 K 線突破進場門檻，尚未確認成交',observations};
   } catch(e) {return {status:'BLOCKED',diagnosticReason:'dataBlocked',reason:e.message};}
 }
-// Rank only fresh, rising crypto perpetuals; never fill gaps with cached/mock rows.
+// Fresh verified crypto research pool; never fill gaps with cached/mock rows.
 export function strongPullbackCandidates(market, contracts, now=Date.now()) {
   const age=now-Date.parse(market?.updatedAt);
   if(market?.status!=='LIVE'||!Number.isFinite(age)||age<0||age>120000) throw new Error('市場資料尚未更新，請稍後重新分析');
   if(!Array.isArray(contracts?.symbols)) throw new Error('無法確認加密貨幣合約清單');
   const eligible=new Set(contracts.symbols.filter(x=>x.status==='TRADING'&&x.contractType==='PERPETUAL'&&x.quoteAsset==='USDT'&&x.underlyingType==='COIN').map(x=>x.symbol));
-  return rankStrongRows(market.universeRows||[],eligible);
+  return rankResearchRows(market.universeRows||[],eligible);
 }
 export async function scanPullbacks(candidates=[],{fetcher=fetch,onProgress=()=>{}}={}){
   if(!Array.isArray(candidates)||candidates.length>10||new Set(candidates.map(x=>x.symbol)).size!==candidates.length)throw new Error('分析清單無效');
@@ -56,11 +56,13 @@ export async function scanPullbacks(candidates=[],{fetcher=fetch,onProgress=()=>
       const index=cursor++,candidate=candidates[index],symbol=candidate.symbol;
       try {
         if(!/^[\p{L}\p{N}]+USDT$/u.test(symbol))throw new Error('合約代碼無效');
-        const rows=await Promise.all(['1h','4h'].map(async interval=>{
+        const reads=await Promise.allSettled(['1h','4h'].map(async interval=>{
           const response=await fetcher(`https://fapi.binance.com/fapi/v1/klines?symbol=${encodeURIComponent(symbol)}&interval=${interval}&limit=601`,{signal:AbortSignal.timeout(15000)});
           if(!response.ok)throw new Error(`合約資料讀取失敗（${response.status}）`);
           const data=await response.json();if(!Array.isArray(data))throw new Error('資料格式異常');return data;
         }));
+        if(reads[0].status!=='fulfilled')throw new Error('1h unavailable');
+        const rows=[reads[0].value,reads[1].status==='fulfilled'?reads[1].value:[]];
         const now=Date.now();
         const plan=pullbackPlan({hourly:rows[0],fourHourly:rows[1],now});
         if(plan.status!=='SETUP')results[index]={...candidate,...plan};

@@ -1,3 +1,4 @@
+import { huntAnalysis } from './hunt_analysis.js';
 import { familyPlan } from './strategy_families.js';
 const H=3600000;
 const blocked=reason=>({version:'coin-analysis-v1',status:'BLOCKED',reason,strategies:[]});
@@ -11,19 +12,22 @@ export function analyzeCoin({hourly=[],fourHourly=[],pullback={},now=Date.now()}
  const asOf=Math.floor(now/H)*H;
  if(!Number.isFinite(asOf)||!Array.isArray(hourly)||!Array.isArray(fourHourly))return blocked('資料格式異常');
  const h=hourly.filter(r=>Array.isArray(r)&&Number(r[6])<now),f=fourHourly.filter(r=>Array.isArray(r)&&Number(r[6])<now);
- if(!valid(h,H,200,asOf)||!valid(f,4*H,500,asOf)||pullback.status==='BLOCKED')return blocked(pullbackReason(pullback));
+ if(!valid(h,H,60,asOf))return blocked('完整 1 小時收盤資料不足、過期或異常');
+ const structured=valid(h,H,200,asOf)&&valid(f,4*H,500,asOf)&&['SETUP','WAIT','SKIP','BLOCKED'].includes(pullback.status)?pullback:{status:'BLOCKED',diagnosticReason:'dataBlocked',reason:'趨勢回調需要 200 根 1 小時與 500 根完整 4 小時資料；其他策略獨立核對'};
  const breakout=familyPlan(h,'breakout',asOf),reversion=familyPlan(h,'meanReversion',asOf);
  if(breakout.status==='BLOCKED'||reversion.status==='BLOCKED')return blocked('量能或收盤資料異常，停止三策略分析');
- const hc=h.map(r=>+r[4]),fc=f.map(r=>+r[4]);const price=hc.at(-1),h20=ema(hc,20),h50=ema(hc,50),f50=ema(fc,50),f200=ema(fc,200),fPrevious=ema(fc.slice(0,-3),50);
+ const higherValid=valid(f,4*H,203,asOf);
+ const hc=h.map(r=>+r[4]),fc=f.map(r=>+r[4]);const price=hc.at(-1),h20=ema(hc,20),h50=ema(hc,50),f50=higherValid?ema(fc,50):null,f200=higherValid?ema(fc,200):null,fPrevious=higherValid?ema(fc.slice(0,-3),50):null;
  const hourlyDirection=price>h20&&h20>h50?'LONG':price<h20&&h20<h50?'SHORT':'MIXED';
- const fourHourlyDirection=fc.at(-1)>f50&&f50>f200&&f50>fPrevious?'LONG':fc.at(-1)<f50&&f50<f200&&f50<fPrevious?'SHORT':'MIXED';
+ const fourHourlyDirection=!higherValid?'UNKNOWN':fc.at(-1)>f50&&f50>f200&&f50>fPrevious?'LONG':fc.at(-1)<f50&&f50<f200&&f50<fPrevious?'SHORT':'MIXED';
  const tr=h.slice(1).map((r,i)=>Math.max(+r[2]-r[3],Math.abs(+r[2]-h[i][4]),Math.abs(+r[3]-h[i][4])));
  let atr=average(tr.slice(0,14));for(const t of tr.slice(14))atr=(atr*13+t)/14;
  const volume=average(h.slice(-21,-1).map(r=>+r[5]));
  return {version:'coin-analysis-v1',status:'VALID',analyzedAt:now,closedAt:+h.at(-1)[6],validUntil:asOf+H,lastClose:price,
  hourlyDirection,fourHourlyDirection,aligned:hourlyDirection!=='MIXED'&&hourlyDirection===fourHourlyDirection,
  atrPct:atr/price*100,volumeRatio:volume>0?+h.at(-1)[5]/volume:null,emaDistanceAtr:atr>0?(price-h20)/atr:null,
- strategies:[{...pullback,key:'structured',reason:pullbackReason(pullback)},{...breakout,key:'breakout'},{...reversion,key:'meanReversion'}]};
+ hunt:huntAnalysis(h,{atr,ema:h20,breakout}),
+ strategies:[{...structured,key:'structured',reason:structured.status==='BLOCKED'?structured.reason||pullbackReason(structured):pullbackReason(structured)},{...breakout,key:'breakout'},{...reversion,key:'meanReversion'}]};
 }
 export function coinCategory(row,now=Date.now()){
  const a=row.analysis;

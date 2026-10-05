@@ -9,7 +9,7 @@ export function familyAssessment(row){
  if(row.stress.netPnl<=0)return '成本壓力未通過';
  return '待跨期及前向驗證';
 }
-function validMetrics(m){
+export function validMetrics(m){
  if(!m||!Number.isSafeInteger(m.trades)||m.trades<0||![m.netPnl,m.netReturnPct,m.closedDrawdownPct].every(finite)||m.closedDrawdownPct<0)return false;
  if(!close(m.netReturnPct,m.netPnl/1000*100))return false;
  if(m.trades===0)return m.netPnl===0&&m.netReturnPct===0&&m.avgPnl===null&&m.winRate===null&&m.profitFactor===null&&m.closedDrawdownPct===0;

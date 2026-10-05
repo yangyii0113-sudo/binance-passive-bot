@@ -1,9 +1,13 @@
+import { EXIT_COSTS } from './target_analysis.js';
 import { STATUS } from './status.js';
 import { BACKTEST_CAPITAL, BACKTEST_VERSION } from './backtest_amounts.js';
 
 const FUTURES_BASE = 'https://fapi.binance.com/fapi/v1/klines';
 const SPOT_PUBLIC_BASE = 'https://data-api.binance.vision/api/v3/klines';
-const COST_PER_TRADE = 0.0008;
+function netTradeReturn(entry,exit,side){
+ const fillEntry=entry*(1+side*EXIT_COSTS.slippage),fillExit=exit*(1-side*EXIT_COSTS.slippage);
+ return Math.max(-1,(side*(fillExit-fillEntry)-EXIT_COSTS.fee*(fillEntry+fillExit))/fillEntry);
+}
 
 export const BACKTEST_RANGE_OPTIONS = Object.freeze({
   '15m': [['30D','30 天'],['90D','90 天'],['180D','180 天']],
@@ -147,8 +151,7 @@ function simulate(candles, strategy){
     }
     if(nextSide !== side){
       const exit = fill;
-      const raw = side * (exit - entry) / entry;
-      const ret = Math.max(-1,raw - COST_PER_TRADE);
+      const ret = netTradeReturn(entry,exit,side);
       equity *= 1 + ret;
       trades.push({entry,exit,side:side===1?'LONG':'SHORT',returnPct:ret*100,time:candles[i].time});
       peak = Math.max(peak,equity);
@@ -161,8 +164,7 @@ function simulate(candles, strategy){
   }
   if(side !== 0 && entry){
     const exit = candles[candles.length-1].close;
-    const raw = side * (exit - entry) / entry;
-    const ret = Math.max(-1,raw - COST_PER_TRADE);
+    const ret = netTradeReturn(entry,exit,side);
     equity *= 1 + ret;
     trades.push({entry,exit,side:side===1?'LONG':'SHORT',returnPct:ret*100,time:candles[candles.length-1].time});
     peak = Math.max(peak,equity);
@@ -200,7 +202,7 @@ export async function runLiteBacktest({symbol='BTCUSDT',range='90D',strategy='A'
     status: STATUS.LIVE,
     updatedAt: new Date().toISOString(),
     local: true,
-    input:{symbol,range:resolved.range,strategy,timeframe:interval,samples:candles.length,dataSource:fetched.source,costModel:'單次來回成本 0.08%',executionModel:'Fully Closed Signal → Next Bar Open',initialCapital:BACKTEST_CAPITAL,currency:'USDT',calculationVersion:BACKTEST_VERSION},
+    input:{symbol,range:resolved.range,strategy,timeframe:interval,samples:candles.length,dataSource:fetched.source,costModel:'單邊費率 0.05%＋滑價 0.02%；依成交名目計算，未含資金費率',executionModel:'Fully Closed Signal → Next Bar Open',initialCapital:BACKTEST_CAPITAL,currency:'USDT',calculationVersion:BACKTEST_VERSION},
     result:{
       trades:result.trades,
       winRatePct:result.winRatePct,

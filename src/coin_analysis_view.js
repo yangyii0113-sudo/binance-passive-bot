@@ -1,3 +1,4 @@
+import { huntView } from './hunt_analysis.js';
 import { coinIdentity } from './coin_logo.js';
 import { researchRiskScenario } from './research_risk_view.js';
 import { strategyWaitDetail } from './advice_display_status.js';
@@ -5,7 +6,7 @@ import { displayText } from './display.js';
 import { coinCategory } from './coin_analysis.js';
 import { escapeHtml as esc } from './ui.js';
 const names={structured:'趨勢回調 · 結構止盈',breakout:'區間突破',meanReversion:'均值回歸'};
-const direction=v=>({LONG:'偏多',SHORT:'偏空',MIXED:'方向未一致'})[v]||'—';
+const direction=v=>({LONG:'偏多',SHORT:'偏空',MIXED:'方向未一致',UNKNOWN:'資料不足・未判定'})[v]||'—';
 const n=(v,d=2)=>typeof v==='number'&&Number.isFinite(v)?v.toFixed(d):'—';
 const date=v=>Number.isFinite(v)?new Date(v).toLocaleString('zh-TW',{hour12:false}):'—';
 const labels={historical:'歷史條件 · 唯讀',plan:'有研究計畫 · 等待突破',wait:'等待條件',conflict:'策略方向衝突 · 先觀察',blocked:'資料不足／異常',expired:'已過期，請重新分析'};
@@ -33,7 +34,7 @@ export function coinAnalysisCards(snapshot,now,renderPlan,renderMarket=()=> ''){
   <p>24 小時動能／流動性分 ${n(row.strength,1)}／100 · 24 小時 ${Number.isFinite(row.change)&&row.change>=0?'+':''}${n(row.change)}% · 成交額 ${Number.isFinite(row.volume)?`${(row.volume/1e6).toFixed(1)} 百萬 USDT`:'—'}</p>
   ${a.status!=='VALID'?`<p role="status">${esc(a.reason)}</p>`:`
   <p class="coin-reading">${historical?'歷史收盤條件，僅供回顧；舊進場點位未保存。':expired?'此分析已過期，舊點位已隱藏。':categoryKey==='conflict'?'不同策略給出相反方向，暫不列入有研究計畫。':a.aligned?`1 小時與 4 小時同向${direction(a.hourlyDirection)}；仍需逐項確認進場條件。`:'多週期方向尚未一致；各策略依自己的條件獨立判斷。'}</p>
-  <details class="core-disclosure" data-search="facts-${esc(row.symbol)}"><summary>方向、量能與波動數據</summary><dl class="coin-facts"><div><dt>1 小時方向</dt><dd>${direction(a.hourlyDirection)}</dd></div><div><dt>4 小時方向</dt><dd>${direction(a.fourHourlyDirection)}</dd></div><div><dt>收盤棒相對量能</dt><dd>${n(a.volumeRatio)} 倍</dd></div><div><dt>1 小時平均波幅／收盤價</dt><dd>${n(a.atrPct)}%</dd></div><div><dt>收盤離 20 期均線</dt><dd>${n(a.emaDistanceAtr)} 倍波幅</dd></div><div><dt>完整收盤資料</dt><dd>${historical?'當時已檢查':'已檢查'}</dd></div></dl></details>
+  ${historical?'':huntView(a,now)}<details class="core-disclosure" data-search="facts-${esc(row.symbol)}"><summary>方向、量能與波動數據</summary><dl class="coin-facts"><div><dt>1 小時方向</dt><dd>${direction(a.hourlyDirection)}</dd></div><div><dt>4 小時方向</dt><dd>${direction(a.fourHourlyDirection)}</dd></div><div><dt>收盤棒相對量能</dt><dd>${n(a.volumeRatio)} 倍</dd></div><div><dt>1 小時平均波幅／收盤價</dt><dd>${n(a.atrPct)}%</dd></div><div><dt>收盤離 20 期均線</dt><dd>${n(a.emaDistanceAtr)} 倍波幅</dd></div><div><dt>完整收盤資料</dt><dd>${historical?'當時已檢查':'已檢查'}</dd></div></dl></details>
   <div class="coin-strategy-list">${a.strategies.map(p=>{
    const ready=p.status==='SETUP'&&!expired&&!historical,conflict=categoryKey==='conflict';
    const risk=ready&&!conflict?researchRiskScenario(p):null;

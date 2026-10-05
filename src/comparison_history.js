@@ -1,3 +1,4 @@
+import { researchExtension } from './research_validation.js';
 const KEY='foxyya.exit-comparison.history.v1';
 const MAX_RUNS=20;
 const validSymbol=s=>typeof s==='string'&&/^[\p{L}\p{N}]+USDT$/u.test(s);
@@ -31,6 +32,7 @@ function compactResult(result,symbol){
       return {key:row.key,development:compact.development.baseline,holdout:compact.holdout.baseline,stress:compact.holdout.stress};
     })};
   }
+  const extension=researchExtension(result);if(extension)Object.assign(output,extension);
   return output;
 }
 function compactRun(run){

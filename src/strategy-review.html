@@ -1,0 +1,35 @@
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FOXYYA 策略研究驗收</title><link rel="stylesheet" href="../styles.css"><style>body{margin:0;min-width:0;background:#10191c;color:#eee;font:14px system-ui}*{box-sizing:border-box}header,main{padding:16px}header{background:#172328}h1{font-size:20px}p{line-height:1.6}button,select{min-height:44px;padding:8px 12px;margin:4px;background:#23373c;border:1px solid #597971;border-radius:8px;color:#eee;font:inherit}button[aria-pressed=true]{background:#d9bd70;color:#172220}.warning{color:#e9ce8b}.stage{overflow:auto}iframe{border:1px solid #536a66;display:block;transform-origin:top left;background:#10191c}.shell{margin:auto}.content{max-width:1340px;margin:auto}.content table{min-width:720px}.content .comparison-scroll{max-width:100%;overflow-x:auto}</style></head><body><header><h1>策略研究驗收 · 測試資料</h1><p class="warning">全部價格與績效為明確標示的合成 fixture，非即時行情、非交易建議，不保存或啟用策略。</p><div id="controls"></div></header><main id="content"></main><script type="module">
+import { analyzeCoin } from './coin_analysis.js';
+import { pullbackPlan } from './trend_pullback.js';
+import { agentDecisionCard } from './agent_decision_view.js';
+import { comparePlans } from './pullback_replay.js';
+import { strategyFamilyPanel } from './strategy_family_view.js';
+const controls=document.querySelector('#controls'),content=document.querySelector('#content'),embedded=new URLSearchParams(location.search).has('frame');
+if(!embedded){
+ controls.innerHTML='<label>裝置 <select id="device"><option value="390">手機 390</option><option value="360">手機 360</option><option value="430">手機 430</option><option value="1032">13 吋 iPad 直式</option><option value="1376">13 吋 iPad 橫式</option></select></label>';
+ content.className='stage';content.innerHTML='<div class="shell"><iframe title="策略研究裝置" src="./strategy-review.html?frame=1"></iframe></div>';
+ const select=document.querySelector('#device'),frame=document.querySelector('iframe'),shell=document.querySelector('.shell');
+ function resize(){const w=+select.value,h=w===1032?1376:w===1376?1032:844,scale=Math.min(1,(content.clientWidth-32)/w);frame.width=w;frame.height=h;frame.style.transform=`scale(${scale})`;shell.style.width=w*scale+'px';shell.style.height=h*scale+'px';}select.addEventListener('change',resize);window.addEventListener('resize',resize);resize();
+}else{
+ const scenarios={accumulation:'蓄勢觀察',breakout:'放量突破',extended:'延伸風險',partial:'部分策略缺資料',expired:'已過期',conflict:'方向衝突',missing:'缺行情快照',study:'分期與回踩研究'};
+ controls.innerHTML=Object.entries(scenarios).map(([key,label])=>`<button data-scenario="${key}">${label}</button>`).join('');content.className='content';
+ const H=3600000;let comparison;
+ function render(key){
+  const now=Date.now(),end=Math.floor(now/H)*H;
+  const bars=(n,step=H,last=end)=>Array.from({length:n},(_,i)=>[last-(n-i)*step,100,101,99,100,100,last-(n-i-1)*step-1]);
+  if(key==='study'){comparison??=comparePlans({hourly:bars(500),fourHourly:bars(500,4*H,end-end%(4*H)),start:end-300*H,end});content.innerHTML='<p class="warning">合成平盤樣本，沒有成交不代表真實策略永遠沒有成交。</p>'+strategyFamilyPanel(comparison);}
+  else{
+   const hourly=bars(220),fourHourly=bars(key==='partial'?55:500,4*H,end-end%(4*H));
+   if(key==='accumulation')for(const r of hourly.slice(-5)){r[2]=100.2;r[3]=99.8;}
+   else {hourly.at(-1)[2]=key==='extended'?111:103;hourly.at(-1)[4]=key==='extended'?110:102;hourly.at(-1)[5]=200;}
+   const input={hourly,fourHourly,now},analysis=analyzeCoin({...input,pullback:pullbackPlan(input)}),price=hourly.at(-1)[4];
+   const record={symbol:'SOLUSDT',status:'LIVE',checkedAt:now,snapshotUntil:key==='expired'?now-1:now+60000,marketSnapshot:{price,high:price+.01,low:price-.01,barOpen:end,requestedAt:now,receivedAt:now},row:{symbol:'SOLUSDT',analysis}};
+   if(key==='conflict')analysis.strategies[0]={...analysis.strategies[1],key:'structured',side:'SHORT'};
+   if(key==='missing')delete record.marketSnapshot;
+   content.innerHTML=agentDecisionCard(record,{now});
+  }
+  for(const b of controls.querySelectorAll('button'))b.setAttribute('aria-pressed',String(b.dataset.scenario===key));
+ }
+ controls.addEventListener('click',e=>{const key=e.target.closest('button')?.dataset.scenario;if(key)render(key);});render('partial');
+}
+</script></body></html>

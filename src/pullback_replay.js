@@ -23,14 +23,34 @@ export function replayTrade(plan, bars, {fee=EXIT_COSTS.fee,slippage=EXIT_COSTS.
   const used=Math.min(bars.length,48);exit(+bars[used-1][4],remaining);
   return {filled:true,returnPerUnit:pnl,entry,bars:used,reason:used===48?'TIME':'END'};
 }
+// Fixed research variant: at most three CLOSED retest bars, then one trigger bar.
+// Original targets/stop remain frozen; no same-bar confirmation and entry.
+export function replayRetestTrade(plan,bars,costs={}){
+ const sign=plan.side==='LONG'?1:-1,level=sign===1?plan.observations?.upper:plan.observations?.lower;
+ if(!Number.isFinite(level)||!(plan.atr>0))return {filled:false,bars:0,reason:'missingRetestEvidence'};
+ for(let j=0;j<Math.min(3,bars.length);j++){
+  const b=bars[j];
+  if(sign===1?+b[3]<=plan.stop:+b[2]>=plan.stop)return {filled:false,bars:j+1,reason:'retestInvalidated'};
+  const touched=sign===1?+b[3]<=level:+b[2]>=level;
+  if(!touched||sign*(+b[4]-level)<=0||sign*(+b[4]-b[1])<=0)continue;
+  const entry=(sign===1?+b[2]:+b[3])+sign*.1*plan.atr;
+  const candidate={...plan,entry};
+  const fee=EXIT_COSTS.fee,slip=EXIT_COSTS.slippage,fill=entry*(1+sign*slip);
+  const net=p=>sign*(p*(1-sign*slip)-fill)-fee*(fill+p*(1-sign*slip));
+  if(sign*(plan.tp1-entry)<=0||!(net(plan.stop)<0)||(net(plan.tp1)+net(plan.tp2))/2/-net(plan.stop)<1)return {filled:false,bars:j+1,reason:'retestCostRejected'};
+  const result=replayTrade(candidate,bars.slice(j+1),costs);
+  return {...result,plan:candidate,waitBars:j+1,entryIndex:j+1,bars:j+1+result.bars};
+ }
+ return {filled:false,bars:Math.min(3,bars.length),reason:'retestExpired'};
+}
 export function comparePlans({hourly,fourHourly,start,end}) {
   const split=start+Math.floor((end-start)*.7/H)*H;
-  function run(from,to,enhanced,multiplier=1,family=null){
+  function run(from,to,enhanced,multiplier=1,family=null,entryMode='breakout'){
     let balance=1000,peak=1000,dd=0,wins=0,grossWin=0,grossLoss=0,count=0,signals=0,skipped=0;
     const skipReasons={};
     const diagnostics={evaluated:0,dataBlocked:0,trendWait:0,pullbackWait:0,extendedWait:0,riskBlocked:0,noEntry:0,entryGap:0,stopGap:0,noBreakout:0,missingFuture:0};
     const ledger=[];const costs={fee:EXIT_COSTS.fee*multiplier,slippage:EXIT_COSTS.slippage*multiplier};
-    for(let i=200;i<hourly.length;i++){
+    for(let i=family?60:200;i<hourly.length;i++){
       const time=+hourly[i][0];if(time<from||time>=to)continue;
       const history=hourly.slice(Math.max(0,i-600),i);
       const higher=fourHourly.filter(r=>+r[6]<time).slice(-600);
@@ -39,13 +59,14 @@ export function comparePlans({hourly,fourHourly,start,end}) {
       if(plan.status==='SKIP'){signals++;skipped++;skipReasons[plan.reason]=(skipReasons[plan.reason]||0)+1;continue;}
       if(plan.status!=='SETUP'){diagnostics[plan.diagnosticReason||'dataBlocked']++;continue;}signals++;
       if(enhanced){plan=refineTargets(plan,history,plan.atr,costs);if(!plan.targetAnalysis.accepted){skipped++;skipReasons[plan.targetAnalysis.reason]=(skipReasons[plan.targetAnalysis.reason]||0)+1;continue;}}
-      const future=hourly.slice(i,i+48).filter(r=>+r[0]<to);
-      const result=replayTrade(plan,future,{...costs,protect:enhanced});if(!result.filled){diagnostics.noEntry++;diagnostics[result.reason]++;continue;}
+      const future=hourly.slice(i,i+(entryMode==='retest'?51:48)).filter(r=>+r[0]<to);
+      const result=entryMode==='retest'?replayRetestTrade(plan,future,costs):replayTrade(plan,future,{...costs,protect:enhanced});if(!result.filled){diagnostics.noEntry++;if(result.reason in diagnostics)diagnostics[result.reason]++;else skipReasons[result.reason]=(skipReasons[result.reason]||0)+1;if(entryMode==='retest')i+=Math.max(0,result.bars-1);continue;}
+      if(result.plan)plan=result.plan;
       const riskPerUnit=Math.abs(result.entry-plan.stop)+costs.slippage*plan.stop+costs.fee*(result.entry+plan.stop);
       const qty=Math.min(balance*.0025/riskPerUnit,balance/result.entry);
       const pnl=qty*result.returnPerUnit;balance+=pnl;count++;if(pnl>0){wins++;grossWin+=pnl;}else grossLoss-=pnl;
       peak=Math.max(peak,balance);dd=Math.max(dd,(peak-balance)/peak*100);
-      ledger.push({entryTime:time,exitTime:+future[result.bars-1][6],side:plan.side,entry:result.entry,qty,pnl,balance,reason:result.reason});
+      ledger.push({entryTime:+future[result.entryIndex||0][0],exitTime:+future[result.bars-1][6],side:plan.side,entry:result.entry,qty,pnl,balance,reason:result.reason});
       i+=result.bars-1;
     }
     return {trades:count,signals,skipped,skipReasons,diagnostics,netPnl:balance-1000,netReturnPct:(balance/1000-1)*100,winRate:count?wins/count*100:null,profitFactor:grossLoss?grossWin/grossLoss:null,avgPnl:count?(balance-1000)/count:null,closedDrawdownPct:dd,ledger};
@@ -57,7 +78,10 @@ export function comparePlans({hourly,fourHourly,start,end}) {
     {key:'structured',development:development.enhanced,holdout:holdout.enhanced,stress:holdout.stress},
     ...['breakout','meanReversion'].map(key=>({key,development:run(start,split,false,1,key),holdout:run(split,end,false,1,key),stress:run(split,end,false,2,key)}))
   ]};
-  return {start,end,split,version:'TP01-S1',fundingIncluded:false,development,holdout,families};
+  const boundaries=[split,split+Math.floor((end-split)/3/H)*H,split+Math.floor((end-split)*2/3/H)*H,end];
+  const validation={version:'temporal-v1',folds:boundaries.slice(0,3).map((from,index)=>({start:from,end:boundaries[index+1],rows:families.rows.map(row=>({key:row.key,metrics:run(from,boundaries[index+1],row.key==='structured',1,['breakout','meanReversion'].includes(row.key)?row.key:null)}))}))};
+  const entryStudy={version:'breakout-retest-v1',start:split,end,immediate:families.rows.find(r=>r.key==='breakout').holdout,retest:run(split,end,false,1,'breakout','retest'),retestStress:run(split,end,false,2,'breakout','retest')};
+  return {start,end,split,version:'TP01-S1',researchVersion:'analysis-upgrade-v1',fundingIncluded:false,development,holdout,families,validation,entryStudy};
 }
 async function history(symbol,interval,start,end,fetcher){
   const rows=[];let cursor=start;

@@ -27,17 +27,17 @@ test('backtest exposes the fixed capital, monetary gain and ending balance used 
   assert.equal(snapshot.input.initialCapital,1000);
   assert.equal(snapshot.input.currency,'USDT');
   assert.equal(snapshot.result.trades,1);
-  assert.ok(Math.abs(snapshot.result.netPnl-99.2)<1e-9);
-  assert.ok(Math.abs(snapshot.result.finalEquity-1099.2)<1e-9);
+  assert.ok(Math.abs(snapshot.result.netPnl-98.51030793841238)<1e-9);
+  assert.ok(Math.abs(snapshot.result.finalEquity-1098.5103079384124)<1e-9);
   assert.equal(snapshot.equityCurve.at(-1).balance,snapshot.result.finalEquity);
 });
 
-test('linear short 100 to 90 earns 10 percent before the fixed 0.08 percent cost',async()=>{
+test('linear short applies directional slippage and both notional fees',async()=>{
   const snapshot = await simulate('SHORT',90);
   assert.equal(snapshot.recentTrades[0].entry,100);
   assert.equal(snapshot.recentTrades[0].exit,90);
-  assert.ok(Math.abs(snapshot.result.netReturnPct-9.92)<1e-9);
-  assert.ok(Math.abs(snapshot.result.netPnl-99.2)<1e-9);
+  assert.ok(Math.abs(snapshot.result.netReturnPct-9.86897479495899)<1e-9);
+  assert.ok(Math.abs(snapshot.result.netPnl-98.6897479495899)<1e-9);
 });
 
 test('exhausted backtest capital is zero and is not artificially preserved at one percent',async()=>{
@@ -100,7 +100,7 @@ test('candidate readiness requires rerunning legacy local backtests after the ca
   s.candidates.items=[item];
   assert.match(visible(pages.strategies(s)),/待重新驗證/);
   assert.doesNotMatch(pages.strategies(s),/decision-badge decision-pass/);
-  item.validator.input.calculationVersion='linear-v2';
+  item.validator.input.calculationVersion='linear-v3';
   assert.doesNotMatch(visible(pages.strategies(s)),/待重新驗證/);
   assert.match(pages.strategies(s),/decision-badge decision-pass/);
 });
