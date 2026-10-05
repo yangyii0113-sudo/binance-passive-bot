@@ -541,3 +541,28 @@ test('unanalysed candidate is not displayed as a completed waiting strategy',()=
   assert.match(html,/data-home-entry-state="empty"[^>]*><strong>◷ 尚未分析/);
   assert.doesNotMatch(html,/data-home-entry-state="empty"[^>]*><strong>◷ 等待確認/);
 });
+
+
+test('advice keeps the primary levels and next operation ahead of secondary evidence',async()=>{
+ const {agentDecisionCard}=await import('../src/agent_decision_view.js');
+ const {s,now}=homeFixture(),record=s.agents.tradePlans.BBBUSDT;
+ record.row.analysis.strategies[1]={...record.row.analysis.strategies[0],key:'structured'};
+ const before=structuredClone(record),html=agentDecisionCard(record,{now});
+ assert.equal((html.match(/class="decision-scenario"/g)||[]).length,2,'both independent valid plans remain available');
+ assert.match(html,/<details class="core-disclosure decision-other-plan"><summary>其他策略/,'secondary plan starts collapsed');
+ assert.ok(html.indexOf('plan-price-map')<html.indexOf('decision-next'));
+ assert.ok(html.indexOf('decision-actions')<html.indexOf('decision-trend-'),'trend evidence follows the required operation');
+ assert.match(html,/decision-lock/);assert.deepEqual(record,before);
+ record.snapshotUntil=now;
+ assert.doesNotMatch(agentDecisionCard(record,{now}),/decision-other-plan|plan-price-map/,'expiry hides all actionable levels');
+});
+
+test('research strategy summaries are concise while the complete waiting reason remains accessible',async()=>{
+ const {coinAnalysisCards}=await import('../src/coin_analysis_view.js');
+ const {s,now}=homeFixture(),row=s.agents.tradePlans.BBBUSDT.row;
+ row.analysis.strategies[1].reason='等待回調：這段完整原因保留在展開依據';
+ const html=coinAnalysisCards({rows:[row]},now,()=>'<div>研究點位</div>');
+ const summary=html.match(/data-search="coin-BBBUSDT-structured"[^>]*><summary>(.*?)<\/summary>/)?.[1];
+ assert.ok(summary);assert.doesNotMatch(summary,/這段完整原因/);
+ assert.match(html,/這段完整原因保留在展開依據/);
+});

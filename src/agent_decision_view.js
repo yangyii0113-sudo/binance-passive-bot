@@ -49,13 +49,12 @@ export function agentDecisionCard(record, {now=Date.now(),comparison,comparisonB
     <div class="decision-heading">${coinIdentity(record.symbol,{large:true})}<span>短線 · 1 小時策略</span></div>
     <div class="decision-verdict ${result.key==='plan'?'priority-entry':''}" data-advice-verdict="${result.key}"><span>目前建議</span><strong>${result.key==='plan'?'✓ 條件成立・待觸發':agentActionLabel(record,now)}</strong></div>
     ${strategyActionSummary(record,{now,includeNext:false})}
-    <details class="core-disclosure" data-search="decision-trend-${symbol}"><summary>趨勢與資料核對</summary>${readinessView(record,now)}${coinTrendView(record,{now})}</details>
     <p class="decision-reason" role="status">${result.key==='plan'?'僅列入條件式模擬觀察，尚未確認觸發或成交。只在下列條件與期限內觀察。':esc(display.reason)}</p>
 
     ${result.key==='plan'?'':`<details class="core-disclosure" data-search="decision-evidence-${symbol}"><summary>查看平台判定依據</summary>${strategyEvidenceView(record,{now})}</details>`}
-    ${result.plans.length?result.plans.map(plan=>{
+    ${result.plans.length?result.plans.map((plan,index)=>{
       const risk=researchRiskScenario(plan), snapshot=record.marketSnapshot;
-      return `<section class="decision-scenario" aria-label="${esc(FAMILY_NAMES[plan.key])} 點位摘要">
+      return `${index?`<details class="core-disclosure decision-other-plan"><summary>其他策略 · ${esc(FAMILY_NAMES[plan.key])} · ${plan.side==='LONG'?'做多':'做空'}</summary>`:''}<section class="decision-scenario" aria-label="${esc(FAMILY_NAMES[plan.key])} 點位摘要">
         <h4>${plan.side==='LONG'?'做多方案':'做空方案'} · ${esc(FAMILY_NAMES[plan.key])}</h4>
         <div class="decision-quote"><span>核對時參考價 <strong>${quote(snapshot.price)} USDT</strong></span><span>${priceMove(snapshot.price,plan.entry,{pending:true})} 才到進場門檻</span><small>合約當根 K 線快照 · 非串流報價 · 取得 ${displayDate(snapshot.receivedAt)}</small></div>
         ${planPriceMapView(plan,snapshot.price)}
@@ -70,14 +69,16 @@ export function agentDecisionCard(record, {now=Date.now(),comparison,comparisonB
         ${riskPathView(plan,risk)}
         </details>
         <p class="decision-validity">進場有效至 ${displayDate(plan.expiresAt)}；點位核對有效至 ${displayDate(record.snapshotUntil)}，先到者為準。</p>
-      </section>`;
+      </section>${index?'</details>':''}`;
     }).join(''):`<div class="decision-no-levels"><strong>${result.key==='loading'?'正在核對，暫不顯示點位。':'進場／止盈／止損：目前不提供'}</strong>${result.key==='wait'?'':`<span>${result.key==='loading'?'完成後會顯示結論。':`下一步：${esc(display.next)}`}</span>`}</div>`}
     ${result.plans.length>1?'<p>同幣多方案沒有經驗證的優先順序，請分別判讀，不可重複累加部位。</p>':''}
     ${result.key==='plan'?`<details class="core-disclosure" data-search="decision-evidence-${symbol}"><summary>查看平台判定依據</summary>${strategyEvidenceView(record,{now})}</details>`:''}
     <details class="core-disclosure"><summary>歷史盈利證據與三策略比較</summary>${agentComparisonView(comparison,record.symbol,{now,compact:true,busy:comparisonBusy,allowed:record.status==='LIVE'&&record.row?.analysis?.status==='VALID'})}</details>
     <p class="decision-next"><strong>下一步：</strong>${esc(display.next)}</p>
     <div class="decision-actions"><button type="button" class="primary-inline-btn" data-agent-plan-refresh="${symbol}" ${result.key==='loading'?'disabled':''}>${result.key==='loading'?'核對中…':'更新這檔建議'}</button><button type="button" class="secondary-btn" data-agent-plan-open="${symbol}">查看完整策略依據</button></div>
+    <details class="core-disclosure" data-search="decision-trend-${symbol}"><summary>趨勢與資料核對</summary>${readinessView(record,now)}${coinTrendView(record,{now})}</details>
     <details class="core-disclosure" data-search="advice-integrity-${symbol}"><summary>資料狀態與核對時間</summary>${agentPlanStateView(record,now)}<p>行情核對：${Number.isFinite(record.checkedAt)?displayDate(record.checkedAt):'尚未完成'}。從行情請求開始計算，點位核對最長一分鐘；換根後需重新分析。研究價格未對齊交易所委託精度。</p></details>
     <p class="decision-lock">真實下單鎖定 · 正式帳本、最新淨值與完整部位尚未核對。</p>
   </article>`;
 }
+
