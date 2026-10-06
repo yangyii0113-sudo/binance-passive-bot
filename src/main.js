@@ -1,3 +1,4 @@
+import { horizonCandidateSelection } from './horizon_view.js';
 import { HORIZONS, generateHorizonPlan } from './horizon_strategies.js';
 import { disclosureStateKey } from './ui.js';
 import { refreshCoinCatalog } from './coin_logo.js';
@@ -161,10 +162,11 @@ function refreshAgentPlan(value, {origin='重新核對', technical,automatic=fal
   return task;
 }
 
-function horizonSelection(){return {horizon:HORIZONS[appState.ui.horizon]?appState.ui.horizon:'week',symbol:normalizePlanSymbol(document.querySelector('#horizon-symbol')?.value||appState.ui.horizonSymbol||appState.ui.selectedSymbol||'BTCUSDT')};}
+function horizonSelection(){return {horizon:HORIZONS[appState.ui.horizon]?appState.ui.horizon:'week',symbol:normalizePlanSymbol(document.querySelector('#horizon-symbol')?.value||horizonCandidateSelection(appState).symbol)};}
 async function refreshHorizon(){
  if(appState.agents.horizonBusy)return;
  const {horizon,symbol}=horizonSelection(),key=`${horizon}:${symbol}`;
+ if(!homeCandidates(appState.market).rows.some(row=>row.symbol===symbol)){render();return;}
  Object.assign(appState.ui,{horizon,horizonSymbol:symbol});
  forwardTracker?.watchSymbol(symbol);const ticket=forwardTracker?.ticket(symbol);
  setStateSlice('agents',{horizonBusy:true,horizonPlans:{...appState.agents.horizonPlans,[key]:{symbol,horizon,status:'LOADING'}}});render();
@@ -174,6 +176,7 @@ async function refreshHorizon(){
 async function compareHorizon(){
  if(appState.agents.horizonCompareBusy)return;
  const {horizon,symbol}=horizonSelection(),key=`${horizon}:${symbol}`;
+ if(!homeCandidates(appState.market).rows.some(row=>row.symbol===symbol)){render();return;}
  Object.assign(appState.ui,{horizon,horizonSymbol:symbol});
  const write=value=>setStateSlice('agents',{horizonComparisons:{...appState.agents.horizonComparisons,[key]:value}});
  setStateSlice('agents',{horizonCompareBusy:true});write({status:'LOADING'});render();
@@ -296,7 +299,7 @@ function render() {
   const root = document.getElementById('app');
   // Market updates must not reset a user's order/backtest inputs or collapse research details.
   const controls = context === renderedContext
-    ? [...root.querySelectorAll('form [name]')].map(el => ({
+    ? [...root.querySelectorAll('form [name]')].filter(el=>!el.matches('[data-horizon-symbol]')).map(el => ({
         form:el.form.id, name:el.name, value:el.value,
         label:el.selectedOptions?.[0]?.textContent,
         focused:el === document.activeElement,
@@ -685,6 +688,11 @@ function initEvents() {
   });
 
   document.addEventListener('change', (event) => {
+    if(event.target?.matches?.('[data-horizon-symbol]')){
+      const symbol=event.target.value;
+      if(homeCandidates(appState.market).rows.some(row=>row.symbol===symbol)){appState.ui.horizonSymbol=symbol;render();document.querySelector('#horizon-symbol')?.focus({preventScroll:true});}
+      return;
+    }
     if(event.target?.matches?.('[data-coin-history-select]')){
       if(appState.pullback.comparing||appState.pullback.loading)return;
       const run=appState.pullback.analysisHistory?.find(r=>r.id===event.target.value);
@@ -711,7 +719,11 @@ function initEvents() {
   document.addEventListener('click', async (event) => {
     const horizonButton=event.target.closest?.('[data-horizon]');
     if(horizonButton&&HORIZONS[horizonButton.dataset.horizon]){const selected=horizonSelection();Object.assign(appState.ui,{horizon:horizonButton.dataset.horizon,horizonSymbol:normalizePlanSymbol(horizonButton.dataset.horizonTarget||selected.symbol)});if(horizonButton.hasAttribute('data-horizon-home'))navigateTo('#/advice');else render();return;}
-    if(event.target.closest?.('[data-horizon-analyze]')){await refreshHorizon();return;}
+    if(event.target.closest?.('[data-horizon-refresh]')){
+      if(appState.ui.horizonRefreshing)return;appState.ui.horizonRefreshing=true;render();
+      try{await refreshMarket();}finally{appState.ui.horizonRefreshing=false;render();}return;
+    }
+    if(event.target.closest?.('[data-horizon-analyze]')){event.preventDefault();await refreshHorizon();return;}
     if(event.target.closest?.('[data-horizon-compare]')){await compareHorizon();return;}
     if(event.target.closest?.('[data-horizon-export]')){const {horizon,symbol}=horizonSelection(),result=appState.agents.horizonComparisons?.[`${horizon}:${symbol}`]?.result;if(result)downloadResearchFile({filename:`foxyya-${symbol}-${horizon}-research.json`,mime:'application/json',text:JSON.stringify({paperOnly:true,realOrderLocked:true,noBackfill:true,...result},null,2)});return;}
 

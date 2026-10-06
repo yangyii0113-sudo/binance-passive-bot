@@ -13,9 +13,31 @@ test('missing data and errors stay visible and user strings are escaped',()=>{
  assert.equal(typeof view.horizonPanel,'function');const html=view.horizonPanel({ui:{horizonSymbol:'<img>'},agents:{horizonPlans:{'week:<img>':{horizon:'week',status:'BLOCKED',reason:'來源 <failed>'}}}},now);
  assert.doesNotMatch(html,/<img>/);assert.match(html,/來源 &lt;failed&gt;/);assert.doesNotMatch(html,/data-price-level/);
 });
-test('horizon symbol participates in existing form-input preservation during market renders',()=>{
+test('horizon symbol is selected from screened candidates rather than free text',()=>{
  assert.match(view.horizonPanel({ui:{horizonSymbol:'1000PEPEUSDT'}}),/<form[^>]*id="horizon-analysis-form"/);
- assert.match(view.horizonPanel({ui:{horizonSymbol:'1000PEPEUSDT'}}),/<input[^>]*name="symbol"/);
+ assert.match(view.horizonPanel({ui:{horizonSymbol:'1000PEPEUSDT'}}),/<select[^>]*name="symbol"/);
+ assert.doesNotMatch(view.horizonPanel({ui:{}}),/<input[^>]*id="horizon-symbol"/);
+});
+function screenedMarket(){return {status:'LIVE',updatedAt:new Date(now).toISOString(),contractVerifiedAt:new Date(now).toISOString(),cryptoOnly:true,universeRows:[['','SOLUSDT',100,6,2e7,85],['','1000PEPEUSDT',.01,8,3e7,90],['','THINUSDT',1,10,100,95],['','SPIKEUSDT',1,35,2e7,99]]};}
+test('dropdown uses the screened pool, preserves full contracts and rejects stale choices',()=>{
+ const state={ui:{horizonSymbol:'1000PEPEUSDT'},market:screenedMarket()};
+ const html=view.horizonPanel(state,now),select=html.match(/<select[^>]*id="horizon-symbol"[\s\S]*?<\/select>/)?.[0];
+ assert.ok(select);assert.match(select,/<option value="1000PEPEUSDT" selected/);assert.match(select,/<option value="SOLUSDT"/);
+ assert.doesNotMatch(select,/THINUSDT|SPIKEUSDT|BTCUSDT|ETHUSDT/);
+ const stale=view.horizonPanel(state,now+301000),staleSelect=stale.match(/<select[^>]*id="horizon-symbol"[\s\S]*?<\/select>/)?.[0];
+ assert.match(staleSelect,/disabled/);assert.doesNotMatch(staleSelect,/<option value="1000PEPEUSDT"/);
+ assert.match(stale, /data-horizon-analyze disabled/);
+ assert.match(stale,/data-horizon-refresh/);
+});
+test('an excluded selected coin is not silently replaced with another candidate',()=>{
+ const html=view.horizonPanel({ui:{horizonSymbol:'BTCUSDT'},market:screenedMarket()},now);
+ assert.match(html,/BTCUSDT.*不在本次候選/);assert.match(html,/data-horizon-analyze disabled/);
+ assert.doesNotMatch(html,/<option value="(?:SOL|1000PEPE)USDT" selected/);
+});
+test('home entry defaults to a screened candidate instead of a hardcoded BTC',()=>{
+ const html=view.horizonOpportunities({ui:{selectedSymbol:'BTCUSDT'},market:screenedMarket()},now);
+ assert.doesNotMatch(html,/data-horizon-target="BTCUSDT"/);
+ assert.match(html,/data-horizon-target="1000PEPEUSDT"/);
 });
 test('active horizon sample stays visible ahead of later failed registration',()=>{
  const html=view.horizonPanel({ui:{horizon:'week',horizonSymbol:'SOLUSDT'},forward:{enabled:true,book:{rows:[{horizon:'week',symbol:'SOLUSDT',status:'OPEN',reason:'模擬進場'},{horizon:'week',symbol:'SOLUSDT',status:'NOT_TRACKED',reason:'未登錄'}]}}},now);

@@ -22,6 +22,7 @@ if(!embedded){
  catch(e){results.textContent+='\nERROR '+e.message;}finally{document.querySelector('#matrix').disabled=false;document.querySelector('#pages').disabled=false;}}
  document.querySelector('#matrix').onclick=()=>run(false);document.querySelector('#pages').onclick=()=>run(true);
 }else{
+ let symbol='SOLUSDT';
  let horizon=HORIZONS[params.get('horizon')]?params.get('horizon'):'week',scenario=scenarios[params.get('scenario')]?params.get('scenario'):'long';
  controls.innerHTML=Object.entries(scenarios).map(([k,v])=>`<button data-scenario="${k}">${v}</button>`).join('');content.className='content';
  function draw(){const now=Date.now(),c=HORIZONS[horizon],frames={};
@@ -31,12 +32,13 @@ if(!embedded){
  if(scenario==='short')Object.values(frames).forEach(invert);if(scenario==='conflict')invert(frames[c.regime]);if(scenario==='wait')last[5]=10;
  const open=last[6]+1,p=last[4];frames[c.trigger].push([open,p,p+.001,p-.001,p,1,open+FRAME_MS[c.trigger]-1]);
  if(scenario==='missing')delete frames[c.regime];
- const input={symbol:'SOLUSDT',horizon,frames,now,requestedAt:now,receivedAt:now,contractVerifiedAt:now,source:'Binance USD-M public klines'},record=analyzeHorizon(input);
+ const input={symbol,horizon,frames,now,requestedAt:now,receivedAt:now,contractVerifiedAt:now,source:'Binance USD-M public klines'},record=analyzeHorizon(input);
  if(scenario==='touched'){const plan=horizonPlanStatus(record,now).plans[0];if(plan)record.snapshot.high=plan.entry;}
- const time=scenario==='expired'?now+60000:now,key=`${horizon}:SOLUSDT`,state={ui:{horizon,horizonSymbol:'SOLUSDT'},agents:{horizonPlans:{[key]:record},horizonComparisons:{}}};
+ const time=scenario==='expired'?now+60000:now,key=`${horizon}:${symbol}`,state={ui:{horizon,horizonSymbol:symbol},market:{status:'LIVE',updatedAt:new Date(now).toISOString(),contractVerifiedAt:new Date(now).toISOString(),cryptoOnly:true,universeRows:[['','SOLUSDT',100,6,2e7,85],['','1000PEPEUSDT',.01,8,3e7,90]]},agents:{horizonPlans:{[key]:record},horizonComparisons:{}}};
  if(scenario==='study'){record.status='BLOCKED';record.reason='以下回測數字均為版面測試資料';const stats={trades:25,netPnl:12.34,averageNetR:.2,profitFactor:1.1,closedDrawdownPct:3,incomplete:2};state.agents.horizonComparisons[key]={status:'LIVE',result:{start:now-86400000*90,end:now,source:'測試 fixture',version:'fixture',rows:['breakout','structured'].map(key=>({key,development:stats,holdout:stats,stress:stats}))}};}
  content.innerHTML=horizonPanel(state,time);for(const b of controls.querySelectorAll('button'))b.setAttribute('aria-pressed',String(b.dataset.scenario===scenario));if(scenario==='study')content.querySelector('[data-search^="horizon-comparison"]').open=true;
  }
+ content.onchange=e=>{if(e.target.matches('[data-horizon-symbol]')){symbol=e.target.value;draw();}};
  controls.onclick=e=>{const b=e.target.closest('[data-scenario]');if(b){scenario=b.dataset.scenario;draw();}};content.onclick=e=>{const b=e.target.closest('[data-horizon]');if(b){horizon=b.dataset.horizon;draw();}};draw();
 }
 </script></body></html>
