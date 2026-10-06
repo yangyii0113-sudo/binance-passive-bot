@@ -163,15 +163,23 @@ function refreshAgentPlan(value, {origin='重新核對', technical,automatic=fal
 }
 
 function horizonSelection(){return {horizon:HORIZONS[appState.ui.horizon]?appState.ui.horizon:'week',symbol:normalizePlanSymbol(document.querySelector('#horizon-symbol')?.value||horizonCandidateSelection(appState).symbol)};}
-async function refreshHorizon(){
+async function refreshHorizon(selection=horizonSelection()){
  if(appState.agents.horizonBusy)return;
- const {horizon,symbol}=horizonSelection(),key=`${horizon}:${symbol}`;
+ const {horizon,symbol}=selection,key=`${horizon}:${symbol}`;
  if(!homeCandidates(appState.market).rows.some(row=>row.symbol===symbol)){render();return;}
  Object.assign(appState.ui,{horizon,horizonSymbol:symbol});
  forwardTracker?.watchSymbol(symbol);const ticket=forwardTracker?.ticket(symbol);
  setStateSlice('agents',{horizonBusy:true,horizonPlans:{...appState.agents.horizonPlans,[key]:{symbol,horizon,status:'LOADING'}}});render();
  try{const record=await generateHorizonPlan(symbol,horizon);setStateSlice('agents',{horizonPlans:{...appState.agents.horizonPlans,[key]:record}});forwardTracker?.register(record,ticket);}
  finally{setStateSlice('agents',{horizonBusy:false});scheduleAgentPlanExpiry();render();}
+}
+async function refreshHomeHorizons(){
+ if(appState.ui.horizonBatch||appState.agents.horizonBusy)return;
+ const {symbol}=horizonSelection();
+ if(!homeCandidates(appState.market).rows.some(row=>row.symbol===symbol)){render();return;}
+ appState.ui.horizonBatch=true;appState.ui.horizonSymbol=symbol;render();
+ try{for(const horizon of Object.keys(HORIZONS))await refreshHorizon({horizon,symbol});}
+ finally{appState.ui.horizonBatch=false;render();}
 }
 async function compareHorizon(){
  if(appState.agents.horizonCompareBusy)return;
@@ -715,8 +723,11 @@ function initEvents() {
     }
   });
 
-  document.addEventListener('submit',event=>{if(event.target.id==='horizon-analysis-form'){event.preventDefault();void refreshHorizon();}});
+  document.addEventListener('submit',event=>{if(event.target.id==='horizon-analysis-form'){event.preventDefault();void (currentRoute()==='home'?refreshHomeHorizons():refreshHorizon());}});
   document.addEventListener('click', async (event) => {
+    if(event.target.closest?.('[data-horizon-analyze-all]')){event.preventDefault();await refreshHomeHorizons();return;}
+    const homeHorizon=event.target.closest?.('[data-horizon-check]')?.dataset.horizon;
+    if(homeHorizon&&HORIZONS[homeHorizon]){if(!appState.ui.horizonBatch)await refreshHorizon({horizon:homeHorizon,symbol:horizonSelection().symbol});return;}
     const horizonButton=event.target.closest?.('[data-horizon]');
     if(horizonButton&&HORIZONS[horizonButton.dataset.horizon]){const selected=horizonSelection();Object.assign(appState.ui,{horizon:horizonButton.dataset.horizon,horizonSymbol:normalizePlanSymbol(horizonButton.dataset.horizonTarget||selected.symbol)});if(horizonButton.hasAttribute('data-horizon-home'))navigateTo('#/advice');else render();return;}
     if(event.target.closest?.('[data-horizon-refresh]')){

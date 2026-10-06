@@ -2707,3 +2707,5 @@ summary { padding-block:10px; }
 @media(max-width:600px){.horizon-workspace{padding:12px}.horizon-card{padding:12px}.horizon-nav{gap:5px}.horizon-nav button{padding:10px 6px}.horizon-nav button strong{font-size:13px}.horizon-nav button span{font-size:10px}.horizon-heading h2{font-size:18px}.horizon-verdict strong{font-size:19px}}
 
 .horizon-input select:disabled{opacity:.65}.horizon-selection-note{font-size:12px;line-height:1.7;color:#dac88f;overflow-wrap:anywhere}
+
+.horizon-input button:disabled,.opportunity-cycle button:disabled{opacity:.45;cursor:not-allowed}.opportunity-cycle>.secondary-btn{min-height:44px;width:100%;white-space:normal}

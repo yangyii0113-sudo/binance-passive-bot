@@ -39,6 +39,18 @@ test('home entry defaults to a screened candidate instead of a hardcoded BTC',()
  assert.doesNotMatch(html,/data-horizon-target="BTCUSDT"/);
  assert.match(html,/data-horizon-target="1000PEPEUSDT"/);
 });
+test('home opportunities expose screened selection and analyze all periods in place',()=>{
+ const html=view.horizonOpportunities({ui:{horizonSymbol:'1000PEPEUSDT'},market:screenedMarket()},now);
+ assert.match(html,/<select[^>]*id="horizon-symbol"/);
+ assert.match(html,/data-horizon-analyze-all/);
+ assert.equal((html.match(/data-horizon-check=/g)||[]).length,3);
+ assert.equal((html.match(/data-horizon-target="1000PEPEUSDT"/g)||[]).length,3);
+});
+test('selected home coin never shows another coin research verdict',()=>{
+ const r=record();const html=view.horizonOpportunities({ui:{horizonSymbol:'1000PEPEUSDT'},market:screenedMarket(),agents:{horizonPlans:{'week:SOLUSDT':r}}},now);
+ assert.doesNotMatch(html,/條件成立・待觸發|1 檔有效計畫|data-horizon-target="SOLUSDT"/);
+ assert.match(html,/1000PEPEUSDT/);
+});
 test('active horizon sample stays visible ahead of later failed registration',()=>{
  const html=view.horizonPanel({ui:{horizon:'week',horizonSymbol:'SOLUSDT'},forward:{enabled:true,book:{rows:[{horizon:'week',symbol:'SOLUSDT',status:'OPEN',reason:'模擬進場'},{horizon:'week',symbol:'SOLUSDT',status:'NOT_TRACKED',reason:'未登錄'}]}}},now);
  assert.match(html,/本機觀察：模擬持倉中/);
@@ -65,6 +77,6 @@ test('opportunity overview prioritizes gated plans and preserves full target ide
 test('empty and failed opportunities offer verification without fabricated setups',()=>{
  assert.equal(typeof view.horizonOpportunities,'function');
  const html=view.horizonOpportunities({ui:{},agents:{horizonPlans:{'day:SOLUSDT':{horizon:'day',symbol:'SOLUSDT',status:'BLOCKED',reason:'缺少收盤資料'}}}},now);
- assert.match(html,/缺少收盤資料/);assert.match(html,/尚未分析/);assert.match(html,/前往核對/);
+ assert.match(html,/缺少收盤資料/);assert.match(html,/尚未分析/);assert.match(html,/查看完整分析/);
  assert.doesNotMatch(html,/檔有效計畫|data-price-level/);
 });

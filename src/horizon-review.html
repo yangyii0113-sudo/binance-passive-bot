@@ -1,12 +1,12 @@
 <!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FOXYYA 日週月策略驗收</title><link rel="stylesheet" href="../styles.css"><style>body{margin:0;min-width:0;background:#101e25;color:#edf2ef;font:14px system-ui}*{box-sizing:border-box}header,main{padding:14px}h1{font-size:20px}button,select{min-height:44px;padding:8px 12px;margin:4px;background:#23373c;border:1px solid #597971;border-radius:8px;color:#eee;font:inherit}button[aria-pressed=true]{background:#d9bd70;color:#172220}.warning{color:#edcd88;line-height:1.6}.stage{overflow:auto}.shell{margin:auto}iframe{border:0;box-shadow:0 0 0 1px #536a66;display:block;transform-origin:top left;background:#101e25}.content{max-width:1200px;margin:auto}#results{white-space:pre-wrap;overflow-wrap:anywhere;font:12px system-ui;line-height:1.6}</style></head><body><header><h1>日／週／月策略驗收</h1><p class="warning">合成測試 fixture，非即時行情、非交易建議，不保存模擬成交。本頁用來驗證顯示與 Gate。</p><div id="controls"></div></header><main id="content"></main><pre id="results" role="status"></pre><script type="module">
 import {analyzeHorizon,HORIZONS,FRAME_MS,frameOpen,horizonPlanStatus} from './horizon_strategies.js';
-import {horizonPanel} from './horizon_view.js';
+import {horizonPanel,horizonOpportunities} from './horizon_view.js';
 const params=new URLSearchParams(location.search),embedded=params.has('frame'),controls=document.querySelector('#controls'),content=document.querySelector('#content');
 const sizes={phone360:[360,844],phone390:[390,844],phone430:[430,844],portrait:[1032,1376],landscape:[1376,1032]};
 const scenarios={long:'有效做多',short:'有效做空',wait:'等待確認',expired:'核對過期',conflict:'方向衝突',missing:'缺少資料',touched:'已觸及門檻',study:'回測表格'};
 if(!embedded){
  controls.innerHTML='<label>裝置<select id="device">'+Object.keys(sizes).map(k=>`<option value="${k}" ${k==='phone390'?'selected':''}>${k} · ${sizes[k].join(' × ')}</option>`).join('')+'</select></label><button id="matrix">執行 120 個情境尺寸檢查</button><button id="pages">執行 30 個平台頁面尺寸檢查</button>';
- content.className='stage';content.innerHTML='<div class="shell"><iframe title="日週月策略尺寸預覽" src="./horizon-review.html?frame=1"></iframe></div>';
+ content.className='stage';content.innerHTML='<div class="shell"><iframe title="日週月策略尺寸預覽" src="./horizon-review.html?frame=1'+(params.has('home')?'&home=1':'')+'"></iframe></div>';
  const frame=document.querySelector('iframe'),device=document.querySelector('#device'),shell=document.querySelector('.shell');
  function resize(){const [w,h]=sizes[device.value],scale=Math.min(1,(content.clientWidth-32)/w);frame.width=w;frame.height=h;frame.style.transform=`scale(${scale})`;shell.style.width=w*scale+'px';shell.style.height=h*scale+'px';}device.onchange=resize;window.addEventListener('resize',resize);resize();
  const results=document.querySelector('#results');
@@ -36,7 +36,7 @@ if(!embedded){
  if(scenario==='touched'){const plan=horizonPlanStatus(record,now).plans[0];if(plan)record.snapshot.high=plan.entry;}
  const time=scenario==='expired'?now+60000:now,key=`${horizon}:${symbol}`,state={ui:{horizon,horizonSymbol:symbol},market:{status:'LIVE',updatedAt:new Date(now).toISOString(),contractVerifiedAt:new Date(now).toISOString(),cryptoOnly:true,universeRows:[['','SOLUSDT',100,6,2e7,85],['','1000PEPEUSDT',.01,8,3e7,90]]},agents:{horizonPlans:{[key]:record},horizonComparisons:{}}};
  if(scenario==='study'){record.status='BLOCKED';record.reason='以下回測數字均為版面測試資料';const stats={trades:25,netPnl:12.34,averageNetR:.2,profitFactor:1.1,closedDrawdownPct:3,incomplete:2};state.agents.horizonComparisons[key]={status:'LIVE',result:{start:now-86400000*90,end:now,source:'測試 fixture',version:'fixture',rows:['breakout','structured'].map(key=>({key,development:stats,holdout:stats,stress:stats}))}};}
- content.innerHTML=horizonPanel(state,time);for(const b of controls.querySelectorAll('button'))b.setAttribute('aria-pressed',String(b.dataset.scenario===scenario));if(scenario==='study')content.querySelector('[data-search^="horizon-comparison"]').open=true;
+ content.innerHTML=params.has('home')?horizonOpportunities(state,time):horizonPanel(state,time);for(const b of controls.querySelectorAll('button'))b.setAttribute('aria-pressed',String(b.dataset.scenario===scenario));if(scenario==='study')content.querySelector('[data-search^="horizon-comparison"]').open=true;
  }
  content.onchange=e=>{if(e.target.matches('[data-horizon-symbol]')){symbol=e.target.value;draw();}};
  controls.onclick=e=>{const b=e.target.closest('[data-scenario]');if(b){scenario=b.dataset.scenario;draw();}};content.onclick=e=>{const b=e.target.closest('[data-horizon]');if(b){horizon=b.dataset.horizon;draw();}};draw();
