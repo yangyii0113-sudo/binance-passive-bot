@@ -36,8 +36,8 @@ test('top ten scanner selects fresh rising crypto contracts with deterministic l
  assert.throws(()=>strongPullbackCandidates(market,{},now));
  contracts.symbols[13].underlyingType='EQUITY';rows[12][3]=-5;rows[11][3]=30;rows[10][4]=1;rows[9][5]=null;
  const filtered=strongPullbackCandidates({...market,universeRows:[...rows,rows[0]]},contracts,now);
- assert.equal(filtered.length,9);assert.equal(new Set(filtered.map(x=>x.symbol)).size,9);
- assert.equal(filtered.some(x=>['COIN13USDT','COIN12USDT','COIN11USDT','COIN10USDT','COIN9USDT'].includes(x.symbol)),false);
+ assert.equal(filtered.length,10);assert.equal(new Set(filtered.map(x=>x.symbol)).size,10);assert.ok(filtered.some(x=>x.symbol==='COIN12USDT'&&x.pool==='declining'));
+ assert.equal(filtered.some(x=>['COIN13USDT','COIN11USDT','COIN10USDT','COIN9USDT'].includes(x.symbol)),false);
 });
 test('scanner preserves ranking, isolates unavailable contracts and bounds concurrent requests',async()=>{
  let active=0,peak=0;const progress=[],urls=[];

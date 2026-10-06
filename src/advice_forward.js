@@ -40,6 +40,21 @@ export function registerForwardAdvice(book,record,{now=Date.now(),feed=null}={})
     const signalId=identity(record.symbol,`${horizon?`${HORIZON_VERSION}:${horizon}:`:""}${candidate?.key || status.key}`,signalAt ?? record.checkedAt ?? now);
     const attempts=book.rows.filter(r=>(r.signalId || r.id)===signalId);
     const previous=attempts.at(-1);
+    // Renew only before expiry, with identical levels and the exact continuous feed cursor.
+    if(previous?.status==='PENDING' && candidate && !previous.fills.length && now<previous.entryUntil){
+      const keys=['key','side','entry','stop','tp1','tp2','signalAt','expiresAt',...(horizon?['horizon','version','intervalMs','maxHoldMs']:[])];
+      const until=Math.min(record.snapshotUntil,candidate.expiresAt,...(horizon?[record.contractVerifiedAt+60000]:[]));
+      const cursor=previous.cursor,last=feed?.last;
+      const continuous=cursor && last && ['id','time','receivedAt','price'].every(k=>cursor[k]===last[k]) &&
+        finite(feed.startedAt) && feed.startedAt<=previous.createdAt && now-last.receivedAt>=0 && now-last.receivedAt<=LAG_MS;
+      if(record.checkedAt>previous.checkedAt && until>previous.entryUntil && continuous && keys.every(k=>candidate[k]===previous.plan[k])){
+        event(previous,'REVALIDATED',now,'完整新核對與連續行情通過，續候新觸發；不補算',{checkedAt:record.checkedAt,previousUntil:previous.entryUntil,entryUntil:until,...(horizon?{contractVerifiedAt:record.contractVerifiedAt}:{})});
+        previous.checkedAt=record.checkedAt;previous.entryUntil=until;
+        if(horizon)previous.contractVerifiedAt=record.contractVerifiedAt;
+        added.push(previous);
+      }
+      continue;
+    }
     // Only fresh, explicitly revalidated unfilled observations may retry. Never reopen a gap or fill.
     if(previous && (!candidate || !['EXPIRED','NOT_TRACKED'].includes(previous.status) || previous.fills.length ||
       record.checkedAt<=Math.max(previous.checkedAt,previous.endedAt || previous.createdAt)))continue;

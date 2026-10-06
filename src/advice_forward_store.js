@@ -16,11 +16,11 @@ export function validateForwardBook(book){
     check(r&&typeof r.id==='string'&&r.id.length<250&&!ids.has(r.id)&&/^[\p{L}\p{N}]+USDT$/u.test(r.symbol)&&r.symbol.length<60&&r.version===FORWARD_VERSION&&(r.horizon?!!HORIZONS[r.horizon]&&r.strategyVersion===HORIZON_VERSION:r.strategyVersion===FAMILY_VERSION)&&positive(r.createdAt)&&states.includes(r.status)&&typeof r.reason==='string'&&r.reason.length<=500);
     ids.add(r.id);
     check(r.costs?.fee===EXIT_COSTS.fee&&r.costs?.slippage===EXIT_COSTS.slippage&&r.referenceCapital===1000&&r.riskFraction===.0025);
-    check(Array.isArray(r.events)&&r.events.length>0&&r.events.length<=24&&r.events[0].type==='REGISTERED'&&Array.isArray(r.fills)&&r.fills.length<=3);
+    check(Array.isArray(r.events)&&r.events.length>0&&r.events.length<=4096&&r.events[0].type==='REGISTERED'&&Array.isArray(r.fills)&&r.fills.length<=3);
     for(const e of r.events)check(e&&typeof e.type==='string'&&positive(e.at)&&typeof e.reason==='string');
     if(!r.plan){check(r.status==='NO_SETUP'&&r.fills.length===0);continue;}
     check(['structured','breakout','meanReversion'].includes(r.plan.key)&&researchRiskScenario(r.plan)&&positive(r.plan.signalAt)&&positive(r.plan.expiresAt)&&positive(r.entryUntil)&&r.entryUntil<=r.plan.expiresAt&&positive(r.checkedAt)&&r.entryUntil<=r.checkedAt+60000);
-    if(r.horizon){const c=HORIZONS[r.horizon];check(positive(r.contractVerifiedAt)&&r.contractVerifiedAt<=r.createdAt&&r.entryUntil<=r.contractVerifiedAt+60000&&['structured','breakout'].includes(r.plan.key)&&r.plan.horizon===r.horizon&&r.plan.version===HORIZON_VERSION&&r.plan.intervalMs===FRAME_MS[c.trigger]&&r.plan.maxHoldMs===c.maxHoldMs&&r.plan.expiresAt===r.plan.signalAt+1+r.plan.intervalMs);}
+    if(r.horizon){const c=HORIZONS[r.horizon];check(positive(r.contractVerifiedAt)&&r.contractVerifiedAt<=r.checkedAt&&r.entryUntil<=r.contractVerifiedAt+60000&&['structured','breakout'].includes(r.plan.key)&&r.plan.horizon===r.horizon&&r.plan.version===HORIZON_VERSION&&r.plan.intervalMs===FRAME_MS[c.trigger]&&r.plan.maxHoldMs===c.maxHoldMs&&r.plan.expiresAt===r.plan.signalAt+1+r.plan.intervalMs);}
     check(r.status!=='NO_SETUP');
     if(activeForward(r))check(r.cursor&&Number.isSafeInteger(r.cursor.id)&&r.cursor.id>=0&&positive(r.cursor.time)&&positive(r.cursor.receivedAt)&&positive(r.cursor.price));
     const entry=r.fills[0],s=r.plan.side==='LONG'?1:-1;

@@ -19,7 +19,7 @@ test('research selection reserves liquid flat candidates without admitting illiq
  const eligible=new Set(rows.map(r=>r[1]).filter(s=>s!=='UP0USDT'));
  const selected=candidates.rankResearchRows(rows,eligible);
  assert.equal(selected.length,10);assert.ok(selected.some(r=>r.symbol==='FLATUSDT'));assert.ok(selected.some(r=>r.symbol==='EARLYUSDT'));
- assert.ok(selected.every(r=>!['BADUSDT','SPIKEUSDT','THINUSDT','UP0USDT'].includes(r.symbol)));assert.equal(new Set(selected.map(r=>r.symbol)).size,10);
+ assert.ok(selected.every(r=>!['SPIKEUSDT','THINUSDT','UP0USDT'].includes(r.symbol)));assert.equal(new Set(selected.map(r=>r.symbol)).size,10);
 });
 test('retest study waits for a closed reclaim then triggers on a later bar in both directions',()=>{
  for(const side of ['LONG','SHORT']){
@@ -78,4 +78,12 @@ test('a passing independent plan keeps partial-data warnings outside disclosures
  const hourly=bars(220),fourHourly=bars(55,4);hourly.at(-1)[2]=103;hourly.at(-1)[4]=102;hourly.at(-1)[5]=200;
  const input={hourly,fourHourly,now},analysis=analyzeCoin({...input,pullback:pullbackPlan(input)}),record={symbol:'SOLUSDT',status:'LIVE',checkedAt:now,snapshotUntil:now+60000,marketSnapshot:{price:102,high:102.1,low:101.9,barOpen:2400*H,requestedAt:now,receivedAt:now},row:{symbol:'SOLUSDT',analysis}};
  const html=agentDecisionCard(record,{now});assert.match(html.slice(0,html.indexOf('<details')),/部分策略缺資料/);
+});
+
+test('research scan reserves declining liquidity candidates without dictating trade direction',()=>{
+ const rows=[...Array.from({length:12},(_,i)=>['',`UP${i}USDT`,100,5,20000000,90-i]),...Array.from({length:8},(_,i)=>['',`DOWN${i}USDT`,100,-6-i,20000000,90-i]),['','FLATUSDT',100,0,30000000,40],['','CRASHUSDT',100,-30,1e8,100],['','THINUSDT',100,-10,1,100]];
+ const out=candidates.rankResearchRows(rows);
+ assert.equal(out.length,10);assert.equal(out.filter(r=>r.pool==='declining').length,3);assert.ok(out.some(r=>r.symbol==='FLATUSDT'));
+ assert.equal(new Set(out.map(r=>r.symbol)).size,10);assert.ok(out.every(r=>!['CRASHUSDT','THINUSDT'].includes(r.symbol)));assert.ok(out.every(r=>r.side===undefined));
+ const eligible=new Set(['DOWN0USDT']);assert.deepEqual(candidates.rankResearchRows(rows,eligible).map(r=>r.symbol),['DOWN0USDT']);
 });

@@ -73,3 +73,16 @@ test('fixed indicator seed makes extra pre-window history irrelevant in live and
  const x=input('month'),before=api.horizonSignals(x);for(const rows of Object.values(x.frames))for(const r of rows.filter(r=>+r[6]<x.now).slice(0,-60)){r[1]+=100;r[2]+=100;r[3]+=100;r[4]+=100;}
  assert.deepEqual(api.horizonSignals(x),before);
 });
+
+test('day week month pending observations renew with fresh contract evidence and continuous feed',async()=>{
+ const {emptyForwardBook,registerForwardAdvice,advanceForward}=await import('../src/advice_forward.js');
+ const {validateForwardBook}=await import('../src/advice_forward_store.js');
+ for(const h of ['day','week','month']){
+  const r=api.analyzeHorizon(input(h)),b=emptyForwardBook(),price=r.snapshot.price;
+  const feed={startedAt:now-1,last:{id:1,time:now,eventTime:now,receivedAt:now,price}};
+  registerForwardAdvice(b,r,{now,feed});
+  for(let i=2;i<=31;i++){const at=now+(i-1)*1000;feed.last={id:i,time:at,eventTime:at,receivedAt:at,price};advanceForward(b,r.symbol,feed.last);}
+  const fresh=structuredClone(r),at=now+30000;Object.assign(fresh,{checkedAt:at,snapshotUntil:at+60000,contractVerifiedAt:at});Object.assign(fresh.snapshot,{requestedAt:at,receivedAt:at});
+  registerForwardAdvice(b,fresh,{now:at,feed});assert.equal(b.rows.length,1);assert.equal(b.rows[0].entryUntil,at+60000);assert.equal(b.rows[0].contractVerifiedAt,at);validateForwardBook(b);
+ }
+});

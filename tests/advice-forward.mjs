@@ -210,3 +210,26 @@ test('result filters do not change performance totals or expose invalid records'
   assert.doesNotMatch(blocked,/data-forward-result-filter|平均 R／樣本/);
   assert.match(blocked,/停止計算成效/);
 });
+
+test('fresh gate plus uninterrupted ticks renews one pending observation without duplicating trades',()=>{
+  const {book,row}=setup();
+  for(let i=11;i<=40;i++)step(book,i,99,now+(i-10)*1000);
+  const r=record();r.checkedAt=now+30000;r.snapshotUntil=r.checkedAt+60000;r.marketSnapshot.requestedAt=r.checkedAt;r.marketSnapshot.receivedAt=r.checkedAt;
+  const feed={startedAt:now-1000,last:tick(40,99,now+30000)};
+  registerForwardAdvice(book,r,{now:r.checkedAt,feed});
+  assert.equal(book.rows.length,1);assert.equal(row.entryUntil,now+90000);assert.equal(row.checkedAt,r.checkedAt);
+  assert.equal(row.events.at(-1).type,'REVALIDATED');validateForwardBook(book);
+  step(book,41,100,now+31000);assert.equal(row.status,'OPEN');assert.equal(row.fills.length,1);
+});
+test('pending continuation cannot renew missing coverage, changed levels, old rechecks or expired observation',()=>{
+ for(const kind of ['coverage','levels','old','expired']){
+  const {book,row}=setup();const at=kind==='expired'?now+61000:now+30000;
+  const r=record();r.checkedAt=at;r.snapshotUntil=at+60000;r.marketSnapshot.requestedAt=at;r.marketSnapshot.receivedAt=at;
+  if(kind==='levels')r.row.analysis.strategies[0].entry=101;
+  if(kind==='old'){r.checkedAt=now;r.snapshotUntil=now+60000;r.marketSnapshot.requestedAt=now;r.marketSnapshot.receivedAt=now;}
+  if(kind!=='coverage')row.cursor=tick(40,99,at);
+  const before=row.entryUntil;
+  registerForwardAdvice(book,r,{now:at,feed:{startedAt:now-1000,last:tick(40,99,at)}});
+  assert.equal(row.entryUntil,before,kind);assert.equal(book.rows.length,1);validateForwardBook(book);
+ }
+});

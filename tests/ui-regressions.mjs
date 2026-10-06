@@ -181,10 +181,10 @@ function homeFixture(){
     row:{symbol:'BBBUSDT',analysis:{status:'VALID',analyzedAt:now,closedAt:p.signalAt,validUntil:p.expiresAt,strategies:[p,{key:'structured',status:'WAIT',reason:'等待回調'},{key:'meanReversion',status:'WAIT',reason:'等待震盪'}]}}}};
   return {s,now};
 }
-test('home ranks liquid rising candidates separately from gated entry status',()=>{
+test('home ranks liquid directional candidates separately from gated entry status',()=>{
   const {s,now}=homeFixture();s.ui.homeOpportunitySort='strength';const before=structuredClone(s),html=researchOverview(s,now);
-  assert.match(html,/data-home-opportunity="AAAUSDT"/);assert.match(html,/data-home-opportunity="BBBUSDT"/);
-  assert.doesNotMatch(html,/data-home-opportunity="(?:SPIKE|LOW|DOWN)USDT"/);
+  assert.match(html,/data-home-opportunity="AAAUSDT"/);assert.match(html,/data-home-opportunity="BBBUSDT"/);assert.match(html,/data-home-opportunity="DOWNUSDT"/);
+  assert.doesNotMatch(html,/data-home-opportunity="(?:SPIKE|LOW)USDT"/);
   assert.ok(html.indexOf('data-home-opportunity="BBBUSDT"')<html.indexOf('data-home-opportunity="AAAUSDT"'));
   assert.equal(homeModule.homeOpportunities(s,now).rows[0].symbol,'AAAUSDT','configured ranking remains intact beneath plan priority');
   assert.match(html,/data-home-check-symbol="AAAUSDT"/);assert.match(html,/data-agent-advice-symbol="BBBUSDT"/);

@@ -5,7 +5,7 @@ import { activeForward, forwardSummary, samplePnl } from './advice_forward.js';
 import { FAMILY_NAMES } from './strategy_families.js';
 import { escapeHtml as esc, displayDate, section, metric } from './ui.js';
 
-const labels={PENDING:'等待觸發',OPEN:'模擬持倉',PARTIAL:'第一止盈已完成',CLOSED:'完整結案',GAP:'資料中斷 · 待覆核',EXPIRED:'未觸發到期',CANCELLED:'取消觀察',NOT_TRACKED:'未建立追蹤',NO_SETUP:'無可追蹤計畫',REGISTERED:'登錄建議',WATCHING:'開始觀察',TRIGGERED:'已觸發 · 僅模擬',ENTRY:'模擬進場',TP1:'第一止盈',TP2:'第二止盈',STOP:'止損出場',TIME:'時間出場',PROTECTION:'成本保護生效'};
+const labels={PENDING:'等待觸發',OPEN:'模擬持倉',PARTIAL:'第一止盈已完成',CLOSED:'完整結案',GAP:'資料中斷 · 待覆核',EXPIRED:'未觸發到期',CANCELLED:'取消觀察',NOT_TRACKED:'未建立追蹤',NO_SETUP:'無可追蹤計畫',REGISTERED:'登錄建議',WATCHING:'開始觀察',REVALIDATED:'重新核對通過・續候',TRIGGERED:'已觸發 · 僅模擬',ENTRY:'模擬進場',TP1:'第一止盈',TP2:'第二止盈',STOP:'止損出場',TIME:'時間出場',PROTECTION:'成本保護生效'};
 const strategyName=row=>row.horizon?`${HORIZONS[row.horizon]?.label||row.horizon} · ${HORIZON_NAMES[row.plan?.key]||'分析結論'}`:FAMILY_NAMES[row.plan?.key]||'無可追蹤計畫';
 const num=(n,suffix='')=>Number.isFinite(n)?`${n.toLocaleString('zh-TW',{maximumFractionDigits:2,minimumFractionDigits:2})}${suffix}`:'—';
 const preciseNumber=n=>Number.isFinite(n)?n.toLocaleString('zh-TW',{maximumFractionDigits:8}):'—';
