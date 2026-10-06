@@ -98,12 +98,14 @@ async function fetchKlines(symbol, interval, days){
     if(!response.ok && base === FUTURES_BASE && [403,451].includes(response.status)){
       base = SPOT_PUBLIC_BASE;
       source = 'Binance Spot public klines · fallback';
+      rows.length=0;cursor=start;guard=1; // A fallback must restart the complete window, never mix markets.
       response = await requestKlines(base, symbol, interval, cursor, end);
     }
     if(!response.ok) throw new Error(`Kline HTTP ${response.status} · ${source}`);
     const batch = await response.json();
     if(!Array.isArray(batch) || !batch.length) break;
     for(const k of batch){
+      if(!Array.isArray(k)||[0,1,2,3,4,6].some(i=>k[i]==null||k[i]===''||!Number.isFinite(+k[i]))||Math.min(+k[1],+k[2],+k[3],+k[4])<=0||+k[2]<Math.max(+k[1],+k[4])||+k[3]>Math.min(+k[1],+k[4]))throw new Error('歷史 OHLC 價格或時間異常，停止回測');
       const closeTime = Number(k[6]);
       if(!(closeTime < end)) continue;
       rows.push({
@@ -135,7 +137,14 @@ function simulate(candles, strategy){
   let entry = null;
   let equity = 1;
   let peak = 1;
-  let maxDd = 0;
+  let maxDd = 0, closedPeak = 1, closedDd = 0;
+  // OHLC extrema cannot reveal intrabar order: report a conservative adverse-path bound.
+  const mark = candle => {
+    if(!side || !entry)return;
+    const best=equity*(1+netTradeReturn(entry,side===1?candle.high:candle.low,side));
+    const worst=equity*(1+netTradeReturn(entry,side===1?candle.low:candle.high,side));
+    peak=Math.max(peak,best);maxDd=Math.max(maxDd,(peak-worst)/peak);
+  };
   const trades = [];
   const curve = [{time:candles[0].time,balance:BACKTEST_CAPITAL}];
   for(let i=1;i<candles.length;i++){
@@ -147,13 +156,16 @@ function simulate(candles, strategy){
     if(side === 0 && nextSide !== 0){
       side = nextSide;
       entry = fill;
+      mark(candles[i]);
       continue;
     }
     if(nextSide !== side){
       const exit = fill;
       const ret = netTradeReturn(entry,exit,side);
+      const netPnl=BACKTEST_CAPITAL*equity*ret;
       equity *= 1 + ret;
-      trades.push({entry,exit,side:side===1?'LONG':'SHORT',returnPct:ret*100,time:candles[i].time});
+      trades.push({entry,exit,side:side===1?'LONG':'SHORT',returnPct:ret*100,netPnl,time:candles[i].time});
+      closedPeak=Math.max(closedPeak,equity);closedDd=Math.max(closedDd,(closedPeak-equity)/closedPeak);
       peak = Math.max(peak,equity);
       maxDd = Math.max(maxDd,(peak-equity)/peak);
       curve.push({time:candles[i].time,balance:BACKTEST_CAPITAL*equity});
@@ -161,18 +173,21 @@ function simulate(candles, strategy){
       side = nextSide;
       entry = fill;
     }
+    mark(candles[i]);
   }
   if(side !== 0 && entry){
     const exit = candles[candles.length-1].close;
     const ret = netTradeReturn(entry,exit,side);
+    const netPnl=BACKTEST_CAPITAL*equity*ret;
     equity *= 1 + ret;
-    trades.push({entry,exit,side:side===1?'LONG':'SHORT',returnPct:ret*100,time:candles[candles.length-1].time});
+    trades.push({entry,exit,side:side===1?'LONG':'SHORT',returnPct:ret*100,netPnl,time:candles[candles.length-1].time});
+    closedPeak=Math.max(closedPeak,equity);closedDd=Math.max(closedDd,(closedPeak-equity)/closedPeak);
     peak = Math.max(peak,equity);
     maxDd = Math.max(maxDd,(peak-equity)/peak);
     curve.push({time:candles[candles.length-1].time,balance:BACKTEST_CAPITAL*equity});
   }
-  const positives = trades.filter(t=>t.returnPct>0).map(t=>t.returnPct);
-  const negatives = trades.filter(t=>t.returnPct<0).map(t=>t.returnPct);
+  const positives = trades.filter(t=>t.returnPct>0).map(t=>t.netPnl);
+  const negatives = trades.filter(t=>t.returnPct<0).map(t=>t.netPnl);
   const grossWin = positives.reduce((a,b)=>a+b,0);
   const grossLoss = Math.abs(negatives.reduce((a,b)=>a+b,0));
   const avgTradePct = trades.length ? trades.reduce((s,t)=>s+t.returnPct,0)/trades.length : null;
@@ -187,6 +202,8 @@ function simulate(candles, strategy){
     finalEquity: BACKTEST_CAPITAL*equity,
     capitalExhausted: equity === 0,
     maxDrawdownPct: maxDd*100,
+    closedDrawdownPct:closedDd*100,
+    drawdownMethod:'OHLC_CONSERVATIVE_BOUND',
     tradesList: trades,
     equityCurve: curve
   };
@@ -202,7 +219,7 @@ export async function runLiteBacktest({symbol='BTCUSDT',range='90D',strategy='A'
     status: STATUS.LIVE,
     updatedAt: new Date().toISOString(),
     local: true,
-    input:{symbol,range:resolved.range,strategy,timeframe:interval,samples:candles.length,dataSource:fetched.source,costModel:'單邊費率 0.05%＋滑價 0.02%；依成交名目計算，未含資金費率',executionModel:'Fully Closed Signal → Next Bar Open',initialCapital:BACKTEST_CAPITAL,currency:'USDT',calculationVersion:BACKTEST_VERSION},
+    input:{actualStart:candles[0]?.time,actualEnd:candles.at(-1)?.closeTime,symbol,range:resolved.range,strategy,timeframe:interval,samples:candles.length,dataSource:fetched.source,costModel:'單邊費率 0.05%＋滑價 0.02%；依成交名目計算，未含資金費率',executionModel:'Fully Closed Signal → Next Bar Open',initialCapital:BACKTEST_CAPITAL,currency:'USDT',calculationVersion:BACKTEST_VERSION},
     result:{
       trades:result.trades,
       winRatePct:result.winRatePct,
@@ -214,6 +231,8 @@ export async function runLiteBacktest({symbol='BTCUSDT',range='90D',strategy='A'
       finalEquity:result.finalEquity,
       capitalExhausted:result.capitalExhausted,
       maxDrawdownPct:result.maxDrawdownPct,
+      closedDrawdownPct:result.closedDrawdownPct,
+      drawdownMethod:result.drawdownMethod,
       validation
     },
     equityCurve:result.equityCurve,

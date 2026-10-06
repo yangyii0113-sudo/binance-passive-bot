@@ -100,7 +100,7 @@ test('candidate readiness requires rerunning legacy local backtests after the ca
   s.candidates.items=[item];
   assert.match(visible(pages.strategies(s)),/待重新驗證/);
   assert.doesNotMatch(pages.strategies(s),/decision-badge decision-pass/);
-  item.validator.input.calculationVersion='linear-v3';
+  item.validator.input.calculationVersion='linear-v4';
   assert.doesNotMatch(visible(pages.strategies(s)),/待重新驗證/);
   assert.match(pages.strategies(s),/decision-badge decision-pass/);
 });

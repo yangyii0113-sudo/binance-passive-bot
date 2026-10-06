@@ -1,3 +1,4 @@
+import { horizonPanel } from './horizon_view.js';
 import { homeCandidates } from './home_opportunities.js';
 import { marketHealthView } from './market_health_view.js';
 import { researchPipelineView } from './research_pipeline_status.js';
@@ -22,6 +23,8 @@ export function agentAdvicePanel(state, now=Date.now(), {analysisForm=''}={}) {
   const selected=visible.find(r=>r.symbol===state.ui?.adviceSymbol) || visible.find(r=>agentPlanStatus(r,now).key==='plan') || visible[0];
   const symbol=esc(selected?.symbol || '');
   return `<section class="agent-panel-stack agent-advice-panel" aria-label="交易建議總覽">
+    ${horizonPanel(state,now)}
+    <h2 class="action-section-title">原三策略對照研究</h2>
     ${marketHealthView(state.market,now)}
     ${researchPipelineView(state,homeCandidates(state.market,now),now)}
     <div class="advice-intro"><strong>${records.length?`目前 ${ready.length} 檔有條件式模擬計畫`:'先選幣種，直接取得交易建議'}</strong><p>${records.length?'先選幣種，再看「目前建議」與點位。狀態不代表勝率或獲利排名。':'分析完成會直接顯示：現在該做什麼、進場條件、止盈、止損。條件不足時會清楚列出等待原因。'}</p></div>
@@ -44,4 +47,5 @@ export function agentHistoryPanel(state) {
     <details class="core-disclosure" data-search="策略比較紀錄"><summary>已保存的策略比較 · ${Object.values(state.agents?.planComparisons || {}).filter(c=>c.status==='LIVE').length} 檔</summary>${Object.entries(state.agents?.planComparisons || {}).filter(([,c])=>c.status==='LIVE').map(([symbol,c])=>`<h4>${esc(symbol)}</h4>${agentComparisonView({...c,historical:true},symbol)}`).join('') || '<p>尚無策略比較紀錄；在完整交易計畫中執行近 90 天比較後會保存。</p>'}</details>
   </section>`;
 }
+
 

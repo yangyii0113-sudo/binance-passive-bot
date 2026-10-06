@@ -1,0 +1,42 @@
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FOXYYA 日週月策略驗收</title><link rel="stylesheet" href="../styles.css"><style>body{margin:0;min-width:0;background:#101e25;color:#edf2ef;font:14px system-ui}*{box-sizing:border-box}header,main{padding:14px}h1{font-size:20px}button,select{min-height:44px;padding:8px 12px;margin:4px;background:#23373c;border:1px solid #597971;border-radius:8px;color:#eee;font:inherit}button[aria-pressed=true]{background:#d9bd70;color:#172220}.warning{color:#edcd88;line-height:1.6}.stage{overflow:auto}.shell{margin:auto}iframe{border:1px solid #536a66;display:block;transform-origin:top left;background:#101e25}.content{max-width:1200px;margin:auto}#results{white-space:pre-wrap;overflow-wrap:anywhere;font:12px system-ui;line-height:1.6}</style></head><body><header><h1>日／週／月策略驗收</h1><p class="warning">合成測試 fixture，非即時行情、非交易建議，不保存模擬成交。本頁用來驗證顯示與 Gate。</p><div id="controls"></div></header><main id="content"></main><pre id="results" role="status"></pre><script type="module">
+import {analyzeHorizon,HORIZONS,FRAME_MS,frameOpen,horizonPlanStatus} from './horizon_strategies.js';
+import {horizonPanel} from './horizon_view.js';
+const params=new URLSearchParams(location.search),embedded=params.has('frame'),controls=document.querySelector('#controls'),content=document.querySelector('#content');
+const sizes={phone360:[360,844],phone390:[390,844],phone430:[430,844],portrait:[1032,1376],landscape:[1376,1032]};
+const scenarios={long:'有效做多',short:'有效做空',wait:'等待確認',expired:'核對過期',conflict:'方向衝突',missing:'缺少資料',touched:'已觸及門檻',study:'回測表格'};
+if(!embedded){
+ controls.innerHTML='<label>裝置<select id="device">'+Object.keys(sizes).map(k=>`<option value="${k}" ${k==='phone390'?'selected':''}>${k} · ${sizes[k].join(' × ')}</option>`).join('')+'</select></label><button id="matrix">執行 120 個情境尺寸檢查</button><button id="pages">執行 30 個平台頁面尺寸檢查</button>';
+ content.className='stage';content.innerHTML='<div class="shell"><iframe title="日週月策略尺寸預覽" src="./horizon-review.html?frame=1"></iframe></div>';
+ const frame=document.querySelector('iframe'),device=document.querySelector('#device'),shell=document.querySelector('.shell');
+ function resize(){const [w,h]=sizes[device.value],scale=Math.min(1,(content.clientWidth-32)/w);frame.width=w;frame.height=h;frame.style.transform=`scale(${scale})`;shell.style.width=w*scale+'px';shell.style.height=h*scale+'px';}device.onchange=resize;window.addEventListener('resize',resize);resize();
+ const results=document.querySelector('#results');
+ async function load(url){await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('載入逾時')),15000);frame.onload=()=>{clearTimeout(timer);resolve();};frame.src=url;});await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));}
+ async function run(real=false){document.querySelector('#matrix').disabled=true;document.querySelector('#pages').disabled=true;const checks=[];results.textContent='檢查中…';
+ try{for(const size of Object.keys(sizes)){device.value=size;resize();const cases=real?['/','/advice','/advice-results','/strategies','/orders','/lab']:Object.keys(HORIZONS).flatMap(h=>Object.keys(scenarios).map(s=>`${h}:${s}`));
+ for(const item of cases){let url;if(real){url=new URL(location.pathname.includes('/releases/')?'../../../':'../',location.href);url.hash=item;}else url=new URL(`./horizon-review.html?frame=1&horizon=${item.split(':')[0]}&scenario=${item.split(':')[1]}`,location.href);
+ await load(url.href);const doc=frame.contentDocument,root=doc.documentElement,width=root.clientWidth,overflow=root.scrollWidth>width+1;
+ const fixture=doc.querySelector('[data-horizon-card]'),count=doc.querySelectorAll('[data-price-level="entry"]').length;
+ const want=!real&&['long','short'].includes(item.split(':')[1]);const valid=real?!!doc.querySelector('#app')?.textContent.trim():!!fixture&&(want?count>0:count===0);
+ checks.push({size,case:item,width,scrollWidth:root.scrollWidth,levels:count,pass:!overflow&&valid});results.textContent=JSON.stringify({done:checks.length,passed:checks.filter(x=>x.pass).length,checks},null,2);
+ }}results.dataset.complete='true';results.dataset.passed=checks.filter(x=>x.pass).length;results.dataset.total=checks.length;}
+ catch(e){results.textContent+='\nERROR '+e.message;}finally{document.querySelector('#matrix').disabled=false;document.querySelector('#pages').disabled=false;}}
+ document.querySelector('#matrix').onclick=()=>run(false);document.querySelector('#pages').onclick=()=>run(true);
+}else{
+ let horizon=HORIZONS[params.get('horizon')]?params.get('horizon'):'week',scenario=scenarios[params.get('scenario')]?params.get('scenario'):'long';
+ controls.innerHTML=Object.entries(scenarios).map(([k,v])=>`<button data-scenario="${k}">${v}</button>`).join('');content.className='content';
+ function draw(){const now=Date.now(),c=HORIZONS[horizon],frames={};
+ for(const f of [c.trigger,c.context,c.regime]){const end=frameOpen(now,f),step=FRAME_MS[f];frames[f]=Array.from({length:240},(_,i)=>{const p=80+i*.1,o=end-(240-i)*step;return [o,p,p+.12,p-.12,p+.04,100,o+step-1];});}
+ const last=frames[c.trigger].at(-1);last[2]+=1;last[4]=last[2]-.02;last[5]=250;
+ const invert=rows=>{for(const r of rows){const [o,h,l,cl]=r.slice(1,5);r[1]=250-o;r[2]=250-l;r[3]=250-h;r[4]=250-cl;}};
+ if(scenario==='short')Object.values(frames).forEach(invert);if(scenario==='conflict')invert(frames[c.regime]);if(scenario==='wait')last[5]=10;
+ const open=last[6]+1,p=last[4];frames[c.trigger].push([open,p,p+.001,p-.001,p,1,open+FRAME_MS[c.trigger]-1]);
+ if(scenario==='missing')delete frames[c.regime];
+ const input={symbol:'SOLUSDT',horizon,frames,now,requestedAt:now,receivedAt:now,contractVerifiedAt:now,source:'Binance USD-M public klines'},record=analyzeHorizon(input);
+ if(scenario==='touched'){const plan=horizonPlanStatus(record,now).plans[0];if(plan)record.snapshot.high=plan.entry;}
+ const time=scenario==='expired'?now+60000:now,key=`${horizon}:SOLUSDT`,state={ui:{horizon,horizonSymbol:'SOLUSDT'},agents:{horizonPlans:{[key]:record},horizonComparisons:{}}};
+ if(scenario==='study'){record.status='BLOCKED';record.reason='以下回測數字均為版面測試資料';const stats={trades:25,netPnl:12.34,averageNetR:.2,profitFactor:1.1,closedDrawdownPct:3,incomplete:2};state.agents.horizonComparisons[key]={status:'LIVE',result:{start:now-86400000*90,end:now,source:'測試 fixture',version:'fixture',rows:['breakout','structured'].map(key=>({key,development:stats,holdout:stats,stress:stats}))}};}
+ content.innerHTML=horizonPanel(state,time);for(const b of controls.querySelectorAll('button'))b.setAttribute('aria-pressed',String(b.dataset.scenario===scenario));if(scenario==='study')content.querySelector('[data-search^="horizon-comparison"]').open=true;
+ }
+ controls.onclick=e=>{const b=e.target.closest('[data-scenario]');if(b){scenario=b.dataset.scenario;draw();}};content.onclick=e=>{const b=e.target.closest('[data-horizon]');if(b){horizon=b.dataset.horizon;draw();}};draw();
+}
+</script></body></html>

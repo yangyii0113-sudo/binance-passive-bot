@@ -42,6 +42,7 @@ export const appState = {
     technical: null,
     technicalBusy: false,
     tradePlans: {},
+    horizonPlans: {},horizonComparisons: {},horizonBusy:false,horizonCompareBusy:false,
     planComparisons: {},
     planComparisonBusy: false,
     planExport: null,

@@ -33,6 +33,8 @@ for (const symbol of SYMBOLS) {
           strategy,
           strategyLabel,
           samples: snapshot.input?.samples ?? null,
+          calculationVersion:snapshot.input?.calculationVersion, actualStart:snapshot.input?.actualStart, actualEnd:snapshot.input?.actualEnd,
+          drawdownMethod:r.drawdownMethod, closedDrawdownPct:r.closedDrawdownPct,
           dataSource: snapshot.input?.dataSource ?? null,
           trades: r.trades ?? null,
           winRatePct: r.winRatePct ?? null,
@@ -63,10 +65,11 @@ for (const symbol of SYMBOLS) {
 
 const successful = rows.filter(row => !row.error);
 const failed = rows.filter(row => row.error);
-const safe = (value, digits=2) => Number.isFinite(Number(value)) ? Number(value).toFixed(digits) : '—';
+const safe = (value, digits=2) => value != null && value !== '' && Number.isFinite(Number(value)) ? Number(value).toFixed(digits) : '—';
 
 function guardStatus(row){
   if(row.error) return 'ERROR';
+  if(row.dataSource!=='Binance USD-M public klines')return 'SOURCE_INELIGIBLE';
   if(String(row.validationLevel || '').startsWith('INSUFFICIENT')) return 'INSUFFICIENT';
   const pf = Number(row.profitFactor);
   const avg = Number(row.avgTradePct);
@@ -104,7 +107,8 @@ const markdown = [
 
 await writeFile('benchmark-result.json', JSON.stringify({
   generatedAt:new Date().toISOString(),
-  source:'Binance USD-M public klines',
+  sources:[...new Set(rows.map(r=>r.dataSource).filter(Boolean))],
+  scope:'EMA control only; horizon and three-family research reported separately',
   paperOnly:true,
   successfulCases:successful.length,
   failedCases:failed.length,

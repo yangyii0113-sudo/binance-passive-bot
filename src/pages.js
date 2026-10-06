@@ -1,3 +1,4 @@
+import { horizonNav } from './horizon_view.js';
 import { formatPrice as quotePrice, exactPricesView } from './price_display.js';
 import { coinLogo } from './coin_logo.js';
 import { adviceResultsPage } from './advice_forward_view.js';
@@ -585,6 +586,7 @@ export function homePage(state,now=Date.now()) {
 
   return `<div class="page-stack home-stack">${messageBar(state)}
     ${assetClassSwitcher(state)}
+    ${isCrypto?horizonNav(state,{home:true}):''}
     ${isCrypto?researchOverview(state,now):stockEmptyState('股市研究尚未接入')}
 
     ${calendarPanel(state)}

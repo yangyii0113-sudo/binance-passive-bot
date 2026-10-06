@@ -2688,3 +2688,14 @@ summary { padding-block:10px; }
   input:not([type=checkbox]):not([type=radio]):not([type=range]), select, textarea {font-size:16px!important;}
 }
 #app button, #app summary { min-height:44px; }
+
+
+/* Shared day/week/month research hierarchy. */
+.horizon-nav{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:12px 0}
+.horizon-nav button{min-width:0;min-height:66px;background:#172b31;border:1px solid #355057;border-radius:12px;color:#dce8e7;padding:12px 8px;text-align:left;cursor:pointer}
+.horizon-nav button strong,.horizon-nav button span{display:block;overflow-wrap:anywhere}.horizon-nav button strong{font-size:15px}.horizon-nav button span{font-size:11px;line-height:1.5;margin-top:5px;color:#aebfbd}
+.horizon-nav button[aria-pressed=true]{border-color:#cfb66e;background:#263831}.horizon-nav button[aria-pressed=true] strong{color:#f1d894}
+.horizon-workspace{min-width:0;padding:20px;background:linear-gradient(145deg,#182c30,#101e25);border:1px solid #3a5155;border-radius:16px}.horizon-heading{display:flex;gap:8px;justify-content:space-between;align-items:center;flex-wrap:wrap}.horizon-heading h2{font-size:20px;margin:0}.horizon-heading>span{font-size:11px;color:#a9bab8}
+.horizon-input{display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin:16px 0}.horizon-input label{display:grid;gap:6px;flex:1;min-width:160px;font-size:12px}.horizon-input input{width:100%;min-width:0;background:#101e25;border:1px solid #516669;border-radius:8px;color:#fff;padding:12px;font:inherit;font-size:15px}.horizon-input button{min-height:44px}
+.horizon-card{min-width:0;background:#14252b;border-radius:12px;padding:18px;border:1px solid #354c50}.horizon-card p{line-height:1.7;font-size:13px;overflow-wrap:anywhere}.horizon-verdict{margin-top:16px}.horizon-verdict strong{font-size:21px;color:#e5cb86}.horizon-verdict.plan strong{color:#9bdac3}.horizon-verdict p{margin:5px 0}.horizon-time{color:#b1c2c0}.horizon-plan{border-top:1px solid #355057;margin-top:16px;padding-top:10px}.horizon-plan h3{font-size:16px}.horizon-next{border-left:3px solid #bfae79;padding-left:12px;margin-top:20px}.horizon-next>strong{font-size:14px}.horizon-lock{font-size:12px;line-height:1.8;color:#d9c790}.horizon-workspace .core-disclosure{margin-top:12px}.horizon-workspace .comparison-scroll{overflow:auto;max-width:100%}.horizon-workspace table{min-width:650px}.horizon-workspace th,.horizon-workspace td{padding:10px;text-align:left;font-size:12px}
+@media(max-width:600px){.horizon-workspace{padding:12px}.horizon-card{padding:12px}.horizon-nav{gap:5px}.horizon-nav button{padding:10px 6px}.horizon-nav button strong{font-size:13px}.horizon-nav button span{font-size:10px}.horizon-heading h2{font-size:18px}.horizon-verdict strong{font-size:19px}}

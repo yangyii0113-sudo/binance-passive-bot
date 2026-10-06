@@ -7,6 +7,10 @@ on:
     paths:
       - 'scripts/strategy-benchmark-live.mjs'
       - 'src/local_backtest.js'
+      - 'src/horizon_*.js'
+      - 'src/pullback_replay.js'
+      - 'src/strategy_families.js'
+      - 'scripts/research-benchmark-live.mjs'
       - '.github/workflows/lite-strategy-benchmark.yml'
   workflow_dispatch:
 
@@ -16,7 +20,7 @@ permissions:
 jobs:
   benchmark:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -24,6 +28,8 @@ jobs:
           node-version: '22'
       - name: Run live strategy benchmark
         run: node ./scripts/strategy-benchmark-live.mjs | tee benchmark-run.log
+      - name: Run three-family and horizon research benchmark
+        run: node ./scripts/research-benchmark-live.mjs | tee research-benchmark-run.log
       - name: Upload benchmark results
         uses: actions/upload-artifact@v4
         with:
@@ -32,5 +38,7 @@ jobs:
             benchmark-result.json
             benchmark-result.md
             benchmark-run.log
+            research-benchmark.json
+            research-benchmark-run.log
           if-no-files-found: error
           retention-days: 14

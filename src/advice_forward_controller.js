@@ -24,7 +24,7 @@ export function createForwardController({storage,locks,WebSocketClass,clock=Date
     if(['LIVE','CONNECTING','WAITING'].includes(feeds.get(symbol)?.status))return;
     for(const [key,f] of feeds)if(key!==symbol&&!trackedSymbols().includes(key)&&!book.rows.some(r=>r.symbol===key&&activeForward(r))){disconnect(f);feeds.delete(key);}
     if(feeds.size>=12&&!feeds.has(symbol)){note='即時行情觀察上限已滿';notify();return;}
-    const f={socket:null,generation:++generation,startedAt:clock(),openedAt:null,received:0,issue:null,reason:'',closeCode:null,diagnosedAt:null,status:'CONNECTING',last:null,barOpen:null,high:null,low:null};feeds.set(symbol,f);
+    const f={socket:null,generation:++generation,startedAt:clock(),openedAt:null,received:0,issue:null,reason:'',closeCode:null,diagnosedAt:null,status:'CONNECTING',last:null,ranges:{},barOpen:null,high:null,low:null};feeds.set(symbol,f);
     const current=()=>enabled&&feeds.get(symbol)===f&&f.status!=='BLOCKED';
     const block=(reason,issue='INTERRUPTED')=>{
       if(feeds.get(symbol)!==f||f.status==='BLOCKED')return;
@@ -53,6 +53,7 @@ export function createForwardController({storage,locks,WebSocketClass,clock=Date
       const bar=Math.floor(tick.time/3600000)*3600000;
       if(f.barOpen!==bar){f.barOpen=bar;f.high=tick.price;f.low=tick.price;}
       else{f.high=Math.max(f.high,tick.price);f.low=Math.min(f.low,tick.price);}
+      for(const step of [900000,3600000,14400000]){const open=Math.floor(tick.time/step)*step,range=f.ranges[step];f.ranges[step]=range?.barOpen===open?{barOpen:open,high:Math.max(range.high,tick.price),low:Math.min(range.low,tick.price)}:{barOpen:open,high:tick.price,low:tick.price};}
       const changed=advanceForward(book,symbol,tick);
       if(changed&&!persist())return;
       if(changed||becameLive)notify();

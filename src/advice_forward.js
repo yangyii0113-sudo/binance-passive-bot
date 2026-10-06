@@ -1,3 +1,4 @@
+import { horizonPlanStatus, HORIZON_VERSION, horizonDeadline } from './horizon_strategies.js';
 import { agentPlanStatus } from './agent_trade_plan.js';
 import { FAMILY_VERSION } from './strategy_families.js';
 import { EXIT_COSTS } from './target_analysis.js';
@@ -29,26 +30,34 @@ function identity(symbol,key,signalAt){return `${FORWARD_VERSION}:${FAMILY_VERSI
 
 // Mutates the owned in-memory book only. Persistence and the single-writer lock live elsewhere.
 export function registerForwardAdvice(book,record,{now=Date.now(),feed=null}={}) {
-  const status=agentPlanStatus(record,now);
+  const horizon=record?.horizon;
+  const status=horizon?horizonPlanStatus(record,now):agentPlanStatus(record,now);
   if(!record?.symbol || ['empty','loading'].includes(status.key))return [];
-  const signalAt=record.row?.analysis?.closedAt;
+  const signalAt=horizon?record.evidence?.closedAt:record.row?.analysis?.closedAt;
   const candidates=status.key==='plan'?status.plans:[null];
   const added=[];
   for(const candidate of candidates){
-    const id=identity(record.symbol,candidate?.key || status.key,signalAt ?? record.checkedAt ?? now);
-    if(book.rows.some(r=>r.id===id))continue;
+    const signalId=identity(record.symbol,`${horizon?`${HORIZON_VERSION}:${horizon}:`:""}${candidate?.key || status.key}`,signalAt ?? record.checkedAt ?? now);
+    const attempts=book.rows.filter(r=>(r.signalId || r.id)===signalId);
+    const previous=attempts.at(-1);
+    // Only fresh, explicitly revalidated unfilled observations may retry. Never reopen a gap or fill.
+    if(previous && (!candidate || !['EXPIRED','NOT_TRACKED'].includes(previous.status) || previous.fills.length ||
+      record.checkedAt<=Math.max(previous.checkedAt,previous.endedAt || previous.createdAt)))continue;
+    const id=previous?`${signalId}:attempt:${record.checkedAt}`:signalId;
     if(book.rows.length>=FORWARD_LIMIT)throw new Error('已達 500 筆上限，請先匯出；停止新增且不刪除既有紀錄');
-    const plan=candidate?Object.fromEntries(['key','side','entry','stop','tp1','tp2','signalAt','expiresAt'].map(k=>[k,candidate[k]])):null;
-    const row={id,symbol:record.symbol,version:FORWARD_VERSION,strategyVersion:FAMILY_VERSION,createdAt:now,checkedAt:record.checkedAt??null,
+    const plan=candidate?Object.fromEntries(['key','side','entry','stop','tp1','tp2','signalAt','expiresAt',...(horizon?['horizon','version','intervalMs','maxHoldMs']:[])].map(k=>[k,candidate[k]])):null;
+    const row={id,signalId,attempt:attempts.length+1,symbol:record.symbol,version:FORWARD_VERSION,strategyVersion:horizon?HORIZON_VERSION:FAMILY_VERSION,...(horizon?{horizon,contractVerifiedAt:record.contractVerifiedAt}:{}),createdAt:now,checkedAt:record.checkedAt??null,
       status:plan?'PENDING':'NO_SETUP',reason:cleanText(status.reason),plan,costs:{...EXIT_COSTS},referenceCapital:1000,riskFraction:.0025,
-      entryUntil:plan?Math.min(record.snapshotUntil,plan.expiresAt):null,events:[],fills:[],cursor:null,stop:plan?.stop??null};
+      entryUntil:plan?Math.min(record.snapshotUntil,plan.expiresAt,...(horizon?[record.contractVerifiedAt+60000]:[])):null,events:[],fills:[],cursor:null,stop:plan?.stop??null};
     event(row,'REGISTERED',now,row.reason);
     if(plan){
-      const s=signOf(plan);
-      if(!feed?.last || !finite(feed.startedAt) || feed.startedAt>record.checkedAt || now-feed.last.receivedAt>LAG_MS || feed.last.receivedAt>now || !Number.isSafeInteger(feed.last.id))end(row,'NOT_TRACKED','登錄時沒有連續即時行情，未建立模擬持倉',now);
+      const s=signOf(plan),interval=plan.intervalMs||H;
+      const range=feed?.ranges?.[interval]||(interval===H?feed:null);
+      if(!feed?.last || !finite(feed.startedAt) || feed.startedAt>(record.snapshot?.requestedAt??record.checkedAt) || now-feed.last.receivedAt>LAG_MS || feed.last.receivedAt>now || !Number.isSafeInteger(feed.last.id))end(row,'NOT_TRACKED','登錄時沒有連續即時行情，未建立模擬持倉',now);
+      else if(book.rows.some(r=>r.symbol===row.symbol&&(horizon||r.horizon)&&activeForward(r)))end(row,'NOT_TRACKED','同幣已有週期／對照觀察，保留獨立結果但不重複累加風險',now);
       else if(book.rows.some(r=>r.symbol===row.symbol&&r.plan?.key===plan.key&&['OPEN','PARTIAL'].includes(r.status)))end(row,'NOT_TRACKED','同幣同策略已有未完成樣本，不重疊新增',now);
-      else if(book.rows.filter(activeForward).length>=12)end(row,'NOT_TRACKED','同時觀察上限已滿，未建立模擬持倉',now);
-      else if(s*(feed.last.price-plan.entry)>=0 || s*(feed.last.price-plan.stop)<=0 || (feed.barOpen===Math.floor(now/H)*H && (s===1?feed.high>=plan.entry||feed.low<=plan.stop:feed.low<=plan.entry||feed.high>=plan.stop)))end(row,'CANCELLED','登錄前行情已觸及門檻或失效價，不追價',now);
+      else if(book.rows.filter(activeForward).length>=((horizon||book.rows.some(r=>r.horizon&&activeForward(r)))?6:12))end(row,'NOT_TRACKED','同時觀察上限已滿，未建立模擬持倉',now);
+      else if(s*(feed.last.price-plan.entry)>=0 || s*(feed.last.price-plan.stop)<=0 || (range?.barOpen===Math.floor(now/interval)*interval && (s===1?range.high>=plan.entry||range.low<=plan.stop:range.low<=plan.entry||range.high>=plan.stop)))end(row,'CANCELLED','登錄前行情已觸及門檻或失效價，不追價',now);
       else {row.cursor={...feed.last};event(row,'WATCHING',now,'開始接收登錄後的連續行情',{tick:{...feed.last}});}
     }
     book.rows.push(row);added.push(row);
@@ -66,7 +75,7 @@ function fill(row,kind,rawPrice,qty,tick) {
   const price=rawPrice*(1+(entry?s:-s)*row.costs.slippage),fee=price*qty*row.costs.fee;
   const f={kind,at:tick.time,receivedAt:tick.receivedAt,aggregateId:tick.id,rawPrice,price,qty,fee};
   row.fills.push(f);event(row,kind,tick.receivedAt,'依即時觀測與固定成本模擬',{tick:{...tick}});
-  if(entry){row.entry=price;row.qty=qty;row.remaining=qty;row.deadline=(Math.floor(tick.time/H)+48)*H;row.status='OPEN';}
+  if(entry){row.entry=price;row.qty=qty;row.remaining=qty;row.deadline=row.horizon?horizonDeadline(row.horizon,tick.time):(Math.floor(tick.time/H)+48)*H;row.status='OPEN';}
   else {row.remaining=Math.max(0,row.remaining-qty);if(row.remaining<row.qty*1e-10){row.remaining=0;end(row,'CLOSED',kind,tick.receivedAt);}}
 }
 function protectiveStop(row){
@@ -100,7 +109,7 @@ export function advanceForward(book,symbol,tick) {
       if(s*(tick.price-row.stop)<=0)fill(row,'STOP',s===1?Math.min(tick.price,row.stop):Math.max(tick.price,row.stop),row.remaining,tick);
       else if(tick.time>=row.deadline)fill(row,'TIME',tick.price,row.remaining,tick);
       else {
-        if(row.status==='OPEN'&&s*(tick.price-p.tp1)>=0){fill(row,'TP1',p.tp1,row.qty/2,tick);row.status='PARTIAL';if(p.key==='structured')row.protectAt=(Math.floor(tick.time/H)+1)*H;}
+        if(row.status==='OPEN'&&s*(tick.price-p.tp1)>=0){fill(row,'TP1',p.tp1,row.qty/2,tick);row.status='PARTIAL';if(p.key==='structured')row.protectAt=(Math.floor(tick.time/(p.intervalMs||H))+1)*(p.intervalMs||H);}
         if(s*(tick.price-p.tp2)>=0)fill(row,'TP2',p.tp2,row.remaining,tick);
       }
     }

@@ -2,7 +2,8 @@ import { familyPlan, FAMILY_VERSION } from './strategy_families.js';
 import { pullbackPlan } from './trend_pullback.js';
 import { refineTargets, EXIT_COSTS } from './target_analysis.js';
 const H=3600000;
-export function replayTrade(plan, bars, {fee=EXIT_COSTS.fee,slippage=EXIT_COSTS.slippage,protect=false}={}) {
+export function replayTrade(plan, bars, {fee=EXIT_COSTS.fee,slippage=EXIT_COSTS.slippage,protect=false,maxBars=48}={}) {
+  if(!Number.isInteger(maxBars)||maxBars<1||maxBars>2000)throw new Error('研究持有期限異常');
   const sign=plan.side==='LONG'?1:-1, first=bars[0];
   if(!first)return {filled:false,bars:0,reason:'missingFuture'};
   const hit=(b,p,favourable)=>favourable?(sign===1?+b[2]>=p:+b[3]<=p):(sign===1?+b[3]<=p:+b[2]>=p);
@@ -12,7 +13,7 @@ export function replayTrade(plan, bars, {fee=EXIT_COSTS.fee,slippage=EXIT_COSTS.
   let stop=plan.stop,remaining=1,pnl=-entry*fee,partial=false;
   function exit(price,quantity){const fill=price*(1-sign*slippage);pnl+=quantity*(sign*(fill-entry)-fill*fee);remaining-=quantity;}
   const protectStop=sign===1?entry*(1+fee)/((1-slippage)*(1-fee)):entry*(1-fee)/((1+slippage)*(1+fee));
-  for(let i=0;i<Math.min(bars.length,48);i++){
+  for(let i=0;i<Math.min(bars.length,maxBars);i++){
     const b=bars[i];
     if(hit(b,stop,false)) {exit(sign===1?Math.min(+b[1],stop):Math.max(+b[1],stop),remaining);return {filled:true,returnPerUnit:pnl,entry,bars:i+1,reason:'STOP'};}
     if(!partial&&hit(b,plan.tp1,true)){exit(plan.tp1,.5);partial=true;}
@@ -20,8 +21,8 @@ export function replayTrade(plan, bars, {fee=EXIT_COSTS.fee,slippage=EXIT_COSTS.
     // Never move the stop retroactively within the TP1 bar.
     if(protect&&partial) stop=sign===1?Math.max(stop,protectStop):Math.min(stop,protectStop);
   }
-  const used=Math.min(bars.length,48);exit(+bars[used-1][4],remaining);
-  return {filled:true,returnPerUnit:pnl,entry,bars:used,reason:used===48?'TIME':'END'};
+  const used=Math.min(bars.length,maxBars);exit(+bars[used-1][4],remaining);
+  return {filled:true,returnPerUnit:pnl,entry,bars:used,reason:used===maxBars?'TIME':'END'};
 }
 // Fixed research variant: at most three CLOSED retest bars, then one trigger bar.
 // Original targets/stop remain frozen; no same-bar confirmation and entry.
