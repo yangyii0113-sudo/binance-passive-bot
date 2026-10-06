@@ -710,7 +710,7 @@ function initEvents() {
   document.addEventListener('submit',event=>{if(event.target.id==='horizon-analysis-form'){event.preventDefault();void refreshHorizon();}});
   document.addEventListener('click', async (event) => {
     const horizonButton=event.target.closest?.('[data-horizon]');
-    if(horizonButton&&HORIZONS[horizonButton.dataset.horizon]){const selected=horizonSelection();Object.assign(appState.ui,{horizon:horizonButton.dataset.horizon,horizonSymbol:selected.symbol});if(horizonButton.hasAttribute('data-horizon-home'))navigateTo('#/advice');else render();return;}
+    if(horizonButton&&HORIZONS[horizonButton.dataset.horizon]){const selected=horizonSelection();Object.assign(appState.ui,{horizon:horizonButton.dataset.horizon,horizonSymbol:normalizePlanSymbol(horizonButton.dataset.horizonTarget||selected.symbol)});if(horizonButton.hasAttribute('data-horizon-home'))navigateTo('#/advice');else render();return;}
     if(event.target.closest?.('[data-horizon-analyze]')){await refreshHorizon();return;}
     if(event.target.closest?.('[data-horizon-compare]')){await compareHorizon();return;}
     if(event.target.closest?.('[data-horizon-export]')){const {horizon,symbol}=horizonSelection(),result=appState.agents.horizonComparisons?.[`${horizon}:${symbol}`]?.result;if(result)downloadResearchFile({filename:`foxyya-${symbol}-${horizon}-research.json`,mime:'application/json',text:JSON.stringify({paperOnly:true,realOrderLocked:true,noBackfill:true,...result},null,2)});return;}
@@ -1243,5 +1243,4 @@ window.addEventListener('hashchange', () => {
   else window.scrollTo({top:0, behavior:'instant'});
 });
 window.addEventListener('DOMContentLoaded', init);
-
 

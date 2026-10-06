@@ -7,6 +7,16 @@ const label={empty:'尚未分析',loading:'核對中',plan:'條件成立・待�
 const icon={plan:'◎',wait:'◷',empty:'◷',loading:'↻',blocked:'⚠',expired:'⚠',conflict:'⚠'};
 const number=n=>Number.isFinite(n)?n.toFixed(2):'—';
 export function horizonNav(state,{home=false}={}){const active=HORIZONS[state.ui?.horizon]?state.ui.horizon:'week';return `<nav class="horizon-nav" aria-label="日週月策略">${Object.entries(HORIZONS).map(([id,c])=>`<button type="button" data-horizon="${id}" ${home?'data-horizon-home':''} aria-pressed="${id===active}"><strong>${c.label}</strong><span>${c.holding}</span></button>`).join('')}</nav>`;}
+export function horizonOpportunities(state,now=Date.now()){
+ const records=Object.values(state.agents?.horizonPlans||{}).filter(Boolean);
+ const priority={plan:0,wait:1,loading:2,conflict:3,blocked:4,expired:5,empty:6};
+ return `<section class="panel horizon-opportunities" aria-label="策略機會總覽"><div class="opportunities-heading"><div><span class="research-eyebrow">日／週／月</span><h1>策略機會</h1></div><a class="primary-inline-btn" href="#/advice">查看交易建議 →</a></div><p class="opportunities-intro">先選持有週期，再核對幣種與進退場。有效計畫優先；條件成立仍須等待觸發。</p><div class="opportunities-grid">${Object.entries(HORIZONS).map(([horizon,c])=>{
+  const rows=records.filter(r=>r.horizon===horizon).map(r=>({r,status:horizonPlanStatus(r,now)})).sort((a,b)=>priority[a.status.key]-priority[b.status.key]||(b.r.checkedAt||0)-(a.r.checkedAt||0));
+  const lead=rows[0],status=lead?.status||horizonPlanStatus(null,now),ready=rows.filter(x=>x.status.key==='plan').length;
+  const symbol=lead?.r.symbol||state.ui?.horizonSymbol||state.ui?.selectedSymbol||'BTCUSDT';
+  return `<article class="opportunity-cycle ${status.key}"><div class="opportunity-cycle-title"><h2>${c.label}</h2><span>${c.holding}</span></div>${lead?coinIdentity(symbol):'<p class="opportunity-unchecked">選擇幣種，取得本次策略判定</p>'}<strong class="opportunity-status">${icon[status.key]} ${label[status.key]}</strong>${ready?`<span class="opportunity-count">${ready} 檔有效計畫</span>`:''}<p class="opportunity-reason">${esc(status.reason)}</p>${status.plans.length?`<p class="opportunity-direction">${status.plans.map(p=>`${HORIZON_NAMES[p.key]} · ${p.side==='LONG'?'↗ 做多':'↘ 做空'}`).join('／')}</p>`:''}<button type="button" class="primary-inline-btn" data-horizon="${horizon}" data-horizon-home data-horizon-target="${esc(symbol)}">${ready?'查看點位與下一步':'前往核對'} →</button></article>`;
+ }).join('')}</div><p class="opportunities-note">僅顯示本次已核對紀錄，未分析不代表沒有機會。PAPER_ONLY · REAL_ORDER_LOCK · No Backfill</p></section>`;
+}
 export function horizonComparisonView(comparison){
  if(!comparison)return '<p>尚未回測此週期；不以其他週期的績效替代。</p>';
  if(comparison.status==='LOADING')return '<p role="status">正在核對完整永續歷史並回測；缺漏不以現貨補足。</p>';
@@ -21,7 +31,7 @@ export function horizonPanel(state,now=Date.now()){
  const matching=(state.forward?.book?.rows||[]).filter(x=>x.horizon===horizon&&x.symbol===symbol);
  const tracking=matching.findLast(x=>['PENDING','OPEN','PARTIAL'].includes(x.status))||matching.at(-1);
  const trackLabel={PENDING:'正在等待觸發',OPEN:'模擬持倉中',PARTIAL:'第一止盈已完成',CLOSED:'已結案',GAP:'資料中斷・待覆核',EXPIRED:'觀察到期，需重新核對',NOT_TRACKED:'未建立觀察',CANCELLED:'觀察已取消',NO_SETUP:'無可追蹤計畫'};
- return `<section class="horizon-workspace" aria-label="日週月策略研究"><div class="horizon-heading"><h2>選擇你的交易週期</h2><span>獨立研究版 · ${HORIZON_VERSION}</span></div>${horizonNav(state)}
+ return `<section class="horizon-workspace" aria-label="日週月策略研究"><div class="horizon-heading"><h2>策略機會 · 核對進退場</h2><span>獨立研究版 · ${HORIZON_VERSION}</span></div>${horizonNav(state)}
  <form id="horizon-analysis-form" class="horizon-input"><label>完整交易對<input name="symbol" id="horizon-symbol" data-horizon-symbol aria-label="週期研究交易對" list="horizon-symbols" value="${esc(symbol)}" maxlength="60" autocomplete="off"></label><datalist id="horizon-symbols">${options.map(s=>`<option value="${s}"></option>`).join('')}</datalist><button type="button" class="primary-inline-btn" data-horizon-analyze ${busy?'disabled':''}>${busy?'核對中…':`核對${c.label}`}</button></form>
  <article class="horizon-card" data-horizon-card="${horizon}">${coinIdentity(symbol)}<div class="horizon-verdict ${status.key}" role="status"><strong>${icon[status.key]} ${label[status.key]}</strong><p>${esc(status.reason)}</p></div>
  <p class="horizon-time">${c.label} · ${c.holding} · ${c.regime} 環境 → ${c.context} 趨勢 → ${c.trigger} 收盤觸發</p>

@@ -1,4 +1,4 @@
-import { horizonNav } from './horizon_view.js';
+import { horizonOpportunities } from './horizon_view.js';
 import { formatPrice as quotePrice, exactPricesView } from './price_display.js';
 import { coinLogo } from './coin_logo.js';
 import { adviceResultsPage } from './advice_forward_view.js';
@@ -535,7 +535,7 @@ function homeSectionTabs(state){
     ['market','市場排行','◉'],
     ['strong','市場機會前五名','◆'],
     ['focus','事件研究框架','◌'],
-    ['strategy','策略機會','◎']
+    ['strategy','動能訊號研究','◎']
   ];
   return `<div class="home-section-tabs" role="tablist" aria-label="首頁內容分頁">
     ${items.map(([key,label,icon]) => `
@@ -586,7 +586,7 @@ export function homePage(state,now=Date.now()) {
 
   return `<div class="page-stack home-stack">${messageBar(state)}
     ${assetClassSwitcher(state)}
-    ${isCrypto?horizonNav(state,{home:true}):''}
+    ${isCrypto?horizonOpportunities(state,now):''}
     ${isCrypto?researchOverview(state,now):stockEmptyState('股市研究尚未接入')}
 
     ${calendarPanel(state)}
@@ -640,7 +640,7 @@ export function homePage(state,now=Date.now()) {
 
     <section class="panel opportunity-panel home-section-panel ${homeSection==='strategy'?'is-active':''}">
       <div class="section-head premium-head">
-        <div class="section-title"><span class="section-symbol">◎</span>策略機會</div>
+        <div class="section-title"><span class="section-symbol">◎</span>動能訊號研究</div>
         <button class="section-link" data-go-strategies type="button">查看全部 ›</button>
       </div>
       ${isCrypto ? strategyOpportunity(state) : stockEmptyState('股市策略模組待接入')}
