@@ -1,7 +1,7 @@
 import { horizonOpportunities } from './horizon_view.js';
 import { formatPrice as quotePrice, exactPricesView } from './price_display.js';
 import { coinLogo } from './coin_logo.js';
-import { adviceResultsPage } from './advice_forward_view.js';
+import { adviceResultsPage,forwardPositionsView } from './advice_forward_view.js';
 import { researchOverview } from './research_overview.js';
 import { trendOutlookView } from './trend_outlook_view.js';
 import { smcReference } from './smc_reference.js';
@@ -546,106 +546,9 @@ function homeSectionTabs(state){
 }
 
 export function homePage(state,now=Date.now()) {
-  const homeSection = state.ui?.homeSection || 'market';
-  const assetClass = state.ui?.assetClass || 'crypto';
-  const isCrypto = assetClass === 'crypto';
-  const market = isCrypto ? state.market : state.stocks;
-  const coins = isCrypto ? sortedRows(state).map(([icon, symbol, price, change]) => {
-    const hasChange = Number.isFinite(change);
-    const changeText = hasChange ? `${change >= 0 ? '+' : ''}${change.toFixed(2)}%` : '—';
-    const changeClass = !hasChange ? '' : change >= 0 ? 'up' : 'down';
-    return `<div class="coin-row" data-search="${symbol}">
-      ${coinLogo(symbol, icon)}
-      <strong>${symbol}</strong>
-      <span>${quotePrice(price)}</span>
-      <b class="${changeClass} change-pill">${changeText}</b>
-    </div>`;
-  }).join('') : '';
-  const sort = state.ui?.marketSort || 'popular';
-  const [focusA, focusB, focusC] = mock.news;
-
-  const focusCard = ([, title, text, tag], index, featured = false) => {
-    const analysis = mock.focusAnalysis?.[index] || {};
-    return `
-    <button class="focus-card ${featured ? 'focus-featured' : ''} ${Number(state.ui?.focusAnalysisIndex) === index ? 'is-selected' : ''}"
-      data-search="${title} ${text} ${tag}" data-focus-analysis="${index}" type="button"
-      aria-expanded="${Number(state.ui?.focusAnalysisIndex) === index}">
-      <div class="focus-icon">${featured ? '◎' : '◇'}</div>
-      <div class="focus-copy">
-        <h3>${title}</h3>
-        <p>${text}</p>
-        <div class="focus-mini-impact">
-          <span class="impact-mini-up">偏多條件</span>
-          <span class="impact-mini-down">偏空條件</span>
-        </div>
-        <span class="focus-tag">${tag}</span>
-      </div>
-      <span class="focus-arrow">›</span>
-    </button>`;
-  };
-
   return `<div class="page-stack home-stack">${messageBar(state)}
-    ${assetClassSwitcher(state)}
-    ${isCrypto?horizonOpportunities(state,now):''}
-    ${isCrypto?researchOverview(state,now):stockEmptyState('股市研究尚未接入')}
-
-    ${calendarPanel(state)}
-    <details class="core-disclosure home-secondary"><summary>其他市場排行與研究工具</summary>
-    ${homeSectionTabs(state)}
-
-    <section class="panel ranking-panel home-section-panel ${homeSection==='market'?'is-active':''}">
-      <div class="section-head premium-head">
-        <div class="section-title"><span class="section-symbol">◉</span>市場排行</div>
-        <div class="section-meta">${displayMarketSource(market.source)} · ${badge(displayStatus(market.status), market.status)}</div>
-      </div>
-      ${isCrypto ? `
-        <div class="tabs interactive premium-tabs">
-          ${tab('熱門','popular',sort,'data-market-sort')}
-          ${tab('強勢','strong',sort,'data-market-sort')}
-          ${tab('漲幅','gain',sort,'data-market-sort')}
-          ${tab('跌幅','loss',sort,'data-market-sort')}
-        </div>
-        <div class="table-head"><span>幣種</span><span>最新價格</span><span>24 小時</span></div>
-        <div class="coin-list">${coins}</div>
-      ` : stockEmptyState('股市行情尚未接入')}
-    </section>
-
-    <section class="panel strong-panel home-section-panel ${homeSection==='strong'?'is-active':''}">
-      <div class="section-head premium-head">
-        <div class="section-title"><span class="section-symbol">◆</span>${isCrypto ? '市場機會加密貨幣前五名' : '強勢股票前十名'}</div>
-        <span class="section-quiet">${isCrypto ? '24 小時動能＋流動性' : '股票 · 獨立模組'}</span>
-      </div>
-      ${isCrypto ? strongCoinCards(state) : stockEmptyState('強勢股票排行待接入')}
-    </section>
-
-    <section class="panel focus-panel home-section-panel ${homeSection==='focus'?'is-active':''}">
-      <div class="section-head premium-head">
-        <div class="section-title"><span class="section-symbol">◌</span>事件研究框架</div>
-        <span class="section-quiet">靜態教學 · 非即時新聞</span>
-      </div>
-      <div class="focus-layout">
-        ${focusCard(focusA, 0, true)}
-        <div class="focus-grid">
-          ${focusCard(focusB, 1)}
-          ${focusCard(focusC, 2)}
-        </div>
-        ${focusAnalysisPanel(state)}
-        <button class="calendar-row premium-calendar" data-event-calendar type="button" aria-expanded="${Boolean(state.ui?.calendarOpen)}">
-          <span class="hero-icon">▣</span>
-          <div><strong>重要事件日曆</strong><small>事件監看模板 · 點擊展開</small></div>
-          <span class="focus-arrow">›</span>
-        </button>
-      </div>
-    </section>
-
-    <section class="panel opportunity-panel home-section-panel ${homeSection==='strategy'?'is-active':''}">
-      <div class="section-head premium-head">
-        <div class="section-title"><span class="section-symbol">◎</span>動能訊號研究</div>
-        <button class="section-link" data-go-strategies type="button">查看全部 ›</button>
-      </div>
-      ${isCrypto ? strategyOpportunity(state) : stockEmptyState('股市策略模組待接入')}
-    </section>
-    </details>
+    ${horizonOpportunities(state,now)}
+    ${researchOverview(state,now)}
   </div>`;
 }
 
@@ -1189,7 +1092,7 @@ function aiAgentsPanel(state){
     ${state.agents?.planHistory?.error?`<p role="alert">${escapeHtml(state.agents.planHistory.error)}</p>`:''}
     ${key==='market'?`<div class="selection-source-tabs" aria-label="篩選來源"><button type="button" class="secondary-btn" data-strategy-workspace="agents" data-agent-stage="market" aria-pressed="${!candidates}">市場篩選</button><button type="button" class="secondary-btn" data-strategy-workspace="candidates" aria-pressed="${candidates}">我的候選 · ${state.candidates?.items?.length || 0}</button></div>`:''}
     ${content}
-    <details class="core-disclosure workflow-help" data-search="流程使用說明"><summary>流程使用說明</summary><p>分析 → 篩選 → 策略 → 交易建議 → 紀錄。分析完成後，在「交易建議」查看進退場摘要；在「策略」查看依據與完整規則。研究紀錄僅存目前瀏覽器，重新開啟需重新核對點位。</p><p>行情資料完整不代表正式帳本或部位風險已通過核對。僅模擬研究，真實下單維持鎖定，不補造過往交易。</p></details>
+    ${key==='advice'?'':`<details class="core-disclosure workflow-help" data-search="流程使用說明"><summary>流程使用說明</summary><p>分析 → 篩選 → 策略 → 交易建議 → 紀錄。分析完成後，在「交易建議」查看進退場摘要；在「策略」查看依據與完整規則。研究紀錄僅存目前瀏覽器，重新開啟需重新核對點位。</p><p>行情資料完整不代表正式帳本或部位風險已通過核對。僅模擬研究，真實下單維持鎖定，不補造過往交易。</p></details>`}
   </div>`;
 }
 
@@ -1311,6 +1214,9 @@ function strategyOptimizationPanel(state){
 }
 
 export function strategiesPage(state) {
+  if(state.ui?.strategyWorkspace==='agents'&&state.ui?.agentKey==='advice'){
+    return `<div class="page-stack strategy-page">${messageBar(state)}${aiAgentsPanel(state)}</div>`;
+  }
   const filter = state.ui?.strategyFilter || 'all';
   const workspace = state.ui?.strategyWorkspace || 'signals';
   const isCrypto = (state.ui?.assetClass || 'crypto') === 'crypto';
@@ -1369,7 +1275,10 @@ function paperPositions(paper){
 export function ordersPage(state) {
   const paper = state.paper;
   const summary = paper.summary;
-  return `<div class="page-stack">${messageBar(state)}${section('持倉訂單', `
+  return `<div class="page-stack">${messageBar(state)}${forwardPositionsView(state)}
+    ${paper.error?`<p role="alert">手動模擬資料：${escapeHtml(displayText(paper.error?.message||paper.error))}</p>`:''}
+    <details class="core-disclosure manual-paper-tools" data-manual-paper ${paper.positions?.length?'open':''}><summary>手動模擬工具${paper.positions?.length?` · ${paper.positions.length} 筆持倉`:''}</summary>
+    <p>這是獨立的手動模擬帳戶，未使用策略建議自動進場；不代表正式帳戶餘額。</p>${section('手動模擬帳戶', `
     <div class="metric-grid">
       ${metric('模擬淨值', money(summary.nav))}${metric('帳戶餘額', money(summary.cash))}
       ${metric('未平倉數', summary.openPositions)}${metric('未實現損益', money(summary.unrealizedPnl))}
@@ -1383,7 +1292,7 @@ export function ordersPage(state) {
     </form>
     <button class="primary-btn" data-paper-open type="button" ${!paper.local || state.market.status !== 'LIVE' ? 'disabled' : ''}>建立模擬倉位</button>
     <p class="guard-note">${!paper.local ? '目前資料來源僅供查閱。' : state.market.status !== 'LIVE' ? '行情尚未更新，暫停建立模擬倉位。' : '本機模擬紀錄僅儲存於此瀏覽器。'}風險限制：總模擬保證金 ≤ 淨值 1.5%；不會送出任何真實訂單。</p>
-    ${paperPositions(paper)}`, `${badge('僅模擬交易')} ${badge('真實下單已鎖定')}`)}</div>`;
+    ${paperPositions(paper)}`, `${badge('僅模擬交易')} ${badge('真實下單已鎖定')}`)}</details></div>`;
 }
 
 function tradeRows(results){

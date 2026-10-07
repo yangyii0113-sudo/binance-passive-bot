@@ -18,17 +18,16 @@ export function researchOverview(state,now=Date.now()){
   const closed=dataError?null:(f.book?.rows||[]).filter(r=>r.status==='CLOSED').length;
   return `<section class="research-home research-secondary" aria-label="研究工作台">
     ${state.adviceMonitor?adviceMonitorView(state,now,{compact:true,sharedError:homeCandidates(state.market,now).reason}):forwardTrackingBar(state)}
-    ${researchSummaryView(state,now)}
+    ${researchSummaryView(state,now,{compact:true})}
     ${[state.ui?.homeCheck?.error,state.ui?.homePreferencesError,state.ui?.homeWatchNotice].filter(Boolean).map(message=>`<p role="alert">${esc(message)}</p>`).join('')}
     ${state.ui?.homeCheck?.running?`<p role="status">研究核對中 ${state.ui.homeCheck.completed||0}／${state.ui.homeCheck.total||0}</p>`:''}
-    <details class="core-disclosure" data-legacy-research data-search="legacy-home-research"><summary>全部候選、關注清單與三策略研究</summary>
+    <details class="core-disclosure" data-legacy-research data-search="legacy-home-research"><summary>研究與工具 · 選用${ready?` · ${ready} 檔其他有效計畫`:''}</summary><nav class="research-tool-links" aria-label="研究工具"><a href="#/strategies">強勢幣完整研究</a><a href="#/lab">回測與策略實驗室</a><a href="#/advice">其他已保存計畫</a></nav>
+    ${researchSummaryView(state,now,{showIssues:false})}
     ${homeOpportunityView(state,now,{embedded:true})}
-    </details>
-    <details class="core-disclosure home-evidence"><summary>市場概況與研究紀錄</summary>
+    <h3>市場概況與研究紀錄</h3>
     <div class="research-market-context"><strong>${fresh?'24 小時市場概況':'行情待更新'}</strong>${fresh?`<span>追蹤範圍 ${rows.length} 檔 · 上漲 ${up} · 下跌 ${down} · 持平 ${rows.length-up-down}</span>`:'<span>目前行情尚未完成最新核對；請更新後再選幣。</span>'}<small>${fresh?'僅反映追蹤幣種的漲跌分布，不代表多週期趨勢。':'保留舊資料供參考，不視為現在的進場依據。'}${Number.isFinite(at)?` 更新：${esc(displayDate(at))}`:''}</small></div>
     <dl class="research-progress"><div><dt>本次研究</dt><dd>${records.length}<small> 檔</small></dd></div><div><dt>進場確認 · 有效計畫</dt><dd>${ready}<small> 檔</small></dd></div><div><dt>績效證據 · 本機結案</dt><dd>${closed??'—'}<small>${closed===null?'':' 筆'}</small></dd></div></dl>
     <div class="research-evidence-note"><span>${closed===null?'前向紀錄異常，成效暫停顯示。':closed?'結案僅為本機研究樣本，請檢查缺漏與樣本數。':'尚無完整結案，暫不能判定建議的獲利能力。'}</span><a href="#/advice-results">查看成效與缺漏</a></div>
     </details>
   </section>`;
 }
-

@@ -9,6 +9,19 @@ import { normalizeResultsSnapshot } from '../src/services/results.js';
 import { HOME_PREFS_KEY, loadHomePreferences, saveHomePreferences, toggleHomeWatch } from '../src/home_preferences.js';
 
 const visibleText = html => html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ');
+test('main trading surface excludes duplicate rankings and unfinished markets but retains research recovery',()=>{
+ const s=structuredClone(appState);s.ui.homeSection='focus';s.ui.calendarOpen=true;
+ s.agents.tradePlans={SOLUSDT:{symbol:'SOLUSDT',status:'BLOCKED',reason:'來源未通過'}};
+ const before=structuredClone(s),html=pages.home(s);
+ assert.equal((html.match(/data-horizon-card=/g)||[]).length,1);
+ assert.doesNotMatch(html,/asset-switcher|ranking-panel|focus-panel|event-calendar-panel|home-section-tabs/);
+ assert.ok(html.indexOf('來源未通過')<html.indexOf('data-legacy-research'));
+ assert.match(html,/data-research-open="SOLUSDT"/);
+ assert.match(html,/href="#\/lab"/);assert.match(html,/href="#\/strategies"/);
+ assert.deepEqual(s,before);
+ const advice=pages.advice(s);assert.doesNotMatch(advice,/asset-switcher|strategy-primary-tabs|strategy-advanced-tools/);
+ assert.match(advice,/來源未通過/);
+});
 function state() {
   const s = structuredClone(appState);
   s.ui.strategyWorkspace = 'agents';

@@ -18,6 +18,24 @@ function setup(side='LONG',key='breakout'){
 const step=(book,id,price,time)=>advanceForward(book,'UNIUSDT',tick(id,price,time));
 function memory(){let raw=null;return {getItem:()=>raw,setItem:(_,s)=>{raw=s;},raw:()=>raw};}
 
+test('positions page follows actual advice samples and keeps failures and stop controls above manual tools',async()=>{
+ const {pages}=await import('../src/pages.js'),{appState}=await import('../src/state.js');
+ const s=structuredClone(appState),a=setup();s.forward={enabled:true,book:a.book,feeds:[]};
+ const before=structuredClone(s);let html=pages.orders(s);
+ assert.ok(html.indexOf('UNIUSDT')<html.indexOf('data-manual-paper'));
+ assert.ok(html.indexOf('data-forward-stop')<html.indexOf('data-manual-paper'));
+ assert.match(html,/等待觸發/);assert.doesNotMatch(html,/<details[^>]*data-manual-paper[^>]*open/);
+ assert.deepEqual(s,before);
+ step(a.book,11,100);html=pages.orders(s);assert.match(html,/模擬持倉/);
+ interruptForward(a.book,'來源中斷',now+1000);s.forward.enabled=false;
+ html=pages.orders(s);assert.match(html,/來源中斷|資料中斷/);assert.match(html,/待覆核/);
+ s.forward.dataError='追蹤紀錄损壞';html=pages.orders(s);
+ assert.ok(html.indexOf('追蹤紀錄损壞')<html.indexOf('data-manual-paper'));
+ assert.doesNotMatch(html,/forward-record/);
+ s.paper.local=true;s.paper.positions=[{id:'manual',symbol:'BTCUSDT',entry:100,mark:100}];
+ html=pages.orders(s);assert.match(html,/<details[^>]*data-manual-paper[^>]*open/);assert.match(html,/data-paper-close="manual"/);
+});
+
 test('long and short forward samples enter only after registration and account for both exit fees',()=>{
   for(const side of ['LONG','SHORT']){
     const {book,row}=setup(side);

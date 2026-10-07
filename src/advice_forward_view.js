@@ -50,6 +50,17 @@ function sampleCard(row,enabled){
     <p>策略版本 ${esc(row.strategyVersion)} · 觀察版本 ${esc(row.version)}</p>
   </details>`;
 }
+// Read-only view of the same advice book used by results; never create a second ledger.
+export function forwardPositionsView(state){
+  const f=state.forward||{},dataError='dataError' in f?f.dataError:f.error,rows=f.book?.rows||[];
+  const active=dataError?[]:rows.filter(activeForward);
+  const attention=dataError?0:rows.filter(r=>['GAP','NOT_TRACKED'].includes(r.status)).length;
+  return section('持倉追蹤',`${forwardTrackingBar(state)}
+    <p class="guard-note">僅本機模擬 · 等待觸發還不是持倉。${!f.enabled&&active.length?'本頁未追蹤，未完成樣本待覆核。':''}</p>
+    ${dataError?'<p role="alert">追蹤資料異常，暫停展示樣本；原始紀錄保留。</p>':active.length?`<h3>等待／持倉樣本 · ${active.length} 筆</h3>${[...active].reverse().map(r=>sampleCard(r,f.enabled)).join('')}`:'<div class="empty-state"><strong>目前沒有等待觸發或模擬持倉</strong><span>先在選幣策略核對計畫，再追蹤新的觸發。</span><a class="secondary-btn" href="#/">前往選幣策略</a></div>'}
+    ${attention?`<p class="guard-note" role="status">${attention} 筆資料中斷／未追蹤，需覆核；不補算成交。</p>`:''}
+    <a class="secondary-btn" href="#/advice-results">查看全部交易成效與待覆核紀錄</a>`);
+}
 export function forwardGroupMetrics(rows,key){
   const groups=new Map();
   for(const row of rows){const name=key(row);if(!groups.has(name))groups.set(name,[]);groups.get(name).push(row);}

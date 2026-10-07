@@ -152,7 +152,7 @@ select:focus,.form-grid input:focus{border-color:rgba(241,184,75,.35)}
 .empty-state strong,.chart-placeholder strong{color:#ddd9d0;font-size:.86rem}
 .empty-state span,.chart-placeholder span{font-size:.7rem}
 
-.bottom-nav{position:fixed;left:50%;bottom:max(14px,env(safe-area-inset-bottom));transform:translateX(-50%);width:min(calc(100% - 26px),820px);display:grid;grid-template-columns:repeat(4,1fr);z-index:50;border:1px solid var(--line-strong);background:rgba(18,18,19,.94);backdrop-filter:blur(22px);border-radius:24px;padding:8px 6px;box-shadow:0 18px 50px rgba(0,0,0,.48)}
+.bottom-nav{position:fixed;left:50%;bottom:max(14px,env(safe-area-inset-bottom));transform:translateX(-50%);width:min(calc(100% - 26px),820px);display:grid;grid-template-columns:repeat(3,minmax(0,1fr));z-index:50;border:1px solid var(--line-strong);background:rgba(18,18,19,.94);backdrop-filter:blur(22px);border-radius:24px;padding:8px 6px;box-shadow:0 18px 50px rgba(0,0,0,.48)}
 .bottom-nav a{min-width:0;min-height:48px;display:grid;place-items:center;align-content:center;gap:4px;text-decoration:none;color:#7f8287;font-size:.61rem}
 .nav-icon{font-size:1rem}
 .bottom-nav a.active{color:var(--gold)}
@@ -2731,3 +2731,5 @@ summary { padding-block:10px; }
 .research-ready-links{display:flex;flex-wrap:wrap;gap:8px}.research-ready-links button{display:grid;gap:6px;text-align:left;min-height:52px;padding:10px 12px;border-color:#628877}.research-ready-links span{font-size:12px;color:#b1d6c6}
 .horizon-plan .action-risk-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:12px 0;padding-top:12px;border-top:1px solid #355057}
 .horizon-plan .action-risk-metrics dt{font-size:11px;color:#b1c2c0}.horizon-plan .action-risk-metrics dd{margin:5px 0 0;font-size:15px;font-weight:600}.horizon-plan .action-risk-metrics .risk-money{color:#ff9da3}
+
+.research-tool-links{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}.research-tool-links a{display:flex;align-items:center;min-height:44px;padding:10px 12px;border:1px solid #355057;border-radius:10px;color:#e5cb86;text-decoration:none;font-size:13px}.manual-paper-tools{min-width:0}.manual-paper-tools>p{font-size:12px;line-height:1.7;color:#b7c9c3}.manual-paper-tools .panel{margin-top:12px}

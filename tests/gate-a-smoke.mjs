@@ -197,12 +197,15 @@ for (const [name, renderer] of Object.entries(pages)) {
 }
 
 const homeHtml = pages.home(renderState);
-assert.ok(homeHtml.includes('市場機會加密貨幣前五名'), '首頁必須顯示市場機會加密貨幣前五名');
+assert.ok(homeHtml.includes('上漲動能前 5 強'), '首頁必須顯示主要前五強選幣入口');
+const primarySelect=homeHtml.match(/<select[^>]*id="horizon-symbol"[\s\S]*?<\/select>/)?.[0]||'';
 assert.equal(
-  (homeHtml.match(/class="strong-card/g) || []).length,
+  (primarySelect.match(/<option value="[^"]+"/g) || []).length,
   5,
-  'Home strong screener must render exactly five ranked cards'
+  'Home must offer exactly five rising contracts from this live fixture'
 );
+assert.doesNotMatch(primarySelect,/value="ADAUSDT"/,'Declining candidates must not displace rising choices');
+assert.equal((homeHtml.match(/data-horizon-card=/g)||[]).length,1,'Home must show one selected strategy instead of duplicate ranking cards');
 
 for (const [hash, route] of [
   ['#/', 'home'],

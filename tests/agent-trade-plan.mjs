@@ -282,7 +282,8 @@ test('advice displays one selected coin without borrowing another coin levels or
 test('direct advice route exposes an actionable empty state and preserves separate research views',()=>{
   const s=structuredClone(appState),before=structuredClone(s),html=pages.advice(s);
   assert.match(html,/選擇分析幣種/);assert.match(html,/產生交易建議/);
-  assert.match(html,/data-agent-key="advice" role="tab" aria-selected="true"/);
+  assert.equal((html.match(/data-horizon-card=/g)||[]).length,1);
+  assert.doesNotMatch(html,/strategy-primary-tabs/);
   assert.doesNotMatch(html,/class="agent-tabs"|data-pullback-scan|(?:decision-levels|plan-price-map)/);
   assert.deepEqual(s,before);
   s.ui.strategyWorkspace='signals';assert.match(pages.strategies(s),/data-pullback-scan/);

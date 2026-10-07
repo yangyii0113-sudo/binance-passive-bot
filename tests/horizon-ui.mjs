@@ -63,7 +63,7 @@ test('home strategy opportunities are visible before secondary disclosures',asyn
  const html=homePage(structuredClone(appState),now);
  const board=html.indexOf('aria-label="策略機會總覽"');
  assert.ok(board>=0,'home must show opportunity overview');
- assert.ok(board<html.indexOf('其他市場排行與研究工具'));
+ assert.ok(board<html.indexOf('研究與工具 · 選用'));
  assert.doesNotMatch(html.slice(0,board),/<details[^>]*>[\s\S]*$/);
 });
 test('home shows the selected plan directly and removes prices when its gate expires',()=>{
