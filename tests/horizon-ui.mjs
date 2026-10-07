@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {analyzeHorizon} from '../src/horizon_strategies.js';
+import {homeCandidates} from '../src/home_opportunities.js';
 const view=await import('../src/horizon_view.js').catch(()=>({}));
 const H=3600000,now=Date.UTC(2026,9,6,4,2);
 function record(){const frames={};for(const [f,step] of [['1h',H],['4h',4*H],['1d',24*H]]){const end=Math.floor(now/step)*step;frames[f]=Array.from({length:240},(_,i)=>{const p=80+i*.1,o=end-(240-i)*step;return [o,p,p+.12,p-.12,p+.04,100,o+step-1];});}const last=frames['1h'].at(-1);last[2]+=1;last[4]=last[2]-.02;last[5]=250;const open=last[6]+1;frames['1h'].push([open,last[4],last[4]+.001,last[4]-.001,last[4],1,open+H-1]);return analyzeHorizon({symbol:'SOLUSDT',horizon:'week',frames,now,requestedAt:now,receivedAt:now,contractVerifiedAt:now,source:'Binance USD-M public klines'});}
@@ -94,4 +95,35 @@ test('secondary research keeps exceptions and stop controls outside its collapse
    const before=html.slice(0,start);assert.match(before,/來源異常/);assert.match(before,/監控異常/);assert.match(before,/data-forward-stop/);
    assert.doesNotMatch(html.slice(Math.max(0,start-60),start),/open/);
  }
+});
+test('primary selection shows the five strongest rising contracts without reserve slots displacing them',()=>{
+ const market=screenedMarket();
+ market.universeRows=[...market.universeRows,
+  ['','SUIUSDT',1,7,4e7,88],['','ETHUSDT',1,6,4e7,85],['','BNBUSDT',1,5,4e7,84],['','XRPUSDT',1,4,4e7,82],
+  ...['A','B','C','D'].map(x=>['',`${x}USDT`,1,-1,5e7,95]),
+  ...['E','F','G'].map(x=>['',`${x}USDT`,1,-10,5e7,99])];
+ const before=structuredClone(market),legacy=homeCandidates(market,now).rows;
+ assert.equal(legacy.length,10);assert.ok(legacy.some(x=>x.change<0));
+ const selection=view.horizonCandidateSelection({ui:{},market},now);
+ assert.deepEqual(selection.rows.map(x=>x.symbol),['1000PEPEUSDT','SUIUSDT','ETHUSDT','SOLUSDT','BNBUSDT']);
+ assert.equal(selection.symbol,'1000PEPEUSDT');assert.ok(selection.eligible);
+ const html=view.horizonSelectionControls({ui:{},market},now);
+ assert.equal((html.match(/<option value="[^"]+"/g)||[]).length,5);
+ assert.match(html,/前 5 強/);assert.match(html,/24h/);assert.match(html,/動能/);
+ assert.doesNotMatch(html,/<option value="(?:A|B|C|D|E|F|G|XRP|THIN|SPIKE)USDT"/);
+ assert.deepEqual(homeCandidates(market,now).rows,legacy);assert.deepEqual(market,before);
+ const excluded=view.horizonCandidateSelection({ui:{horizonSymbol:'XRPUSDT'},market},now);
+ assert.equal(excluded.symbol,'XRPUSDT');assert.equal(excluded.eligible,false);
+ assert.match(view.horizonPanel({ui:{horizonSymbol:'XRPUSDT'},market},now),/data-horizon-analyze disabled/);
+});
+test('top five never fills vacant slots with declining, thin or stale candidates',()=>{
+ const market=screenedMarket();market.universeRows.push(['','DOWNUSDT',1,-10,8e7,99]);
+ assert.equal(view.horizonCandidateSelection({market},now).rows.length,2);
+ for(const update of [{updatedAt:new Date(now-301000).toISOString()},{contractVerifiedAt:new Date(now-301000).toISOString()},{cryptoOnly:false}]){
+  const selection=view.horizonCandidateSelection({market:{...market,...update}},now);
+  assert.deepEqual(selection.rows,[]);assert.equal(selection.eligible,false);
+ }
+ market.universeRows=market.universeRows.filter(row=>row[3]<0||row[3]>=30||row[4]<1e7);
+ assert.deepEqual(view.horizonCandidateSelection({market},now).rows,[]);
+ assert.match(view.horizonSelectionControls({market},now),/沒有符合/);
 });

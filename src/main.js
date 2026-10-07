@@ -166,7 +166,7 @@ function horizonSelection(){return {horizon:HORIZONS[appState.ui.horizon]?appSta
 async function refreshHorizon(selection=horizonSelection(),{select=true}={}){
  if(appState.agents.horizonBusy)return;
  const {horizon,symbol}=selection,key=`${horizon}:${symbol}`;
- if(!homeCandidates(appState.market).rows.some(row=>row.symbol===symbol)){render();return;}
+ if(!horizonCandidateSelection(appState).rows.some(row=>row.symbol===symbol)){render();return;}
  if(select)Object.assign(appState.ui,{horizon,horizonSymbol:symbol});
  forwardTracker?.watchSymbol(symbol);const ticket=forwardTracker?.ticket(symbol);
  setStateSlice('agents',{horizonBusy:true,horizonPlans:{...appState.agents.horizonPlans,[key]:{symbol,horizon,status:'LOADING'}}});render();
@@ -176,7 +176,7 @@ async function refreshHorizon(selection=horizonSelection(),{select=true}={}){
 async function refreshHomeHorizons(){
  if(appState.ui.horizonBatch||appState.agents.horizonBusy)return;
  const {symbol}=horizonSelection();
- if(!homeCandidates(appState.market).rows.some(row=>row.symbol===symbol)){render();return;}
+ if(!horizonCandidateSelection(appState).rows.some(row=>row.symbol===symbol)){render();return;}
  appState.ui.horizonBatch=true;appState.ui.horizonSymbol=symbol;render();
  try{for(const horizon of Object.keys(HORIZONS))await refreshHorizon({horizon,symbol},{select:false});}
  finally{appState.ui.horizonBatch=false;render();}
@@ -184,7 +184,7 @@ async function refreshHomeHorizons(){
 async function compareHorizon(){
  if(appState.agents.horizonCompareBusy)return;
  const {horizon,symbol}=horizonSelection(),key=`${horizon}:${symbol}`;
- if(!homeCandidates(appState.market).rows.some(row=>row.symbol===symbol)){render();return;}
+ if(!horizonCandidateSelection(appState).rows.some(row=>row.symbol===symbol)){render();return;}
  Object.assign(appState.ui,{horizon,horizonSymbol:symbol});
  const write=value=>setStateSlice('agents',{horizonComparisons:{...appState.agents.horizonComparisons,[key]:value}});
  setStateSlice('agents',{horizonCompareBusy:true});write({status:'LOADING'});render();
@@ -700,7 +700,7 @@ function initEvents() {
   document.addEventListener('change', (event) => {
     if(event.target?.matches?.('[data-horizon-symbol]')){
       const symbol=event.target.value;
-      if(homeCandidates(appState.market).rows.some(row=>row.symbol===symbol)){appState.ui.horizonSymbol=symbol;render();document.querySelector('#horizon-symbol')?.focus({preventScroll:true});}
+      if(horizonCandidateSelection(appState).rows.some(row=>row.symbol===symbol)){appState.ui.horizonSymbol=symbol;render();document.querySelector('#horizon-symbol')?.focus({preventScroll:true});}
       return;
     }
     if(event.target?.matches?.('[data-coin-history-select]')){
@@ -1269,4 +1269,3 @@ window.addEventListener('hashchange', () => {
   else window.scrollTo({top:0, behavior:'instant'});
 });
 window.addEventListener('DOMContentLoaded', init);
-
