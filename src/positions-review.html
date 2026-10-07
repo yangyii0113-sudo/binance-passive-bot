@@ -1,0 +1,29 @@
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FOXYYA 持倉追蹤驗收</title><link rel="stylesheet" href="../styles.css"><style>body{margin:0;background:#101e25;color:#edf2ef;font:14px system-ui;min-width:0}*{box-sizing:border-box}header,main{padding:14px}h1{font-size:20px}.warning{color:#edcd88;line-height:1.6}button,select{margin:4px;min-height:44px;padding:8px 12px;background:#23373c;border:1px solid #597971;border-radius:8px;color:#eee;font:inherit}button[aria-pressed=true]{background:#d9bd70;color:#172220}.shell{margin:auto}iframe{border:0;display:block;transform-origin:top left;box-shadow:0 0 0 1px #536a66}.stage{overflow:auto}.content{max-width:1200px;margin:auto}</style></head><body><header><h1>持倉追蹤驗收</h1><p class="warning">合成測試資料，非即時行情、非交易建議。不連線、不保存帳本、不執行按鈕中的交易操作；只驗證真實顯示元件。</p><div id="controls"></div></header><main id="content"></main><script type="module">
+import {ordersPage} from './pages.js';
+import {appState} from './state.js';
+import {emptyForwardBook,registerForwardAdvice,advanceForward,interruptForward} from './advice_forward.js';
+const embedded=new URLSearchParams(location.search).has('frame'),controls=document.querySelector('#controls'),content=document.querySelector('#content');
+const sizes={phone360:[360,844],phone390:[390,844],phone430:[430,844],portrait:[1032,1376],landscape:[1376,1032]};
+const scenarios={pending:'等待觸發',open:'模擬持倉',partial:'分段止盈',gap:'資料中斷',error:'資料錯誤',manual:'已有手動持倉'};
+if(!embedded){
+ controls.innerHTML='<label>裝置<select id="device">'+Object.entries(sizes).map(([k,v])=>`<option value="${k}" ${k==='phone390'?'selected':''}>${k} · ${v.join(' × ')}</option>`).join('')+'</select></label>';
+ content.className='stage';content.innerHTML='<div class="shell"><iframe title="持倉追蹤尺寸預覽" src="./positions-review.html?frame=1"></iframe></div>';
+ const frame=content.querySelector('iframe'),device=document.querySelector('#device'),shell=content.querySelector('.shell');
+ const resize=()=>{const [w,h]=sizes[device.value],scale=Math.min(1,(content.clientWidth-32)/w);frame.width=w;frame.height=h;frame.style.transform=`scale(${scale})`;shell.style.width=w*scale+'px';shell.style.height=h*scale+'px';};device.onchange=resize;window.addEventListener('resize',resize);resize();
+}else{
+ controls.innerHTML=Object.entries(scenarios).map(([k,v])=>`<button type="button" data-scenario="${k}">${v}</button>`).join('');content.className='content';
+ function draw(scenario='open'){
+  const H=3600000,now=2400*H+120000,signalAt=2400*H-1,p={key:'breakout',status:'SETUP',side:'LONG',entry:100,stop:95,tp1:110,tp2:120,signalAt,expiresAt:2401*H};
+  const record={symbol:'1000PEPEUSDT',status:'LIVE',checkedAt:now,snapshotUntil:now+60000,marketSnapshot:{price:98,high:99,low:97,barOpen:2400*H,requestedAt:now,receivedAt:now},row:{symbol:'1000PEPEUSDT',analysis:{status:'VALID',analyzedAt:now,closedAt:signalAt,validUntil:p.expiresAt,strategies:['breakout','structured','meanReversion'].map(key=>key===p.key?p:{key,status:'WAIT',reason:'測試：等待條件'})}}};
+  const tick=(id,price)=>({id,price,time:now+(id-10)*100,eventTime:now+(id-10)*100,receivedAt:now+(id-10)*100});
+  const s=structuredClone(appState),book=emptyForwardBook();registerForwardAdvice(book,record,{now,feed:{startedAt:now-1000,last:tick(10,99)}});
+  if(scenario!=='pending')advanceForward(book,'1000PEPEUSDT',tick(11,100));
+  if(scenario==='partial')advanceForward(book,'1000PEPEUSDT',tick(12,110));
+  if(scenario==='gap')interruptForward(book,'測試：行情中斷',now+1000);
+  s.forward={enabled:scenario!=='gap',book,feeds:[],dataError:scenario==='error'?'測試：追蹤資料不完整':null};
+  if(scenario==='manual'){s.paper.local=true;s.paper.positions=[{id:'fixture',symbol:'SOLUSDT',side:'LONG',entry:100,mark:100,margin:10,notional:50,leverage:5}];}
+  content.innerHTML=ordersPage(s);controls.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.scenario===scenario)));
+ }
+ controls.onclick=e=>{const b=e.target.closest('[data-scenario]');if(b)draw(b.dataset.scenario);};draw();
+}
+</script></body></html>
