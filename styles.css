@@ -2728,3 +2728,5 @@ summary { padding-block:10px; }
 @media(max-width:600px){.horizon-heading h1{font-size:22px}.horizon-workspace{padding:12px}.horizon-card{padding:12px}.horizon-nav button strong{font-size:12px}.horizon-nav .period-state{font-size:10px}.horizon-input button{font-size:12px}.horizon-next>.primary-inline-btn{display:block;width:100%}}
 
 .research-ready-links{display:flex;flex-wrap:wrap;gap:8px}.research-ready-links button{display:grid;gap:6px;text-align:left;min-height:52px;padding:10px 12px;border-color:#628877}.research-ready-links span{font-size:12px;color:#b1d6c6}
+.horizon-plan .action-risk-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:12px 0;padding-top:12px;border-top:1px solid #355057}
+.horizon-plan .action-risk-metrics dt{font-size:11px;color:#b1c2c0}.horizon-plan .action-risk-metrics dd{margin:5px 0 0;font-size:15px;font-weight:600}.horizon-plan .action-risk-metrics .risk-money{color:#ff9da3}
