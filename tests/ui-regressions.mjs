@@ -363,7 +363,7 @@ test('advice prioritizes analysis and has one shared tracker with visible errors
   s.adviceMonitor={enabled:true,error:'核對失敗',alerts:[]};
   s.forward={enabled:true,error:'連線失敗',dataError:'紀錄異常',feeds:[{symbol:'BTCUSDT',status:'BLOCKED',reason:'行情中斷'}]};
   const before=structuredClone(s),html=pages.advice(s);
-  assert.ok(html.indexOf('id="agent-advice-form"')<html.indexOf('class="advice-monitor"'));
+  assert.ok(html.indexOf('id="horizon-analysis-form"')<html.indexOf('class="advice-monitor"'));
   assert.equal((html.match(/data-forward-stop/g)||[]).length,1);
   assert.doesNotMatch(html,/data-forward-start/);
   assert.match(html,/核對失敗/);assert.match(html,/連線失敗/);assert.match(html,/紀錄異常/);
@@ -375,11 +375,11 @@ test('unavailable home removes empty filters and repeated errors while retaining
   const {s,now}=homeFixture();s.market.status='ERROR';
   const reason=homeModule.homeOpportunities(s,now).reason;
   s.adviceMonitor={enabled:true,error:reason,alerts:[]};
-  const html=researchOverview(s,now);
+  const html=pages.home(s,now);
   assert.equal(html.split(reason).length-1,1);
   assert.doesNotMatch(html,/aria-label="首頁候選篩選"|aria-label="首頁排序"|今日行動/);
   assert.match(html,/data-home-check-all/);assert.match(html,/data-market-health="unavailable"/);
-  assert.ok(html.indexOf('data-home-check-all')<html.indexOf('class="advice-monitor"'));
+  assert.ok(html.indexOf('data-horizon-refresh')<html.indexOf('class="advice-monitor"'));
 });
 
 test('surge evidence never converts momentum, stale observations or short plans into a long breakout',async()=>{

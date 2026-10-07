@@ -1,6 +1,6 @@
+import { researchSummaryView } from './research_summary_view.js';
 import { horizonPanel } from './horizon_view.js';
 import { homeCandidates } from './home_opportunities.js';
-import { marketHealthView } from './market_health_view.js';
 import { researchPipelineView } from './research_pipeline_status.js';
 import { coinIdentity } from './coin_logo.js';
 import { adviceMonitorView } from './advice_monitor_view.js';
@@ -24,15 +24,16 @@ export function agentAdvicePanel(state, now=Date.now(), {analysisForm=''}={}) {
   const symbol=esc(selected?.symbol || '');
   return `<section class="agent-panel-stack agent-advice-panel" aria-label="交易建議總覽">
     ${horizonPanel(state,now)}
-    <h2 class="action-section-title">原三策略對照研究</h2>
-    ${marketHealthView(state.market,now)}
+    ${state.adviceMonitor?adviceMonitorView(state,now,{compact:true,sharedError:homeCandidates(state.market,now).reason}):forwardTrackingBar(state)}
+    ${researchSummaryView(state,now)}
+    <details class="core-disclosure legacy-research" data-legacy-research data-search="legacy-advice-research" ${state.ui?.legacyResearchOpen?'open':''}><summary>三策略完整研究與其他幣種</summary>
     ${researchPipelineView(state,homeCandidates(state.market,now),now)}
     <div class="advice-intro"><strong>${records.length?`目前 ${ready.length} 檔有條件式模擬計畫`:'先選幣種，直接取得交易建議'}</strong><p>${records.length?'先選幣種，再看「目前建議」與點位。狀態不代表勝率或獲利排名。':'分析完成會直接顯示：現在該做什麼、進場條件、止盈、止損。條件不足時會清楚列出等待原因。'}</p></div>
     ${records.length?`<div class="advice-filters" role="group" aria-label="依建議狀態篩選">${filters.map(([key,label])=>`<button type="button" data-advice-filter="${key}" aria-pressed="${key===active}">${label}<span>${records.filter(r=>matches(r,key)).length}</span></button>`).join('')}</div>
       ${selected?`<div class="advice-symbols" role="group" aria-label="選擇要看的交易建議">${visible.map(r=>`<button type="button" class="advice-symbol-btn" data-agent-advice-symbol="${esc(r.symbol)}" data-advice-reason="${adviceDisplayStatus(r,now).code}" aria-pressed="${r===selected}">${coinIdentity(r.symbol)}<span class="advice-symbol-status">${agentActionLabel(r,now)}</span></button>`).join('')}</div>
       <div class="advice-with-outlook" data-selected-advice="${symbol}">${agentDecisionCard(selected,{now,comparison:state.agents?.planComparisons?.[selected.symbol],comparisonBusy:state.agents?.planComparisonBusy})}${state.agents?.technical?.symbol===selected.symbol?trendOutlookView(state.agents.technical,selected,{now,compact:true}):''}</div>`:'<div class="empty-state"><strong>此分類目前沒有建議</strong><span>可切換全部，或分析其他幣種；不以其他分類的舊點位補足。</span><button type="button" class="secondary-btn" data-advice-filter="all">查看全部建議</button></div>'}
       <details class="core-disclosure" data-search="advice-new-analysis"><summary>分析其他幣種</summary>${analysisForm}</details>`:`<div class="advice-start">${analysisForm || '<button type="button" class="primary-inline-btn" data-agent-key="technical">開始分析</button>'}<p>尚無本次分析；歷史研究紀錄不會自動變成目前可用點位。</p></div>`}
-    ${state.adviceMonitor?adviceMonitorView(state,now,{compact:true}):forwardTrackingBar(state)}
+    </details>
     <nav class="advice-evidence-links" aria-label="研究與成效"><a class="secondary-btn" href="#/advice-results">建議成效與缺漏</a><button type="button" class="secondary-btn" data-agent-key="planHistory">研究紀錄</button></nav>
   </section>`;
 }

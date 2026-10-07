@@ -163,11 +163,11 @@ function refreshAgentPlan(value, {origin='重新核對', technical,automatic=fal
 }
 
 function horizonSelection(){return {horizon:HORIZONS[appState.ui.horizon]?appState.ui.horizon:'week',symbol:normalizePlanSymbol(document.querySelector('#horizon-symbol')?.value||horizonCandidateSelection(appState).symbol)};}
-async function refreshHorizon(selection=horizonSelection()){
+async function refreshHorizon(selection=horizonSelection(),{select=true}={}){
  if(appState.agents.horizonBusy)return;
  const {horizon,symbol}=selection,key=`${horizon}:${symbol}`;
  if(!homeCandidates(appState.market).rows.some(row=>row.symbol===symbol)){render();return;}
- Object.assign(appState.ui,{horizon,horizonSymbol:symbol});
+ if(select)Object.assign(appState.ui,{horizon,horizonSymbol:symbol});
  forwardTracker?.watchSymbol(symbol);const ticket=forwardTracker?.ticket(symbol);
  setStateSlice('agents',{horizonBusy:true,horizonPlans:{...appState.agents.horizonPlans,[key]:{symbol,horizon,status:'LOADING'}}});render();
  try{const record=await generateHorizonPlan(symbol,horizon);setStateSlice('agents',{horizonPlans:{...appState.agents.horizonPlans,[key]:record}});forwardTracker?.register(record,ticket);}
@@ -178,7 +178,7 @@ async function refreshHomeHorizons(){
  const {symbol}=horizonSelection();
  if(!homeCandidates(appState.market).rows.some(row=>row.symbol===symbol)){render();return;}
  appState.ui.horizonBatch=true;appState.ui.horizonSymbol=symbol;render();
- try{for(const horizon of Object.keys(HORIZONS))await refreshHorizon({horizon,symbol});}
+ try{for(const horizon of Object.keys(HORIZONS))await refreshHorizon({horizon,symbol},{select:false});}
  finally{appState.ui.horizonBatch=false;render();}
 }
 async function compareHorizon(){
@@ -241,7 +241,7 @@ async function runAgentTechnical(value, {origin='使用者選幣 · 多週期分
     await refreshAgentPlan(symbol,{origin,technical});
     appState.ui.message=`${symbol} 分析完成，交易建議已整理。`;
     if(currentRoute()==='strategies' && appState.ui.strategyWorkspace==='agents' && appState.ui.agentKey==='technical' && appState.ui.selectedSymbol===symbol){
-      appState.ui.adviceSymbol=symbol;
+      appState.ui.adviceSymbol=symbol;appState.ui.legacyResearchOpen=true;appState.ui.legacyResearchFocus=true;
       appState.ui.adviceFilter='all';
       appState.ui.agentKey='advice';
       navigateTo('#/advice');
@@ -317,6 +317,7 @@ function render() {
     ? [...root.querySelectorAll('details[open]')].map(el => disclosureStateKey(el)) : [];
   const page = pages[route] || pages.home;
   root.innerHTML = page(appState);
+  appState.ui.legacyResearchOpen=false;
   renderedContext = context;
   const findControl = saved => [...(document.getElementById(saved.form)?.elements || [])].find(el=>el.name===saved.name);
   for (const saved of controls.filter(x=>x.name==='timeframe')) {
@@ -346,6 +347,7 @@ function render() {
   const search = document.getElementById('global-search');
   if (search && search.value !== appState.ui.search) search.value = appState.ui.search;
   applySearch(appState.ui.search);
+  if(route==='advice'&&appState.ui.legacyResearchFocus){root.querySelector('[data-legacy-research]')?.scrollIntoView({block:'start'});appState.ui.legacyResearchFocus=false;}
 }
 
 function navigateTo(hash) {
@@ -723,13 +725,13 @@ function initEvents() {
     }
   });
 
-  document.addEventListener('submit',event=>{if(event.target.id==='horizon-analysis-form'){event.preventDefault();void (currentRoute()==='home'?refreshHomeHorizons():refreshHorizon());}});
+  document.addEventListener('submit',event=>{if(event.target.id==='horizon-analysis-form'){event.preventDefault();void refreshHorizon();}});
   document.addEventListener('click', async (event) => {
     if(event.target.closest?.('[data-horizon-analyze-all]')){event.preventDefault();await refreshHomeHorizons();return;}
     const homeHorizon=event.target.closest?.('[data-horizon-check]')?.dataset.horizon;
     if(homeHorizon&&HORIZONS[homeHorizon]){if(!appState.ui.horizonBatch)await refreshHorizon({horizon:homeHorizon,symbol:horizonSelection().symbol});return;}
     const horizonButton=event.target.closest?.('[data-horizon]');
-    if(horizonButton&&HORIZONS[horizonButton.dataset.horizon]){const selected=horizonSelection();Object.assign(appState.ui,{horizon:horizonButton.dataset.horizon,horizonSymbol:normalizePlanSymbol(horizonButton.dataset.horizonTarget||selected.symbol)});if(horizonButton.hasAttribute('data-horizon-home'))navigateTo('#/advice');else render();return;}
+    if(horizonButton&&HORIZONS[horizonButton.dataset.horizon]){const selected=horizonSelection();Object.assign(appState.ui,{horizon:horizonButton.dataset.horizon,horizonSymbol:normalizePlanSymbol(horizonButton.dataset.horizonTarget||selected.symbol)});if(horizonButton.hasAttribute('data-horizon-home'))navigateTo('#/advice');else {render();document.querySelector(`[data-horizon="${appState.ui.horizon}"]`)?.focus({preventScroll:true});}return;}
     if(event.target.closest?.('[data-horizon-refresh]')){
       if(appState.ui.horizonRefreshing)return;appState.ui.horizonRefreshing=true;render();
       try{await refreshMarket();}finally{appState.ui.horizonRefreshing=false;render();}return;
@@ -769,11 +771,12 @@ function initEvents() {
       catch{setStateSlice('forward',{exportMessage:'請在文字框手動全選複製。'});}
       render();return;
     }
-    const adviceSymbol=event.target.closest?.('[data-agent-advice-symbol]');
+    const adviceSymbol=event.target.closest?.('[data-agent-advice-symbol],[data-research-open]');
     if(adviceSymbol){
-      if(appState.agents.tradePlans?.[adviceSymbol.dataset.agentAdviceSymbol]){
-        appState.ui.adviceSymbol=adviceSymbol.dataset.agentAdviceSymbol;
-        if(currentRoute()!=='advice')appState.ui.adviceFilter='all';
+      const symbol=adviceSymbol.dataset.researchOpen||adviceSymbol.dataset.agentAdviceSymbol;
+      if(appState.agents.tradePlans?.[symbol]){
+        appState.ui.adviceSymbol=symbol;appState.ui.legacyResearchOpen=true;appState.ui.legacyResearchFocus=true;
+        if(currentRoute()!=='advice'||adviceSymbol.hasAttribute('data-research-open'))appState.ui.adviceFilter='all';
         appState.ui.message='';
         appState.ui.strategyWorkspace='agents';appState.ui.agentKey='advice';
         navigateTo('#/advice');

@@ -2692,12 +2692,8 @@ summary { padding-block:10px; }
 
 /* Shared day/week/month research hierarchy. */
 .horizon-nav{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:12px 0}
-.horizon-opportunities{border:1px solid #b8a269;background:linear-gradient(135deg,#21362f,#14252b);padding:20px;min-width:0}
-.opportunities-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.opportunities-heading h1{font-size:26px;margin:4px 0}.opportunities-heading a{text-decoration:none}
-.opportunities-intro,.opportunities-note{font-size:13px;line-height:1.7;color:#b9ccc5}.opportunities-note{font-size:11px;margin-bottom:0}
-.opportunities-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.opportunity-cycle{display:flex;flex-direction:column;gap:8px;min-width:0;background:#14252b;border:1px solid #536760;border-radius:12px;padding:16px}.opportunity-cycle.plan{border-color:#85cfb0}
-.opportunity-cycle-title h2{font-size:19px;margin:0 0 4px;color:#eed699}.opportunity-cycle-title>span{font-size:12px;color:#b9ccc5}.opportunity-cycle .coin-identity{margin-top:8px}.opportunity-status{font-size:17px;color:#e4cc94}.opportunity-cycle.plan .opportunity-status{color:#a7e5ca}.opportunity-count{font-size:12px;color:#a7e5ca}.opportunity-reason,.opportunity-direction,.opportunity-unchecked{margin:0;font-size:13px;line-height:1.6;overflow-wrap:anywhere}.opportunity-unchecked{color:#b9ccc5;min-height:44px}.opportunity-cycle>button{margin-top:auto;min-height:44px;width:100%;white-space:normal}
-@media(max-width:700px){.horizon-opportunities{padding:14px}.opportunities-heading h1{font-size:23px}.opportunities-grid{grid-template-columns:1fr;gap:10px}.opportunity-cycle{padding:14px}.opportunity-cycle-title{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}.opportunity-cycle-title h2{font-size:18px}}
+.horizon-opportunities{min-width:0}
+.opportunities-intro{font-size:13px;line-height:1.6;color:#b9ccc5;margin:6px 0 12px}
 .horizon-nav button{min-width:0;min-height:66px;background:#172b31;border:1px solid #355057;border-radius:12px;color:#dce8e7;padding:12px 8px;text-align:left;cursor:pointer}
 .horizon-nav button strong,.horizon-nav button span{display:block;overflow-wrap:anywhere}.horizon-nav button strong{font-size:15px}.horizon-nav button span{font-size:11px;line-height:1.5;margin-top:5px;color:#aebfbd}
 .horizon-nav button[aria-pressed=true]{border-color:#cfb66e;background:#263831}.horizon-nav button[aria-pressed=true] strong{color:#f1d894}
@@ -2709,3 +2705,26 @@ summary { padding-block:10px; }
 .horizon-input select:disabled{opacity:.65}.horizon-selection-note{font-size:12px;line-height:1.7;color:#dac88f;overflow-wrap:anywhere}
 
 .horizon-input button:disabled,.opportunity-cycle button:disabled{opacity:.45;cursor:not-allowed}.opportunity-cycle>.secondary-btn{min-height:44px;width:100%;white-space:normal}
+
+/* A single selected plan is the primary reading surface on home and advice. */
+.horizon-heading h1{font-size:24px;line-height:1.4;margin:0}
+.horizon-input{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin:12px 0}
+.horizon-input label{min-width:0}.horizon-input button{padding:10px 12px;white-space:normal}
+.horizon-card{padding:16px}.horizon-step{margin:14px 0 0;color:#aebfbd;font-size:12px!important}
+.horizon-nav{margin:6px 0 14px;gap:6px}.horizon-nav button{text-align:center;min-height:64px;padding:10px 5px}
+.horizon-nav .period-state{font-size:11px}.horizon-nav .period-state.plan{color:#9bdac3}
+.horizon-nav .period-state.blocked,.horizon-nav .period-state.expired,.horizon-nav .period-state.conflict{color:#f0cc8b}
+.horizon-verdict{margin-top:10px}.horizon-verdict strong{font-size:20px}.horizon-time{margin:6px 0}
+.horizon-next{margin-top:14px;padding-top:0}.horizon-next p{margin:6px 0 10px}.horizon-next button{min-height:44px;margin:0 6px 6px 0;white-space:normal}
+.horizon-next a{color:#e5cb86}.horizon-lock{font-size:11px;line-height:1.7;margin:12px 0}
+.period-alerts{border-left:2px solid #c6a971;margin-top:12px;padding-left:10px;font-size:12px;line-height:1.6;color:#e3c791}
+.research-home.research-secondary{background:none;border:0;padding:0}
+.research-summary{font-size:12px;line-height:1.6;color:#becac8;margin:14px 0}.research-summary p{margin:6px 0}
+.research-exceptions{list-style:none;margin:8px 0;padding:0}.research-exceptions li{border-left:2px solid #ba9763;padding:4px 10px;margin:8px 0;overflow-wrap:anywhere}
+.research-exceptions button{min-height:44px;font-size:12px;padding:8px 12px}
+.research-secondary>.core-disclosure{margin-top:10px}.legacy-research>summary{font-size:14px}
+.horizon-nav button:focus-visible,.horizon-workspace :focus-visible{outline:2px solid #f3c56c;outline-offset:3px}
+.horizon-nav button:disabled{opacity:.55;cursor:wait}
+@media(max-width:600px){.horizon-heading h1{font-size:22px}.horizon-workspace{padding:12px}.horizon-card{padding:12px}.horizon-nav button strong{font-size:12px}.horizon-nav .period-state{font-size:10px}.horizon-input button{font-size:12px}.horizon-next>.primary-inline-btn{display:block;width:100%}}
+
+.research-ready-links{display:flex;flex-wrap:wrap;gap:8px}.research-ready-links button{display:grid;gap:6px;text-align:left;min-height:52px;padding:10px 12px;border-color:#628877}.research-ready-links span{font-size:12px;color:#b1d6c6}
