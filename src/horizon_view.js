@@ -3,7 +3,7 @@ import { homeCandidates } from './home_opportunities.js';
 import { rankStrongRows } from './strong_candidates.js';
 import { HORIZONS,HORIZON_VERSION,HORIZON_NAMES,horizonPlanStatus } from './horizon_strategies.js';
 import { HORIZON_DAYS } from './horizon_replay.js';
-import { coinIdentity } from './coin_logo.js';
+import { coinIdentity,coinInfo } from './coin_logo.js';
 import { homePlanVisual } from './plan_price_map.js';
 import { escapeHtml as esc,displayDate } from './ui.js';
 const label={empty:'尚未分析',loading:'核對中',plan:'條件成立・待觸發',wait:'等待確認',blocked:'暫停判定',expired:'核對已過期',conflict:'方向衝突'};
@@ -26,7 +26,7 @@ export function horizonSelectionControls(state,now=Date.now()){
  const selection=horizonCandidateSelection(state,now),{symbol}=selection,busy=state.agents?.horizonBusy||state.ui?.horizonBatch;
  const health=marketHealth(state.market,now),error=state.market?.error?.message||(typeof state.market?.error==='string'?state.market.error:'');
  const note=selection.reason?`${health.reason}。${error||selection.reason}`:!selection.rows.length?'本輪沒有符合條件的上漲幣，不以其他候選補足名額。':symbol&&!selection.eligible?`${symbol} 不在本次候選前 5 強，請重新選幣；既有研究仍保留。`:'';
- return `<form id="horizon-analysis-form" class="horizon-input"><label>1. 選幣 · 上漲動能前 5 強<select name="symbol" id="horizon-symbol" data-horizon-symbol aria-label="上漲動能前 5 強" aria-describedby="horizon-selection-basis" ${busy||!selection.rows.length?'disabled':''}><option value="" ${!selection.eligible?'selected':''} disabled>${selection.rows.length?'請選擇前 5 強':'等待有效名單'}</option>${selection.rows.map(row=>`<option value="${esc(row.symbol)}" ${row.symbol===symbol?'selected':''}>#${row.rank} ${esc(row.symbol)} · 24h ${row.change>0?'+':''}${row.change.toFixed(2)}%</option>`).join('')}</select></label><button type="button" class="secondary-btn" data-horizon-refresh ${state.ui?.horizonRefreshing||busy?'disabled':''}>${state.ui?.horizonRefreshing?'篩選中…':'更新選單'}</button></form><p class="horizon-selection-basis" id="horizon-selection-basis">${selection.reason?'名單待更新':`本輪 ${selection.rows.length} 檔`} · 按動能分排序，含成交額評分。<br>先選幣，再核對進場；排名不是買入訊號。</p>${note?`<p class="horizon-selection-note" data-market-health="${health.key}" role="status">${esc(note)}</p>`:''}`;
+ return `<form id="horizon-analysis-form" class="horizon-input"><label>1. 選幣 · 上漲動能前 5 強<select name="symbol" id="horizon-symbol" data-horizon-symbol aria-label="上漲動能前 5 強" aria-describedby="horizon-selection-basis" ${busy||!selection.rows.length?'disabled':''}><option value="" ${!selection.eligible?'selected':''} disabled>${selection.rows.length?'請選擇前 5 強':'等待有效名單'}</option>${selection.rows.map(row=>`<option value="${esc(row.symbol)}" ${row.symbol===symbol?'selected':''}>#${row.rank} ${esc(coinInfo(row.symbol).ticker)} · ${row.change>0?'+':''}${row.change.toFixed(2)}%</option>`).join('')}</select></label><button type="button" class="secondary-btn" data-horizon-refresh aria-label="更新前 5 強選單" title="更新選單" ${state.ui?.horizonRefreshing||busy?'disabled':''}>${state.ui?.horizonRefreshing?'篩選中…':'更新'}</button></form><p class="horizon-selection-basis" id="horizon-selection-basis">${selection.reason?'名單待更新':`本輪 ${selection.rows.length} 檔`} · 選單顯示 24h 漲幅，按動能分排序。<br>先選幣，再核對進場；排名不是買入訊號。</p>${note?`<p class="horizon-selection-note" data-market-health="${health.key}" role="status">${esc(note)}</p>`:''}`;
 }
 export function horizonNav(state,{now=Date.now()}={}){
  const active=selectedPeriod(state),{symbol}=horizonCandidateSelection(state,now);
