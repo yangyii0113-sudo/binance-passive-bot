@@ -1,3 +1,4 @@
+import {technicalConfirmation} from './technical_confirmation.js';
 import { EXIT_COSTS } from './target_analysis.js';
 import { researchRiskScenario } from './research_risk_view.js';
 import { fetchMarketJson } from './market_request.js';
@@ -30,7 +31,8 @@ export function horizonSignals({horizon,frames,now}){
   closed[f]=closed[f].slice(-60);
  }
  const rows=closed[c.trigger],last=rows.at(-1),side=trend(closed[c.context]),regime=trend(closed[c.regime]);
- const evidence={context:side,regime,trigger:c.trigger,contextFrame:c.context,regimeFrame:c.regime,closedAt:+last[6]};
+ const technical=technicalConfirmation(frames[c.trigger].filter(r=>Array.isArray(r)&&+r[6]<now),side);
+ const evidence={technical,context:side,regime,trigger:c.trigger,contextFrame:c.context,regimeFrame:c.regime,closedAt:+last[6]};
  if(side==='MIXED'||regime==='MIXED'||side!==regime)return {status:'VALID',evidence,strategies:['breakout','structured'].map(k=>wait(k,side!==regime?'大週期方向衝突；等待同向收盤':'趨勢未成立；等待均線與斜率同向'))};
  const s=side==='LONG'?1:-1,closes=rows.map(r=>+r[4]),e20=ema(closes,20);
  const atr=mean(rows.slice(-14).map((r,i)=>Math.max(+r[2]-r[3],Math.abs(+r[2]-rows[rows.length-15+i][4]),Math.abs(+r[3]-rows[rows.length-15+i][4]))));

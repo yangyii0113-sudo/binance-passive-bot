@@ -108,7 +108,7 @@ test('primary selection shows the five strongest rising contracts without reserv
  assert.deepEqual(selection.rows.map(x=>x.symbol),['1000PEPEUSDT','SUIUSDT','ETHUSDT','SOLUSDT','BNBUSDT']);
  assert.equal(selection.symbol,'1000PEPEUSDT');assert.ok(selection.eligible);
  const html=view.horizonSelectionControls({ui:{},market},now);
- assert.equal((html.match(/<option value="[^"]+"/g)||[]).length,5);
+ assert.equal((html.match(/<option value="[^"]+USDT"/g)||[]).length,5);
  assert.match(html,/前 5 強/);assert.match(html,/24h/);assert.match(html,/動能/);
  assert.doesNotMatch(html,/<option value="(?:A|B|C|D|E|F|G|XRP|THIN|SPIKE)USDT"/);
  assert.deepEqual(homeCandidates(market,now).rows,legacy);assert.deepEqual(market,before);

@@ -31,3 +31,12 @@ export function rankResearchRows(rows=[],eligible=null){
  for(const row of [...momentum,...down])if(selected.length<10&&!selected.some(r=>r.symbol===row.symbol))selected.push(row);
  return selected.map((row,i)=>({...row,rank:i+1}));
 }
+
+// Downside research list: ticker weakness is not an instruction to short.
+export function rankWeakRows(rows=[],eligible=null){
+ const seen=new Set();return rows.flatMap(row=>{
+  const symbol=String(row?.[1]||'').replace(/\s|\//g,''),change=Number(row?.[3]),volume=Number(row?.[4]);
+  if(!/^[\p{L}\p{N}]+USDT$/u.test(symbol)||seen.has(symbol)||(eligible&&!eligible.has(symbol))||row?.[3]==null||row?.[4]==null||![change,volume].every(Number.isFinite)||change>=0||change<=-30||volume<10000000)return [];
+  seen.add(symbol);return [{symbol,change,volume,pool:'declining'}];
+ }).sort((a,b)=>a.change-b.change||b.volume-a.volume||a.symbol.localeCompare(b.symbol)).slice(0,5).map((x,i)=>({...x,rank:i+1}));
+}

@@ -698,6 +698,10 @@ function initEvents() {
   });
 
   document.addEventListener('change', (event) => {
+    if(event.target?.matches?.('[data-horizon-pool]')){
+      if(appState.agents?.horizonBusy||appState.ui?.horizonBatch)return;
+      appState.ui.horizonPool=event.target.value==='down'?'down':'up';appState.ui.horizonSymbol='';render();return;
+    }
     if(event.target?.matches?.('[data-horizon-symbol]')){
       const symbol=event.target.value;
       if(horizonCandidateSelection(appState).rows.some(row=>row.symbol===symbol)){appState.ui.horizonSymbol=symbol;render();document.querySelector('#horizon-symbol')?.focus({preventScroll:true});}

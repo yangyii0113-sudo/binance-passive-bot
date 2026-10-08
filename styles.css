@@ -2733,3 +2733,5 @@ summary { padding-block:10px; }
 .horizon-plan .action-risk-metrics dt{font-size:11px;color:#b1c2c0}.horizon-plan .action-risk-metrics dd{margin:5px 0 0;font-size:15px;font-weight:600}.horizon-plan .action-risk-metrics .risk-money{color:#ff9da3}
 
 .research-tool-links{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}.research-tool-links a{display:flex;align-items:center;min-height:44px;padding:10px 12px;border:1px solid #355057;border-radius:10px;color:#e5cb86;text-decoration:none;font-size:13px}.manual-paper-tools{min-width:0}.manual-paper-tools>p{font-size:12px;line-height:1.7;color:#b7c9c3}.manual-paper-tools .panel{margin-top:12px}
+
+.horizon-pool-label{display:grid;gap:6px;margin:12px 0;font-size:13px}.horizon-pool-label select{width:100%;min-width:0;min-height:44px;background:var(--panel,#15262b);color:inherit;border:1px solid #52635f;border-radius:10px;padding:10px}.technical-facts{display:grid;gap:12px}.technical-facts div{min-width:0}.technical-facts dt{font-weight:650}.technical-facts dd{margin:4px 0 0;overflow-wrap:anywhere;line-height:1.6}
