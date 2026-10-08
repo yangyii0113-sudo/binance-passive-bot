@@ -24,9 +24,9 @@ export function agentAdvicePanel(state, now=Date.now(), {analysisForm=''}={}) {
   const symbol=esc(selected?.symbol || '');
   return `<section class="agent-panel-stack agent-advice-panel" aria-label="交易建議總覽">
     ${horizonPanel(state,now)}
-    ${state.adviceMonitor?adviceMonitorView(state,now,{compact:true,sharedError:homeCandidates(state.market,now).reason}):forwardTrackingBar(state)}
+    ${(state.adviceMonitor?.enabled||state.adviceMonitor?.error)?adviceMonitorView(state,now,{compact:true,sharedError:homeCandidates(state.market,now).reason}):forwardTrackingBar(state)}
     ${researchSummaryView(state,now,{compact:true})}
-    <details class="core-disclosure legacy-research" data-legacy-research data-search="legacy-advice-research" ${state.ui?.legacyResearchOpen?'open':''}><summary>其他已保存計畫與完整研究</summary>${researchSummaryView(state,now,{showIssues:false})}
+    <details class="core-disclosure legacy-research" data-legacy-research data-search="legacy-advice-research" ${state.ui?.legacyResearchOpen?'open':''}><summary>其他已保存計畫與完整研究</summary>${state.adviceMonitor&&!state.adviceMonitor.enabled&&!state.adviceMonitor.error?adviceMonitorView(state,now,{compact:true}):''}${researchSummaryView(state,now,{showIssues:false})}
     ${researchPipelineView(state,homeCandidates(state.market,now),now)}
     <div class="advice-intro"><strong>${records.length?`目前 ${ready.length} 檔有條件式模擬計畫`:'先選幣種，直接取得交易建議'}</strong><p>${records.length?'先選幣種，再看「目前建議」與點位。狀態不代表勝率或獲利排名。':'分析完成會直接顯示：現在該做什麼、進場條件、止盈、止損。條件不足時會清楚列出等待原因。'}</p></div>
     ${records.length?`<div class="advice-filters" role="group" aria-label="依建議狀態篩選">${filters.map(([key,label])=>`<button type="button" data-advice-filter="${key}" aria-pressed="${key===active}">${label}<span>${records.filter(r=>matches(r,key)).length}</span></button>`).join('')}</div>

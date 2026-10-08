@@ -39,6 +39,6 @@ if(!embedded){
  content.innerHTML=params.has('home')?horizonOpportunities(state,time):horizonPanel(state,time);for(const b of controls.querySelectorAll('button'))b.setAttribute('aria-pressed',String(b.dataset.scenario===scenario));if(scenario==='study')content.querySelector('[data-search^="horizon-comparison"]').open=true;
  }
  content.onchange=e=>{if(e.target.matches('[data-horizon-pool]')){pool=e.target.value;symbol=pool==='down'?'DOWNUSDT':'SOLUSDT';draw();}if(e.target.matches('[data-horizon-symbol]')){symbol=e.target.value;draw();}};
- controls.onclick=e=>{const b=e.target.closest('[data-scenario]');if(b){scenario=b.dataset.scenario;draw();}};content.onclick=e=>{const b=e.target.closest('[data-horizon]');if(b){horizon=b.dataset.horizon;draw();}};draw();
+ controls.onclick=e=>{const b=e.target.closest('[data-scenario]');if(b){scenario=b.dataset.scenario;draw();}};content.onclick=e=>{const coin=e.target.closest('[data-horizon-coin]');if(coin){symbol=coin.dataset.horizonCoin;draw();return;}const b=e.target.closest('[data-horizon]');if(b){horizon=b.dataset.horizon;draw();}};draw();
 }
 </script></body></html>

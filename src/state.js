@@ -37,6 +37,7 @@ export const appState = {
     items: []
   },
   forward: {book:null,enabled:false,starting:false,error:null,note:'尚未啟動；只記錄啟動後的新分析',feeds:[],exportFile:null},
+  horizonAuto: {enabled:true,paused:true,running:false,nextAt:0,lastAt:null,completed:0,total:0,error:null},
   adviceMonitor: {enabled:true,paused:true,running:false,nextAt:0,lastAt:null,error:null,symbols:[],alerts:[]},
   agents: {
     technical: null,

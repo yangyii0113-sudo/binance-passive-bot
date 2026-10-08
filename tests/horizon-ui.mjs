@@ -14,44 +14,33 @@ test('missing data and errors stay visible and user strings are escaped',()=>{
  assert.equal(typeof view.horizonPanel,'function');const html=view.horizonPanel({ui:{horizonSymbol:'<img>'},agents:{horizonPlans:{'week:<img>':{symbol:'<img>',horizon:'week',status:'BLOCKED',reason:'來源 <failed>'}}}},now);
  assert.doesNotMatch(html,/<img>/);assert.match(html,/來源 &lt;failed&gt;/);assert.doesNotMatch(html,/data-price-level/);
 });
-test('horizon symbol is selected from screened candidates rather than free text',()=>{
- assert.match(view.horizonPanel({ui:{horizonSymbol:'1000PEPEUSDT'}}),/<form[^>]*id="horizon-analysis-form"/);
- assert.match(view.horizonPanel({ui:{horizonSymbol:'1000PEPEUSDT'}}),/<select[^>]*name="symbol"/);
- assert.doesNotMatch(view.horizonPanel({ui:{}}),/<input[^>]*id="horizon-symbol"/);
+test('coin selection needs neither a dropdown nor manual analysis',()=>{
+ const html=view.horizonPanel({ui:{}});
+ assert.doesNotMatch(html,/<select|data-horizon-analyze|horizon-analysis-form/);
+ assert.match(html,/data-horizon-auto-toggle/);
 });
 function screenedMarket(){return {status:'LIVE',updatedAt:new Date(now).toISOString(),contractVerifiedAt:new Date(now).toISOString(),cryptoOnly:true,universeRows:[['','SOLUSDT',100,6,2e7,85],['','1000PEPEUSDT',.01,8,3e7,90],['','THINUSDT',1,10,100,95],['','SPIKEUSDT',1,35,2e7,99]]};}
-test('dropdown uses the screened pool, preserves full contracts and rejects stale choices',()=>{
+test('visible coin buttons preserve full contracts and reject stale candidates',()=>{
  const state={ui:{horizonSymbol:'1000PEPEUSDT'},market:screenedMarket()};
- const html=view.horizonPanel(state,now),select=html.match(/<select[^>]*id="horizon-symbol"[\s\S]*?<\/select>/)?.[0];
- assert.ok(select);assert.match(select,/<option value="1000PEPEUSDT" selected/);assert.match(select,/<option value="SOLUSDT"/);
- assert.doesNotMatch(select,/THINUSDT|SPIKEUSDT|BTCUSDT|ETHUSDT/);
- const stale=view.horizonPanel(state,now+301000),staleSelect=stale.match(/<select[^>]*id="horizon-symbol"[\s\S]*?<\/select>/)?.[0];
- assert.match(staleSelect,/disabled/);assert.doesNotMatch(staleSelect,/<option value="1000PEPEUSDT"/);
- assert.match(stale, /data-horizon-analyze disabled/);
- assert.match(stale,/data-horizon-refresh/);
+ const html=view.horizonPanel(state,now);
+ assert.match(html,/data-horizon-coin="1000PEPEUSDT" aria-pressed="true"/);
+ assert.match(html,/data-horizon-coin="SOLUSDT"/);assert.doesNotMatch(html,/data-horizon-coin="(?:THIN|SPIKE)USDT"/);
+ assert.doesNotMatch(view.horizonPanel(state,now+301000),/data-horizon-coin=/);
 });
-test('an excluded selected coin is not silently replaced with another candidate',()=>{
+test('excluded selected coin is clearly flagged rather than silently replaced',()=>{
  const html=view.horizonPanel({ui:{horizonSymbol:'BTCUSDT'},market:screenedMarket()},now);
- assert.match(html,/BTCUSDT.*不在本次候選/);assert.match(html,/data-horizon-analyze disabled/);
- assert.doesNotMatch(html,/<option value="(?:SOL|1000PEPE)USDT" selected/);
+ assert.match(html,/BTCUSDT.*不在本次候選/);assert.doesNotMatch(html,/data-horizon-coin="[^"]+" aria-pressed="true"/);
 });
-test('home entry defaults to a screened candidate instead of a hardcoded BTC',()=>{
- const html=view.horizonOpportunities({ui:{selectedSymbol:'BTCUSDT'},market:screenedMarket()},now);
- assert.doesNotMatch(html,/data-horizon-target="BTCUSDT"/);
- assert.match(html,/<option value="1000PEPEUSDT" selected/);
-});
-test('home opportunities expose screened selection and analyze all periods in place',()=>{
- const html=view.horizonOpportunities({ui:{horizonSymbol:'1000PEPEUSDT'},market:screenedMarket()},now);
- assert.match(html,/<select[^>]*id="horizon-symbol"/);
- assert.match(html,/data-horizon-analyze-all/);
+test('home defaults to a screened candidate with three period statuses and one detail',()=>{
+ const html=view.horizonOpportunities({ui:{},market:screenedMarket()},now);
+ assert.match(html,/data-horizon-coin="1000PEPEUSDT" aria-pressed="true"/);
  assert.equal((html.match(/data-horizon-card=/g)||[]).length,1);
- assert.equal((html.match(/class="coin-identity/g)||[]).length,1);
  assert.equal((html.match(/data-horizon="(?:day|week|month)"/g)||[]).length,3);
- assert.doesNotMatch(html,/data-horizon-home|opportunity-cycle/);
+ assert.doesNotMatch(html,/data-horizon-home|opportunity-cycle|<select/);
 });
 test('selected home coin never shows another coin research verdict',()=>{
  const r=record();const html=view.horizonOpportunities({ui:{horizonSymbol:'1000PEPEUSDT'},market:screenedMarket(),agents:{horizonPlans:{'week:SOLUSDT':r}}},now);
- assert.doesNotMatch(html,/條件成立・待觸發|1 檔有效計畫|data-horizon-target="SOLUSDT"/);
+ assert.doesNotMatch(html.slice(html.indexOf('<article class="horizon-card"')),/條件成立・待觸發|data-price-level/);
  assert.match(html,/1000PEPEUSDT/);
 });
 test('active horizon sample stays visible ahead of later failed registration',()=>{
@@ -96,7 +85,7 @@ test('secondary research keeps exceptions and stop controls outside its collapse
    assert.doesNotMatch(html.slice(Math.max(0,start-60),start),/open/);
  }
 });
-test('primary selection shows the five strongest rising contracts without reserve slots displacing them',()=>{
+test('primary selection combines long and short research candidates without changing legacy membership',()=>{
  const market=screenedMarket();
  market.universeRows=[...market.universeRows,
   ['','SUIUSDT',1,7,4e7,88],['','ETHUSDT',1,6,4e7,85],['','BNBUSDT',1,5,4e7,84],['','XRPUSDT',1,4,4e7,82],
@@ -105,25 +94,32 @@ test('primary selection shows the five strongest rising contracts without reserv
  const before=structuredClone(market),legacy=homeCandidates(market,now).rows;
  assert.equal(legacy.length,10);assert.ok(legacy.some(x=>x.change<0));
  const selection=view.horizonCandidateSelection({ui:{},market},now);
- assert.deepEqual(selection.rows.map(x=>x.symbol),['1000PEPEUSDT','SUIUSDT','ETHUSDT','SOLUSDT','BNBUSDT']);
- assert.equal(selection.symbol,'1000PEPEUSDT');assert.ok(selection.eligible);
+ assert.deepEqual(selection.rows.map(x=>x.symbol),['EUSDT','FUSDT','GUSDT','1000PEPEUSDT','SUIUSDT']);
+ assert.equal(selection.symbol,'EUSDT');assert.ok(selection.eligible);
  const html=view.horizonSelectionControls({ui:{},market},now);
- assert.equal((html.match(/<option value="[^"]+USDT"/g)||[]).length,5);
- assert.match(html,/前 5 強/);assert.match(html,/24h/);assert.match(html,/動能/);
- assert.doesNotMatch(html,/<option value="(?:A|B|C|D|E|F|G|XRP|THIN|SPIKE)USDT"/);
+ assert.equal((html.match(/data-horizon-coin=/g)||[]).length,5);
+ assert.match(html,/前 5 強/);assert.match(html,/24h/);assert.match(html,/多空/);
+ assert.doesNotMatch(html,/data-horizon-coin="(?:A|B|C|D|XRP|THIN|SPIKE)USDT"/);
  assert.deepEqual(homeCandidates(market,now).rows,legacy);assert.deepEqual(market,before);
  const excluded=view.horizonCandidateSelection({ui:{horizonSymbol:'XRPUSDT'},market},now);
  assert.equal(excluded.symbol,'XRPUSDT');assert.equal(excluded.eligible,false);
- assert.match(view.horizonPanel({ui:{horizonSymbol:'XRPUSDT'},market},now),/data-horizon-analyze disabled/);
+ assert.match(view.horizonPanel({ui:{horizonSymbol:'XRPUSDT'},market},now),/不在本次候選/);
 });
-test('top five never fills vacant slots with declining, thin or stale candidates',()=>{
+test('top five includes eligible declines but excludes thin, extreme and stale candidates',()=>{
  const market=screenedMarket();market.universeRows.push(['','DOWNUSDT',1,-10,8e7,99]);
- assert.equal(view.horizonCandidateSelection({market},now).rows.length,2);
+ assert.equal(view.horizonCandidateSelection({market},now).rows.length,3);
  for(const update of [{updatedAt:new Date(now-301000).toISOString()},{contractVerifiedAt:new Date(now-301000).toISOString()},{cryptoOnly:false}]){
   const selection=view.horizonCandidateSelection({market:{...market,...update}},now);
   assert.deepEqual(selection.rows,[]);assert.equal(selection.eligible,false);
  }
- market.universeRows=market.universeRows.filter(row=>row[3]<0||row[3]>=30||row[4]<1e7);
+ market.universeRows=market.universeRows.filter(row=>row[3]>=30||row[4]<1e7);
  assert.deepEqual(view.horizonCandidateSelection({market},now).rows,[]);
  assert.match(view.horizonSelectionControls({market},now),/沒有符合/);
+});
+
+test('automatic default chooses a valid period while an explicit period remains selected',()=>{
+ const r=record(),state={ui:{horizonSymbol:'SOLUSDT'},market:screenedMarket(),agents:{horizonPlans:{'week:SOLUSDT':r}}};
+ assert.equal(view.selectedPeriod(state,now),'week');
+ state.ui.horizon='day';assert.equal(view.selectedPeriod(state,now),'day');
+ assert.doesNotMatch(view.horizonPanel(state,now).split('<article')[1],/data-price-level/);
 });

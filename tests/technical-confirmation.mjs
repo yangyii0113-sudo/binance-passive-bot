@@ -28,7 +28,7 @@ test('downside top five excludes illiquid/extreme/duplicate tickers and cannot b
  const rows=[...Array.from({length:7},(_,i)=>['',`C${i}USDT`,100,-i-1,2e7,40]),['','THINUSDT',1,-12,99,80],['','EXTREMEUSDT',1,-30,2e7,80],['','UPUSDT',1,9,2e7,90],['','C6USDT',1,-10,2e7,99]];
  assert.deepEqual(rankWeakRows(rows).map(x=>x.symbol),['C6USDT','C5USDT','C4USDT','C3USDT','C2USDT']);
  const state={ui:{horizonPool:'down'},market:{status:'LIVE',updatedAt:new Date(now).toISOString(),contractVerifiedAt:new Date(now).toISOString(),cryptoOnly:true,universeRows:rows}};
- assert.equal(horizonCandidateSelection(state,now).rows.length,5);assert.equal(horizonCandidateSelection(state,now+301000).rows.length,0);assert.match(horizonPanel(state,now),/下跌前 5 強/);
+ assert.equal(horizonCandidateSelection(state,now).rows.length,5);assert.equal(horizonCandidateSelection(state,now+301000).rows.length,0);assert.match(horizonPanel(state,now),/多空一起篩選/);
 });
 test('current evidence is collapsed and expired or mismatched records hide indicator prices',()=>{
  const r=analyzeHorizon(input()),state={ui:{horizonSymbol:r.symbol,horizon:'week'},agents:{horizonPlans:{[`week:${r.symbol}`]:r}}};

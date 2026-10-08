@@ -197,14 +197,9 @@ for (const [name, renderer] of Object.entries(pages)) {
 }
 
 const homeHtml = pages.home(renderState);
-assert.ok(homeHtml.includes('上漲動能前 5 強'), '首頁必須顯示主要前五強選幣入口');
-const primarySelect=homeHtml.match(/<select[^>]*id="horizon-symbol"[\s\S]*?<\/select>/)?.[0]||'';
-assert.equal(
-  (primarySelect.match(/<option value="[^"]+"/g) || []).length,
-  5,
-  'Home must offer exactly five rising contracts from this live fixture'
-);
-assert.doesNotMatch(primarySelect,/value="ADAUSDT"/,'Declining candidates must not displace rising choices');
+assert.ok(homeHtml.includes('前 5 強幣種'), '首頁必須顯示主要前五強選幣入口');
+assert.equal((homeHtml.match(/data-horizon-coin=/g)||[]).length,5,'Home must offer five visible screened coin buttons');
+assert.doesNotMatch(homeHtml,/<select[^>]*id="horizon-symbol"/);
 assert.equal((homeHtml.match(/data-horizon-card=/g)||[]).length,1,'Home must show one selected strategy instead of duplicate ranking cards');
 
 for (const [hash, route] of [

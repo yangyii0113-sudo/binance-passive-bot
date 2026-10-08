@@ -1,4 +1,7 @@
-import { horizonCandidateSelection } from './horizon_view.js';
+import {createHorizonAuto,analyzeCoinPeriods} from './horizon_auto.js';
+let horizonAuto;
+const horizonTickets=new Map();
+import { horizonCandidateSelection,selectedPeriod } from './horizon_view.js';
 import { HORIZONS, generateHorizonPlan } from './horizon_strategies.js';
 import { disclosureStateKey } from './ui.js';
 import { refreshCoinCatalog } from './coin_logo.js';
@@ -162,7 +165,7 @@ function refreshAgentPlan(value, {origin='重新核對', technical,automatic=fal
   return task;
 }
 
-function horizonSelection(){return {horizon:HORIZONS[appState.ui.horizon]?appState.ui.horizon:'week',symbol:normalizePlanSymbol(document.querySelector('#horizon-symbol')?.value||horizonCandidateSelection(appState).symbol)};}
+function horizonSelection(){return {horizon:selectedPeriod(appState),symbol:normalizePlanSymbol(document.querySelector('#horizon-symbol')?.value||horizonCandidateSelection(appState).symbol)};}
 async function refreshHorizon(selection=horizonSelection(),{select=true}={}){
  if(appState.agents.horizonBusy)return;
  const {horizon,symbol}=selection,key=`${horizon}:${symbol}`;
@@ -303,7 +306,7 @@ let renderedContext = null;
 function render() {
   const route = currentRoute();
   const context = [route, appState.ui.strategyWorkspace, appState.ui.agentKey,
-    appState.ui.labTab, appState.ui.selectedSymbol,appState.ui.adviceSymbol,appState.ui.horizon].join(':');
+    appState.ui.labTab, appState.ui.selectedSymbol,appState.ui.adviceSymbol,appState.ui.horizon,appState.ui.horizonSymbol].join(':');
   const root = document.getElementById('app');
   // Market updates must not reset a user's order/backtest inputs or collapse research details.
   const controls = context === renderedContext
@@ -364,8 +367,9 @@ async function syncPaperAndResults() {
   setStateSlice('results', results);
 }
 
-async function refreshMarket() {
+async function refreshMarket(isCurrent=()=>true) {
   const snapshot = await loadMarketSnapshot();
+  if(!isCurrent())return;
   setMarketState(snapshot);
   if (snapshot.error) console.warn('[FOXYYA] market refresh failed', snapshot.error);
   await syncPaperAndResults();
@@ -731,14 +735,16 @@ function initEvents() {
 
   document.addEventListener('submit',event=>{if(event.target.id==='horizon-analysis-form'){event.preventDefault();void refreshHorizon();}});
   document.addEventListener('click', async (event) => {
+    const coin=event.target.closest?.('[data-horizon-coin]');
+    if(coin){const symbol=coin.dataset.horizonCoin;if(horizonCandidateSelection(appState).rows.some(r=>r.symbol===symbol)){Object.assign(appState.ui,{horizonSymbol:symbol,horizon:null});render();document.querySelector('[data-horizon-card]')?.scrollIntoView({block:'start',behavior:'smooth'});}return;}
+    if(event.target.closest?.('[data-horizon-auto-toggle]')){horizonAuto?.setEnabled(!horizonAuto.view().enabled);return;}
     if(event.target.closest?.('[data-horizon-analyze-all]')){event.preventDefault();await refreshHomeHorizons();return;}
     const homeHorizon=event.target.closest?.('[data-horizon-check]')?.dataset.horizon;
     if(homeHorizon&&HORIZONS[homeHorizon]){if(!appState.ui.horizonBatch)await refreshHorizon({horizon:homeHorizon,symbol:horizonSelection().symbol});return;}
     const horizonButton=event.target.closest?.('[data-horizon]');
     if(horizonButton&&HORIZONS[horizonButton.dataset.horizon]){const selected=horizonSelection();Object.assign(appState.ui,{horizon:horizonButton.dataset.horizon,horizonSymbol:normalizePlanSymbol(horizonButton.dataset.horizonTarget||selected.symbol)});if(horizonButton.hasAttribute('data-horizon-home'))navigateTo('#/advice');else {render();document.querySelector(`[data-horizon="${appState.ui.horizon}"]`)?.focus({preventScroll:true});}return;}
     if(event.target.closest?.('[data-horizon-refresh]')){
-      if(appState.ui.horizonRefreshing)return;appState.ui.horizonRefreshing=true;render();
-      try{await refreshMarket();}finally{appState.ui.horizonRefreshing=false;render();}return;
+      await horizonAuto?.tick(true);return;
     }
     if(event.target.closest?.('[data-horizon-analyze]')){event.preventDefault();await refreshHorizon();return;}
     if(event.target.closest?.('[data-horizon-compare]')){await compareHorizon();return;}
@@ -1235,7 +1241,12 @@ function init() {
   try{forwardStorage=window.localStorage;}catch{}
   adviceMonitor=createAdviceMonitor({scan:automaticAdviceScan,available:()=>document.visibilityState==='visible'&&navigator.onLine&&['home','advice'].includes(currentRoute()),
     onChange:view=>{setStateSlice('adviceMonitor',view);render();}});
+  adviceMonitor.setEnabled(false);
   setStateSlice('adviceMonitor',adviceMonitor.view());
+  horizonAuto=createHorizonAuto({available:()=>document.visibilityState==='visible'&&navigator.onLine&&['home','advice'].includes(currentRoute()),refresh:refreshMarket,select:()=>horizonCandidateSelection(appState),
+    analyze:async(symbol,options)=>{if(symbol===horizonSelection().symbol){forwardTracker?.watchSymbol(symbol);horizonTickets.set(symbol,forwardTracker?.ticket(symbol));}else horizonTickets.delete(symbol);return analyzeCoinPeriods(symbol,options);},
+    write:(symbol,records)=>{const plans={...appState.agents.horizonPlans};for(const r of records)plans[`${r.horizon}:${symbol}`]=r;setStateSlice('agents',{horizonPlans:plans});if(symbol===horizonSelection().symbol&&horizonTickets.has(symbol))forwardTracker?.register(plans[`${selectedPeriod(appState)}:${symbol}`],horizonTickets.get(symbol));scheduleAgentPlanExpiry();},
+    onChange:view=>{setStateSlice('horizonAuto',view);render();}});
   forwardTracker=createForwardController({storage:forwardStorage,locks:navigator.locks,WebSocketClass:window.WebSocket,visible:()=>document.visibilityState==='visible',trackedSymbols:()=>monitoredSymbols,
     onChange:view=>{setStateSlice('forward',{...view,...(view.dataError?{exportFile:null,exportMessage:null}:{})});adviceMonitor?.forward(view);render();},
     onHealth:({feeds})=>{
@@ -1247,21 +1258,24 @@ function init() {
     }
   });
   forwardTracker.load();
-  document.addEventListener('visibilitychange',()=>{if(document.visibilityState!=='visible'){adviceMonitor.pause();forwardTracker.stop('頁面進入背景；未完成樣本待覆核');}else void adviceMonitor.tick();});
-  window.addEventListener('pagehide',()=>{adviceMonitor.pause();forwardTracker.stop('頁面離開；未完成樣本待覆核');});
-  window.addEventListener('offline',()=>{adviceMonitor.pause();forwardTracker.stop('網路已離線；未完成樣本待覆核');});
-  window.addEventListener('online',()=>void adviceMonitor.tick());
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState!=='visible'){horizonAuto.pause();adviceMonitor.pause();forwardTracker.stop('頁面進入背景；未完成樣本待覆核');}else {void horizonAuto.tick();void adviceMonitor.tick();}});
+  window.addEventListener('pagehide',()=>{horizonAuto.pause();adviceMonitor.pause();forwardTracker.stop('頁面離開；未完成樣本待覆核');});
+  window.addEventListener('offline',()=>{horizonAuto.pause();adviceMonitor.pause();forwardTracker.stop('網路已離線；未完成樣本待覆核');});
+  window.addEventListener('online',()=>{void horizonAuto.tick();void adviceMonitor.tick();});
   window.addEventListener('storage',event=>forwardTracker.storageChanged(event.key));
   initEvents();
   render();
   void refreshCoinCatalog().then(count=>{if(count)render();});
   adviceMonitor.start();
-  refreshMarket();
+  void horizonAuto.tick();
   loadIndependentSnapshots();
-  setInterval(refreshMarket, MARKET_REFRESH_MS);
+  setInterval(()=>void horizonAuto.tick(),1000);
+  setInterval(()=>{if(document.visibilityState==='visible'&&navigator.onLine&&!['home','advice'].includes(currentRoute()))void refreshMarket();}, MARKET_REFRESH_MS);
 }
 
 window.addEventListener('hashchange', () => {
+  horizonAuto?.pause();
+  void horizonAuto?.tick();
   adviceMonitor?.pause();
   void adviceMonitor?.tick();
   render();

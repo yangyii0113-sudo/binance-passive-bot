@@ -17,11 +17,12 @@ export function researchOverview(state,now=Date.now()){
   const f=state.forward||{},dataError='dataError' in f?f.dataError:f.error;
   const closed=dataError?null:(f.book?.rows||[]).filter(r=>r.status==='CLOSED').length;
   return `<section class="research-home research-secondary" aria-label="研究工作台">
-    ${state.adviceMonitor?adviceMonitorView(state,now,{compact:true,sharedError:homeCandidates(state.market,now).reason}):forwardTrackingBar(state)}
+    ${(state.adviceMonitor?.enabled||state.adviceMonitor?.error)?adviceMonitorView(state,now,{compact:true,sharedError:homeCandidates(state.market,now).reason}):forwardTrackingBar(state)}
     ${researchSummaryView(state,now,{compact:true})}
     ${[state.ui?.homeCheck?.error,state.ui?.homePreferencesError,state.ui?.homeWatchNotice].filter(Boolean).map(message=>`<p role="alert">${esc(message)}</p>`).join('')}
     ${state.ui?.homeCheck?.running?`<p role="status">研究核對中 ${state.ui.homeCheck.completed||0}／${state.ui.homeCheck.total||0}</p>`:''}
     <details class="core-disclosure" data-legacy-research data-search="legacy-home-research"><summary>研究與工具 · 選用${ready?` · ${ready} 檔其他有效計畫`:''}</summary><nav class="research-tool-links" aria-label="研究工具"><a href="#/strategies">強勢幣完整研究</a><a href="#/lab">回測與策略實驗室</a><a href="#/advice">其他已保存計畫</a></nav>
+    ${state.adviceMonitor&&!state.adviceMonitor.enabled&&!state.adviceMonitor.error?adviceMonitorView(state,now,{compact:true}):''}
     ${researchSummaryView(state,now,{showIssues:false})}
     ${homeOpportunityView(state,now,{embedded:true})}
     <h3>市場概況與研究紀錄</h3>
