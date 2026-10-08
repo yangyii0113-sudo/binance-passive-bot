@@ -1,3 +1,4 @@
+import {tradeIcon,verdictIcon,directionIcon} from './trade_icons.js';
 import {technicalConfirmationView} from './technical_confirmation_view.js';
 import {TECH_VARIANTS} from './technical_confirmation.js';
 import { marketHealth } from './market_health_view.js';
@@ -9,7 +10,6 @@ import { coinIdentity,coinInfo } from './coin_logo.js';
 import { homePlanVisual } from './plan_price_map.js';
 import { escapeHtml as esc,displayDate } from './ui.js';
 const label={empty:'尚未分析',loading:'核對中',plan:'條件成立・待觸發',wait:'等待確認',blocked:'暫停判定',expired:'核對已過期',conflict:'方向衝突'};
-const icon={plan:'◎',wait:'◷',empty:'◷',loading:'↻',blocked:'⚠',expired:'⚠',conflict:'⚠'};
 const number=n=>Number.isFinite(n)?n.toFixed(2):'—';
 export function horizonCandidateSelection(state,now=Date.now()){
  // Keep the shared freshness/contract gate; the legacy research pool remains unchanged.
@@ -36,13 +36,13 @@ export function horizonSelectionControls(state,now=Date.now()){
  const cards=selection.rows.map(row=>({row,statuses:Object.keys(HORIZONS).map(id=>periodStatus(state,id,row.symbol,now))})).sort((a,b)=>Number(b.statuses.some(s=>s.key==='plan'))-Number(a.statuses.some(s=>s.key==='plan'))||a.row.rank-b.row.rank);
  return `<div class="horizon-coin-grid" aria-label="前 5 強幣種">${cards.map(({row,statuses})=>{
  const ready=statuses.filter(s=>s.key==='plan'),status=ready[0]||statuses.find(s=>s.key==='loading')||statuses.find(s=>s.key==='wait')||statuses[0];
- return `<button type="button" class="horizon-coin" data-horizon-coin="${esc(row.symbol)}" aria-pressed="${row.symbol===selection.symbol}">${coinIdentity(row.symbol)}<span class="coin-movement">24h ${row.change>0?'+':''}${row.change.toFixed(2)}% · 研究排序 #${row.rank}</span><strong class="period-state ${status.key}">${icon[status.key]} ${ready.length?`${ready.length} 個週期條件成立・待觸發`:label[status.key]}</strong><span class="coin-periods">${statuses.map((s,i)=>`${['日','週','月'][i]}：${label[s.key]}`).join(' · ')}</span></button>`;
+ return `<button type="button" class="horizon-coin" data-horizon-coin="${esc(row.symbol)}" aria-pressed="${row.symbol===selection.symbol}">${coinIdentity(row.symbol)}<span class="coin-movement">24h ${row.change>0?'+':''}${row.change.toFixed(2)}% · 研究排序 #${row.rank}</span><strong class="period-state ${status.key}">${verdictIcon(status.key)} ${ready.length?`${ready.length} 個週期條件成立・待觸發`:label[status.key]}</strong><span class="coin-periods">${statuses.map((s,i)=>`${['日','週','月'][i]}：${label[s.key]}`).join(' · ')}</span></button>`;
  }).join('')}</div><div class="horizon-auto-status" role="status"><span>${auto.running?`自動核對 ${auto.completed||0}／${auto.total||selection.rows.length} 檔 · 日／週／月`:auto.enabled===false?'自動分析已暫停':auto.paused?'前景分析暫停':'前景自動更新 · 日／週／月'}${auto.lastAt?` · 最近完成 ${displayDate(auto.lastAt)}`:''}</span><button type="button" class="secondary-btn" data-horizon-auto-toggle>${auto.enabled===false?'恢復自動分析':'暫停自動分析'}</button><button type="button" class="secondary-btn" data-horizon-refresh ${auto.running||auto.enabled===false?'disabled':''}>重新核對</button></div><p class="horizon-selection-basis" id="horizon-selection-basis">前 5 強 · 多空一起篩選，點幣即可看三週期結果。有效計畫優先顯示；排名不是勝率。</p>${note?`<p class="horizon-selection-note" data-market-health="${health.key}" role="status">${esc(note)}</p>`:''}${auto.error?`<p role="alert">自動核對未完成：${esc(auto.error)}</p>`:''}`;
 }
 export function horizonNav(state,{now=Date.now()}={}){
  const active=selectedPeriod(state,now),{symbol}=horizonCandidateSelection(state,now);
  const brief={empty:'尚未分析',loading:'核對中',plan:'待觸發',wait:'等待確認',blocked:'暫停',expired:'已過期',conflict:'方向衝突'};
- return `<nav class="horizon-nav" aria-label="日週月策略">${Object.entries(HORIZONS).map(([id,c])=>{const status=periodStatus(state,id,symbol,now);return `<button type="button" data-horizon="${id}" aria-pressed="${id===active}"><strong>${c.label}</strong><span class="period-state ${status.key}">${icon[status.key]} ${brief[status.key]}</span></button>`;}).join('')}</nav>`;
+ return `<nav class="horizon-nav" aria-label="日週月策略">${Object.entries(HORIZONS).map(([id,c])=>{const status=periodStatus(state,id,symbol,now);return `<button type="button" data-horizon="${id}" aria-pressed="${id===active}"><strong>${c.label}</strong><span class="period-state ${status.key}">${verdictIcon(status.key)} ${brief[status.key]}</span></button>`;}).join('')}</nav>`;
 }
 export function horizonOpportunities(state,now=Date.now()){
  return horizonPanel(state,now,{home:true});
@@ -63,15 +63,16 @@ export function horizonPanel(state,now=Date.now(),{home=false}={}){
  const tracking=matching.findLast(x=>['PENDING','OPEN','PARTIAL'].includes(x.status))||matching.at(-1);
  const trackLabel={PENDING:'正在等待觸發',OPEN:'模擬持倉中',PARTIAL:'第一止盈已完成',CLOSED:'已結案',GAP:'資料中斷・待覆核',EXPIRED:'觀察到期，需重新核對',NOT_TRACKED:'未建立觀察',CANCELLED:'觀察已取消',NO_SETUP:'無可追蹤計畫'};
  const periodAlerts=Object.keys(HORIZONS).filter(id=>id!==horizon).map(id=>({id,status:periodStatus(state,id,symbol,now)})).filter(x=>['blocked','expired','conflict'].includes(x.status.key));
- const planView=p=>`<section class="horizon-plan"><h3>${HORIZON_NAMES[p.key]} · ${p.side==='LONG'?'↗ 做多':'↘ 做空'}</h3>${homePlanVisual(p,r.snapshot.price)}<p class="action-expiry">有效至 ${displayDate(Math.min(p.expiresAt,r.snapshotUntil,r.contractVerifiedAt+60000))}；到期須重新核對。</p><details class="core-disclosure"><summary>出場與取消規則</summary><p>兩段止盈各 50%；${p.key==='structured'?`第一止盈後，下一根 ${c.trigger} 棒啟用成本保護。`:'原止損保持不變。'}${horizon==='day'?'UTC 日界（台灣 08:00）後首筆連續行情退出。':`最長持有 ${horizon==='week'?'10 天':'8 週'}，到期後首筆連續行情退出。`}不放寬止損，不將虧損交易改成較長週期。</p><p>過期、資料中斷、方向衝突或先觸及失效止損時，停止新進場判定；不補算已錯過的觸發。</p></details></section>`;
- return `<section class="horizon-workspace ${home?'panel horizon-opportunities':''}" aria-label="${home?'策略機會總覽':'日週月策略研究'}"><div class="horizon-heading">${home?'<h1>策略機會</h1>':'<h2>策略機會</h2>'}<span>僅模擬 · 實盤鎖定</span></div><p class="opportunities-intro">點選前 5 強 → 自動呈現日／週／月計畫</p>
+ const planView=p=>`<section class="horizon-plan"><h3>${HORIZON_NAMES[p.key]} · ${directionIcon(p.side)} ${p.side==='LONG'?'做多':'做空'}</h3>${homePlanVisual(p,r.snapshot.price)}<p class="action-expiry">有效至 ${displayDate(Math.min(p.expiresAt,r.snapshotUntil,r.contractVerifiedAt+60000))}；到期須重新核對。</p><details class="core-disclosure"><summary>出場與取消規則</summary><p>兩段止盈各 50%；${p.key==='structured'?`第一止盈後，下一根 ${c.trigger} 棒啟用成本保護。`:'原止損保持不變。'}${horizon==='day'?'UTC 日界（台灣 08:00）後首筆連續行情退出。':`最長持有 ${horizon==='week'?'10 天':'8 週'}，到期後首筆連續行情退出。`}不放寬止損，不將虧損交易改成較長週期。</p><p>過期、資料中斷、方向衝突或先觸及失效止損時，停止新進場判定；不補算已錯過的觸發。</p></details></section>`;
+ return `<section class="horizon-workspace ${home?'panel horizon-opportunities':''}" aria-label="${home?'策略機會總覽':'日週月策略研究'}"><div class="horizon-heading">${home?'<h1>策略機會</h1>':'<h2>策略機會</h2>'}<span>${tradeIcon('lock')} 僅模擬 · 實盤鎖定</span></div><p class="opportunities-intro">點選前 5 強 → 自動呈現日／週／月計畫</p>
  ${horizonSelectionControls(state,now)}
+ <div class="trade-icon-legend" aria-label="判定圖標說明"><span>${verdictIcon('wait')} 等待確認</span><span>${verdictIcon('plan')} 待觸發 ≠ 已成交</span><span>${verdictIcon('blocked')} 暫停進場</span></div>
  <article class="horizon-card" data-horizon-card="${horizon}">${symbol?coinIdentity(symbol):'<h3>正在等待有效候選</h3>'}<p class="horizon-step">日／週／月策略 · 有效計畫優先</p>${horizonNav(state,{now})}
- <div class="horizon-verdict ${status.key}" role="status"><strong>${icon[status.key]} ${label[status.key]}</strong><p>${esc(status.reason)}</p></div>
+ <div class="horizon-verdict ${status.key}" role="status"><strong>${verdictIcon(status.key)} ${label[status.key]}</strong><p>${esc(status.reason)}</p></div>
  <p class="horizon-time">${c.label} · ${c.holding}</p>
  ${status.plans.length?planView(status.plans[0]):''}
  ${status.plans.length>1?`<details class="core-disclosure"><summary>其他有效策略 ${status.plans.length-1} 個 · 獨立比較</summary>${status.plans.slice(1).map(planView).join('')}</details>`:''}
- <div class="horizon-next"><strong>下一步</strong><p>${status.key==='plan'?'核對後觀察新觸發；條件成立仍未成交。':status.key==='wait'?'等待上述條件出現，再於新收盤後核對。':'系統會在前景自動重新核對；資料通過後才顯示點位。'}</p>${status.key==='plan'&&!state.forward?.enabled?'<button type="button" class="secondary-btn" data-forward-start>啟動本機前向追蹤</button>':''}${tracking?`<p>本機觀察：${esc(trackLabel[tracking.status]||tracking.status)} · ${esc(tracking.reason)}${['PENDING','OPEN','PARTIAL'].includes(tracking.status)&&!state.forward?.enabled?' · 本頁未追蹤，不能視為持續監控。':''}</p><a href="#/advice-results">查看追蹤紀錄</a>`:''}</div>
+ <div class="horizon-next"><strong>${tradeIcon('next')} 下一步</strong><p>${status.key==='plan'?'核對後觀察新觸發；條件成立仍未成交。':status.key==='wait'?'等待上述條件出現，再於新收盤後核對。':'系統會在前景自動重新核對；資料通過後才顯示點位。'}</p>${status.key==='plan'&&!state.forward?.enabled?'<button type="button" class="secondary-btn" data-forward-start>啟動本機前向追蹤</button>':''}${tracking?`<p>本機觀察：${esc(trackLabel[tracking.status]||tracking.status)} · ${esc(tracking.reason)}${['PENDING','OPEN','PARTIAL'].includes(tracking.status)&&!state.forward?.enabled?' · 本頁未追蹤，不能視為持續監控。':''}</p><a href="#/advice-results">查看追蹤紀錄</a>`:''}</div>
  </article>
  ${periodAlerts.length?`<div class="period-alerts" role="status">${periodAlerts.map(({id,status})=>`<p>${HORIZONS[id].label}：${esc(status.reason)}</p>`).join('')}</div>`:''}
  <p class="horizon-lock">PAPER_ONLY · REAL_ORDER_LOCK · No Backfill<br>僅前景追蹤；背景、關閉或斷線即停止，不回補。條件成立 ≠ 觸發 ≠ 成交。</p>

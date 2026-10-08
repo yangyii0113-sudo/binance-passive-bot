@@ -1,3 +1,4 @@
+import {verdictIcon} from './trade_icons.js';
 import { huntView } from './hunt_analysis.js';
 import { planPriceMapView } from './plan_price_map.js';
 import { coinIdentity } from './coin_logo.js';
@@ -48,7 +49,7 @@ export function agentDecisionCard(record, {now=Date.now(),comparison,comparisonB
   const display=adviceDisplayStatus(record,now), result=display.gate, symbol=esc(record.symbol);
   return `<article class="agent-decision-card" aria-label="${symbol} 進退場摘要">
     <div class="decision-heading">${coinIdentity(record.symbol,{large:true})}<span>短線 · 1 小時策略</span></div>
-    <div class="decision-verdict ${result.key==='plan'?'priority-entry':''}" data-advice-verdict="${result.key}"><span>目前建議</span><strong>${result.key==='plan'?'✓ 條件成立・待觸發':agentActionLabel(record,now)}</strong></div>
+    <div class="decision-verdict ${result.key==='plan'?'priority-entry':''}" data-advice-verdict="${result.key}"><span>目前建議</span><strong>${verdictIcon(result.key)} ${result.key==='plan'?'條件成立・待觸發':agentActionLabel(record,now).replace(/^[◷!]\s*/,'')}</strong></div>
     ${strategyActionSummary(record,{now,includeNext:false})}
     ${result.key==='plan'&&record.row.analysis.strategies.some(p=>p.status==='BLOCKED')?'<p class="guard-note" role="status">部分策略缺資料，該策略暫停；僅顯示已通過核對的獨立計畫。</p>':''}
     <p class="decision-reason" role="status">${result.key==='plan'?'僅列入條件式模擬觀察，尚未確認觸發或成交。只在下列條件與期限內觀察。':esc(display.reason)}</p>

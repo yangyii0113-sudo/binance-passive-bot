@@ -1,3 +1,4 @@
+import {tradeIcon,directionIcon} from './trade_icons.js';
 import { researchRiskScenario } from './research_risk_view.js';
 import { formatPlanPrice, exactPlanLevelsView } from './plan_levels_view.js';
 import { escapeHtml as esc } from './ui.js';
@@ -17,9 +18,9 @@ export function planPriceMapView(plan,quote) {
   const segment=(a,b,tone)=>`<span class="price-map-zone ${tone}" style="left:${Math.min(a,b)}%;width:${Math.abs(a-b)}%"></span>`;
   const levels=[['stop','止損'],['entry','進場門檻'],['tp1','止盈一'],['tp2','止盈二']].sort((a,b)=>plan[a[0]]-plan[b[0]]);
   return `<div class="plan-price-map" aria-label="價格位置圖，價格由左向右遞增">
-    <div class="price-map-caption"><span>${plan.side==='LONG'?'↗ 做多':'↘ 做空'} · USDT</span><span>低價 → 高價</span></div>
+    <div class="price-map-caption"><span>${directionIcon(plan.side)} ${plan.side==='LONG'?'做多':'做空'} · USDT</span><span>低價 → 高價</span></div>
     <div class="price-map-track" aria-hidden="true">${segment(map.stop,map.entry,'risk')}${segment(map.entry,map.tp2,'reward')}${levels.map(([key])=>`<i class="price-map-mark ${key}" style="left:${map[key]}%"></i>`).join('')}${map.quote===null?'':`<i class="price-map-quote" style="left:${map.quote}%"></i>`}</div>
-    <dl class="price-map-levels">${levels.map(([key,label])=>`<div class="level-${key}" data-price-level="${key}"><dt>${label}</dt><dd>${esc(formatPlanPrice(plan[key]))}</dd></div>`).join('')}</dl>
+    <dl class="price-map-levels">${levels.map(([key,label])=>`<div class="level-${key}" data-price-level="${key}"><dt>${tradeIcon(key)} ${label}</dt><dd>${esc(formatPlanPrice(plan[key]))}</dd></div>`).join('')}</dl>
     <p class="price-map-key">${map.quote===null?'參考價待更新':`● 核對時參考價 <strong>${esc(formatPlanPrice(quote))}</strong> · 非即時串流`}${plan.tp1===plan.tp2?' · 目標重合':''}</p>
   </div>`;
 }

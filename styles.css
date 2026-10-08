@@ -2748,3 +2748,10 @@ summary { padding-block:10px; }
 .horizon-auto-status button{min-height:44px}.horizon-card{scroll-margin-top:18px}
 @media(max-width:1100px){.horizon-coin-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:600px){.horizon-coin-grid{grid-template-columns:1fr}.horizon-coin{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,.95fr);gap:6px 12px;padding:12px}.horizon-coin .coin-identity{grid-row:span 2}.horizon-coin .coin-periods{grid-column:1/-1}.horizon-coin .coin-movement{font-size:.72rem}.horizon-coin .coin-identity strong{font-size:1.2rem}}
+
+/* Icons supplement adjacent text; status never depends on color or icon fonts. */
+.trade-icon{display:inline-block;width:1.15em;height:1.15em;min-width:1.15em;flex-shrink:0;vertical-align:-.2em;overflow:visible}
+.horizon-verdict .trade-icon,.decision-verdict .trade-icon{width:1.25em;height:1.25em}
+.trade-icon-legend{display:flex;flex-wrap:wrap;gap:8px 18px;margin:12px 0 18px;font-size:12px;line-height:1.6;color:#bdc9c7}
+.trade-icon-legend>span{display:inline-flex;gap:6px;align-items:center}
+.price-map-levels dt .trade-icon{width:16px;height:16px;min-width:16px}
