@@ -90,13 +90,13 @@ test('a different database is never initialized or replaced',t=>{
   assert.throws(()=>new ResearchStore(dir),/Not an independent/);
   const check=new DatabaseSync(path);assert.equal(check.prepare('SELECT * FROM existing').get().value,'preserve');check.close();
 });
-test('SQLite writer lock rejects another writer, including a second process; crash releases the lock',async t=>{
+test('SQLite writer lock rejects another writer, including a second process; crash releases the lock',{timeout:10000},async t=>{
   const dir=mkdtempSync(join(tmpdir(),'foxyya-lock-'));t.after(()=>rmSync(dir,{recursive:true,force:true}));
   const module=new URL('../research-service/store.mjs',import.meta.url).href;
-  const code=`import {ResearchStore} from ${JSON.stringify(module)};new ResearchStore(${JSON.stringify(dir)});console.log('READY');setInterval(()=>{},1000);`;
-  const child=spawn(process.execPath,['--input-type=module','-e',code],{stdio:['ignore','pipe','pipe']});
+  const code=`import {ResearchStore} from ${JSON.stringify(module)};const store=new ResearchStore(${JSON.stringify(dir)});setInterval(()=>store.verify(),1000);process.send('READY');`;
+  const child=spawn(process.execPath,['--input-type=module','-e',code],{stdio:['ignore','pipe','pipe','ipc']});
   t.after(()=>child.kill('SIGKILL'));
-  await once(child.stdout,'data');assert.throws(()=>new ResearchStore(dir),/locked/);
+  const [ready]=await once(child,'message');assert.equal(ready,'READY');assert.equal(child.exitCode,null);assert.throws(()=>new ResearchStore(dir),/locked/);
   const ended=once(child,'exit');child.kill('SIGKILL');await ended;
   const next=new ResearchStore(dir);next.commit('AFTER_CRASH',{});next.close();
 });

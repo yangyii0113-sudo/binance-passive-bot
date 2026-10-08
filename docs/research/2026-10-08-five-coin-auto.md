@@ -24,3 +24,7 @@ Existing selected-coin forward tracking is still explicitly enabled by the user,
 ## Profitability evidence boundary
 
 Indicator evidence and single-filter backtest comparisons already exist. This change makes them easier to reach without introducing unvalidated trading rules. The existing comparisons expose net PnL, average net R, profit factor, closed-trade drawdown, sample counts, holdout results, double-cost stress, missing confirmations, and incomplete trades. They do not establish profitability. Funding, depth, quantity precision, selection bias, and unrealized drawdown remain limitations. Previous Binance HTTP 451 observations belong to the verification environment and do not establish the user's access status. A failed source must produce an honest blocked state, never synthetic live candidates.
+
+## CI test fixture correction
+
+The existing cross-process SQLite lock test twice failed in CI while passing locally. Its child constructed an unreferenced store, allowing garbage collection to release the lock before the parent assertion. The fixture now retains the store through its heartbeat and uses an explicit IPC READY message. Production and research store implementations are unchanged; the lock assertion and crash-release verification are retained.
