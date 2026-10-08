@@ -29,3 +29,11 @@
 - TradingView ATR 平滑差異: https://www.tradingview.com/support/solutions/43000501823-average-true-range-atr/
 
 查證日 2026-10-08。原作者公開腳本的存在不是盈利證据。本執行環境 Binance /fapi/v1/time 回應 HTTP 451 restricted location，不能推論使用者所在地受限。未能取得可驗證的最新行情與完整歷史，因此未產出真實幣種點位或聲稱歷史收益改善。測試 fixture 只驗證算法、因果性、Gate 與畫面。
+
+## 驗證紀錄
+
+- Lite 完整測試：241 通過；靜態建置與架構邊界通過。
+- 獨立研究服務：本機 22 通過；CI 第一次跨程序 SQLite 鎖測試失敗，同一提交第二次通過，未修改服務或降低斷言。
+- 本輪研究基準：computed=0、blocked=12；日週月永續資料 HTTP451。另一路舊現貨 fallback 基準不作為本輪策略證據。
+- Pages 第一次工作流成功，公開入口仍舊版；重跑同一工作流遇同名 github-pages artifacts 衝突。以此驗證紀錄提交觸發新的獨立發布，避免重用同一 run 的 artifact。公開版本與尺寸驗收另行核對，不能只憑工作流成功認定。
+- 其他公式來源：TradingView [Bollinger Bands](https://www.tradingview.com/support/solutions/43000501840-bollinger-bands-bb/)、[RSI](https://www.tradingview.com/support/solutions/43000502338-relative-strength-index-rsi/)。
