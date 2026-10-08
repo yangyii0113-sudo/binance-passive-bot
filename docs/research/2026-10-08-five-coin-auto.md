@@ -28,3 +28,5 @@ Indicator evidence and single-filter backtest comparisons already exist. This ch
 ## CI test fixture correction
 
 The existing cross-process SQLite lock test twice failed in CI while passing locally. Its child constructed an unreferenced store, allowing garbage collection to release the lock before the parent assertion. The fixture now retains the store through its heartbeat and uses an explicit IPC READY message. Production and research store implementations are unchanged; the lock assertion and crash-release verification are retained.
+
+The review page now scopes its own control styling to its toolbar, so fixture cards use the actual platform button styling. Synchronous fixture rendering is measured directly through layout reads instead of background-throttled animation-frame waits.
