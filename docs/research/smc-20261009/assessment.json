@@ -1,0 +1,13 @@
+{
+  "decision": "DO_NOT_ADVANCE_TO_FORWARD_PAPER",
+  "smc_oos_trades": 12,
+  "minimum_predeclared": 100,
+  "reasons": [
+    "Insufficient sample",
+    "Negative base-cost OOS expectancy",
+    "Negative stress-cost OOS expectancy",
+    "Higher hourly marked drawdown than ABCD"
+  ],
+  "population_claim": "No claim that all SMC variants are unprofitable",
+  "next_research": "Separate pre-registered ablations on fresh holdout; do not tune this inspected test period"
+}
