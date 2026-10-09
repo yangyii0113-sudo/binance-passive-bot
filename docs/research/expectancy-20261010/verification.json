@@ -1,0 +1,17 @@
+{
+  "train": "control trades and all original metrics identical; NAV/trade counts and ledger hash chain verified",
+  "validation": "control trades and all original metrics identical; NAV/trade counts and ledger hash chain verified",
+  "test": "control trades and all original metrics identical; NAV/trade counts and ledger hash chain verified",
+  "trades_reconciled": 1754,
+  "code_commit": "83ade1715ac456d556e370377193e78635dd7116",
+  "evidence_status": "EXPLORATORY_REUSED_DATA",
+  "protected_paths_changed": false,
+  "python_passed": 163,
+  "node_passed": 16,
+  "github_actions_code_commit": {
+    "37978339931": "success",
+    "37978339927": "success",
+    "37978340008": "success",
+    "37978340172": "success"
+  }
+}
