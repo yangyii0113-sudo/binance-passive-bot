@@ -20,7 +20,7 @@ from foxyya.features import compute_features
 from foxyya.router import classify_regime, rank_candidates
 from foxyya.universe import build_universe
 from foxyya import setups, REAL_ORDER_LOCK
-from .rules import evaluate, VERSION
+from .rules import analyze, evaluate, VERSION
 
 FAMILIES=('A','B','C','D','ABCD','SMC')
 
@@ -127,8 +127,19 @@ class ComparisonRunner:
             a.intent=None
             if open_ms!=intent['due'] or observed_ms<=intent['created']:
                 a.rejections['EXPIRED']+=1; continue
+            signal=intent['signal']; side=signal['side']; sign=1 if side=='LONG' else -1
+            bars=snapshot.get('klines',{}).get('ETHUSDT',{}).get('1h',[])
+            if not bars or int(bars[-1]['close_ms'])!=open_ms-1:
+                a.rejections['DATA_STALE_BEFORE_FILL']+=1; continue
+            last=bars[-1]
+            invalid=(float(last['low'])<=signal['stop'] if side=='LONG' else float(last['high'])>=signal['stop'])
+            if a.family=='SMC' and 'invalidation_close' in signal:
+                invalid=invalid or sign*(float(last['close'])-signal['invalidation_close'])<0
+                invalid=invalid or any(x['index']==len(bars)-1 and x['side']!=side for x in analyze(bars)['breaks'])
+            if invalid:
+                a.rejections['STRUCTURE_INVALID_BEFORE_FILL']+=1; continue
             if not a.position and 'ETHUSDT' in snapshot['hour_open_prices']:
-                a.enter(intent['signal'],float(snapshot['hour_open_prices']['ETHUSDT']),open_ms)
+                a.enter(signal,float(snapshot['hour_open_prices']['ETHUSDT']),open_ms)
 
     def manage_positions(self,snapshot,*,now_ms):
         bars=snapshot['klines']['ETHUSDT']['1h']

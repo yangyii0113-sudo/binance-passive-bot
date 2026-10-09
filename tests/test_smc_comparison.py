@@ -43,11 +43,11 @@ def test_next_open_after_persistence_and_no_retroactive_fill(tmp_path):
     try:
         r=ComparisonRunner(ledger); a=r.arms['SMC:base']
         a.intent=dict(signal=dict(side='LONG',stop=90,trigger=100),created=3600001,due=7200000)
-        r.execute_open(dict(hour_open_prices={'ETHUSDT':100}),open_ms=7200000,observed_ms=7200001)
+        r.execute_open(dict(hour_open_prices={'ETHUSDT':100},klines={'ETHUSDT':{'1h':[dict(low=99,high=101,close=100,close_ms=7199999)]}}),open_ms=7200000,observed_ms=7200001)
         assert a.position['entry_ms']==7200000
         b=r.arms['SMC:stress']
         b.intent=dict(signal=dict(side='LONG',stop=90,trigger=100),created=3600001,due=7200000)
-        r.execute_open(dict(hour_open_prices={'ETHUSDT':100}),open_ms=10800000,observed_ms=10800001)
+        r.execute_open(dict(hour_open_prices={'ETHUSDT':100},klines={'ETHUSDT':{'1h':[dict(low=99,high=101,close=100,close_ms=7199999)]}}),open_ms=10800000,observed_ms=10800001)
         assert b.position is None and b.rejections['EXPIRED']==1
     finally: ledger.close()
 
@@ -84,3 +84,16 @@ def test_opening_gap_exit_excludes_later_funding():
           [dict(fundingTime=9000000,fundingRate=.01,markPrice=85)])
     assert a.trades[0]['funding']==0
     assert a.trades[0]['exit_ms']==7200000
+
+def test_stop_breached_before_due_open_cancels_even_if_open_recovers(tmp_path):
+    from backtest.smc_research.study import ComparisonRunner
+    from backtest.research_ledger import ResearchLedgerFactory
+    ledger,_=ResearchLedgerFactory(tmp_path).open('invalid')
+    try:
+        r=ComparisonRunner(ledger); a=r.arms['SMC:base']
+        a.intent=dict(signal=dict(side='LONG',stop=90,trigger=100),created=3600001,due=7200000)
+        snapshot=dict(hour_open_prices={'ETHUSDT':100},klines={'ETHUSDT':{'1h':[
+            dict(open=100,high=105,low=89,close=99,close_ms=7199999)]}})
+        r.execute_open(snapshot,open_ms=7200000,observed_ms=7200001)
+        assert a.position is None and a.rejections['STRUCTURE_INVALID_BEFORE_FILL']==1
+    finally: ledger.close()

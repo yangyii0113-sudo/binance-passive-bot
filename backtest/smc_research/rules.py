@@ -81,6 +81,6 @@ def evaluate(bars, side):
                   else max(block['high'],sweep['extreme'])+.1*atr(bars,14))
             if sign*(c-stop)<=0: continue
             return dict(qualified=True,reason='SWEEP_STRUCTURE_FVG_OB_RETEST',side=side,
-                        stop=stop,trigger=c,structure=br,zone=[lo,hi],
+                        stop=stop,trigger=c,structure=br,zone=[lo,hi],invalidation_close=edge,
                         setup_id=f"{side}:{bars[br['index']]['close_ms']}")
     return reject('SEQUENCE_INCOMPLETE_OR_INVALIDATED')

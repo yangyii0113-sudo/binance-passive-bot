@@ -30,7 +30,7 @@ Use the most recent 140 closed hourly bars, matching the existing adapter window
 | Entry | Persist after confirmation; earliest fill is the FOLLOWING hourly open after persistence, never the just-observed open. |
 | Stop | Beyond both sweep extreme and OB distal edge by 0.1 × closed-bar ATR14; mirrored for shorts. |
 | Target | 2 × actual fill-to-stop price risk, calculated after entry slippage. |
-| Entry invalidation | Next-open price at/beyond stop, absolute gap over 0.5 reference R, expired open, invalid/minimum size. No retrospective fills. |
+| Entry invalidation | Most recently closed bar must end immediately before due open; a stop breach before fill cancels all arms. SMC also cancels on OB close-through or a fresh opposite break. Next-open price at/beyond stop, absolute gap over 0.5 reference R, expired open, invalid/minimum size. No retrospective fills. |
 | After entry | Stop, target, 120-hour timeout, or mandatory segment-end liquidation. |
 
 A given break's setup ID can be traded once per arm per segment. No parameter search
