@@ -1,0 +1,136 @@
+{
+  "source_family": "Binance USD-M Public Data",
+  "retrieved_at_ms": 1791543659240,
+  "exchange_info_sha256": "fa87d3d92edb7b5aec803b7a641cadc64cf695ce58761c0df65bfff25777c9ce",
+  "datasets": {
+    "BTCUSDT": {
+      "1h": {
+        "symbol": "BTCUSDT",
+        "interval": "1h",
+        "first_close_ms": 1752368399999,
+        "last_close_ms": 1790812799999,
+        "row_count": 10680,
+        "sha256": "68652c263faffc9d50b0ed741480097912a2dbe6ef9a4ece5b7b2771805b3b53",
+        "gap_count": 0,
+        "missing_bar_count": 0,
+        "gaps": []
+      },
+      "4h": {
+        "symbol": "BTCUSDT",
+        "interval": "4h",
+        "first_close_ms": 1752379199999,
+        "last_close_ms": 1790812799999,
+        "row_count": 2670,
+        "sha256": "cbc0e1ee1603cefb54aa02033bf382a412a6c26adf2412eb37537ab8f086de91",
+        "gap_count": 0,
+        "missing_bar_count": 0,
+        "gaps": []
+      },
+      "1d": {
+        "symbol": "BTCUSDT",
+        "interval": "1d",
+        "first_close_ms": 1752451199999,
+        "last_close_ms": 1790812799999,
+        "row_count": 445,
+        "sha256": "db5210e4f894085d5141b8c95ee17f09d591ab6fc69667f2238db614008db5d7",
+        "gap_count": 0,
+        "missing_bar_count": 0,
+        "gaps": []
+      },
+      "funding": {
+        "symbol": "BTCUSDT",
+        "dataset": "funding",
+        "first_funding_ms": 1752364800006,
+        "last_funding_ms": 1790784000002,
+        "row_count": 1335,
+        "sha256": "87e2231b01f489798538239b381598708a5278572dcc7e050ee218f4f6cdb129"
+      }
+    },
+    "ETHUSDT": {
+      "1h": {
+        "symbol": "ETHUSDT",
+        "interval": "1h",
+        "first_close_ms": 1752368399999,
+        "last_close_ms": 1790812799999,
+        "row_count": 10680,
+        "sha256": "ef895e89d2a932c4e147800edd3edf07b148409e2137d243778bd6e5c68145e1",
+        "gap_count": 0,
+        "missing_bar_count": 0,
+        "gaps": []
+      },
+      "4h": {
+        "symbol": "ETHUSDT",
+        "interval": "4h",
+        "first_close_ms": 1752379199999,
+        "last_close_ms": 1790812799999,
+        "row_count": 2670,
+        "sha256": "77e0521c0e20515a30296a996736900d5d946d2197e66d2756cc655e6492d545",
+        "gap_count": 0,
+        "missing_bar_count": 0,
+        "gaps": []
+      },
+      "1d": {
+        "symbol": "ETHUSDT",
+        "interval": "1d",
+        "first_close_ms": 1752451199999,
+        "last_close_ms": 1790812799999,
+        "row_count": 445,
+        "sha256": "5bba1b1af92f5711e940df9d6a76537ed523d021aea69a5aaead8c1905be5af9",
+        "gap_count": 0,
+        "missing_bar_count": 0,
+        "gaps": []
+      },
+      "funding": {
+        "symbol": "ETHUSDT",
+        "dataset": "funding",
+        "first_funding_ms": 1752364800006,
+        "last_funding_ms": 1790784000002,
+        "row_count": 1335,
+        "sha256": "5b61043b0694f7f1a8ca3c8dbcfa1044b9bb84f782aa28b5dfea42585f6dfc70"
+      }
+    },
+    "SOLUSDT": {
+      "1h": {
+        "symbol": "SOLUSDT",
+        "interval": "1h",
+        "first_close_ms": 1752368399999,
+        "last_close_ms": 1790812799999,
+        "row_count": 10680,
+        "sha256": "6e2e9aaff8cdd1ffb14b8797c7d238941a8a20da6acfcbf69423adcfbd0b2ff8",
+        "gap_count": 0,
+        "missing_bar_count": 0,
+        "gaps": []
+      },
+      "4h": {
+        "symbol": "SOLUSDT",
+        "interval": "4h",
+        "first_close_ms": 1752379199999,
+        "last_close_ms": 1790812799999,
+        "row_count": 2670,
+        "sha256": "91d43235cba51b1604403851d47b16b3d029e54bb74a6088aeb1e81e884858f4",
+        "gap_count": 0,
+        "missing_bar_count": 0,
+        "gaps": []
+      },
+      "1d": {
+        "symbol": "SOLUSDT",
+        "interval": "1d",
+        "first_close_ms": 1752451199999,
+        "last_close_ms": 1790812799999,
+        "row_count": 445,
+        "sha256": "4dd5dda2c8c90a9fd3c27ad4438a0abf9b080ce3c7659fac91fd3a70f1e276a6",
+        "gap_count": 0,
+        "missing_bar_count": 0,
+        "gaps": []
+      },
+      "funding": {
+        "symbol": "SOLUSDT",
+        "dataset": "funding",
+        "first_funding_ms": 1752364800006,
+        "last_funding_ms": 1790784000002,
+        "row_count": 1335,
+        "sha256": "da65dc120d2b29b546c2406c56269cfe23e94b9d18ca1f18b32a531f495c60ee"
+      }
+    }
+  }
+}
