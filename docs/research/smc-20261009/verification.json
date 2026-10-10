@@ -1,0 +1,15 @@
+{
+  "code_commit": "446ef8cb13b0b2a5718407a8c430455e2bd7e980",
+  "base_commit": "94dde5babd22061aba1ada0947bb1749f1e8b3fc",
+  "python_passed": 159,
+  "node_passed": 16,
+  "github_actions": {
+    "37922680630": "success",
+    "37922680583": "success",
+    "37922680569": "success",
+    "37922680574": "success"
+  },
+  "synthetic_smoke": "30 days, 60/20/20 segments: mechanics only, excluded from performance",
+  "protected_paths_changed": false,
+  "code_sha256": "0b34aeb4c37f5165656db73e1e3545b8e6e89850c9878de5e94faacaa4afe26c"
+}

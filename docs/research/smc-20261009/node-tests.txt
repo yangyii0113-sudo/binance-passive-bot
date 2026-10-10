@@ -1,0 +1,24 @@
+✔ backtest UI is explicitly historical and never falls back to Forward runtime data (1.465677ms)
+✔ backtest UI exposes required provenance and performance fields (0.676167ms)
+✔ production service serves and injects dedicated backtest UI bundle (0.466743ms)
+✔ backtest renders null metrics as unavailable instead of numeric zero (41.096427ms)
+✔ backtest renders undefined metrics as unavailable instead of numeric zero (1.872928ms)
+✔ backtest still renders measured zero as zero (8.831876ms)
+✔ one manual refresh completes without recursively starting another refresh (6.953544ms)
+✔ failed refresh clears previously verified runtime status (3.058212ms)
+✔ canonical snapshot is available even when it contains zero events (2.045489ms)
+✔ positions do not include pending orders or account tables (43.023282ms)
+✔ pending route displays overdue intent without mixing candidate rankings (2.771751ms)
+✔ candidate list is bounded and does not duplicate pending orders (2.602543ms)
+✔ home keeps overdue warnings visible and performance does not report zero expectancy for no closed samples (2.750122ms)
+✔ unavailable runtime never falls back to local ledger or reports zero trades as evidence (3.500413ms)
+✔ funnel uses canonical totals and active intents, not revalidation event counts (0.849059ms)
+✔ strategy lab counts only closed positions and preserves negative capture (1.904028ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 186.233087

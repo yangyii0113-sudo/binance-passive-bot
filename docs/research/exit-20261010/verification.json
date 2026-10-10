@@ -1,0 +1,16 @@
+{
+  "train": "OHLC controls exact parity, all trade/NAV/leg accounting and ledger hash chain passed",
+  "validation": "OHLC controls exact parity, all trade/NAV/leg accounting and ledger hash chain passed",
+  "test": "OHLC controls exact parity, all trade/NAV/leg accounting and ledger hash chain passed",
+  "trades_reconciled": 2982,
+  "python_passed": 169,
+  "node_passed": 16,
+  "code_commit": "51b976bb4d702404cf17a96ac404d5301c5e0ae4",
+  "protected_paths_changed": false,
+  "github_actions_code_commit": {
+    "38012757343": "success",
+    "38012757395": "success",
+    "38012757318": "success",
+    "38012757320": "success"
+  }
+}
