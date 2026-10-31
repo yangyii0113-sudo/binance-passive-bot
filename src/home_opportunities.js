@@ -1,3 +1,4 @@
+import { researchEvidenceView } from './research_evidence_view.js';
 import { huntView } from './hunt_analysis.js';
 import { researchPipelineView } from './research_pipeline_status.js';
 import { marketHealthView } from './market_health_view.js';
@@ -69,7 +70,7 @@ export function homeOpportunities(state,now=Date.now()) {
     if(key==='plan')reason=partial?'僅列通過核對的方案；其他策略仍有資料缺漏。':'收盤結構、當根門檻與成本後空間已核對；等待新觸發。';
     if(result.key==='wait')reason=display.reason;
     const ratios=result.plans.map(p=>researchRiskScenario(p)?.netRewardRisk).filter(Number.isFinite);
-    return {...candidate,partial,hunt:mismatch||record?.historical||record?.status!=='LIVE'?'':huntView(record?.row?.analysis,now),quote:key==='plan'?record.marketSnapshot?.price:null,key,label:key==='wait'?`${labels.wait} · ${display.label}`:labels[key],reason,ratios,plans:result.plans,readiness:mismatch?'':readinessView(record,now),conditions:mismatch?'':strategyConditionSummaryView(record,{now}),actionSummary:mismatch?'':strategyActionSummary(record,{now,includeNext:false}),next:display.next,evidence:mismatch?'':strategyEvidenceView(record,{now,compact:true}),snapshotUntil:key==='plan'?record.snapshotUntil:null,barUntil:key==='plan'?record.row.analysis.validUntil:null};
+    return {...candidate,partial,hunt:mismatch||record?.historical||record?.status!=='LIVE'?'':huntView(record?.row?.analysis,now),quote:key==='plan'?record.marketSnapshot?.price:null,key,label:key==='wait'?`${labels.wait} · ${display.label}`:labels[key],reason,ratios,plans:result.plans,readiness:mismatch?'':readinessView(record,now),conditions:mismatch?'':strategyConditionSummaryView(record,{now}),actionSummary:mismatch?'':strategyActionSummary(record,{now,includeNext:false}),next:display.next,evidence:mismatch?'':strategyEvidenceView(record,{now,compact:true})+researchEvidenceView(record,{history:state.agents?.evidenceHistory,now}),snapshotUntil:key==='plan'?record.snapshotUntil:null,barUntil:key==='plan'?record.row.analysis.validUntil:null};
   });
   if(state.ui?.homeOpportunitySort!=='strength')rows.sort((a,b)=>priority[a.key]-priority[b.key]||a.rank-b.rank);
   return {...selection,rows,ready:rows.filter(r=>r.key==='plan').length,unchecked:rows.filter(r=>r.key==='empty').length};

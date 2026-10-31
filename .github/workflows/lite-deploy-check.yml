@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - foxyya-lite-railway-deploy
+  pull_request:
+    branches:
+      - foxyya-lite-railway-deploy
   workflow_dispatch:
 
 permissions:

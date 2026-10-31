@@ -2755,3 +2755,21 @@ summary { padding-block:10px; }
 .trade-icon-legend{display:flex;flex-wrap:wrap;gap:8px 18px;margin:12px 0 18px;font-size:12px;line-height:1.6;color:#bdc9c7}
 .trade-icon-legend>span{display:inline-flex;gap:6px;align-items:center}
 .price-map-levels dt .trade-icon{width:16px;height:16px;min-width:16px}
+
+/* Read-only research provenance, scoped changes and disagreements. */
+.research-evidence-panel{margin:16px 0;padding:16px;border:1px solid var(--border,#2b3547);border-radius:14px;background:rgba(124,156,197,.045);min-width:0;overflow-wrap:anywhere}
+.research-evidence-panel h4{margin:0 0 12px;font-size:15px}
+.research-evidence-panel h5{margin:16px 0 8px;font-size:14px}
+.evidence-overview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.evidence-overview>div{display:grid;gap:6px;padding:10px;border-radius:9px;background:rgba(124,156,197,.07);min-width:0}
+.evidence-overview span{font-size:12px;color:var(--muted,#a6b4ca)}
+.evidence-overview strong{font-size:14px;font-weight:600;line-height:1.5}
+.evidence-direction-summary,.research-evidence-panel p,.evidence-source-list,.evidence-reasons{font-size:13px;line-height:1.8}
+.research-evidence-panel ul{padding-left:20px}
+.evidence-source-list li,.evidence-reasons li{margin:8px 0}
+.evidence-source-list a{color:#a4c9ff;text-decoration:underline;text-underline-offset:3px;display:inline-block;padding:8px 0;min-height:44px;box-sizing:border-box}
+.evidence-source-list span,.evidence-reasons span{display:block;color:var(--muted,#a6b4ca)}
+.research-evidence-panel li small{display:block;color:var(--muted,#a6b4ca);line-height:1.8}
+.evidence-social-note{border-top:1px solid var(--border,#2b3547);padding-top:12px}
+.evidence-storage-error{color:#ffcb85}
+@media(max-width:520px){.research-evidence-panel{padding:12px}.evidence-overview{grid-template-columns:minmax(0,1fr)}.evidence-overview>div{grid-template-columns:minmax(0,1fr) minmax(0,1.6fr);align-items:center}.evidence-overview strong{text-align:right}}

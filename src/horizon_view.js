@@ -1,3 +1,4 @@
+import { researchEvidenceView } from './research_evidence_view.js';
 import {tradeIcon,verdictIcon,directionIcon} from './trade_icons.js';
 import {technicalConfirmationView} from './technical_confirmation_view.js';
 import {TECH_VARIANTS} from './technical_confirmation.js';
@@ -73,6 +74,7 @@ export function horizonPanel(state,now=Date.now(),{home=false}={}){
  ${status.plans.length?planView(status.plans[0]):''}
  ${status.plans.length>1?`<details class="core-disclosure"><summary>其他有效策略 ${status.plans.length-1} 個 · 獨立比較</summary>${status.plans.slice(1).map(planView).join('')}</details>`:''}
  <div class="horizon-next"><strong>${tradeIcon('next')} 下一步</strong><p>${status.key==='plan'?'核對後觀察新觸發；條件成立仍未成交。':status.key==='wait'?'等待上述條件出現，再於新收盤後核對。':'系統會在前景自動重新核對；資料通過後才顯示點位。'}</p>${status.key==='plan'&&!state.forward?.enabled?'<button type="button" class="secondary-btn" data-forward-start>啟動本機前向追蹤</button>':''}${tracking?`<p>本機觀察：${esc(trackLabel[tracking.status]||tracking.status)} · ${esc(tracking.reason)}${['PENDING','OPEN','PARTIAL'].includes(tracking.status)&&!state.forward?.enabled?' · 本頁未追蹤，不能視為持續監控。':''}</p><a href="#/advice-results">查看追蹤紀錄</a>`:''}</div>
+ ${researchEvidenceView(r?.symbol===symbol&&r?.horizon===horizon?r:null,{history:state.agents?.evidenceHistory,now})}
  </article>
  ${periodAlerts.length?`<div class="period-alerts" role="status">${periodAlerts.map(({id,status})=>`<p>${HORIZONS[id].label}：${esc(status.reason)}</p>`).join('')}</div>`:''}
  <p class="horizon-lock">PAPER_ONLY · REAL_ORDER_LOCK · No Backfill<br>僅前景追蹤；背景、關閉或斷線即停止，不回補。條件成立 ≠ 觸發 ≠ 成交。</p>

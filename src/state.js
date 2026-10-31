@@ -48,6 +48,7 @@ export const appState = {
     planComparisonBusy: false,
     planExport: null,
     planHistory: {runs:[],error:null},
+    evidenceHistory: {runs:[],error:null},
     topFiveResearch: {
       status: STATUS.EMPTY,
       startedAt: null,
