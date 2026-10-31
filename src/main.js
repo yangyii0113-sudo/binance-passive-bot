@@ -1,3 +1,4 @@
+import { loadEvidenceHistory, saveEvidenceSnapshot } from './research_evidence.js';
 import {createHorizonAuto,analyzeCoinPeriods} from './horizon_auto.js';
 let horizonAuto;
 const horizonTickets=new Map();
@@ -127,7 +128,13 @@ function scheduleAgentPlanExpiry() {
     .flat().filter(t=>Number.isFinite(t)&&t>now);
   if(times.length) agentPlanExpiryTimer=setTimeout(()=>{render();scheduleAgentPlanExpiry();},Math.min(...times)-now+20);
 }
+function rememberResearchEvidence(record) {
+  if(record?.status!=='LIVE')return;
+  try {setStateSlice('agents',{evidenceHistory:saveEvidenceSnapshot(record)});}
+  catch(error) {setStateSlice('agents',{evidenceHistory:{...appState.agents.evidenceHistory,error:String(error.message)}});}
+}
 function writeAgentPlan(symbol, record) {
+  rememberResearchEvidence(record);
   setStateSlice('agents', {tradePlans:{...appState.agents.tradePlans,[symbol]:record}});
   scheduleAgentPlanExpiry();
 }
@@ -173,7 +180,7 @@ async function refreshHorizon(selection=horizonSelection(),{select=true}={}){
  if(select)Object.assign(appState.ui,{horizon,horizonSymbol:symbol});
  forwardTracker?.watchSymbol(symbol);const ticket=forwardTracker?.ticket(symbol);
  setStateSlice('agents',{horizonBusy:true,horizonPlans:{...appState.agents.horizonPlans,[key]:{symbol,horizon,status:'LOADING'}}});render();
- try{const record=await generateHorizonPlan(symbol,horizon);setStateSlice('agents',{horizonPlans:{...appState.agents.horizonPlans,[key]:record}});forwardTracker?.register(record,ticket);}
+ try{const record=await generateHorizonPlan(symbol,horizon);rememberResearchEvidence(record);setStateSlice('agents',{horizonPlans:{...appState.agents.horizonPlans,[key]:record}});forwardTracker?.register(record,ticket);}
  finally{setStateSlice('agents',{horizonBusy:false});scheduleAgentPlanExpiry();render();}
 }
 async function refreshHomeHorizons(){
@@ -1236,7 +1243,7 @@ function init() {
   syncResearchHistory();
   syncComparisonHistory();
   syncCoinHistory();
-  setStateSlice('agents',{planHistory:loadAgentPlanHistory()});
+  setStateSlice('agents',{planHistory:loadAgentPlanHistory(),evidenceHistory:loadEvidenceHistory()});
   let forwardStorage;
   try{forwardStorage=window.localStorage;}catch{}
   adviceMonitor=createAdviceMonitor({scan:automaticAdviceScan,available:()=>document.visibilityState==='visible'&&navigator.onLine&&['home','advice'].includes(currentRoute()),
@@ -1245,7 +1252,7 @@ function init() {
   setStateSlice('adviceMonitor',adviceMonitor.view());
   horizonAuto=createHorizonAuto({available:()=>document.visibilityState==='visible'&&navigator.onLine&&['home','advice'].includes(currentRoute()),refresh:refreshMarket,select:()=>horizonCandidateSelection(appState),
     analyze:async(symbol,options)=>{if(symbol===horizonSelection().symbol){forwardTracker?.watchSymbol(symbol);horizonTickets.set(symbol,forwardTracker?.ticket(symbol));}else horizonTickets.delete(symbol);return analyzeCoinPeriods(symbol,options);},
-    write:(symbol,records)=>{const plans={...appState.agents.horizonPlans};for(const r of records)plans[`${r.horizon}:${symbol}`]=r;setStateSlice('agents',{horizonPlans:plans});if(symbol===horizonSelection().symbol&&horizonTickets.has(symbol))forwardTracker?.register(plans[`${selectedPeriod(appState)}:${symbol}`],horizonTickets.get(symbol));scheduleAgentPlanExpiry();},
+    write:(symbol,records)=>{const plans={...appState.agents.horizonPlans};for(const r of records){plans[`${r.horizon}:${symbol}`]=r;rememberResearchEvidence(r);}setStateSlice('agents',{horizonPlans:plans});if(symbol===horizonSelection().symbol&&horizonTickets.has(symbol))forwardTracker?.register(plans[`${selectedPeriod(appState)}:${symbol}`],horizonTickets.get(symbol));scheduleAgentPlanExpiry();},
     onChange:view=>{setStateSlice('horizonAuto',view);render();}});
   forwardTracker=createForwardController({storage:forwardStorage,locks:navigator.locks,WebSocketClass:window.WebSocket,visible:()=>document.visibilityState==='visible',trackedSymbols:()=>monitoredSymbols,
     onChange:view=>{setStateSlice('forward',{...view,...(view.dataError?{exportFile:null,exportMessage:null}:{})});adviceMonitor?.forward(view);render();},

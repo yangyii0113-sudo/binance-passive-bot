@@ -763,7 +763,7 @@ function topFiveResearchPanel(state){
         </div>
         ${metrics}
         ${item.backtest ? `<p class="guard-note">${backtestAmountNote(item.backtest)}</p>` : ''}
-        ${agentTradePlanView(state.agents?.tradePlans?.[item.symbol],{symbol:item.symbol,link:true,comparison:state.agents?.planComparisons?.[item.symbol],comparisonBusy:state.agents?.planComparisonBusy || state.pullback?.comparing})}
+        ${agentTradePlanView(state.agents?.tradePlans?.[item.symbol],{history:state.agents?.evidenceHistory,symbol:item.symbol,link:true,comparison:state.agents?.planComparisons?.[item.symbol],comparisonBusy:state.agents?.planComparisonBusy || state.pullback?.comparing})}
         <div class="research-detail-footer">
           <span>${displayText(guard.reason || spec.reason || '固定基準驗證')}</span>
           ${item.status === 'DONE' || item.status === 'ERROR' ? `
@@ -933,7 +933,7 @@ function technicalAgentPanel(state){
     ${technical?.symbol?`<button type="button" class="primary-inline-btn agent-summary-link" data-agent-advice-symbol="${escapeHtml(technical.symbol)}">查看 ${escapeHtml(technical.symbol)} 交易建議 →</button>`:''}
     ${trendOutlookView(technical,state.agents?.tradePlans?.[technical?.symbol],{filter})}
     ${technical?.status==='LIVE'?`<details class="core-disclosure" data-search="technical-indicators"><summary>逐週期指標明細</summary>${frameHtml}</details>`:frameHtml}
-    ${technical?.symbol?agentTradePlanView(state.agents?.tradePlans?.[technical.symbol],{symbol:technical.symbol,comparison:state.agents?.planComparisons?.[technical.symbol],comparisonBusy:state.agents?.planComparisonBusy || state.pullback?.comparing}):''}
+    ${technical?.symbol?agentTradePlanView(state.agents?.tradePlans?.[technical.symbol],{history:state.agents?.evidenceHistory,symbol:technical.symbol,comparison:state.agents?.planComparisons?.[technical.symbol],comparisonBusy:state.agents?.planComparisonBusy || state.pullback?.comparing}):''}
     ${add ? `<div class="agent-single-action">${add}</div>` : ''}
   </div>`;
 }
@@ -1061,7 +1061,7 @@ function playbookAgentPanel(state){
   </article>`).join('') : '<div class="empty-state"><strong>目前沒有符合此狀態的候選</strong></div>';
   return `<div class="agent-panel-stack">
     <div class="agent-intro"><strong>交易策略與進退場計畫</strong><span>技術分析或前五名研究完成後，計畫自動整理於此。只保留本次使用期間的行情，重新開啟需重新分析。</span></div>
-    <div class="agent-plan-list">${plans.length?plans.map(record=>agentTradePlanView(record,{comparison:state.agents?.planComparisons?.[record.symbol],comparisonBusy:state.agents?.planComparisonBusy || state.pullback?.comparing})).join(''):'<div class="empty-state"><strong>尚未擬定交易計畫</strong><span>先完成技術分析，或使用下方候選的「技術分析」產生計畫。</span><button type="button" class="primary-inline-btn" data-agent-key="technical">前往技術分析</button></div>'}</div>
+    <div class="agent-plan-list">${plans.length?plans.map(record=>agentTradePlanView(record,{history:state.agents?.evidenceHistory,comparison:state.agents?.planComparisons?.[record.symbol],comparisonBusy:state.agents?.planComparisonBusy || state.pullback?.comparing})).join(''):'<div class="empty-state"><strong>尚未擬定交易計畫</strong><span>先完成技術分析，或使用下方候選的「技術分析」產生計畫。</span><button type="button" class="primary-inline-btn" data-agent-key="technical">前往技術分析</button></div>'}</div>
     <details class="core-disclosure" data-search="候選驗證清單"><summary>候選驗證與曝險清單</summary>
     ${agentFilterTabs(state,[['all','全部'],['watch','觀察中'],['setup','條件形成中'],['ready','就緒'],['blocked','阻擋']])}
     <div class="playbook-top">

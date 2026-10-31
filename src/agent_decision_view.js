@@ -1,3 +1,4 @@
+import { researchEvidenceView } from './research_evidence_view.js';
 import {verdictIcon} from './trade_icons.js';
 import { huntView } from './hunt_analysis.js';
 import { planPriceMapView } from './plan_price_map.js';
@@ -44,7 +45,7 @@ export function agentActionLabel(record, now=Date.now()) {
   const display=adviceDisplayStatus(record,now);
   return ['empty','loading','plan'].includes(display.gate.key)?`◷ ${display.label}`:`${display.gate.key==='wait'?'◷ 等待確認':'! 暫停'} · 暫不進場 · ${display.label}`;
 }
-export function agentDecisionCard(record, {now=Date.now(),comparison,comparisonBusy=false}={}) {
+export function agentDecisionCard(record, {now=Date.now(),comparison,comparisonBusy=false,history}={}) {
   if(record.row && record.row.symbol!==record.symbol)record={...record,status:'BLOCKED',reason:'分析標的與本幣不符，請重新核對。'};
   const display=adviceDisplayStatus(record,now), result=display.gate, symbol=esc(record.symbol);
   return `<article class="agent-decision-card" aria-label="${symbol} 進退場摘要">
@@ -77,6 +78,7 @@ export function agentDecisionCard(record, {now=Date.now(),comparison,comparisonB
     ${result.plans.length>1?'<p>同幣多方案沒有經驗證的優先順序，請分別判讀，不可重複累加部位。</p>':''}
     ${result.key==='plan'?`<details class="core-disclosure" data-search="decision-evidence-${symbol}"><summary>查看平台判定依據</summary>${strategyEvidenceView(record,{now})}</details>`:''}
     <details class="core-disclosure"><summary>歷史盈利證據與三策略比較</summary>${agentComparisonView(comparison,record.symbol,{now,compact:true,busy:comparisonBusy,allowed:record.status==='LIVE'&&record.row?.analysis?.status==='VALID'})}</details>
+    ${researchEvidenceView(record,{history,now})}
     <p class="decision-next"><strong>下一步：</strong>${esc(display.next)}</p>
     <div class="decision-actions"><button type="button" class="primary-inline-btn" data-agent-plan-refresh="${symbol}" ${result.key==='loading'?'disabled':''}>${result.key==='loading'?'核對中…':'更新這檔建議'}</button><button type="button" class="secondary-btn" data-agent-plan-open="${symbol}">查看完整策略依據</button></div>
     ${record?.historical||record.status!=='LIVE'?'':huntView(record?.row?.analysis,now)}<details class="core-disclosure" data-search="decision-trend-${symbol}"><summary>趨勢與資料核對</summary>${readinessView(record,now)}${coinTrendView(record,{now})}</details>
